@@ -23,6 +23,21 @@ The delivery plan has **eight implementation phases (Phases 1-8)**. Phase 0 is a
 - Browser security tests reject invalid Host/Origin, confirm no wildcard CORS, enforce SameSite cookies, and reject state-changing requests without the current per-launch token. Include a malicious cross-origin page and DNS-rebinding-style Host test.
 - SQLite migration, WAL startup, single-account invariant, and minimal local audit history are tested.
 
+#### Phase 1 acceptance test mapping
+| Acceptance criterion | Proving test(s) |
+|---|---|
+| First-run setup, one owner, one-time recovery display, only-recovery-path warning, and store/print instructions | `SetupCreatesSingleOwnerWithOneTimeCodeHashedCredentialsWalAndAudit` — `tests/SmartSchoolTimetable.Tests/LocalApiTests.cs` |
+| Hashed credentials; one-time recovery reset and replacement; no alternate recovery endpoint | `SetupCreatesSingleOwnerWithOneTimeCodeHashedCredentialsWalAndAudit`, `RecoveryCodeResetsPasswordOnceAndIssuesReplacement`, `AuthRoutesExposeNoAlternatePasswordRecoveryEndpoint` — `tests/SmartSchoolTimetable.Tests/LocalApiTests.cs` |
+| Incremental wrong-password delay and lockout | `WrongPasswordsApplyIncrementalDelayAndTemporaryLockout` — `tests/SmartSchoolTimetable.Tests/LocalApiTests.cs` |
+| Current-password change and session invalidation | `ChangePasswordRequiresCurrentPasswordAndInvalidatesSession` — `tests/SmartSchoolTimetable.Tests/LocalApiTests.cs` |
+| Logout and configurable inactivity auto-lock | `LogoutRevokesAuthenticatedSessionImmediately`, `InactivityTimeoutLocksAuthenticatedSessionAndProtectsPrivateRoutes` — `tests/SmartSchoolTimetable.Tests/LocalApiTests.cs` |
+| Authenticated routes are inaccessible before login | `InactivityTimeoutLocksAuthenticatedSessionAndProtectsPrivateRoutes` — `tests/SmartSchoolTimetable.Tests/LocalApiTests.cs` |
+| Actual Kestrel loopback startup and rejection of wildcard/LAN bindings | `LiveKestrelStartupBindsOnlyToLoopback`, `ListenerGuardRejectsAnyAddressOtherThanCanonicalLoopback` — `tests/SmartSchoolTimetable.Tests/LocalApiTests.cs` |
+| Invalid Host/Origin, no wildcard CORS, strict-cookie attributes, launch-token requirement, cross-origin and DNS-rebinding-style requests | `MaliciousCrossOriginAndDnsRebindingRequestsAreRejected`, `RecoveryCodeResetsPasswordOnceAndIssuesReplacement` — `tests/SmartSchoolTimetable.Tests/LocalApiTests.cs` |
+| SQLite migration, WAL, exactly-one-owner invariant, and local audit entries | `SetupCreatesSingleOwnerWithOneTimeCodeHashedCredentialsWalAndAudit`, `RecoveryCodeResetsPasswordOnceAndIssuesReplacement`, `ChangePasswordRequiresCurrentPasswordAndInvalidatesSession` — `tests/SmartSchoolTimetable.Tests/LocalApiTests.cs` |
+| Clean Architecture dependency boundaries | `ArchitectureDependenciesFlowInward` — `tests/SmartSchoolTimetable.Tests/LocalApiTests.cs` |
+| Destructive first-run database reset requires explicit confirmation | `LocalDatabaseResetRequiresExactConfirmationAndRemovesOnlyDatabaseFiles` — `tests/SmartSchoolTimetable.Tests/LocalApiTests.cs` |
+
 ## Phase 2 - School setup
 - School Profile, teachers, subjects, stages, sections, shifts, bell system, academic calendar
 

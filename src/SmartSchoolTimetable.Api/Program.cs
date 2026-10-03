@@ -1,0 +1,71 @@
+using System.Net;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
+using SmartSchoolTimetable.Api;
+using SmartSchoolTimetable.Application;
+using SmartSchoolTimetable.Infrastructure;
+
+const string resetArgument = "--reset-local-database";
+var resetRequested = args.Contains(resetArgument, StringComparer.Ordinal);
+var builderArguments = args.Where(argument =>
+    !string.Equals(argument, resetArgument, StringComparison.Ordinal)).ToArray();
+var builder = WebApplication.CreateBuilder(builderArguments);
+var localOptions = LocalApplicationOptions.FromConfiguration(builder.Configuration);
+LocalListenerGuard.ValidateConfiguredEndpoint(IPAddress.Loopback, localOptions.Port);
+builder.WebHost.ConfigureKestrel(options =>
+    options.Listen(IPAddress.Loopback, localOptions.Port));
+
+var databasePath = builder.Configuration["Database:Path"] ??
+    Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "SmartSchoolTimetable",
+        "timetable.db");
+
+if (resetRequested)
+{
+    LocalDatabaseReset.DeleteAfterConfirmation(databasePath, Console.In, Console.Out);
+    return;
+}
+
+builder.Services.AddProblemDetails();
+builder.Services.AddOpenApi();
+builder.Services.AddSingleton(localOptions);
+builder.Services.AddSingleton(new SemaphoreSlim(1, 1));
+builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+builder.Services.AddSingleton<LocalLaunchToken>();
+builder.Services.AddScoped<ILocalAuthService>(services => new LocalAuthService(
+    services.GetRequiredService<IOwnerRepository>(),
+    services.GetRequiredService<ICredentialHasher>(),
+    services.GetRequiredService<ILocalSessionStore>(),
+    services.GetRequiredService<ILoginDelay>(),
+    services.GetRequiredService<TimeProvider>(),
+    localOptions.InactivityTimeout,
+    services.GetRequiredService<SemaphoreSlim>()));
+builder.Services.AddLocalInfrastructure(
+    databasePath,
+    builder.Environment.IsEnvironment("Testing"));
+
+var app = builder.Build();
+await LocalInfrastructureRegistration.InitializeLocalDatabaseAsync(app.Services);
+
+app.UseExceptionHandler();
+app.UseMiddleware<LocalRequestSecurityMiddleware>();
+if (app.Environment.IsDevelopment())
+    app.MapOpenApi();
+
+app.UseDefaultFiles();
+app.UseStaticFiles();
+app.MapLocalAuthEndpoints();
+app.MapFallbackToFile("index.html");
+
+await app.StartAsync();
+if (!app.Environment.IsEnvironment("Testing"))
+{
+    var server = app.Services.GetRequiredService<IServer>();
+    var boundAddresses = server.Features.Get<IServerAddressesFeature>()?.Addresses ?? [];
+    LocalListenerGuard.ValidateBoundAddresses(boundAddresses, localOptions.Port);
+}
+
+await app.WaitForShutdownAsync();
+
+public partial class Program;
