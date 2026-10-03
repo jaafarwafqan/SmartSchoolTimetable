@@ -57,14 +57,8 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("FailedLoginCount")
+                    b.Property<bool>("RecoveryCodeAcknowledged")
                         .HasColumnType("INTEGER");
-
-                    b.Property<DateTimeOffset?>("LockoutUntil")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTimeOffset?>("NextLoginAllowedAt")
-                        .HasColumnType("TEXT");
 
                     b.Property<string>("NormalizedUsername")
                         .IsRequired()

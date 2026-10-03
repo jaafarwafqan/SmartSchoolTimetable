@@ -15,9 +15,7 @@ public sealed class OwnerAccount
     public int PasswordIterations { get; private set; }
     public byte[] RecoverySalt { get; private set; } = [];
     public byte[] RecoveryCodeHash { get; private set; } = [];
-    public int FailedLoginCount { get; private set; }
-    public DateTimeOffset? NextLoginAllowedAt { get; private set; }
-    public DateTimeOffset? LockoutUntil { get; private set; }
+    public bool RecoveryCodeAcknowledged { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
 
@@ -40,32 +38,22 @@ public sealed class OwnerAccount
             PasswordIterations = passwordIterations,
             RecoverySalt = recoverySalt,
             RecoveryCodeHash = recoveryCodeHash,
+            RecoveryCodeAcknowledged = false,
             CreatedAt = now,
             UpdatedAt = now
         };
 
-    public void RecordFailedLogin(DateTimeOffset now)
+    public void AcknowledgeRecoveryCode(DateTimeOffset now)
     {
-        FailedLoginCount++;
-        if (FailedLoginCount >= 5)
-        {
-            LockoutUntil = now.AddMinutes(15);
-            NextLoginAllowedAt = LockoutUntil;
-        }
-        else
-        {
-            var delaySeconds = Math.Min(1 << (FailedLoginCount - 1), 30);
-            NextLoginAllowedAt = now.AddSeconds(delaySeconds);
-        }
-
+        RecoveryCodeAcknowledged = true;
         UpdatedAt = now;
     }
 
-    public void RecordSuccessfulLogin(DateTimeOffset now)
+    public void ReplaceRecoveryCode(byte[] salt, byte[] hash, DateTimeOffset now)
     {
-        FailedLoginCount = 0;
-        NextLoginAllowedAt = null;
-        LockoutUntil = null;
+        RecoverySalt = salt;
+        RecoveryCodeHash = hash;
+        RecoveryCodeAcknowledged = false;
         UpdatedAt = now;
     }
 
@@ -74,16 +62,6 @@ public sealed class OwnerAccount
         PasswordSalt = salt;
         PasswordHash = hash;
         PasswordIterations = iterations;
-        FailedLoginCount = 0;
-        NextLoginAllowedAt = null;
-        LockoutUntil = null;
-        UpdatedAt = now;
-    }
-
-    public void ReplaceRecoveryCode(byte[] salt, byte[] hash, DateTimeOffset now)
-    {
-        RecoverySalt = salt;
-        RecoveryCodeHash = hash;
         UpdatedAt = now;
     }
 }

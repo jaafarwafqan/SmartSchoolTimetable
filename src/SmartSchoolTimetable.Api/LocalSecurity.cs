@@ -23,10 +23,13 @@ public sealed class LocalLaunchToken
     }
 }
 
-public sealed record LocalApplicationOptions(int Port, TimeSpan InactivityTimeout)
+public sealed record LocalApplicationOptions(int Port, TimeSpan? InactivityTimeout)
 {
     public string Origin => $"http://127.0.0.1:{Port}";
     public string Host => $"127.0.0.1:{Port}";
+    public int? InactivityTimeoutMinutes => InactivityTimeout is { } timeout
+        ? (int)timeout.TotalMinutes
+        : null;
 
     public static LocalApplicationOptions FromConfiguration(IConfiguration configuration)
     {
@@ -34,11 +37,23 @@ public sealed record LocalApplicationOptions(int Port, TimeSpan InactivityTimeou
         if (port is < 1024 or > 65535)
             throw new InvalidOperationException("LocalHost:Port must be between 1024 and 65535.");
 
-        var inactivityMinutes = configuration.GetValue("Authentication:InactivityTimeoutMinutes", 30);
-        if (inactivityMinutes is < 1 or > 1440)
-            throw new InvalidOperationException("Authentication:InactivityTimeoutMinutes must be between 1 and 1440.");
+        var inactivityValue = configuration["Authentication:InactivityTimeoutMinutes"] ?? "30";
+        TimeSpan? inactivityTimeout;
+        if (string.Equals(inactivityValue, "Never", StringComparison.OrdinalIgnoreCase))
+        {
+            inactivityTimeout = null;
+        }
+        else if (int.TryParse(inactivityValue, out var inactivityMinutes) && inactivityMinutes is >= 1 and <= 1440)
+        {
+            inactivityTimeout = TimeSpan.FromMinutes(inactivityMinutes);
+        }
+        else
+        {
+            throw new InvalidOperationException(
+                "Authentication:InactivityTimeoutMinutes must be between 1 and 1440, or Never.");
+        }
 
-        return new LocalApplicationOptions(port, TimeSpan.FromMinutes(inactivityMinutes));
+        return new LocalApplicationOptions(port, inactivityTimeout);
     }
 }
 
@@ -90,22 +105,27 @@ public sealed class LocalRequestSecurityMiddleware(
         if (context.Request.Host.Value != options.Host)
         {
             logger.LogWarning("Rejected request with non-canonical local Host header.");
-            await WriteProblem(context, StatusCodes.Status400BadRequest, "Invalid Host", "Use the application's canonical local address.");
+            context.Items[UnifiedApiErrorMiddleware.ErrorCodeItem] = "INVALID_HOST";
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
             return;
         }
 
-        if (context.Request.Headers.TryGetValue("Origin", out var origins) &&
-            (origins.Count != 1 || !string.Equals(origins[0], options.Origin, StringComparison.Ordinal)))
+        var hasOrigin = context.Request.Headers.TryGetValue("Origin", out var origins);
+        if ((IsStateChangingMethod(context.Request.Method) && !hasOrigin) ||
+            (hasOrigin &&
+             (origins.Count != 1 || !string.Equals(origins[0], options.Origin, StringComparison.Ordinal))))
         {
             logger.LogWarning("Rejected request with non-canonical Origin header.");
-            await WriteProblem(context, StatusCodes.Status403Forbidden, "Invalid Origin", "The request origin is not allowed.");
+            context.Items[UnifiedApiErrorMiddleware.ErrorCodeItem] = "INVALID_ORIGIN";
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
             return;
         }
 
         if (IsStateChangingMethod(context.Request.Method) &&
             !launchToken.Matches(context.Request.Headers["X-Local-Launch-Token"].FirstOrDefault()))
         {
-            await WriteProblem(context, StatusCodes.Status403Forbidden, "Invalid launch token", "Reload the application and try again.");
+            context.Items[UnifiedApiErrorMiddleware.ErrorCodeItem] = "INVALID_LAUNCH_TOKEN";
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
             return;
         }
 
@@ -119,17 +139,4 @@ public sealed class LocalRequestSecurityMiddleware(
         HttpMethods.IsPost(method) || HttpMethods.IsPut(method) ||
         HttpMethods.IsPatch(method) || HttpMethods.IsDelete(method);
 
-    private static async Task WriteProblem(HttpContext context, int status, string title, string detail)
-    {
-        context.Response.StatusCode = status;
-        context.Response.ContentType = "application/problem+json";
-        await context.Response.WriteAsJsonAsync(new
-        {
-            type = "about:blank",
-            title,
-            status,
-            detail,
-            instance = context.Request.Path.Value
-        });
-    }
 }

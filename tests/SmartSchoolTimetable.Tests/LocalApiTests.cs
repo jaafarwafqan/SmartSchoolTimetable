@@ -6,7 +6,9 @@ using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -15,6 +17,8 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Configuration;
 using SmartSchoolTimetable.Application;
 using SmartSchoolTimetable.Api;
 using SmartSchoolTimetable.Infrastructure;
@@ -36,7 +40,12 @@ public sealed class LocalApiTests
 
         var setup = await host.PostAsync(
             "/api/v1/auth/setup",
-            new { username = "owner", password = "A-Strong-Passphrase-401" },
+            new
+            {
+                username = "owner",
+                password = "A-Strong-Passphrase-401",
+                confirmPassword = "A-Strong-Passphrase-401"
+            },
             bootstrap.LaunchToken);
         Assert.Equal(HttpStatusCode.Created, setup.StatusCode);
         var response = await ReadAsync<SetupResponse>(setup);
@@ -46,7 +55,12 @@ public sealed class LocalApiTests
 
         var repeatedSetup = await host.PostAsync(
             "/api/v1/auth/setup",
-            new { username = "another", password = "A-Strong-Passphrase-401" },
+            new
+            {
+                username = "another",
+                password = "A-Strong-Passphrase-401",
+                confirmPassword = "A-Strong-Passphrase-401"
+            },
             bootstrap.LaunchToken);
         Assert.Equal(HttpStatusCode.Conflict, repeatedSetup.StatusCode);
 
@@ -54,10 +68,11 @@ public sealed class LocalApiTests
         Assert.False(afterSetup.SetupRequired);
         Assert.DoesNotContain(response.RecoveryCode, JsonSerializer.Serialize(afterSetup, JsonOptions));
 
-        var setupScreen = await host.Client.GetStringAsync("/app.js");
-        Assert.Contains("رمز الاسترداد هو المسار الوحيد", setupScreen);
-        Assert.Contains("لن يُعرض هذا الرمز مرة أخرى", setupScreen);
-        Assert.Contains("خزّنه في مكان آمن أو اطبعه الآن", setupScreen);
+        Assert.Contains(setup.Headers.GetValues("Set-Cookie"), value =>
+            value.Contains("HttpOnly", StringComparison.OrdinalIgnoreCase));
+        var authenticatedBootstrap = await host.GetBootstrapAsync();
+        Assert.True(authenticatedBootstrap.Authenticated);
+        Assert.True(authenticatedBootstrap.RecoveryCodeAcknowledgementRequired);
 
         var dbOptions = new DbContextOptionsBuilder<LocalDbContext>()
             .UseSqlite($"Data Source={host.DatabasePath};Pooling=False")
@@ -132,6 +147,106 @@ public sealed class LocalApiTests
     }
 
     [Fact]
+    public void EveryApiErrorCodeHasAnArabicDictionaryEntry()
+    {
+        var dictionary = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(),
+            "frontend",
+            "src",
+            "i18n",
+            "messages.ts"));
+
+        foreach (var code in ApiErrorCodes.All)
+        {
+            var match = Regex.Match(
+                dictionary,
+                $@"^\s{{4}}{Regex.Escape(code)}:\s*""([^""]+)""",
+                RegexOptions.Multiline);
+            Assert.True(match.Success, $"Arabic error dictionary is missing API error code {code}.");
+            Assert.Matches(@"\p{IsArabic}", match.Groups[1].Value);
+        }
+    }
+
+    [Fact]
+    public void InactivityTimeoutSupportsNeverWithoutExpiringSessions()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["LocalHost:Port"] = "5080",
+                ["Authentication:InactivityTimeoutMinutes"] = "Never"
+            })
+            .Build();
+        var options = LocalApplicationOptions.FromConfiguration(configuration);
+        Assert.Null(options.InactivityTimeout);
+        Assert.Null(options.InactivityTimeoutMinutes);
+
+        var clock = new TestTimeProvider(DateTimeOffset.Parse("2026-10-03T10:00:00Z"));
+        var store = new LocalSessionStore(clock);
+        var sessionId = store.Issue("owner");
+        clock.Advance(TimeSpan.FromDays(365));
+        Assert.True(store.TryValidateAndTouch(sessionId, options.InactivityTimeout, out _));
+    }
+
+    [Fact]
+    public async Task FrameworkAndValidationFailuresUseUnifiedApiErrorContract()
+    {
+        await using var host = new TestHost();
+        var bootstrap = await host.GetBootstrapAsync();
+
+        var notFound = await host.Client.GetAsync("/api/v1/no-such-endpoint");
+        Assert.Equal(HttpStatusCode.NotFound, notFound.StatusCode);
+        await AssertApiErrorAsync(notFound, "NOT_FOUND");
+
+        using var unsupportedMethod = new HttpRequestMessage(HttpMethod.Put, "/api/v1/bootstrap");
+        unsupportedMethod.Headers.TryAddWithoutValidation(
+            "Origin",
+            LocalOrigin.ToString().TrimEnd('/'));
+        unsupportedMethod.Headers.TryAddWithoutValidation(
+            "X-Local-Launch-Token",
+            bootstrap.LaunchToken);
+        var methodFailure = await host.Client.SendAsync(unsupportedMethod);
+        Assert.Equal(HttpStatusCode.MethodNotAllowed, methodFailure.StatusCode);
+        await AssertApiErrorAsync(methodFailure, "METHOD_NOT_ALLOWED");
+
+        using var unsupportedMediaRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/login")
+        {
+            Content = new StringContent("{}", Encoding.UTF8, "text/plain")
+        };
+        unsupportedMediaRequest.Headers.TryAddWithoutValidation("Origin", LocalOrigin.ToString().TrimEnd('/'));
+        unsupportedMediaRequest.Headers.TryAddWithoutValidation("X-Local-Launch-Token", bootstrap.LaunchToken);
+        var unsupportedMedia = await host.Client.SendAsync(unsupportedMediaRequest);
+        Assert.Equal(HttpStatusCode.UnsupportedMediaType, unsupportedMedia.StatusCode);
+        await AssertApiErrorAsync(unsupportedMedia, "UNSUPPORTED_MEDIA_TYPE");
+
+        using var invalidSetupRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/setup")
+        {
+            Content = JsonContent.Create(new
+            {
+                username = "owner",
+                password = "A-Strong-Passphrase-401",
+                confirmPassword = "Does-Not-Match-Password"
+            })
+        };
+        invalidSetupRequest.Headers.TryAddWithoutValidation("Origin", LocalOrigin.ToString().TrimEnd('/'));
+        invalidSetupRequest.Headers.TryAddWithoutValidation("X-Local-Launch-Token", bootstrap.LaunchToken);
+        var invalidSetup = await host.Client.SendAsync(invalidSetupRequest);
+        Assert.Equal((HttpStatusCode)422, invalidSetup.StatusCode);
+        var validationError = await AssertApiErrorAsync(invalidSetup, "VALIDATION_FAILED");
+        Assert.Contains(validationError.Errors, issue =>
+            issue.Field == "ConfirmPassword" && issue.Code == "PASSWORD_MISMATCH");
+
+        var unhandled = await CreateUnhandledApiResponseAsync();
+        Assert.Equal(StatusCodes.Status500InternalServerError, unhandled.StatusCode);
+        using var internalErrorJson = JsonDocument.Parse(unhandled.Body);
+        Assert.Equal("INTERNAL_ERROR", internalErrorJson.RootElement.GetProperty("code").GetString());
+        Assert.Equal(unhandled.CorrelationId,
+            internalErrorJson.RootElement.GetProperty("correlationId").GetString());
+        Assert.DoesNotContain("title", unhandled.Body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("detail", unhandled.Body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task PasswordAndRecoveryCodeAreNeverWrittenToApplicationLogs()
     {
         await using var host = new TestHost();
@@ -152,16 +267,21 @@ public sealed class LocalApiTests
     }
 
     [Fact]
-    public async Task LoginPasswordVisibilityToggleHasAccessibleLabelAndPressedState()
+    public void LoginPasswordVisibilityToggleHasAccessibleLabelAndPressedState()
     {
-        await using var host = new TestHost();
-        var script = await host.Client.GetStringAsync("/app.js");
+        var passwordField = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(),
+            "frontend",
+            "src",
+            "components",
+            "PasswordField.tsx"));
 
-        Assert.Contains("visibilityToggle.setAttribute(\"aria-label\", \"إظهار كلمة المرور\")", script);
-        Assert.Contains("visibilityToggle.setAttribute(\"aria-pressed\", \"false\")", script);
-        Assert.Contains("visibilityToggle.setAttribute(\"aria-pressed\", String(isVisible))", script);
-        Assert.Contains("passwordInput.type = isVisible ? \"text\" : \"password\"", script);
-        Assert.Contains("visibilityToggle.textContent = isVisible ? \"إخفاء كلمة المرور\" : \"إظهار كلمة المرور\"", script);
+        Assert.Contains("aria-label={toggleLabel}", passwordField);
+        Assert.Contains("aria-pressed={visible}", passwordField);
+        Assert.Contains("title={toggleLabel}", passwordField);
+        Assert.Contains("type={visible ? \"text\" : \"password\"}", passwordField);
+        Assert.Contains("EyeOff", passwordField);
+        Assert.Contains("Eye", passwordField);
     }
 
     [Fact]
@@ -234,30 +354,71 @@ public sealed class LocalApiTests
     }
 
     [Fact]
-    public async Task WrongPasswordsApplyIncrementalDelayAndTemporaryLockout()
+    public async Task WrongPasswordsApplyFixedOneSecondDelayWithoutTemporaryLockout()
     {
         await using var host = new TestHost();
         var (token, _) = await SetupOwnerAsync(host);
 
-        for (var attempt = 0; attempt < 5; attempt++)
+        for (var attempt = 0; attempt < 6; attempt++)
         {
             var invalid = await host.PostAsync(
                 "/api/v1/auth/login",
                 new { username = "owner", password = "Wrong-Password-Not-Valid" },
                 token);
-            if (attempt < 4)
-                Assert.Equal(HttpStatusCode.Unauthorized, invalid.StatusCode);
-            else
-            {
-                Assert.Equal((HttpStatusCode)423, invalid.StatusCode);
-                Assert.True(invalid.Headers.Contains("Retry-After"));
-            }
+            Assert.Equal(HttpStatusCode.Unauthorized, invalid.StatusCode);
         }
 
-        Assert.Contains(TimeSpan.FromSeconds(1), host.LoginDelay.Delays);
-        Assert.Contains(TimeSpan.FromSeconds(2), host.LoginDelay.Delays);
-        Assert.Contains(TimeSpan.FromSeconds(4), host.LoginDelay.Delays);
-        Assert.Contains(TimeSpan.FromSeconds(8), host.LoginDelay.Delays);
+        Assert.Equal(Enumerable.Repeat(TimeSpan.FromSeconds(1), 6), host.LoginDelay.Delays);
+    }
+
+    [Fact]
+    public async Task RecoveryCodeCanBeRegeneratedOnlyWithCurrentPasswordAndMustBeAcknowledged()
+    {
+        await using var host = new TestHost();
+        var (token, oldCode) = await SetupOwnerAsync(host);
+        await host.PostAsync("/api/v1/auth/logout", new { }, token);
+        var signIn = await host.PostAsync(
+            "/api/v1/auth/login",
+            new { username = "owner", password = "A-Strong-Passphrase-401" },
+            token);
+        Assert.Equal(HttpStatusCode.NoContent, signIn.StatusCode);
+
+        var prematureAcknowledgement = await host.PostAsync(
+            "/api/v1/auth/recovery-code/acknowledge",
+            new { },
+            token);
+        Assert.Equal(HttpStatusCode.Conflict, prematureAcknowledgement.StatusCode);
+        Assert.Equal("RECOVERY_MISSING",
+            (await ReadAsync<ApiErrorResponse>(prematureAcknowledgement)).Code);
+
+        var wrongPassword = await host.PostAsync(
+            "/api/v1/auth/recovery-code/regenerate",
+            new { currentPassword = "Wrong-Password-Not-Valid" },
+            token);
+        Assert.Equal(HttpStatusCode.Unauthorized, wrongPassword.StatusCode);
+        Assert.Equal("CURRENT_PASSWORD_INCORRECT", (await ReadAsync<ApiErrorResponse>(wrongPassword)).Code);
+
+        var regenerated = await host.PostAsync(
+            "/api/v1/auth/recovery-code/regenerate",
+            new { currentPassword = "A-Strong-Passphrase-401" },
+            token);
+        Assert.Equal(HttpStatusCode.OK, regenerated.StatusCode);
+        var newCode = (await ReadAsync<RecoveryResponse>(regenerated)).RecoveryCode;
+        Assert.NotEqual(oldCode, newCode);
+        Assert.True((await host.GetBootstrapAsync()).RecoveryCodeAcknowledgementRequired);
+
+        var oldCodeRecovery = await host.PostAsync(
+            "/api/v1/auth/recovery",
+            new { recoveryCode = oldCode, newPassword = "A-New-Strong-Passphrase-802" },
+            token);
+        Assert.Equal(HttpStatusCode.Unauthorized, oldCodeRecovery.StatusCode);
+
+        var acknowledged = await host.PostAsync(
+            "/api/v1/auth/recovery-code/acknowledge",
+            new { },
+            token);
+        Assert.Equal(HttpStatusCode.NoContent, acknowledged.StatusCode);
+        Assert.False((await host.GetBootstrapAsync()).RecoveryCodeAcknowledgementRequired);
     }
 
     [Fact]
@@ -315,8 +476,9 @@ public sealed class LocalApiTests
     public async Task InactivityTimeoutLocksAuthenticatedSessionAndProtectsPrivateRoutes()
     {
         await using var host = new TestHost();
+        Assert.Same(host.Clock, host.Services.GetRequiredService<TimeProvider>());
         var (token, _) = await SetupOwnerAsync(host);
-        Assert.Equal(HttpStatusCode.Unauthorized, (await host.Client.GetAsync("/api/v1/private/status")).StatusCode);
+        Assert.Equal(5, (await host.GetBootstrapAsync()).InactivityTimeoutMinutes);
 
         var login = await host.PostAsync(
             "/api/v1/auth/login",
@@ -341,18 +503,51 @@ public sealed class LocalApiTests
 
         var noToken = await host.PostWithoutTokenAsync(
             "/api/v1/auth/setup",
-            new { username = "owner", password = "A-Strong-Passphrase-401" });
+            new
+            {
+                username = "owner",
+                password = "A-Strong-Passphrase-401",
+                confirmPassword = "A-Strong-Passphrase-401"
+            });
         Assert.Equal(HttpStatusCode.Forbidden, noToken.StatusCode);
+
+        using var noOriginRequest = new HttpRequestMessage(
+            HttpMethod.Post,
+            "/api/v1/auth/setup")
+        {
+            Content = JsonContent.Create(new
+            {
+                username = "owner",
+                password = "A-Strong-Passphrase-401",
+                confirmPassword = "A-Strong-Passphrase-401"
+            })
+        };
+        noOriginRequest.Headers.TryAddWithoutValidation(
+            "X-Local-Launch-Token",
+            bootstrap.LaunchToken);
+        var noOrigin = await host.Client.SendAsync(noOriginRequest);
+        Assert.Equal(HttpStatusCode.Forbidden, noOrigin.StatusCode);
+        await AssertApiErrorAsync(noOrigin, "INVALID_ORIGIN");
 
         var staleToken = await host.PostAsync(
             "/api/v1/auth/setup",
-            new { username = "owner", password = "A-Strong-Passphrase-401" },
+            new
+            {
+                username = "owner",
+                password = "A-Strong-Passphrase-401",
+                confirmPassword = "A-Strong-Passphrase-401"
+            },
             secondLaunchBootstrap.LaunchToken);
         Assert.Equal(HttpStatusCode.Forbidden, staleToken.StatusCode);
 
         var wrongOrigin = await host.PostAsync(
             "/api/v1/auth/setup",
-            new { username = "owner", password = "A-Strong-Passphrase-401" },
+            new
+            {
+                username = "owner",
+                password = "A-Strong-Passphrase-401",
+                confirmPassword = "A-Strong-Passphrase-401"
+            },
             bootstrap.LaunchToken,
             "http://evil.example");
         Assert.Equal(HttpStatusCode.Forbidden, wrongOrigin.StatusCode);
@@ -569,7 +764,12 @@ public sealed class LocalApiTests
         var bootstrap = await host.GetBootstrapAsync();
         var response = await host.PostAsync(
             "/api/v1/auth/setup",
-            new { username = "owner", password = "A-Strong-Passphrase-401" },
+            new
+            {
+                username = "owner",
+                password = "A-Strong-Passphrase-401",
+                confirmPassword = "A-Strong-Passphrase-401"
+            },
             bootstrap.LaunchToken);
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var setupResult = await ReadAsync<SetupResponse>(response);
@@ -578,6 +778,38 @@ public sealed class LocalApiTests
 
     private static async Task<T> ReadAsync<T>(HttpResponseMessage response) =>
         (await response.Content.ReadFromJsonAsync<T>(JsonOptions))!;
+
+    private static async Task<ApiErrorResponse> AssertApiErrorAsync(
+        HttpResponseMessage response,
+        string expectedCode)
+    {
+        var body = await response.Content.ReadAsStringAsync();
+        using var json = JsonDocument.Parse(body);
+        Assert.Equal(expectedCode, json.RootElement.GetProperty("code").GetString());
+        Assert.False(string.IsNullOrWhiteSpace(json.RootElement.GetProperty("correlationId").GetString()));
+        Assert.False(json.RootElement.TryGetProperty("title", out _));
+        Assert.False(json.RootElement.TryGetProperty("detail", out _));
+        return (await response.Content.ReadFromJsonAsync<ApiErrorResponse>(JsonOptions))!;
+    }
+
+    private static async Task<(int StatusCode, string CorrelationId, string Body)> CreateUnhandledApiResponseAsync()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Path = "/api/v1/test-error";
+        context.Response.Body = new MemoryStream();
+        var logger = NullLogger<UnifiedApiErrorMiddleware>.Instance;
+        var middleware = new UnifiedApiErrorMiddleware(
+            _ => throw new InvalidOperationException("Do not expose this internal detail."),
+            logger);
+        await middleware.InvokeAsync(context);
+        context.Response.Body.Position = 0;
+        using var reader = new StreamReader(context.Response.Body);
+        var body = await reader.ReadToEndAsync();
+        return (
+            context.Response.StatusCode,
+            context.Response.Headers["X-Correlation-ID"].ToString(),
+            body);
+    }
 
     private sealed class TestHost : IAsyncDisposable
     {
@@ -655,6 +887,9 @@ public sealed class LocalApiTests
                 var clock = new TestTimeProvider(DateTimeOffset.Parse("2026-10-03T10:00:00Z"));
                 services.AddSingleton(clock);
                 services.AddSingleton<TimeProvider>(clock);
+
+                services.RemoveAll<ILocalSessionStore>();
+                services.AddSingleton<ILocalSessionStore>(_ => new LocalSessionStore(clock));
 
                 services.RemoveAll<ILoginDelay>();
                 services.AddSingleton<RecordingLoginDelay>();

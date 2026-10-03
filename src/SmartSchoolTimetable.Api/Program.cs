@@ -1,4 +1,5 @@
 using System.Net;
+using FluentValidation;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using SmartSchoolTimetable.Api;
@@ -29,6 +30,7 @@ if (resetRequested)
 
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
+builder.Services.AddValidatorsFromAssemblyContaining<SetupRequestValidator>();
 builder.Services.AddSingleton(localOptions);
 builder.Services.AddSingleton(new SemaphoreSlim(1, 1));
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
@@ -49,6 +51,7 @@ var app = builder.Build();
 await LocalInfrastructureRegistration.InitializeLocalDatabaseAsync(app.Services);
 
 app.UseExceptionHandler();
+app.UseMiddleware<UnifiedApiErrorMiddleware>();
 app.UseMiddleware<LocalRequestSecurityMiddleware>();
 if (app.Environment.IsDevelopment())
     app.MapOpenApi();
@@ -56,7 +59,43 @@ if (app.Environment.IsDevelopment())
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.MapLocalAuthEndpoints();
-app.MapFallbackToFile("index.html");
+app.MapFallback(async (HttpContext context) =>
+{
+    if (context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))
+    {
+        var methodEndpoint = app.Services.GetRequiredService<EndpointDataSource>()
+            .Endpoints
+            .OfType<RouteEndpoint>()
+            .FirstOrDefault(endpoint =>
+                string.Equals(
+                    endpoint.RoutePattern.RawText,
+                    context.Request.Path.Value,
+                    StringComparison.OrdinalIgnoreCase) &&
+                endpoint.Metadata.GetMetadata<IHttpMethodMetadata>() is not null);
+        if (methodEndpoint is null)
+        {
+            context.Items[UnifiedApiErrorMiddleware.ErrorCodeItem] = "NOT_FOUND";
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+
+        var supportedMethods = methodEndpoint.Metadata.GetMetadata<IHttpMethodMetadata>()!.HttpMethods;
+        if (supportedMethods.Contains(context.Request.Method, StringComparer.OrdinalIgnoreCase))
+        {
+            context.Items[UnifiedApiErrorMiddleware.ErrorCodeItem] = "UNSUPPORTED_MEDIA_TYPE";
+            context.Response.StatusCode = StatusCodes.Status415UnsupportedMediaType;
+            return;
+        }
+
+        context.Items[UnifiedApiErrorMiddleware.ErrorCodeItem] = "METHOD_NOT_ALLOWED";
+        context.Response.StatusCode = StatusCodes.Status405MethodNotAllowed;
+        context.Response.Headers.Allow = string.Join(", ", supportedMethods);
+        return;
+    }
+
+    context.Response.ContentType = "text/html; charset=utf-8";
+    await context.Response.SendFileAsync(Path.Combine(app.Environment.WebRootPath!, "index.html"));
+});
 
 await app.StartAsync();
 if (!app.Environment.IsEnvironment("Testing"))

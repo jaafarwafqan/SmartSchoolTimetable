@@ -4,33 +4,37 @@
 - Date: 2026-10-03
 
 ## Context
-The product has exactly one local owner account and no external identity provider, public endpoint, roles, permissions, or multi-user workflow. A local browser application is nevertheless exposed to requests initiated by malicious websites.
+The product is a single-user local application with exactly one owner account. There is no external identity provider, public endpoint, role/permission system, or multi-user workflow. A browser can still be induced by a malicious website to send requests to localhost.
 
 ## Decision
 
-### Initial setup and recovery
-- On first run, a separate setup screen creates the owner account only if the local user table is empty.
-- Generate a cryptographically random recovery code of at least 128 bits of entropy. Display it once with a clear instruction to store it securely or print it.
-- Store only a one-way hash of the code. It is the sole password-reset mechanism.
-- Successful recovery changes the password, consumes the presented code, and issues a replacement code shown once. There is no email, security-question, administrator, or support reset path.
-- If both password and current recovery code are lost, there is no password recovery. Destructive reinitialization loses local data and is not recovery.
+### First-run setup and recovery
+- A dedicated setup screen creates one owner account only when the local user table is empty. Successful setup also creates an authenticated session; do not require a second login.
+- Before entering the application, show the recovery code once and require acknowledgment that it was stored. If the page reloads before confirmation, sign in and offer regeneration in Settings after the current password is verified. Regeneration invalidates the previous code and shows the new one once.
+- Generate 16 random bytes with `RandomNumberGenerator` (128 bits), displayed as four eight-character uppercase hexadecimal groups. Store only a salted one-way hash.
+- The recovery code is the sole password-reset mechanism. Successful recovery consumes the used code, changes the password, and issues a replacement once. If both password and recovery code are lost, there is no alternate recovery path.
+- Do not force a password change after setup or recovery. A Settings password change requires the current password and invalidates the session.
 
-### Password and session
-- Never store plaintext credentials.
-- Preferred password hash: Argon2id with memory 64 MiB, 3 iterations, parallelism 1, random salt, and 32-byte output, using a vetted maintained implementation. If that dependency is not accepted, use .NET PBKDF2-HMAC-SHA-256 with random salt, at least 600,000 iterations, and 32-byte output. Store version/parameters and calibrate upward for supported hardware.
-- Persist failed-attempt state. Escalate delays after consecutive failures (1, 2, 4, 8 seconds, capped at 30 seconds) and temporarily lock the account for 15 minutes after five consecutive failures. Successful authentication clears the failure counter.
-- Baseline session is a server-side local session in an HttpOnly, SameSite=Strict cookie, rotated after login; no access/refresh token pair. Secure is required if the local origin uses HTTPS.
-- A configurable inactivity timeout invalidates the session and returns the user to the login screen. Password changes require the current password and invalidate the session.
+### Password and failed-login behavior
+- Use PBKDF2-HMAC-SHA-256 with a random 16-byte salt, 600,000 iterations, and a 32-byte output. Store algorithm parameters with the hash. Verify secrets using constant-time comparison.
+- After a failed login, wait a fixed one second. Do not add an escalating delay, temporary lockout, or a multi-user/IP rate-limit system.
+- Never store or log plaintext passwords, recovery codes, cookies, session identifiers, or launch tokens.
+
+### Session and inactivity
+- Use a server-side local session in an `HttpOnly`, `SameSite=Strict`, `Path=/` cookie. No access/refresh token pair.
+- Set `Secure` when HTTPS is used. The baseline local listener is loopback HTTP, so the Secure attribute is intentionally omitted and not required for that baseline.
+- Configure inactivity timeout from 1 to 1440 minutes or `Never` (default 30); expiry invalidates the session and returns the UI to login.
+- Logout revokes the session immediately.
 
 ### Localhost request protection
-- Bind Kestrel only to `127.0.0.1`; fail startup if the effective listener is not exactly loopback.
-- Serve the UI and API from the same canonical origin. Validate exact Host and Origin against `127.0.0.1` and the active port; reject alternate or unexpected host/origin values. Do not use wildcard CORS; disable CORS for the same-origin baseline.
-- Generate a cryptographically random per-launch anti-CSRF token, rotate it every launch, expose it only to the same-origin page in memory, and require it in a dedicated header on every state-changing request, including setup and login.
-- Enforce SameSite=Strict session cookies. Never put the launch token in a URL, cookie readable by JavaScript, or persistent storage.
+- Bind Kestrel only to `127.0.0.1`; fail startup unless the effective address is exactly loopback.
+- Serve UI/API from the same canonical origin. Validate exact Host and Origin; reject missing Origin on state-changing requests. Do not enable wildcard CORS.
+- Create a cryptographically random token on every launch. Return it to the same-origin page and keep it in memory only. Every state-changing request requires it in a dedicated header in addition to a matching Origin and Host.
+- Never place the launch token in a URL, persistent storage, or a JavaScript-readable cookie.
+- Strict Origin/Host checks, SameSite cookies, and the launch token mitigate malicious web pages and DNS-rebinding-style attempts to call localhost. Loopback binding alone is insufficient.
 
 ## Consequences
-- This is local-account protection, not a substitute for OS login or disk encryption.
-- Incremental delay/lockout is account-specific brute-force protection, not a multi-user or IP-based rate limiter.
-- Loopback addresses can still be targeted by browser pages, so Host/Origin/token/cookie protections and corresponding adversarial tests are part of the security boundary.
-- Resetting a lost password without the recovery code is intentionally unsupported.
-- WebView2 is optional; it must reuse the same local authentication and request protections if later approved.
+- Local authentication protects against casual use; it is not a substitute for operating-system access control or disk encryption.
+- Resetting the password without the recovery code is intentionally unsupported.
+- Browser-based login is the baseline. WebView2 is optional and, if approved later, must retain the same authentication and request protections.
+- No RBAC, refresh-token rotation, remote sync, multi-user concurrency, or multi-user-specific rate limiting is introduced.

@@ -1,20 +1,33 @@
 # CLAUDE.md
 
 ## Project
-Single-user local Smart School Timetable application. One local school, one owner account, browser-based login, Arabic-first RTL, and core operation without internet access. Local Kestrel binds only to `127.0.0.1`.
+Single-user local Smart School Timetable application. One school, exactly one owner account, browser-based login, Arabic-first RTL, offline operation, and Kestrel bound only to `127.0.0.1`.
 
 ## Active phase
-Phase 0 documentation only. Do not start Phase 1 until the owner replies exactly `approved`.
+Phase 1.2 React migration and owner-authentication acceptance. Do not start Phase 2 until the owner explicitly accepts Phase 1.2.
 
-## Rules
-- No application code before Phase 1 approval.
-- No multi-tenancy, RBAC, permission matrix, refresh-token rotation, remote sync, or multi-user concurrency.
-- Keep a minimal local users table with one owner row now and a future-extensible account shape.
-- Protect localhost endpoints from malicious websites with strict Host/Origin validation, SameSite cookies, no wildcard CORS, and a per-launch token on state-changing requests.
-- Maintain ADRs for non-trivial decisions; do not silently alter architecture.
-- No dependencies without purpose, security, maintenance, and alternative analysis.
-- Never log passwords, recovery codes, cookies, or session tokens.
+## Scope and security
+- One local owner only. No multi-tenancy, roles/RBAC, permission matrix, refresh-token rotation, remote sync, or concurrent-user support.
+- Keep a minimal local users table with exactly one owner row and a future-extensible account shape.
+- Protect localhost endpoints from malicious websites with strict Host/Origin validation, SameSite cookies, no wildcard CORS, and a per-launch token on every state-changing request.
+- Use a fixed one-second delay after failed login; do not add escalating delays or temporary lockout.
+- Maintain ADRs for non-trivial decisions. Do not silently alter architecture or dependencies.
+- Never log passwords, recovery codes, cookies, session tokens, or per-launch tokens.
+
+## Localization and RTL (mandatory)
+- Every user-facing string, including errors, validation, dialogs, labels, tooltips, generated documents, and network/offline failures, must be Arabic. Keep the dictionary shaped for adding English later; Arabic is the only active locale.
+- The API returns stable error codes and parameters only, never user-readable text. Map every known code in `frontend/src/i18n/messages.ts`; unknown/missing codes fall back to a generic Arabic error.
+- Set the document to `<html lang="ar" dir="rtl">`. Use logical CSS properties. Keep punctuation inside Arabic localized strings.
+- Do not use native validation tooltips, `window.alert`, `window.confirm`, `window.prompt`, or native file-input text. Use app components.
+- Developer logs may remain English but must never contain secrets.
+- ESLint forbids hard-coded UI text and enforces an icon plus visible label on `Button`; native icon-only controls require Arabic `aria-label` and `title`.
+
+## Icons and accessible actions (mandatory)
+- Use `lucide-react` as the only icon library; no emoji or mixed sets.
+- Every action/navigation item has an icon. Important actions include an icon and Arabic text. Icon-only controls are limited to universally clear actions such as password visibility and close; they require Arabic `aria-label` and tooltip/title.
+- Put the password eye/eye-off control inside the logical-end input edge (left visually in RTL), with `aria-label` and `aria-pressed`.
+- Mirror directional icons in RTL. Keep icon dimensions/stroke consistent and verify WCAG AA contrast.
 
 ## Current status
-- Phase 0 architecture/security scope clarified and documented.
-- Awaiting owner approval before implementation.
+- Phase 1.2 application code and tests are in progress pending owner acceptance.
+- Preserve the existing Phase 0/1 decisions and do not implement Phase 2 features.

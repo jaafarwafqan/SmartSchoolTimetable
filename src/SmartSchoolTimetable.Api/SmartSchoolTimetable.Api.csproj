@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.20" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.20">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
@@ -19,4 +20,30 @@
     <ProjectReference Include="..\SmartSchoolTimetable.Infrastructure\SmartSchoolTimetable.Infrastructure.csproj" />
   </ItemGroup>
 
+  <Target Name="BuildReactFrontend" BeforeTargets="Build" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Exec
+      Command="npm ci --prefix &quot;$(MSBuildThisFileDirectory)..\..\frontend&quot;"
+      Condition="!Exists('$(MSBuildThisFileDirectory)..\..\frontend\node_modules\vite\bin\vite.js')" />
+    <Exec Command="npm run build --prefix &quot;$(MSBuildThisFileDirectory)..\..\frontend&quot;" />
+  </Target>
+
+  <Target Name="CopyReactFrontendToBuildOutput" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true'">
+    <ItemGroup>
+      <ReactFrontendAsset Include="$(MSBuildThisFileDirectory)wwwroot\**\*" />
+    </ItemGroup>
+    <Copy
+      SourceFiles="@(ReactFrontendAsset)"
+      DestinationFiles="@(ReactFrontendAsset->'$(OutDir)wwwroot\%(RecursiveDir)%(Filename)%(Extension)')"
+      SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="CopyReactFrontendToPublishOutput" AfterTargets="Publish" Condition="'$(DesignTimeBuild)' != 'true'">
+    <ItemGroup>
+      <ReactFrontendPublishAsset Include="$(MSBuildThisFileDirectory)wwwroot\**\*" />
+    </ItemGroup>
+    <Copy
+      SourceFiles="@(ReactFrontendPublishAsset)"
+      DestinationFiles="@(ReactFrontendPublishAsset->'$(PublishDir)wwwroot\%(RecursiveDir)%(Filename)%(Extension)')"
+      SkipUnchangedFiles="true" />
+  </Target>
 </Project>

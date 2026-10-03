@@ -10,7 +10,7 @@ public sealed class LocalAuthService(
     ILocalSessionStore sessionStore,
     ILoginDelay loginDelay,
     TimeProvider timeProvider,
-    TimeSpan inactivityTimeout,
+    TimeSpan? inactivityTimeout,
     SemaphoreSlim operationGate) : ILocalAuthService
 {
     public const int RecoveryCodeEntropyBits = 128;
@@ -19,14 +19,14 @@ public sealed class LocalAuthService(
     {
         var owner = await ownerRepository.GetOwnerAsync(cancellationToken);
         if (owner is null)
-            return new LocalAuthStatus(true, false, null);
+            return new LocalAuthStatus(true, false, null, false);
 
         var username = string.Empty;
         var authenticated = sessionId is not null &&
             sessionStore.TryValidateAndTouch(sessionId, inactivityTimeout, out username);
         return authenticated
-            ? new LocalAuthStatus(false, true, username)
-            : new LocalAuthStatus(false, false, null);
+            ? new LocalAuthStatus(false, true, username, !owner.RecoveryCodeAcknowledged)
+            : new LocalAuthStatus(false, false, null, !owner.RecoveryCodeAcknowledged);
     }
 
     public async Task<AuthOperationResult> SetupAsync(
@@ -43,7 +43,7 @@ public sealed class LocalAuthService(
         try
         {
             if (await ownerRepository.GetOwnerAsync(cancellationToken) is not null)
-                return new AuthOperationResult(false, "setup_already_complete");
+                return new AuthOperationResult(false, "SETUP_ALREADY_COMPLETE");
 
             var now = timeProvider.GetUtcNow();
             var (passwordSalt, passwordHash) = credentialHasher.HashPassword(password);
@@ -63,7 +63,8 @@ public sealed class LocalAuthService(
                 owner,
                 LocalAuditEntry.Create(now, "OwnerAccountCreated", "owner-account", "Initial owner setup completed."),
                 cancellationToken);
-            return new AuthOperationResult(true, RecoveryCode: recoveryCode);
+            var sessionId = sessionStore.Issue(owner.Username, recoveryCodeIssued: true);
+            return new AuthOperationResult(true, RecoveryCode: recoveryCode, SessionId: sessionId);
         }
         finally
         {
@@ -81,14 +82,7 @@ public sealed class LocalAuthService(
         {
             var owner = await ownerRepository.GetOwnerAsync(cancellationToken);
             if (owner is null)
-                return new AuthOperationResult(false, "setup_required");
-
-            var now = timeProvider.GetUtcNow();
-            if (owner.LockoutUntil is { } lockoutUntil && lockoutUntil > now)
-                return new AuthOperationResult(false, "temporarily_locked", RetryAfter: lockoutUntil - now);
-
-            if (owner.NextLoginAllowedAt is { } allowedAt && allowedAt > now)
-                await loginDelay.WaitAsync(allowedAt - now, cancellationToken);
+                return new AuthOperationResult(false, "SETUP_REQUIRED");
 
             var normalizedUsername = NormalizeUsername(username);
             var passwordValid = credentialHasher.VerifyPassword(
@@ -100,22 +94,77 @@ public sealed class LocalAuthService(
 
             if (!passwordValid || !usernameValid)
             {
-                now = timeProvider.GetUtcNow();
-                owner.RecordFailedLogin(now);
-                await ownerRepository.SaveOwnerAsync(owner, null, cancellationToken);
-                if (owner.LockoutUntil is { } until && until > now)
-                    return new AuthOperationResult(false, "temporarily_locked", RetryAfter: until - now);
-
-                var delay = owner.NextLoginAllowedAt is { } next ? next - now : TimeSpan.Zero;
-                await loginDelay.WaitAsync(delay, cancellationToken);
-                return new AuthOperationResult(false, "invalid_credentials");
+                await loginDelay.WaitAsync(TimeSpan.FromSeconds(1), cancellationToken);
+                return new AuthOperationResult(false, "INVALID_CREDENTIALS");
             }
 
-            now = timeProvider.GetUtcNow();
-            owner.RecordSuccessfulLogin(now);
-            await ownerRepository.SaveOwnerAsync(owner, null, cancellationToken);
             var sessionId = sessionStore.Issue(owner.Username);
             return new AuthOperationResult(true, SessionId: sessionId);
+        }
+        finally
+        {
+            operationGate.Release();
+        }
+    }
+
+    public async Task<AuthOperationResult> RegenerateRecoveryCodeAsync(
+        string sessionId,
+        string currentPassword,
+        CancellationToken cancellationToken)
+    {
+        if (!sessionStore.TryValidateAndTouch(sessionId, inactivityTimeout, out _))
+            return new AuthOperationResult(false, "UNAUTHENTICATED");
+
+        await operationGate.WaitAsync(cancellationToken);
+        try
+        {
+            var owner = await ownerRepository.GetOwnerAsync(cancellationToken);
+            if (owner is null)
+                return new AuthOperationResult(false, "SETUP_REQUIRED");
+            if (!credentialHasher.VerifyPassword(
+                    currentPassword,
+                    owner.PasswordSalt,
+                    owner.PasswordHash,
+                    owner.PasswordIterations))
+                return new AuthOperationResult(false, "CURRENT_PASSWORD_INCORRECT");
+
+            var recoveryCode = GenerateRecoveryCode();
+            var (salt, hash) = credentialHasher.HashRecoveryCode(NormalizeRecoveryCode(recoveryCode));
+            var now = timeProvider.GetUtcNow();
+            owner.ReplaceRecoveryCode(salt, hash, now);
+            await ownerRepository.SaveOwnerAsync(
+                owner,
+                LocalAuditEntry.Create(now, "RecoveryCodeRegenerated", "owner-account", "Recovery code regenerated."),
+                cancellationToken);
+            sessionStore.MarkRecoveryCodeIssued(sessionId);
+            return new AuthOperationResult(true, RecoveryCode: recoveryCode);
+        }
+        finally
+        {
+            operationGate.Release();
+        }
+    }
+
+    public async Task<AuthOperationResult> AcknowledgeRecoveryCodeAsync(
+        string sessionId,
+        CancellationToken cancellationToken)
+    {
+        if (!sessionStore.TryValidateAndTouch(sessionId, inactivityTimeout, out _))
+            return new AuthOperationResult(false, "UNAUTHENTICATED");
+        if (!sessionStore.HasRecoveryCodeIssued(sessionId))
+            return new AuthOperationResult(false, "RECOVERY_MISSING");
+
+        await operationGate.WaitAsync(cancellationToken);
+        try
+        {
+            var owner = await ownerRepository.GetOwnerAsync(cancellationToken);
+            if (owner is null)
+                return new AuthOperationResult(false, "SETUP_REQUIRED");
+
+            var now = timeProvider.GetUtcNow();
+            owner.AcknowledgeRecoveryCode(now);
+            await ownerRepository.SaveOwnerAsync(owner, null, cancellationToken);
+            return new AuthOperationResult(true);
         }
         finally
         {
@@ -137,13 +186,13 @@ public sealed class LocalAuthService(
         {
             var owner = await ownerRepository.GetOwnerAsync(cancellationToken);
             if (owner is null)
-                return new AuthOperationResult(false, "setup_required");
+                return new AuthOperationResult(false, "SETUP_REQUIRED");
 
             if (!credentialHasher.VerifyRecoveryCode(
                     NormalizeRecoveryCode(recoveryCode),
                     owner.RecoverySalt,
                     owner.RecoveryCodeHash))
-                return new AuthOperationResult(false, "invalid_recovery_code");
+                return new AuthOperationResult(false, "INVALID_RECOVERY_CODE");
 
             var now = timeProvider.GetUtcNow();
             var (passwordSalt, passwordHash) = credentialHasher.HashPassword(newPassword);
@@ -157,7 +206,10 @@ public sealed class LocalAuthService(
                 owner,
                 LocalAuditEntry.Create(now, "PasswordChanged", "owner-account", "Password reset using recovery code."),
                 cancellationToken);
-            return new AuthOperationResult(true, RecoveryCode: replacementCode);
+            return new AuthOperationResult(
+                true,
+                RecoveryCode: replacementCode,
+                SessionId: sessionStore.Issue(owner.Username, recoveryCodeIssued: true));
         }
         finally
         {
@@ -183,14 +235,14 @@ public sealed class LocalAuthService(
         {
             var owner = await ownerRepository.GetOwnerAsync(cancellationToken);
             if (owner is null)
-                return new AuthOperationResult(false, "setup_required");
+                return new AuthOperationResult(false, "SETUP_REQUIRED");
 
             if (!credentialHasher.VerifyPassword(
                     currentPassword,
                     owner.PasswordSalt,
                     owner.PasswordHash,
                     owner.PasswordIterations))
-                return new AuthOperationResult(false, "current_password_incorrect");
+                return new AuthOperationResult(false, "CURRENT_PASSWORD_INCORRECT");
 
             var now = timeProvider.GetUtcNow();
             var (salt, hash) = credentialHasher.HashPassword(newPassword);
@@ -223,14 +275,14 @@ public sealed class LocalAuthService(
     private static string? ValidateCredentials(string username, string password)
     {
         if (username.Length is < 3 or > 64)
-            return "invalid_username";
+            return "INVALID_USERNAME";
         if (username.Any(char.IsControl))
-            return "invalid_username";
+            return "INVALID_USERNAME";
         return ValidatePassword(password);
     }
 
     private static string? ValidatePassword(string password) =>
-        password.Length is < 12 or > 1024 ? "invalid_password" : null;
+        password.Length is < 12 or > 1024 ? "INVALID_PASSWORD" : null;
 
     private static string GenerateRecoveryCode()
     {

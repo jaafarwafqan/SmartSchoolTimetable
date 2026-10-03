@@ -1,44 +1,49 @@
 # SmartSchoolTimetable
 
-Single-user, local school timetable application. The approved Phase 1 foundation provides a browser-based owner setup/login screen, local SQLite storage, and a loopback-only ASP.NET Core host. Phase 1 acceptance is under owner review; no Phase 2 work has started.
+Single-user, offline-first school timetable application for one local school and one owner account. The browser UI is served by the ASP.NET Core app, which binds only to `127.0.0.1`. Phase 1.2 is under owner acceptance; do not begin Phase 2 before acceptance.
 
-## Included
-- Architecture, database, domain, API, security, local/offline operation, testing, diagnostics, and delivery documentation
-- ADRs for the local-only architecture, owner authentication, SQLite, optional SQLCipher, CP-SAT, printing, and PDF rendering
-- Isolated C# spikes under `spikes/CSharpSpikes/` using Google.OrTools and QuestPDF
-
-## Environment checked for Phase 0
-- .NET SDK 9.0.318: installed at `C:\Program Files\dotnet\dotnet.exe`, but **not currently on `PATH`**
-- Node.js v24.18.0
-- Docker CLI: not installed/on PATH; not required by the approved local-only architecture
-- PostgreSQL (`psql`, `postgres`): not installed/on PATH; not required (local SQLite is the baseline)
-- Redis (`redis-server`, `redis-cli`): not installed/on PATH; not required
-
-Only the .NET 9 SDK is required to build and run the current application. There is no React/TypeScript project, frontend package manager, or separate web build; the browser UI is plain JavaScript, HTML, and CSS served from the API project's `wwwroot`. Node.js is not needed for the Phase 1 frontend. Add `C:\Program Files\dotnet` to `PATH` before using the bare `dotnet` command, or use the full executable path. Docker, PostgreSQL, and Redis are not required. SQLite is embedded/local. The owner UI/API must bind only to `127.0.0.1`; there is no external network service.
-
-## Current status
-Phase 0 documentation is committed/tagged as `phase-0.4`. Phase 1 foundation and owner authentication are implemented; see the acceptance test mapping in [DELIVERY_PLAN.md](./DELIVERY_PLAN.md). The current local database has one owner account. Phase 1 is not accepted until the owner confirms it.
+## Stack and environment
+- .NET SDK 9.0.318 and Node.js v24.18.0 are available in the current development environment. Node/npm are required for the React build and frontend tests.
+- Frontend: React 19, strict TypeScript, Vite, Tailwind CSS, shadcn-style components, TanStack Query, Zustand, React Router, lucide-react, Vitest, and Playwright.
+- The API serves Vite's built files from `src/SmartSchoolTimetable.Api/wwwroot`. The login/setup UI source is `frontend/src/App.tsx`.
+- Docker, PostgreSQL, and Redis are not required. SQLite is embedded/local; the default database is `%LOCALAPPDATA%\SmartSchoolTimetable\timetable.db`.
+- Never bind the application to `0.0.0.0`, a LAN address, or a wildcard interface.
 
 ## Build, test, and run (PowerShell)
-Run these commands from the repository root, in order:
+Run from the repository root, in this order. The .NET build restores frontend dependencies when needed and builds the React bundle.
 
 ```powershell
-& 'C:\Program Files\dotnet\dotnet.exe' build .\SmartSchoolTimetable.sln --configuration Release
-& 'C:\Program Files\dotnet\dotnet.exe' test .\SmartSchoolTimetable.sln --configuration Release
-& 'C:\Program Files\dotnet\dotnet.exe' run --project .\src\SmartSchoolTimetable.Api\SmartSchoolTimetable.Api.csproj --configuration Release --no-build
+dotnet build .\SmartSchoolTimetable.sln --configuration Release
+dotnet test .\SmartSchoolTimetable.sln --configuration Release
+npm.cmd --prefix .\frontend run lint
+npm.cmd --prefix .\frontend exec playwright install chromium
+npm.cmd --prefix .\frontend test
+dotnet run --project .\src\SmartSchoolTimetable.Api\SmartSchoolTimetable.Api.csproj --configuration Release --no-build
 ```
 
-While the third command is running, open <http://127.0.0.1:5080/> in the browser. Kestrel binds only to this loopback address.
+The frontend test command runs Vitest and Playwright; install Chromium once with the preceding command. While the final command is running, open <http://127.0.0.1:5080/>. The app is available only over loopback HTTP.
 
-The login screen source is `src\SmartSchoolTimetable.Api\wwwroot\index.html`, with behavior in `src\SmartSchoolTimetable.Api\wwwroot\app.js` and styles in `src\SmartSchoolTimetable.Api\wwwroot\styles.css`. ASP.NET Core serves these project static assets through `UseDefaultFiles()` and `UseStaticFiles()`; no frontend bundle/build step is needed.
-
-The local SQLite database is `%LOCALAPPDATA%\SmartSchoolTimetable\timetable.db` (normally `C:\Users\<your-user>\AppData\Local\SmartSchoolTimetable\timetable.db`). EF Core database-command logging is Warning by default and Information only in Development; sensitive data logging remains disabled.
-
-### Reset for first-run setup
-Close the application first. From the repository root, run:
+### Database reset and first-run setup
+Stop the running app before resetting. From the repository root, run:
 
 ```powershell
-& 'C:\Program Files\dotnet\dotnet.exe' run --project .\src\SmartSchoolTimetable.Api\SmartSchoolTimetable.Api.csproj --configuration Release --no-build -- --reset-local-database
+dotnet run --project .\src\SmartSchoolTimetable.Api\SmartSchoolTimetable.Api.csproj --configuration Release --no-build -- --reset-local-database
 ```
 
-The command displays the database path and deletes only after you type the exact confirmation `RESET`. Any other input cancels without deleting files. This removes the database and its SQLite WAL/shared-memory/journal sidecars; start the app again with the command above to see first-run setup. Resetting permanently deletes the local account and all local data.
+The app displays the resolved database path and asks for the exact confirmation `RESET`; any other input cancels. It removes the database and SQLite sidecar files only. This permanently deletes the local owner account and all local data. Start the app using the run command above to return to first-run setup.
+
+## User-facing text, icons, and RTL
+- All user-facing UI, errors, validation, generated files, and offline/network messages are Arabic. The API returns stable error codes and parameters only; the UI maps every code through the Arabic dictionary in `frontend/src/i18n/messages.ts`. English is reserved for developer logs, which must never contain passwords, recovery codes, cookies, session IDs, or launch tokens.
+- The frontend document is `lang="ar" dir="rtl"` and styles use logical CSS properties. Do not use native browser validation messages, `window.alert`/`confirm`/`prompt`, or native file-input text.
+- Use only `lucide-react` for icons. Every action/navigation control has an icon and an Arabic visible label. The only icon-only actions are clear controls such as show/hide password and close, and they require Arabic `aria-label` and `title`.
+- Password visibility buttons sit at the logical end of each password input and expose `aria-pressed`. Keep directional icons mirrored in RTL, consistent icon size/stroke, and WCAG AA contrast.
+- ESLint enforces localization and icon/label requirements. Follow the checklist in [CLAUDE.md](./CLAUDE.md) and [TESTING.md](./TESTING.md) for each new screen.
+
+## Security and owner recovery
+First run creates one local owner and signs in automatically. Before entering the app, the owner must confirm storing the one-time recovery code. If the page is reloaded before acknowledging it, sign in and generate a replacement code in Settings using the current password. The recovery code is the only password-reset path; losing both it and the password has no recovery route. Password changes are optional and require the current password.
+
+Passwords use PBKDF2-HMAC-SHA-256 with 600,000 iterations. Failed login uses a fixed one-second delay, with no escalating delay or temporary lockout. Sessions use an HttpOnly, SameSite=Strict cookie; inactivity auto-lock supports a configured duration or `Never`. Kestrel validates Host/Origin and a per-launch token on state-changing requests. Details are in [SECURITY.md](./SECURITY.md).
+
+## Phase 0 validation notes
+- The Google.OrTools and QuestPDF feasibility spikes are isolated under `spikes/CSharpSpikes/`; the Arabic PDF proof was run with .NET 9, QuestPDF 2026.9.1, and Noto Naskh Arabic. QuestPDF licensing clearance and packaged-runtime visual validation remain pre-Phase-6 gates.
+- Phase 4 retains the open risk that the exploratory 40-section/54-teacher input found no feasible solution in 30 seconds. The plan requires an independently verified feasible baseline and measured comparisons before acceptance.

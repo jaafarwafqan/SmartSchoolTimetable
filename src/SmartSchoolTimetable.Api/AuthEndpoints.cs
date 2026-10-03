@@ -1,4 +1,5 @@
-using Microsoft.AspNetCore.Http.HttpResults;
+using FluentValidation;
+using FluentValidation.Results;
 using SmartSchoolTimetable.Application;
 
 namespace SmartSchoolTimetable.Api;
@@ -10,56 +11,19 @@ public static class AuthEndpoints
     public static IEndpointRouteBuilder MapLocalAuthEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/api/v1");
-
-        group.MapGet("/bootstrap", GetBootstrap)
-            .WithName("GetLocalBootstrap")
-            .WithSummary("Return local setup state and per-launch request token")
-            .Produces<BootstrapResponse>();
-
-        group.MapPost("/auth/setup", Setup)
-            .WithName("CreateLocalOwner")
-            .WithSummary("Create the initial local owner account and issue its one-time recovery code")
-            .Produces<SetupResponse>(StatusCodes.Status201Created)
-            .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status409Conflict);
-
-        group.MapPost("/auth/login", Login)
-            .WithName("LoginLocalOwner")
-            .WithSummary("Sign in to the local application")
-            .Produces(StatusCodes.Status204NoContent)
-            .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status401Unauthorized)
-            .ProducesProblem(StatusCodes.Status423Locked);
-
-        group.MapPost("/auth/recovery", Recover)
-            .WithName("RecoverLocalOwnerPassword")
-            .WithSummary("Reset the local owner password with the one-time recovery code")
-            .Produces<RecoveryResponse>()
-            .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status401Unauthorized);
-
-        group.MapPost("/auth/logout", Logout)
-            .WithName("LogoutLocalOwner")
-            .WithSummary("End the local owner session")
-            .Produces(StatusCodes.Status204NoContent);
-
-        group.MapPost("/auth/change-password", ChangePassword)
-            .WithName("ChangeLocalOwnerPassword")
-            .WithSummary("Change the local owner password after verifying the current password")
-            .Produces(StatusCodes.Status204NoContent)
-            .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status401Unauthorized);
-
-        group.MapGet("/private/status", GetPrivateStatus)
-            .WithName("GetAuthenticatedLocalStatus")
-            .WithSummary("Verify that the local owner session is active")
-            .Produces(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status401Unauthorized);
-
+        group.MapGet("/bootstrap", GetBootstrap);
+        group.MapPost("/auth/setup", Setup);
+        group.MapPost("/auth/login", Login);
+        group.MapPost("/auth/recovery", Recover);
+        group.MapPost("/auth/recovery-code/regenerate", RegenerateRecoveryCode);
+        group.MapPost("/auth/recovery-code/acknowledge", AcknowledgeRecoveryCode);
+        group.MapPost("/auth/logout", Logout);
+        group.MapPost("/auth/change-password", ChangePassword);
+        group.MapGet("/private/status", GetPrivateStatus);
         return endpoints;
     }
 
-    private static async Task<Ok<BootstrapResponse>> GetBootstrap(
+    private static async Task<IResult> GetBootstrap(
         HttpContext context,
         ILocalAuthService authService,
         LocalLaunchToken launchToken,
@@ -70,31 +34,37 @@ public static class AuthEndpoints
             context.Request.Cookies[SessionCookieName],
             cancellationToken);
         if (status.Authenticated)
-            AppendSessionCookie(context, status.Username!, options);
-        return TypedResults.Ok(new BootstrapResponse(
+            AppendSessionCookie(context, context.Request.Cookies[SessionCookieName]!, options);
+        return Results.Ok(new BootstrapResponse(
             status.SetupRequired,
             status.Authenticated,
             status.Username,
+            status.RecoveryCodeAcknowledgementRequired,
             launchToken.Value,
-            (int)options.InactivityTimeout.TotalMinutes));
+            options.InactivityTimeoutMinutes));
     }
 
     private static async Task<IResult> Setup(
         SetupRequest request,
         HttpContext context,
+        IValidator<SetupRequest> validator,
         ILocalAuthService authService,
+        LocalApplicationOptions options,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Username) || request.Password is null)
-            return Problem(context, StatusCodes.Status400BadRequest, "Invalid setup", "Username and password are required.");
+        var validation = await ValidateAsync(request, validator, context, cancellationToken);
+        if (validation is not null)
+            return validation;
 
-        var result = await authService.SetupAsync(request.Username, request.Password, cancellationToken);
+        var result = await authService.SetupAsync(request.Username!, request.Password!, cancellationToken);
         if (!result.Succeeded)
-            return result.ErrorCode == "setup_already_complete"
-                ? Problem(context, StatusCodes.Status409Conflict, "Setup already complete", "The owner account already exists.")
-                : Problem(context, StatusCodes.Status400BadRequest, "Invalid setup", PasswordValidationDetail(result.ErrorCode));
+            return Failure(
+                context,
+                result.ErrorCode == "SETUP_ALREADY_COMPLETE" ? StatusCodes.Status409Conflict : StatusCodes.Status400BadRequest,
+                result.ErrorCode ?? "INVALID_SETUP");
 
-        return TypedResults.Created(
+        AppendSessionCookie(context, result.SessionId!, options);
+        return Results.Created(
             "/api/v1/bootstrap",
             new SetupResponse(result.RecoveryCode!));
     }
@@ -102,108 +72,129 @@ public static class AuthEndpoints
     private static async Task<IResult> Login(
         LoginRequest request,
         HttpContext context,
+        IValidator<LoginRequest> validator,
         ILocalAuthService authService,
         LocalApplicationOptions options,
         CancellationToken cancellationToken)
     {
-        if (request.Username is null || request.Password is null)
-            return Problem(context, StatusCodes.Status400BadRequest, "Invalid login", "Username and password are required.");
+        var validation = await ValidateAsync(request, validator, context, cancellationToken);
+        if (validation is not null)
+            return validation;
 
-        var result = await authService.LoginAsync(request.Username, request.Password, cancellationToken);
+        var result = await authService.LoginAsync(request.Username!, request.Password!, cancellationToken);
         if (!result.Succeeded)
-        {
-            if (result.ErrorCode == "temporarily_locked")
-            {
-                var retry = Math.Max(1, (int)Math.Ceiling(result.RetryAfter?.TotalSeconds ?? 1));
-                context.Response.Headers.RetryAfter = retry.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                return Problem(context, StatusCodes.Status423Locked, "Temporarily locked", "Sign-in is temporarily delayed. Try again later.");
-            }
-
-            return Problem(
-                context,
-                StatusCodes.Status401Unauthorized,
-                "Sign-in failed",
-                "The username or password is incorrect.");
-        }
+            return Failure(context, StatusCodes.Status401Unauthorized, result.ErrorCode ?? "INVALID_CREDENTIALS");
 
         AppendSessionCookie(context, result.SessionId!, options);
-        return TypedResults.NoContent();
+        return Results.NoContent();
     }
 
     private static async Task<IResult> Recover(
         RecoveryRequest request,
         HttpContext context,
+        IValidator<RecoveryRequest> validator,
+        ILocalAuthService authService,
+        LocalApplicationOptions options,
+        CancellationToken cancellationToken)
+    {
+        var validation = await ValidateAsync(request, validator, context, cancellationToken);
+        if (validation is not null)
+            return validation;
+
+        var result = await authService.RecoverAsync(request.RecoveryCode!, request.NewPassword!, cancellationToken);
+        if (!result.Succeeded)
+            return Failure(
+                context,
+                result.ErrorCode == "INVALID_PASSWORD" ? StatusCodes.Status422UnprocessableEntity : StatusCodes.Status401Unauthorized,
+                result.ErrorCode ?? "INVALID_RECOVERY_CODE");
+
+        AppendSessionCookie(context, result.SessionId!, options);
+        return Results.Ok(new RecoveryResponse(result.RecoveryCode!));
+    }
+
+    private static async Task<IResult> RegenerateRecoveryCode(
+        RecoveryCodeRequest request,
+        HttpContext context,
+        IValidator<RecoveryCodeRequest> validator,
         ILocalAuthService authService,
         CancellationToken cancellationToken)
     {
-        if (request.RecoveryCode is null || request.NewPassword is null)
-            return Problem(context, StatusCodes.Status400BadRequest, "Invalid recovery request", "Recovery code and new password are required.");
+        var sessionId = context.Request.Cookies[SessionCookieName];
+        if (sessionId is null)
+            return Failure(context, StatusCodes.Status401Unauthorized, "UNAUTHENTICATED");
 
-        var result = await authService.RecoverAsync(request.RecoveryCode, request.NewPassword, cancellationToken);
+        var validation = await ValidateAsync(request, validator, context, cancellationToken);
+        if (validation is not null)
+            return validation;
+
+        var result = await authService.RegenerateRecoveryCodeAsync(
+            sessionId,
+            request.CurrentPassword!,
+            cancellationToken);
         if (!result.Succeeded)
-        {
-            if (result.ErrorCode == "invalid_password")
-                return Problem(context, StatusCodes.Status400BadRequest, "Invalid password", "Use a password from 12 to 1024 characters.");
-            return Problem(context, StatusCodes.Status401Unauthorized, "Recovery failed", "The recovery code is invalid or recovery is unavailable.");
-        }
+            return Failure(
+                context,
+                result.ErrorCode == "CURRENT_PASSWORD_INCORRECT" ? StatusCodes.Status401Unauthorized : StatusCodes.Status403Forbidden,
+                result.ErrorCode ?? "RECOVERY_CODE_REGENERATION_FAILED");
 
-        context.Response.Cookies.Delete(SessionCookieName, new CookieOptions
-        {
-            HttpOnly = true,
-            SameSite = SameSiteMode.Strict,
-            Secure = context.Request.IsHttps,
-            Path = "/"
-        });
-        return TypedResults.Ok(new RecoveryResponse(result.RecoveryCode!));
+        context.Items["RecoveryCodeRegeneration"] = true;
+        return Results.Ok(new RecoveryResponse(result.RecoveryCode!));
     }
 
-    private static IResult Logout(HttpContext context, ILocalAuthService authService)
-    {
-        authService.Logout(context.Request.Cookies[SessionCookieName]);
-        context.Response.Cookies.Delete(SessionCookieName, new CookieOptions
-        {
-            HttpOnly = true,
-            SameSite = SameSiteMode.Strict,
-            Secure = context.Request.IsHttps,
-            Path = "/"
-        });
-        return TypedResults.NoContent();
-    }
-
-    private static async Task<IResult> ChangePassword(
-        ChangePasswordRequest request,
+    private static async Task<IResult> AcknowledgeRecoveryCode(
         HttpContext context,
         ILocalAuthService authService,
         CancellationToken cancellationToken)
     {
         var sessionId = context.Request.Cookies[SessionCookieName];
         if (sessionId is null)
-            return Problem(context, StatusCodes.Status401Unauthorized, "Sign-in required", "Sign in again to continue.");
-        if (request.CurrentPassword is null || request.NewPassword is null)
-            return Problem(context, StatusCodes.Status400BadRequest, "Invalid password change", "Current and new passwords are required.");
+            return Failure(context, StatusCodes.Status401Unauthorized, "UNAUTHENTICATED");
+
+        var result = await authService.AcknowledgeRecoveryCodeAsync(sessionId, cancellationToken);
+        if (!result.Succeeded)
+            return Failure(
+                context,
+                result.ErrorCode == "RECOVERY_MISSING" ? StatusCodes.Status409Conflict : StatusCodes.Status401Unauthorized,
+                result.ErrorCode ?? "UNAUTHENTICATED");
+        context.Items["RecoveryCodeAcknowledged"] = true;
+        return Results.NoContent();
+    }
+
+    private static IResult Logout(HttpContext context, ILocalAuthService authService)
+    {
+        authService.Logout(context.Request.Cookies[SessionCookieName]);
+        DeleteSessionCookie(context);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> ChangePassword(
+        ChangePasswordRequest request,
+        HttpContext context,
+        IValidator<ChangePasswordRequest> validator,
+        ILocalAuthService authService,
+        CancellationToken cancellationToken)
+    {
+        var sessionId = context.Request.Cookies[SessionCookieName];
+        if (sessionId is null)
+            return Failure(context, StatusCodes.Status401Unauthorized, "UNAUTHENTICATED");
+
+        var validation = await ValidateAsync(request, validator, context, cancellationToken);
+        if (validation is not null)
+            return validation;
 
         var result = await authService.ChangePasswordAsync(
             sessionId,
-            request.CurrentPassword,
-            request.NewPassword,
+            request.CurrentPassword!,
+            request.NewPassword!,
             cancellationToken);
         if (!result.Succeeded)
-        {
-            if (result.ErrorCode == "current_password_incorrect")
-                return Problem(context, StatusCodes.Status401Unauthorized, "Current password incorrect", "The current password is incorrect.");
-            if (result.ErrorCode == "invalid_password")
-                return Problem(context, StatusCodes.Status400BadRequest, "Invalid password", "Use a password from 12 to 1024 characters.");
-            return Problem(context, StatusCodes.Status401Unauthorized, "Sign-in required", "Sign in again to continue.");
-        }
+            return Failure(
+                context,
+                result.ErrorCode == "CURRENT_PASSWORD_INCORRECT" ? StatusCodes.Status401Unauthorized : StatusCodes.Status422UnprocessableEntity,
+                result.ErrorCode ?? "PASSWORD_CHANGE_FAILED");
 
-        context.Response.Cookies.Delete(SessionCookieName, new CookieOptions
-        {
-            HttpOnly = true,
-            SameSite = SameSiteMode.Strict,
-            Secure = context.Request.IsHttps,
-            Path = "/"
-        });
-        return TypedResults.NoContent();
+        DeleteSessionCookie(context);
+        return Results.NoContent();
     }
 
     private static async Task<IResult> GetPrivateStatus(
@@ -216,66 +207,135 @@ public static class AuthEndpoints
             context.Request.Cookies[SessionCookieName],
             cancellationToken);
         if (!status.Authenticated)
-            return Problem(context, StatusCodes.Status401Unauthorized, "Sign-in required", "Sign in to access this resource.");
+            return Failure(context, StatusCodes.Status401Unauthorized, "UNAUTHENTICATED");
 
-        AppendSessionCookie(context, status.Username!, options);
-        return TypedResults.Ok(new PrivateStatusResponse("authenticated"));
+        AppendSessionCookie(context, context.Request.Cookies[SessionCookieName]!, options);
+        return Results.Ok(new PrivateStatusResponse("authenticated"));
     }
 
-    private static void AppendSessionCookie(HttpContext context, string sessionId, LocalApplicationOptions options) =>
-        context.Response.Cookies.Append(
-            SessionCookieName,
-            sessionId,
-            new CookieOptions
-            {
-                HttpOnly = true,
-                SameSite = SameSiteMode.Strict,
-                Secure = context.Request.IsHttps,
-                IsEssential = true,
-                Path = "/",
-                MaxAge = options.InactivityTimeout
-            });
-
-    private static IResult Problem(HttpContext context, int status, string title, string detail) =>
-        TypedResults.Problem(
-            statusCode: status,
-            title: title,
-            detail: detail,
-            instance: context.Request.Path);
-
-    private static string PasswordValidationDetail(string? errorCode) => errorCode switch
+    private static async Task<IResult?> ValidateAsync<T>(
+        T request,
+        IValidator<T> validator,
+        HttpContext context,
+        CancellationToken cancellationToken)
     {
-        "invalid_username" => "Username must be 3 to 64 characters and contain no control characters.",
-        "invalid_password" => "Use a password from 12 to 1024 characters.",
-        _ => "The setup request is invalid."
-    };
+        var result = await validator.ValidateAsync(request, cancellationToken);
+        if (result.IsValid)
+            return null;
+
+        context.Items[UnifiedApiErrorMiddleware.ValidationErrorsItem] = result.Errors
+            .Select(error => new ValidationIssue(error.PropertyName, error.ErrorCode))
+            .ToArray();
+        return Failure(context, StatusCodes.Status422UnprocessableEntity, "VALIDATION_FAILED");
+    }
+
+    private static IResult Failure(HttpContext context, int statusCode, string code)
+    {
+        context.Items[UnifiedApiErrorMiddleware.ErrorCodeItem] = code;
+        return Results.StatusCode(statusCode);
+    }
+
+    private static void AppendSessionCookie(
+        HttpContext context,
+        string sessionId,
+        LocalApplicationOptions options)
+    {
+        var cookie = new CookieOptions
+        {
+            HttpOnly = true,
+            SameSite = SameSiteMode.Strict,
+            Secure = context.Request.IsHttps,
+            IsEssential = true,
+            Path = "/"
+        };
+        if (options.InactivityTimeout is { } timeout)
+            cookie.MaxAge = timeout;
+        context.Response.Cookies.Append(SessionCookieName, sessionId, cookie);
+    }
+
+    private static void DeleteSessionCookie(HttpContext context) =>
+        context.Response.Cookies.Delete(SessionCookieName, new CookieOptions
+        {
+            HttpOnly = true,
+            SameSite = SameSiteMode.Strict,
+            Secure = context.Request.IsHttps,
+            Path = "/"
+        });
 }
 
-/// <summary>Initial state and per-launch request token for the local browser application.</summary>
 public sealed record BootstrapResponse(
     bool SetupRequired,
     bool Authenticated,
     string? Username,
+    bool RecoveryCodeAcknowledgementRequired,
     string LaunchToken,
-    int InactivityTimeoutMinutes);
+    int? InactivityTimeoutMinutes);
 
-/// <summary>Payload for creating the first local owner account.</summary>
-public sealed record SetupRequest(string? Username, string? Password);
-
-/// <summary>One-time recovery code returned after initial setup.</summary>
+public sealed record SetupRequest(string? Username, string? Password, string? ConfirmPassword);
 public sealed record SetupResponse(string RecoveryCode);
-
-/// <summary>Payload for local owner sign-in.</summary>
 public sealed record LoginRequest(string? Username, string? Password);
-
-/// <summary>Payload for resetting the owner password with the recovery code.</summary>
 public sealed record RecoveryRequest(string? RecoveryCode, string? NewPassword);
-
-/// <summary>Replacement one-time recovery code issued after successful recovery.</summary>
+public sealed record RecoveryCodeRequest(string? CurrentPassword);
 public sealed record RecoveryResponse(string RecoveryCode);
-
-/// <summary>Payload for changing the current owner's password.</summary>
 public sealed record ChangePasswordRequest(string? CurrentPassword, string? NewPassword);
-
-/// <summary>Minimal confirmation that the local session is authenticated.</summary>
 public sealed record PrivateStatusResponse(string Status);
+public sealed record ValidationIssue(string Field, string Code);
+public sealed record ApiErrorResponse(string Code, string CorrelationId, IReadOnlyList<ValidationIssue> Errors);
+
+public sealed class SetupRequestValidator : AbstractValidator<SetupRequest>
+{
+    public SetupRequestValidator()
+    {
+        RuleFor(request => request.Username)
+            .NotEmpty().WithErrorCode("REQUIRED").WithMessage("REQUIRED")
+            .MinimumLength(3).WithErrorCode("USERNAME_TOO_SHORT").WithMessage("USERNAME_TOO_SHORT")
+            .MaximumLength(64).WithErrorCode("USERNAME_TOO_LONG").WithMessage("USERNAME_TOO_LONG");
+        RuleFor(request => request.Password)
+            .NotEmpty().WithErrorCode("REQUIRED").WithMessage("REQUIRED")
+            .MinimumLength(12).WithErrorCode("PASSWORD_TOO_SHORT").WithMessage("PASSWORD_TOO_SHORT")
+            .MaximumLength(1024).WithErrorCode("PASSWORD_TOO_LONG").WithMessage("PASSWORD_TOO_LONG");
+        RuleFor(request => request.ConfirmPassword)
+            .Equal(request => request.Password).WithErrorCode("PASSWORD_MISMATCH").WithMessage("PASSWORD_MISMATCH");
+    }
+}
+
+public sealed class LoginRequestValidator : AbstractValidator<LoginRequest>
+{
+    public LoginRequestValidator()
+    {
+        RuleFor(request => request.Username).NotEmpty().WithErrorCode("REQUIRED").WithMessage("REQUIRED");
+        RuleFor(request => request.Password).NotEmpty().WithErrorCode("REQUIRED").WithMessage("REQUIRED");
+    }
+}
+
+public sealed class RecoveryRequestValidator : AbstractValidator<RecoveryRequest>
+{
+    public RecoveryRequestValidator()
+    {
+        RuleFor(request => request.RecoveryCode).NotEmpty().WithErrorCode("REQUIRED").WithMessage("REQUIRED");
+        RuleFor(request => request.NewPassword)
+            .NotEmpty().WithErrorCode("REQUIRED").WithMessage("REQUIRED")
+            .MinimumLength(12).WithErrorCode("PASSWORD_TOO_SHORT").WithMessage("PASSWORD_TOO_SHORT")
+            .MaximumLength(1024).WithErrorCode("PASSWORD_TOO_LONG").WithMessage("PASSWORD_TOO_LONG");
+    }
+}
+
+public sealed class RecoveryCodeRequestValidator : AbstractValidator<RecoveryCodeRequest>
+{
+    public RecoveryCodeRequestValidator()
+    {
+        RuleFor(request => request.CurrentPassword).NotEmpty().WithErrorCode("REQUIRED").WithMessage("REQUIRED");
+    }
+}
+
+public sealed class ChangePasswordRequestValidator : AbstractValidator<ChangePasswordRequest>
+{
+    public ChangePasswordRequestValidator()
+    {
+        RuleFor(request => request.CurrentPassword).NotEmpty().WithErrorCode("REQUIRED").WithMessage("REQUIRED");
+        RuleFor(request => request.NewPassword)
+            .NotEmpty().WithErrorCode("REQUIRED").WithMessage("REQUIRED")
+            .MinimumLength(12).WithErrorCode("PASSWORD_TOO_SHORT").WithMessage("PASSWORD_TOO_SHORT")
+            .MaximumLength(1024).WithErrorCode("PASSWORD_TOO_LONG").WithMessage("PASSWORD_TOO_LONG");
+    }
+}
