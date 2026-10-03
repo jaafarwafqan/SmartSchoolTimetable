@@ -112,6 +112,10 @@ button.secondary {
   color: #2455a6;
 }
 
+.visibility-toggle {
+  justify-self: start;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;

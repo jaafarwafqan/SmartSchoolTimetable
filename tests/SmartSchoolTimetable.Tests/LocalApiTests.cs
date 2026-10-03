@@ -1,16 +1,20 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using SmartSchoolTimetable.Application;
 using SmartSchoolTimetable.Api;
 using SmartSchoolTimetable.Infrastructure;
@@ -37,6 +41,8 @@ public sealed class LocalApiTests
         Assert.Equal(HttpStatusCode.Created, setup.StatusCode);
         var response = await ReadAsync<SetupResponse>(setup);
         Assert.Matches("^[A-F0-9]{8}(-[A-F0-9]{8}){3}$", response.RecoveryCode);
+        Assert.Equal(35, response.RecoveryCode.Length);
+        Assert.Equal(128, LocalAuthService.RecoveryCodeEntropyBits);
 
         var repeatedSetup = await host.PostAsync(
             "/api/v1/auth/setup",
@@ -76,6 +82,111 @@ public sealed class LocalApiTests
         await using var command = db.Database.GetDbConnection().CreateCommand();
         command.CommandText = "PRAGMA journal_mode;";
         Assert.Equal("wal", (string?)await command.ExecuteScalarAsync());
+    }
+
+    [Fact]
+    public void PasswordHasherUsesPbkdf2Sha256AtOrAboveTheRequiredIterationCount()
+    {
+        var hasher = new Pbkdf2CredentialHasher();
+        const string password = "A-Strong-Passphrase-401";
+        Assert.True(Pbkdf2CredentialHasher.Iterations >= 600_000);
+        Assert.Equal(600_000, hasher.CurrentPasswordIterations);
+
+        var (salt, hash) = hasher.HashPassword(password);
+        var independentlyDerivedHash = Rfc2898DeriveBytes.Pbkdf2(
+            password,
+            salt,
+            600_000,
+            HashAlgorithmName.SHA256,
+            32);
+
+        Assert.Equal(16, salt.Length);
+        Assert.Equal(32, hash.Length);
+        Assert.Equal(independentlyDerivedHash, hash);
+        Assert.True(hasher.VerifyPassword(password, salt, hash, 600_000));
+        Assert.False(hasher.VerifyPassword("A-different-passphrase", salt, hash, 600_000));
+    }
+
+    [Fact]
+    public async Task EfCommandLoggingIsWarningByDefaultAndSensitiveDataLoggingIsDisabled()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        using var defaultSettings = JsonDocument.Parse(File.ReadAllText(
+            Path.Combine(repositoryRoot, "src", "SmartSchoolTimetable.Api", "appsettings.json")));
+        using var developmentSettings = JsonDocument.Parse(File.ReadAllText(
+            Path.Combine(repositoryRoot, "src", "SmartSchoolTimetable.Api", "appsettings.Development.json")));
+
+        Assert.Equal(
+            "Warning",
+            defaultSettings.RootElement.GetProperty("Logging").GetProperty("LogLevel")
+                .GetProperty("Microsoft.EntityFrameworkCore.Database.Command").GetString());
+        Assert.Equal(
+            "Information",
+            developmentSettings.RootElement.GetProperty("Logging").GetProperty("LogLevel")
+                .GetProperty("Microsoft.EntityFrameworkCore.Database.Command").GetString());
+
+        await using var host = new TestHost();
+        var options = host.Services.GetRequiredService<DbContextOptions<LocalDbContext>>();
+        var coreOptions = Assert.Single(options.Extensions.OfType<CoreOptionsExtension>());
+        Assert.False(coreOptions.IsSensitiveDataLoggingEnabled);
+    }
+
+    [Fact]
+    public async Task PasswordAndRecoveryCodeAreNeverWrittenToApplicationLogs()
+    {
+        await using var host = new TestHost();
+        var (token, recoveryCode) = await SetupOwnerAsync(host);
+
+        var recovery = await host.PostAsync(
+            "/api/v1/auth/recovery",
+            new { recoveryCode, newPassword = "A-New-Strong-Passphrase-802" },
+            token);
+        Assert.Equal(HttpStatusCode.OK, recovery.StatusCode);
+        var replacementCode = (await ReadAsync<RecoveryResponse>(recovery)).RecoveryCode;
+
+        Assert.DoesNotContain(host.LogProvider.Messages, message =>
+            message.Contains("A-Strong-Passphrase-401", StringComparison.Ordinal) ||
+            message.Contains("A-New-Strong-Passphrase-802", StringComparison.Ordinal) ||
+            message.Contains(recoveryCode, StringComparison.Ordinal) ||
+            message.Contains(replacementCode, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task LoginPasswordVisibilityToggleHasAccessibleLabelAndPressedState()
+    {
+        await using var host = new TestHost();
+        var script = await host.Client.GetStringAsync("/app.js");
+
+        Assert.Contains("visibilityToggle.setAttribute(\"aria-label\", \"إظهار كلمة المرور\")", script);
+        Assert.Contains("visibilityToggle.setAttribute(\"aria-pressed\", \"false\")", script);
+        Assert.Contains("visibilityToggle.setAttribute(\"aria-pressed\", String(isVisible))", script);
+        Assert.Contains("passwordInput.type = isVisible ? \"text\" : \"password\"", script);
+        Assert.Contains("visibilityToggle.textContent = isVisible ? \"إخفاء كلمة المرور\" : \"إظهار كلمة المرور\"", script);
+    }
+
+    [Fact]
+    public async Task LoginCookieHasRequiredAttributesAndOmitsSecureOnLoopbackHttp()
+    {
+        Assert.Equal("http", LocalOrigin.Scheme);
+        await using var host = new TestHost();
+        var (token, _) = await SetupOwnerAsync(host);
+
+        var login = await host.PostAsync(
+            "/api/v1/auth/login",
+            new { username = "owner", password = "A-Strong-Passphrase-401" },
+            token);
+        Assert.Equal(HttpStatusCode.NoContent, login.StatusCode);
+
+        var cookie = Assert.Single(login.Headers.GetValues("Set-Cookie"));
+        var attributes = cookie.Split(';').Select(attribute => attribute.Trim()).ToArray();
+        Assert.Contains(attributes, attribute =>
+            string.Equals(attribute, "HttpOnly", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(attributes, attribute =>
+            string.Equals(attribute, "SameSite=Strict", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(attributes, attribute =>
+            string.Equals(attribute, "Path=/", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(attributes, attribute =>
+            string.Equals(attribute, "Secure", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -471,7 +582,7 @@ public sealed class LocalApiTests
     private sealed class TestHost : IAsyncDisposable
     {
         private readonly string _directory = Path.Combine(Path.GetTempPath(), $"smart-school-tests-{Guid.NewGuid():N}");
-        private readonly WebApplicationFactory<Program> _factory;
+        private readonly TestApplicationFactory _factory;
 
         public TestHost()
         {
@@ -488,6 +599,7 @@ public sealed class LocalApiTests
         public string DatabasePath => Path.Combine(_directory, "test.db");
         public TestTimeProvider Clock => _factory.Services.GetRequiredService<TestTimeProvider>();
         public RecordingLoginDelay LoginDelay => _factory.Services.GetRequiredService<RecordingLoginDelay>();
+        public CapturingLoggerProvider LogProvider => _factory.LogProvider;
         public IServiceProvider Services => _factory.Services;
 
         public async Task<BootstrapResponse> GetBootstrapAsync() =>
@@ -528,12 +640,15 @@ public sealed class LocalApiTests
 
     private sealed class TestApplicationFactory(string databasePath) : WebApplicationFactory<Program>
     {
+        public CapturingLoggerProvider LogProvider { get; } = new();
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Testing");
             builder.UseSetting("LocalHost:Port", "5080");
             builder.UseSetting("Authentication:InactivityTimeoutMinutes", "5");
             builder.UseSetting("Database:Path", databasePath);
+            builder.ConfigureLogging(logging => logging.AddProvider(LogProvider));
             builder.ConfigureTestServices(services =>
             {
                 services.RemoveAll<TimeProvider>();
@@ -565,6 +680,38 @@ public sealed class LocalApiTests
         {
             Delays.Add(delay);
             return Task.CompletedTask;
+        }
+    }
+
+    private sealed class CapturingLoggerProvider : ILoggerProvider
+    {
+        private readonly ConcurrentQueue<string> _messages = new();
+
+        public IReadOnlyCollection<string> Messages => _messages.ToArray();
+
+        public ILogger CreateLogger(string categoryName) => new CapturingLogger(this, categoryName);
+
+        public void Dispose()
+        {
+        }
+
+        private void Add(string categoryName, string message) =>
+            _messages.Enqueue($"{categoryName}: {message}");
+
+        private sealed class CapturingLogger(
+            CapturingLoggerProvider provider,
+            string categoryName) : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(
+                LogLevel logLevel,
+                EventId eventId,
+                TState state,
+                Exception? exception,
+                Func<TState, Exception?, string> formatter) =>
+                provider.Add(categoryName, formatter(state, exception));
         }
     }
 

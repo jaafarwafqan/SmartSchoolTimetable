@@ -13,6 +13,8 @@ public sealed class LocalAuthService(
     TimeSpan inactivityTimeout,
     SemaphoreSlim operationGate) : ILocalAuthService
 {
+    public const int RecoveryCodeEntropyBits = 128;
+
     public async Task<LocalAuthStatus> GetStatusAsync(string? sessionId, CancellationToken cancellationToken)
     {
         var owner = await ownerRepository.GetOwnerAsync(cancellationToken);
@@ -232,7 +234,7 @@ public sealed class LocalAuthService(
 
     private static string GenerateRecoveryCode()
     {
-        var value = Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
+        var value = Convert.ToHexString(RandomNumberGenerator.GetBytes(RecoveryCodeEntropyBits / 8));
         return string.Join('-', Enumerable.Range(0, 4).Select(index => value.Substring(index * 8, 8)));
     }
 

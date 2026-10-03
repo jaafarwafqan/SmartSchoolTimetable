@@ -23,7 +23,9 @@ public static class LocalInfrastructureRegistration
         }.ToString();
 
         services.AddDbContext<LocalDbContext>(options =>
-            options.UseSqlite(connectionString, sqlite => sqlite.MigrationsAssembly(typeof(LocalDbContext).Assembly.FullName)));
+            options
+                .UseSqlite(connectionString, sqlite => sqlite.MigrationsAssembly(typeof(LocalDbContext).Assembly.FullName))
+                .EnableSensitiveDataLogging(false));
         services.AddScoped<IOwnerRepository, LocalOwnerRepository>();
         services.AddSingleton<ICredentialHasher, Pbkdf2CredentialHasher>();
         services.AddSingleton<ILocalSessionStore, LocalSessionStore>();

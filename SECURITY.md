@@ -5,20 +5,24 @@ The product is a single-user local application: one local owner account, one app
 
 ## Owner account and recovery
 - On first run, show a dedicated setup screen before any application page. It creates exactly one owner account with a unique username and password.
-- Generate a high-entropy recovery code once during setup; display it only then and tell the owner to store it securely or print it. Do not log it, persist it in clear text, or show it again.
-- Store only a one-way hash of the recovery code. Successful use consumes the code, resets the password, and issues a replacement code shown once; require the owner to store it before continuing. The setup and recovery screens must clearly warn that the code is the **only** password-recovery path.
+- Generate the recovery code using `RandomNumberGenerator.GetBytes(16)`: 128 bits of entropy, represented as four groups of eight uppercase hexadecimal characters separated by hyphens (35 displayed characters, alphabet `0-9A-F` plus separators). Display it only during setup/replacement and tell the owner to store it securely or print it. Do not log it, persist it in clear text, or show it again.
+- Store only a salted one-way SHA-256 hash of the recovery code. Its 128-bit random entropy prevents low-entropy password-style guessing. Successful use consumes the code, resets the password, and issues a replacement code shown once; require the owner to store it before continuing. The setup and recovery screens must clearly warn that the code is the **only** password-recovery path.
 - If both password and recovery code are lost, there is no password reset path. Reinitialization is destructive and loses local application data unless the owner separately has a valid backup; it is not an alternate password-recovery mechanism.
 - Changing a password requires the current password. A password change invalidates the current session and requires sign-in again.
 
 ## Password storage and failed login handling
 - Never store or log clear-text passwords.
-- Prefer Argon2id from a vetted, maintained implementation; if the dependency is not accepted, use the .NET PBKDF2-HMAC-SHA-256 API with a cryptographically random salt, at least 600,000 iterations, and a 32-byte derived key. Store the algorithm and parameters with the hash so parameters can be upgraded. Benchmark and increase the iteration count as needed to keep verification appropriately expensive on supported hardware.
-- Compare derived values in constant time.
+- The Phase 1 implementation uses PBKDF2-HMAC-SHA-256 with 600,000 iterations, a cryptographically random 16-byte salt, and a 32-byte derived key. The algorithm and iteration count are stored with the hash (`src/SmartSchoolTimetable.Infrastructure/Pbkdf2CredentialHasher.cs`).
+- Compare derived values using `CryptographicOperations.FixedTimeEquals`; do not use ordinary byte/character equality for secret verification.
 - Incrementally delay failed login attempts and apply a temporary lockout after repeated failures. Persist failure/lockout state for the owner account. This is a local brute-force control, not a multi-user/IP rate-limiting system.
 - Do not expose whether a username exists in authentication error messages.
 
+## Logging
+- EF Core database-command logging is `Warning` by default and `Information` only under the Development environment configuration (`src/SmartSchoolTimetable.Api/appsettings.json` and `appsettings.Development.json`).
+- EF Core sensitive-data logging is explicitly disabled. Never log passwords, recovery codes, cookies, session identifiers, or per-launch tokens.
+
 ## Session and inactivity lock
-- Baseline: server-side local session cookie with `HttpOnly`, `SameSite=Strict`, `Secure` when HTTPS is used, and a narrow path/lifetime. Do not use refresh tokens.
+- Baseline: server-side local session cookie with `HttpOnly`, `SameSite=Strict`, `Path=/`, and a bounded lifetime. Set `Secure` when HTTPS is used; it is intentionally omitted for the baseline HTTP listener because Kestrel binds only to `127.0.0.1` and the application is served over loopback HTTP. Do not use refresh tokens.
 - Configure an inactivity timeout. On expiry, invalidate the session and return to the separate login screen; do not leave protected content accessible.
 - Logout and password change invalidate the local session.
 

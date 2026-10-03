@@ -121,10 +121,21 @@ function renderLogin(message = "") {
   const heading = document.createElement("h2");
   heading.textContent = "تسجيل الدخول";
   const form = document.createElement("form");
-  form.append(
-    field("username", "اسم المستخدم", "text", "username"),
-    field("password", "كلمة المرور", "password", "current-password")
-  );
+  const usernameField = field("username", "اسم المستخدم", "text", "username");
+  const passwordField = field("password", "كلمة المرور", "password", "current-password");
+  const passwordInput = passwordField.querySelector("input");
+  const visibilityToggle = button("إظهار كلمة المرور", () => {
+    const isVisible = passwordInput.type === "password";
+    passwordInput.type = isVisible ? "text" : "password";
+    visibilityToggle.textContent = isVisible ? "إخفاء كلمة المرور" : "إظهار كلمة المرور";
+    visibilityToggle.setAttribute("aria-label", visibilityToggle.textContent);
+    visibilityToggle.setAttribute("aria-pressed", String(isVisible));
+  }, true);
+  visibilityToggle.className = "visibility-toggle secondary";
+  visibilityToggle.setAttribute("aria-label", "إظهار كلمة المرور");
+  visibilityToggle.setAttribute("aria-pressed", "false");
+  passwordField.append(visibilityToggle);
+  form.append(usernameField, passwordField);
   const submit = document.createElement("button");
   submit.type = "submit";
   submit.textContent = "دخول";
