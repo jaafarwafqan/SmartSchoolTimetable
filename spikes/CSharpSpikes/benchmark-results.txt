@@ -1,0 +1,29 @@
+.NET SDK: 9.0.318
+Google.OrTools NuGet: 9.15.6755
+Workers: 1 or 8
+Random seed: 12345
+Stop after first feasible solution: true
+
+12 sections / 20 teachers / 1 worker:
+Status=Feasible; build=0.164s; solve=2.844s; total=3.151s; working-set delta=29.1 MB; objective=5600; assignments=480
+
+12 sections / 20 teachers / 8 workers:
+Status=Feasible; build=0.155s; solve=2.127s; total=2.440s; working-set delta=30.9 MB; objective=7310; assignments=480
+
+40 sections / 20 teachers / 1 worker:
+Status=Infeasible; build=0.231s; solve=0.367s; total=0.836s; working-set delta=46.6 MB
+
+40 sections / 20 teachers / 8 workers:
+Status=Infeasible; build=0.240s; solve=0.258s; total=0.737s; working-set delta=46.6 MB
+
+Diagnostic:
+Status=Infeasible
+Core groups: Ahmed weekly demand (28), availability (25 slots)
+Shortage=3 lessons
+Suggested fix: reduce Ahmed's assigned workload by at least 3 lessons or free at least 3 slots.
+
+Exploratory 40 sections / 54 teachers / 1 worker:
+Status=Unknown at 30-second limit; no feasible incumbent found; not a performance pass.
+
+Separate 12-section / 20-teacher / one-worker reruns with seed 12345:
+Both returned objective=5600 and assignments=480; solve times=2.796s and 1.521s.
