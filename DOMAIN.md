@@ -20,10 +20,11 @@
 ### Operations
 - AuditEntry
 - GenerationJob
-- SyncEvent
 - ConflictRecord
+- LocalOwnerAccount
 
 ## Invariants
+- The deployed application accepts exactly one owner account.
 - A section belongs to one shift.
 - Section weekly workload must match configured capacity.
 - A teacher cannot be assigned to overlapping lessons.
@@ -36,7 +37,8 @@
 - TimetablePublished
 - TimetableRolledBack
 - ConflictDetected
-- TenantProvisioned
+- OwnerAccountCreated
+- PasswordChanged
 
 ## Non-goals in Phase 0
 No implementation of domain logic; only specification and validation strategy.

@@ -7,12 +7,12 @@
 Scheduling must satisfy hard constraints, scale to school-sized workloads, provide explainable diagnostics, and integrate with the approved .NET backend.
 
 ## Decision
-Use Google OR-Tools CP-SAT through the C# NuGet package in a separate .NET worker. Keep the `ISolver` contract in Application and its OR-Tools adapter in Infrastructure. The Domain and Application never depend on OR-Tools types. Do not move the solver to a Python worker.
+Use Google OR-Tools CP-SAT through the C# NuGet package in a local background generation service. Keep the `ISolver` contract in Application and its OR-Tools adapter in Infrastructure. The Domain and Application never depend on OR-Tools types. Do not move the solver to a Python worker or a networked worker container.
 
 ## Consequences
 - Clean architecture separation.
-- The API and worker share .NET types, validation rules, and deployment tooling; there is no cross-language solver protocol to version or support.
-- A separate process/container still isolates CPU- and memory-intensive solving from HTTP requests.
+- The local host and generation service share .NET types, validation rules, and deployment tooling; there is no cross-language solver protocol to version or support.
+- Running generation as a local background job keeps CPU- and memory-intensive solving off the HTTP request path without requiring a separate networked service.
 - Python would provide familiar CP-SAT examples and rapid experimentation, but would introduce a second runtime, duplicate model/domain representations, a serialization boundary, and additional deployment and operational support.
 - The required .NET 9 and NuGet packages were available and the C# spike compiled and ran, removing the earlier toolchain blocker.
 

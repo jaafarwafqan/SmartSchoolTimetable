@@ -1,26 +1,18 @@
-# Offline Sync Design
+# Offline and Local Data
 
-## Overview
-The server remains the source of truth. The frontend keeps a tenant-scoped, local replica using IndexedDB (Dexie) and an outbox-based sync model.
+## Local-only operation
+The application is designed to operate entirely on the local machine. Timetable data, settings, exports, and audit history are stored locally. There is no remote server, cross-device sync, account sync, outbox-to-server flow, telemetry, or internet requirement for core operation.
 
-## Sync rules
-- Each mutation is recorded as an outbox command with `clientId`, `createdAt`, `baseVersion`, command type, payload.
-- Commands are idempotent by `clientId`.
-- Reconnect flow: push queued changes, then pull server changes using `ChangeSeq`.
-- The cursor is monotonic per tenant and never a timestamp.
-- Deletions are soft deletes with tombstones retained for the maximum offline age.
+## Offline behavior
+- Once installed, core workflows must work without internet connectivity.
+- Local web UI and API communicate over loopback only; do not confuse localhost requests with remote network access.
+- Timetable generation, PDF/Excel exports, printing, backups, restore, and imports operate locally.
+- Offline printing uses `window.print()` and dedicated RTL-aware A4 print CSS. PDF output is generated locally by the application; neither requires a remote service.
 
-## Conflict rules
-- Attendance and daily monitoring use last-writer-wins per `Teacher + Date + Lesson` with audit trail.
-- Timetable edits reject stale `baseVersion` with `409 Conflict`.
-- Published or archived timetable edits are rejected and surfaced to the UI.
+## Local browser storage
+The authoritative database is local SQLite. Browser storage, if used for cached UI state, is a convenience cache only and must not become a second source of truth. Clear sensitive cached state on logout/auto-lock where practical. Baseline SQLite is not encrypted; see the SQLCipher final-phase decision in `SECURITY.md` and ADR 0010.
 
-## Offline UX
-- Show online/offline, pending changes, last sync time, sync status, retry action.
-- Retry with exponential backoff.
-- Never silently discard data or conflict resolution decisions.
-- Offline timetable printing uses `window.print()` with dedicated RTL-aware A4 print CSS. It does not use a client-side PDF library; full QuestPDF export is online-only.
-
-## Data retention
-- Local data is deleted on logout or after offline-session expiry.
-- Minimum necessary data is retained; tenant data is wiped on expiration.
+## Local conflicts and backups
+- The single owner session remains authoritative. Use local entity versions to detect stale edits between tabs or background operations.
+- Never silently overwrite a newer timetable version.
+- Backups are explicit local files and must be validated before restore. A backup is not a password-recovery path; recovery code remains the only password reset mechanism.

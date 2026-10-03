@@ -11,5 +11,5 @@ Generate PDF and print layouts using Arabic-aware shaping and RTL table directio
 
 ## Consequences
 - Requires explicit validation before production release.
-- Offline printing remains `window.print()`; full PDF export stays online-only.
+- Offline printing remains `window.print()`; QuestPDF export is generated locally and does not require internet access.
 - Must test rendering in both Arabic and English contexts.

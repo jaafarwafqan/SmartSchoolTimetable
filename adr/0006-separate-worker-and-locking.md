@@ -1,17 +1,13 @@
 # ADR 0006: Separate generation worker and PostgreSQL lock
 
-- Status: Accepted
+- Status: Superseded by ADR 0008
 - Date: 2026-10-03
 
 ## Context
-Timetable generation is CPU-intensive, must not occupy an HTTP request, and must not run concurrently more than once for a tenant.
+The original product scope called for a distributed generation worker and one active generation per tenant.
 
-## Decision
-Run generation in a separate .NET worker process/container. Before processing a tenant's generation job, acquire a PostgreSQL advisory lock keyed by tenant identity; release it on completion, cancellation, or process/connection termination. PostgreSQL, not Redis, is the source of truth for this exclusivity.
+## Historical decision
+Run generation in a separate .NET worker process/container. Acquire a PostgreSQL advisory lock keyed by tenant identity to enforce one active generation per tenant.
 
-## Consequences
-- API request lifetimes and solver CPU/memory usage are isolated.
-- Multiple worker replicas can share the queue while PostgreSQL enforces one active generation per tenant.
-- Lock-key derivation and connection lifetime must be consistent, collision-safe for distinct tenants, and covered by integration tests.
-- Worker startup must restore the job's tenant context explicitly.
-- Progress is emitted from real solver events; the lock does not replace durable job state or cancellation handling.
+## Supersession
+The owner clarified the product as one local user and one local installation, with no network service or multi-user concurrency. Do not implement tenant-keyed PostgreSQL locks, distributed queues, or worker containers. Generation remains a local background job, isolated from the HTTP request path, with at most one active local job. See ADR 0008.

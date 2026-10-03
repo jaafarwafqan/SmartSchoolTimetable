@@ -1,24 +1,22 @@
 # Architecture
 
-## Goal
-Build a multi-tenant, Arabic-first school timetable platform with one tenant = one school, shared deployment, strong isolation, offline-capable client, and a CP-SAT scheduling engine.
+## Product boundary
+This is a single-user, local school timetable application. One installation stores one school's data on the local machine. One owner account signs in before accessing the application. The browser UI and local ASP.NET Core host communicate only over loopback; the product has no remote service, multi-tenant hosting, or network sync.
 
 ## Layering
-- Domain: entities, value objects, aggregates, invariants, domain events; no infrastructure dependencies.
-- Application: commands, queries, handlers, DTOs, validators, policies, interfaces.
-- Infrastructure: EF Core, PostgreSQL, Redis, OR-Tools adapter, file storage, background jobs, auth providers.
-- Api: composition root and thin endpoints using IMediator only.
+- Domain: entities, value objects, invariants, and domain events; no infrastructure dependencies.
+- Application: use cases, validation, interfaces, and DTOs.
+- Infrastructure: EF Core with local SQLite, local file storage, local audit history, and the Google.OrTools adapter.
+- Api: composition root and thin local endpoints. Endpoints dispatch through IMediator.
 
-## High-level flow
-1. Users authenticate with tenant-scoped JWTs.
-2. API receives requests and dispatches commands/queries through MediatR.
-3. Application services validate and authorize.
-4. Infrastructure persists state and integrates with PostgreSQL/Redis.
-5. Generation jobs are queued to a separate .NET worker process/container; a PostgreSQL advisory lock enforces one active generation per tenant.
-6. Solver emits real progress events via SignalR.
-7. Client syncs changes through outbox + ChangeSeq model.
+## Local process flow
+1. The local host performs first-run owner setup when no account exists; otherwise it shows the login screen before loading application routes.
+2. The web UI is served from the same local host and binds only to `127.0.0.1`.
+3. Authenticated requests use a local HttpOnly, SameSite=Strict session cookie. State-changing requests additionally require a random per-launch token.
+4. Local state is persisted to SQLite. There is no remote API, tenant context, synchronization service, Redis, or network telemetry.
+5. Generation runs as a background job isolated from the HTTP request path. Only one local generation job may be active at a time; no distributed worker fleet or PostgreSQL lock is used.
 
-The CP-SAT adapter uses Google.OrTools for .NET in Infrastructure. The worker remains in C#; solver types do not cross into Domain or Application.
+The CP-SAT adapter uses Google.OrTools for .NET in Infrastructure. Solver types do not cross into Domain or Application.
 
 ## Core domains
 - School Profile
@@ -30,19 +28,18 @@ The CP-SAT adapter uses Google.OrTools for .NET in Infrastructure. The worker re
 - Academic Calendar
 - Timetable generation and versioning
 - Attendance and daily monitoring
-- Audit and security
+- Local owner account and audit history
 
 ## Deployment
-- api service
-- worker service
-- web frontend
-- PostgreSQL
-- Redis
-- optional observability stack (OpenTelemetry + Seq/Prometheus/Grafana)
+- One local ASP.NET Core host and web UI
+- Local SQLite database and local files
+- Local background generation service
+- No Docker, cloud services, remote database, Redis, public listener, or inbound LAN access required
+- Optional WebView2 shell may be evaluated later; browser login remains the baseline
 
 ## Acceptance criteria for Phase 0
 - Architecture documented
 - Major decisions captured in ADRs
-- Security and tenancy model explicitly stated
+- Single-user, local-only security model explicitly stated
 - Solver and Arabic PDF spikes executed and reported honestly
-- no implementation beyond isolated spikes
+- No application implementation beyond isolated spikes

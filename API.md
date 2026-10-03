@@ -1,31 +1,31 @@
-# API Design
+# Local API Design
 
-## Principles
-- OpenAPI-first contract
-- versioned routes `/api/v1/...`
-- thin endpoints delegating to IMediator
-- no direct DbContext or repository usage in controllers
-- consistent error envelope and authorization checks
+## Boundary
+- The API is a private implementation detail of the local application, bound only to `127.0.0.1`.
+- The browser UI is served by the same local host and uses same-origin requests.
+- No remote clients, public API, tenant identifier, network sync endpoints, or external service integration.
+- No role or permission matrix. Authentication distinguishes only an unauthenticated session from the local owner session.
 
-## Key resource families
-- Auth: login, refresh, revoke, logout
-- School: profile and settings
-- Teachers: CRUD, availability, constraints
-- Scheduling: profile, validation, generation, diagnostics
-- Timetables: draft/generate/approve/publish/rollback
-- Sync: pull/push, conflict resolution
-- Reporting: PDF and Excel exports
+## Local request families
+- Setup: first-run owner creation and one-time recovery-code issuance
+- Session: login, logout, password change, recovery-code reset/rotation, inactivity lock
+- School settings and timetable domain operations
+- Local timetable generation and progress
+- Local PDF/Excel exports, backup/restore, and imports
+
+## Browser request security
+- Canonical `Host` and `Origin` validation for the bound loopback address and active port
+- No wildcard CORS; same-origin UI is the supported client
+- HttpOnly, SameSite=Strict local session cookie
+- Per-launch token required in a dedicated header for state-changing requests
+- Error responses must not reveal password hashes, recovery-code hashes, filesystem secrets, or stack traces
 
 ## Error model
-- 400 validation
+- 400 validation error
 - 401 unauthenticated
-- 403 forbidden
 - 404 not found
-- 409 conflict/version mismatch
-- 429 rate limited
-- 500 server error
+- 409 local version/state conflict
+- 423 temporarily locked after repeated failed login
+- 500 generic server error
 
-## Observability requirements
-- request correlation id
-- user id and tenant id in every request log
-- generation id for solver execution
+There is no user/tenant attribution in request logs. Avoid logging credentials, recovery codes, cookies, launch tokens, or timetable personal data.
