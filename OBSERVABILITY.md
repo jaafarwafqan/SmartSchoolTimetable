@@ -5,7 +5,7 @@ Use structured local logs for application diagnostics. Do not include passwords,
 
 ## Health and startup checks
 - Validate the configured listener before opening the login UI; only `127.0.0.1` is allowed.
-- Local readiness checks may verify SQLite availability and migration state.
+- Startup applies EF Core migrations and fails fast on errors or a non-loopback binding. No `/health` endpoints exist (ADR 0013); a loopback-only readiness check may be added if a launcher needs one.
 - Do not expose health endpoints on a non-loopback interface.
 
 ## Lightweight local history

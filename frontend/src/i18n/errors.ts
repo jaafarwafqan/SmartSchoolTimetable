@@ -6,13 +6,21 @@ export type ApiFailure = {
   errors?: Array<{ field: string; code: string }>;
 };
 
+function isApiErrorCode(code: string): code is ApiErrorCode {
+  return Object.hasOwn(messages.errors, code);
+}
+
+function isFieldName(field: string): field is FieldName {
+  return Object.hasOwn(messages.fields, field);
+}
+
 export class ApiRequestError extends Error {
   readonly code: ApiErrorCode;
   readonly fields: Array<{ field: string; code: string }>;
 
   constructor(code: string, fields: Array<{ field: string; code: string }> = []) {
     super(code);
-    this.code = code in messages.errors ? (code as ApiErrorCode) : "UNKNOWN_ERROR";
+    this.code = isApiErrorCode(code) ? code : "UNKNOWN_ERROR";
     this.fields = fields;
   }
 
@@ -22,10 +30,8 @@ export class ApiRequestError extends Error {
 }
 
 export function translatedFieldError(field: string, code: string): string {
-  const label = field in messages.fields ? messages.fields[field as FieldName] : "";
-  const detail = code in messages.errors
-    ? messages.errors[code as ApiErrorCode]
-    : messages.errors.VALIDATION_FAILED;
+  const label = isFieldName(field) ? messages.fields[field] : "";
+  const detail = isApiErrorCode(code) ? messages.errors[code] : messages.errors.VALIDATION_FAILED;
   return label ? `${label}: ${detail}` : detail;
 }
 

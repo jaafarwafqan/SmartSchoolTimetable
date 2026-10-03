@@ -1,5 +1,7 @@
 import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
+import { messages } from "../i18n/messages";
+import { passwordMinLength } from "../lib/credentialRules";
 import { Input } from "./ui/input";
 
 type PasswordFieldProps = {
@@ -14,11 +16,11 @@ export function PasswordField({
   id,
   label,
   autoComplete,
-  minLength = 12,
+  minLength = passwordMinLength,
   required = true,
 }: PasswordFieldProps) {
   const [visible, setVisible] = useState(false);
-  const toggleLabel = visible ? "إخفاء كلمة المرور" : "إظهار كلمة المرور";
+  const toggleLabel = visible ? messages.app.hidePassword : messages.app.showPassword;
   const Icon = visible ? EyeOff : Eye;
 
   return (

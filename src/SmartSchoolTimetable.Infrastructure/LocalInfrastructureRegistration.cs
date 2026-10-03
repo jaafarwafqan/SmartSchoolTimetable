@@ -25,7 +25,8 @@ public static class LocalInfrastructureRegistration
         services.AddDbContext<LocalDbContext>(options =>
             options
                 .UseSqlite(connectionString, sqlite => sqlite.MigrationsAssembly(typeof(LocalDbContext).Assembly.FullName))
-                .EnableSensitiveDataLogging(false));
+                .EnableSensitiveDataLogging(false)
+                .AddInterceptors(SqlitePragmaInterceptor.Instance));
         services.AddScoped<IOwnerRepository, LocalOwnerRepository>();
         services.AddSingleton<ICredentialHasher, Pbkdf2CredentialHasher>();
         services.AddSingleton<ILocalSessionStore, LocalSessionStore>();
@@ -41,17 +42,18 @@ public static class LocalInfrastructureRegistration
         var db = scope.ServiceProvider.GetRequiredService<LocalDbContext>();
         await db.Database.MigrateAsync(cancellationToken);
 
-        var connection = db.Database.GetDbConnection();
-        await connection.OpenAsync(cancellationToken);
+        // journal_mode=WAL is persistent in the database file; synchronous=FULL is per connection and is
+        // applied by SqlitePragmaInterceptor whenever EF Core opens a connection.
+        await db.Database.OpenConnectionAsync(cancellationToken);
         try
         {
-            await using var command = connection.CreateCommand();
-            command.CommandText = "PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;";
+            await using var command = db.Database.GetDbConnection().CreateCommand();
+            command.CommandText = "PRAGMA journal_mode=WAL;";
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
         finally
         {
-            await connection.CloseAsync();
+            await db.Database.CloseConnectionAsync();
         }
     }
 

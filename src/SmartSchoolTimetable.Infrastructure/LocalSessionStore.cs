@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Security.Cryptography;
 using SmartSchoolTimetable.Application;
 
 namespace SmartSchoolTimetable.Infrastructure;
@@ -10,10 +9,7 @@ public sealed class LocalSessionStore(TimeProvider timeProvider) : ILocalSession
 
     public string Issue(string username, bool recoveryCodeIssued = false)
     {
-        var sessionId = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
-            .TrimEnd('=')
-            .Replace('+', '-')
-            .Replace('/', '_');
+        var sessionId = SecureToken.CreateUrlSafe();
         var now = timeProvider.GetUtcNow();
         _sessions[sessionId] = new Session(username, now, recoveryCodeIssued);
         return sessionId;

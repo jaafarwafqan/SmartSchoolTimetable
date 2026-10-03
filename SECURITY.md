@@ -8,15 +8,16 @@ The product is a single-user local application: one local owner account, one app
 - Successful setup creates the account and signs the owner in automatically. Before entering the application, show the recovery code confirmation screen once and require acknowledgment that it was stored. Never force a password change; changing it is an optional Settings action and requires the current password.
 - Generate the recovery code using `RandomNumberGenerator.GetBytes(16)`: 128 bits of entropy, represented as four groups of eight uppercase hexadecimal characters separated by hyphens (35 displayed characters, alphabet `0-9A-F` plus separators). Display it only during setup/replacement and tell the owner to store it securely or print it. Do not log it, persist it in clear text, or show it again.
 - Store only a salted one-way SHA-256 hash of the recovery code. Its 128-bit random entropy prevents low-entropy password-style guessing. Successful use consumes the code, resets the password, and issues a replacement code shown once; require the owner to store it before continuing. The setup and recovery screens must clearly warn that the code is the **only** password-recovery path.
-- If a reload interrupts confirmation, the owner signs in and generates a replacement code in Settings by entering the current password. The old code is invalidated, and the replacement is shown once.
+- If a reload (or anything else) interrupts confirmation, the session stays signed in but the UI shows a blocking "recovery code not confirmed" screen instead of any application page. The only actions there are generating a replacement code with the current password, and logging out. Generation invalidates the old code; the replacement is shown once and must be acknowledged before the application opens.
 - If both password and recovery code are lost, there is no password reset path. Reinitialization is destructive and loses local application data unless the owner separately has a valid backup; it is not an alternate password-recovery mechanism.
-- Changing a password requires the current password. A password change invalidates the current session and requires sign-in again.
+- Changing a password requires the current password. A password change (and a recovery-code reset) revokes all local sessions and requires sign-in again.
 
 ## Password storage and failed login handling
 - Never store or log clear-text passwords.
-- The Phase 1 implementation uses PBKDF2-HMAC-SHA-256 with 600,000 iterations, a cryptographically random 16-byte salt, and a 32-byte derived key. The algorithm and iteration count are stored with the hash (`src/SmartSchoolTimetable.Infrastructure/Pbkdf2CredentialHasher.cs`).
+- Passwords are 8–1024 characters; usernames are 3–64 characters after trimming (`src/SmartSchoolTimetable.Application/CredentialRules.cs`, mirrored in `frontend/src/lib/credentialRules.ts`; the server always re-validates).
+- The implementation uses PBKDF2-HMAC-SHA-256 with 600,000 iterations, a cryptographically random 16-byte salt, and a 32-byte derived key (`src/SmartSchoolTimetable.Infrastructure/Pbkdf2CredentialHasher.cs`). The per-account iteration count is stored with the hash (`Users.PasswordIterations`); the algorithm, salt size and key size are fixed in code and are not stored. Verification rejects stored iteration counts below 600,000. Changing the algorithm requires an ADR, a hash-version column, and a migration.
 - Compare derived values using `CryptographicOperations.FixedTimeEquals`; do not use ordinary byte/character equality for secret verification.
-- Apply one fixed one-second delay after a failed login. There is no escalating delay, temporary lockout, persisted failure counter, or multi-user/IP rate limiting.
+- Apply one fixed one-second delay after a failed login. There is no escalating delay, temporary lockout, persisted failure counter, or multi-user/IP rate limiting. The delay runs after the auth operation lock is released, so a failed attempt does not block other operations.
 - Do not expose whether a username exists in authentication error messages.
 
 ## Logging
@@ -36,7 +37,7 @@ The product is a single-user local application: one local owner account, one app
 - Do not expose remote administration, bind to external interfaces, or send application data/telemetry to network services.
 
 ## API error and UI localization boundary
-- Every API failure returns a stable code and correlation identifier (plus field/code validation parameters where applicable), never user-readable text or default ASP.NET ProblemDetails titles/details.
+- Every API failure returns a stable code and correlation identifier (plus field/code validation parameters where applicable), never user-readable text or default ASP.NET ProblemDetails titles/details. Codes come only from `ErrorCodes`; each has a mapped HTTP error status and an Arabic message, and an error is never returned with a 2xx status (see `API.md`).
 - Model-binding, FluentValidation, unsupported route/method/media, Origin/launch-token rejection, database, and unhandled failures use the same error envelope. Unhandled API exceptions use `INTERNAL_ERROR` and a correlation identifier.
 - FluentValidation emits error codes only. The React UI maps every known code to Arabic and uses a generic Arabic fallback for unknown/missing codes and network/offline/timeout failures. Do not render exception text, English framework messages, or API-provided prose.
 - Browser forms disable native validation popups; use localized app validation instead. Do not call `window.alert`, `window.confirm`, or `window.prompt`.

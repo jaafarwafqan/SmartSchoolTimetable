@@ -1,6 +1,6 @@
 # ADR 0009: Local owner authentication and localhost protection
 
-- Status: Accepted by owner scope clarification
+- Status: Accepted by owner scope clarification; amended in Phase 1.3 (pending owner approval)
 - Date: 2026-10-03
 
 ## Context
@@ -10,13 +10,14 @@ The product is a single-user local application with exactly one owner account. T
 
 ### First-run setup and recovery
 - A dedicated setup screen creates one owner account only when the local user table is empty. Successful setup also creates an authenticated session; do not require a second login.
-- Before entering the application, show the recovery code once and require acknowledgment that it was stored. If the page reloads before confirmation, sign in and offer regeneration in Settings after the current password is verified. Regeneration invalidates the previous code and shows the new one once.
+- Before entering the application, show the recovery code once and require acknowledgment that it was stored. If the page reloads before confirmation, the session remains signed in but the UI shows a blocking screen (no application page is reachable). It explains that the code was not confirmed and offers only "generate a new recovery code" (current password required) and logout. Regeneration invalidates the previous code and shows the new one once; it must be acknowledged before entry. *(Phase 1.3 amendment: previously "sign in and regenerate from Settings", which the implementation did not enforce.)*
 - Generate 16 random bytes with `RandomNumberGenerator` (128 bits), displayed as four eight-character uppercase hexadecimal groups. Store only a salted one-way hash.
 - The recovery code is the sole password-reset mechanism. Successful recovery consumes the used code, changes the password, and issues a replacement once. If both password and recovery code are lost, there is no alternate recovery path.
 - Do not force a password change after setup or recovery. A Settings password change requires the current password and invalidates the session.
 
 ### Password and failed-login behavior
-- Use PBKDF2-HMAC-SHA-256 with a random 16-byte salt, 600,000 iterations, and a 32-byte output. Store algorithm parameters with the hash. Verify secrets using constant-time comparison.
+- Use PBKDF2-HMAC-SHA-256 with a random 16-byte salt, 600,000 iterations, and a 32-byte output. Store the iteration count with the hash; the algorithm is fixed in code, and changing it requires a hash-version column and migration. Verify secrets using constant-time comparison.
+- Passwords are 8–1024 characters *(Phase 1.3 amendment: minimum lowered from 12 to 8 by owner request)*.
 - After a failed login, wait a fixed one second. Do not add an escalating delay, temporary lockout, or a multi-user/IP rate-limit system.
 - Never store or log plaintext passwords, recovery codes, cookies, session identifiers, or launch tokens.
 

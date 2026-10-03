@@ -8,7 +8,7 @@
 
 ## Required security and authentication scenarios
 - Setup creates exactly one owner, signs them in automatically, and displays a one-time recovery code with clear store/print guidance. Acknowledgment gates entry.
-- Reload before acknowledgment must not strand the owner: after sign-in, Settings permits recovery-code regeneration only with the current password; the former code is invalidated and the new one is shown once.
+- Reload before acknowledgment must neither strand the owner nor let them in: the signed-in owner sees a blocking screen (Home and `/settings` unreachable) that permits recovery-code regeneration only with the current password; the former code is invalidated and the new one is shown once and must be acknowledged.
 - Password and recovery code are never stored in clear text or written to logs. PBKDF2-HMAC-SHA-256 uses at least 600,000 iterations, and comparisons use `FixedTimeEquals`.
 - Recovery code resets the password once, is consumed, and is replaced with a one-time code. No other password-recovery route exists.
 - Failed login has a fixed one-second delay only. The delay is injected in tests; no test waits a real second. Do not implement escalating delays or temporary lockout.
@@ -22,7 +22,8 @@
 - Backend test enumerates all `ApiErrorCodes` and fails if the Arabic dictionary is missing any entry.
 - Framework-generated failures, model binding, validation, unsupported methods/media, Origin/token failures, and unhandled exceptions must return `{ code, correlationId, errors }`, with no default ProblemDetails title/detail or user-readable server text.
 - FluentValidation errors use field/code pairs only. The UI maps every API code to Arabic, handles unknown/missing codes with a generic Arabic fallback, and localizes offline/network/timeout errors.
-- Playwright verifies wrong password, validation, 404 route, stopped/unavailable server, and unexpected 500 alerts contain no Latin letters. It also exercises unknown route and unsupported HTTP methods against the unified contract.
+- Playwright verifies wrong password, validation, 404 route, stopped/unavailable server, and unexpected 500 alerts contain no Latin letters. Validation (real 422 from the login endpoint), the unknown API route (real 404 JSON), the unknown app route, and the stopped server use the real API process; only the unexpected 500 is mocked with `page.route()` because the real server cannot produce it on demand.
+- Error codes: `ErrorContractTests` verifies every `ErrorCodes` constant is registered with an HTTP error status and an Arabic message, scans `src/` so codes are only emitted through those constants, and proves the middleware never returns 2xx/3xx for an error.
 - Set `<html lang="ar" dir="rtl">`. Forms use `noValidate`; never use browser-native validation popups, `window.alert`, `window.confirm`, or `window.prompt`.
 - Generated PDF/Excel, backup, and import-report user-facing text must be Arabic. Numbers and dates follow tenant preferences once implemented.
 
@@ -32,10 +33,10 @@
 - ESLint rejects hard-coded JSX text/labels, requires icon plus label on shared `Button` components, and requires an accessible label on native buttons. Review new screens for RTL directional-icon mirroring, logical CSS properties, consistent stroke/size, and WCAG AA contrast.
 - Review native browser APIs, form validation, and all translated setup/login/recovery/password/settings messages whenever a screen changes.
 
-## Phase 1.2 test inventory
-- .NET tests: `SetupCreatesSingleOwnerWithOneTimeCodeHashedCredentialsWalAndAudit`, `PasswordHasherUsesPbkdf2Sha256AtOrAboveTheRequiredIterationCount`, `RecoveryCodeCanBeRegeneratedOnlyWithCurrentPasswordAndMustBeAcknowledged`, `WrongPasswordsApplyFixedOneSecondDelayWithoutTemporaryLockout`, `InactivityTimeoutLocksAuthenticatedSessionAndProtectsPrivateRoutes`, `EveryApiErrorCodeHasAnArabicDictionaryEntry`, and `FrameworkAndValidationFailuresUseUnifiedApiErrorContract`, plus the remaining mapping in [DELIVERY_PLAN.md](./DELIVERY_PLAN.md).
-- Frontend unit tests: `maps unknown and missing codes to a generic Arabic message`, `localizes validation field and code without Latin text`, `keeps every visible error string Arabic`, and `toggles visibility with a labelled, pressed-state eye control`.
-- Playwright tests: `setup, recovery confirmation, automatic entry, logout, login, and password recovery`; `validation, not-found, server-stopped, and internal failures stay Arabic`.
+## Phase 1.3 test inventory
+- .NET (41): `LocalApiTests.cs` (25 tests), `ErrorContractTests.cs` (12 test cases: 3 facts + 9 theory rows), `ArchitectureTests.cs` (3), `LocalAuthServiceTests.cs` (1). The per-criterion mapping is in [DELIVERY_PLAN.md](./DELIVERY_PLAN.md).
+- Vitest (7): `src/i18n/errors.test.ts` (3), `src/components/PasswordField.test.tsx` (1), `src/api.test.ts` (3: 2xx-with-code is an error, unregistered code maps to the generic Arabic message, launch token is read from the bootstrap query cache).
+- Playwright (2): `setup, blocked reload until a new code is confirmed, logout, login, and password recovery`; `real validation and not-found responses, mocked 500, and a stopped server stay Arabic`.
 
 ## Later-phase acceptance suites
 - Phase 4 infeasibility test must construct a conflict involving two teachers, a shared lab, and a blocked period; the diagnostic must identify the conflict groups and actionable correction, not merely report infeasible.

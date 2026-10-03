@@ -1,15 +1,13 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using SmartSchoolTimetable.Application;
 
 namespace SmartSchoolTimetable.Api;
 
 public sealed class LocalLaunchToken
 {
-    private readonly string _encodedToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
-        .TrimEnd('=')
-        .Replace('+', '-')
-        .Replace('/', '_');
+    private readonly string _encodedToken = SecureToken.CreateUrlSafe();
 
     public string Value => _encodedToken;
 
@@ -95,17 +93,13 @@ public sealed class LocalRequestSecurityMiddleware(
 {
     public async Task InvokeAsync(HttpContext context)
     {
-        context.Response.Headers["X-Content-Type-Options"] = "nosniff";
-        context.Response.Headers["X-Frame-Options"] = "DENY";
-        context.Response.Headers["Referrer-Policy"] = "no-referrer";
-        context.Response.Headers["Content-Security-Policy"] =
-            "default-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
-        context.Response.Headers["Cross-Origin-Resource-Policy"] = "same-origin";
+        ArgumentNullException.ThrowIfNull(context);
+        LocalSecurityHeaders.Apply(context.Response.Headers);
 
         if (context.Request.Host.Value != options.Host)
         {
-            logger.LogWarning("Rejected request with non-canonical local Host header.");
-            context.Items[UnifiedApiErrorMiddleware.ErrorCodeItem] = "INVALID_HOST";
+            LocalLog.RejectedHost(logger);
+            context.Items[UnifiedApiErrorMiddleware.ErrorCodeItem] = ErrorCodes.InvalidHost;
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
             return;
         }
@@ -115,8 +109,8 @@ public sealed class LocalRequestSecurityMiddleware(
             (hasOrigin &&
              (origins.Count != 1 || !string.Equals(origins[0], options.Origin, StringComparison.Ordinal))))
         {
-            logger.LogWarning("Rejected request with non-canonical Origin header.");
-            context.Items[UnifiedApiErrorMiddleware.ErrorCodeItem] = "INVALID_ORIGIN";
+            LocalLog.RejectedOrigin(logger);
+            context.Items[UnifiedApiErrorMiddleware.ErrorCodeItem] = ErrorCodes.InvalidOrigin;
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
             return;
         }
@@ -124,7 +118,7 @@ public sealed class LocalRequestSecurityMiddleware(
         if (IsStateChangingMethod(context.Request.Method) &&
             !launchToken.Matches(context.Request.Headers["X-Local-Launch-Token"].FirstOrDefault()))
         {
-            context.Items[UnifiedApiErrorMiddleware.ErrorCodeItem] = "INVALID_LAUNCH_TOKEN";
+            context.Items[UnifiedApiErrorMiddleware.ErrorCodeItem] = ErrorCodes.InvalidLaunchToken;
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
             return;
         }

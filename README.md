@@ -1,6 +1,6 @@
 # SmartSchoolTimetable
 
-Single-user, offline-first school timetable application for one local school and one owner account. The browser UI is served by the ASP.NET Core app, which binds only to `127.0.0.1`. Phase 1.2 is under owner acceptance; do not begin Phase 2 before acceptance.
+Single-user, offline-first school timetable application for one local school and one owner account. The browser UI is served by the ASP.NET Core app, which binds only to `127.0.0.1`. Phase 1.3 (audit fixes, tag `phase-1.3`) is under owner acceptance; do not begin Phase 2 before acceptance.
 
 ## Stack and environment
 - .NET SDK 9.0.318 and Node.js v24.18.0 are available in the current development environment. Node/npm are required for the React build and frontend tests.
@@ -30,7 +30,19 @@ Stop the running app before resetting. From the repository root, run:
 dotnet run --project .\src\SmartSchoolTimetable.Api\SmartSchoolTimetable.Api.csproj --configuration Release --no-build -- --reset-local-database
 ```
 
-The app displays the resolved database path and asks for the exact confirmation `RESET`; any other input cancels. It removes the database and SQLite sidecar files only. This permanently deletes the local owner account and all local data. Start the app using the run command above to return to first-run setup.
+The app displays the resolved database path and the prompts in Arabic, and asks for the exact confirmation `RESET` (kept ASCII so it can be typed on any keyboard layout); any other input cancels. It removes the database and SQLite sidecar files only. The console is switched to UTF-8; if Arabic shows as boxes, use Windows Terminal or a console font with Arabic glyphs. This permanently deletes the local owner account and all local data. Start the app using the run command above to return to first-run setup.
+
+### Interim database backup (until Phase 6)
+There is no in-app backup yet. **Stop the app first** (close the console or press Ctrl+C), then run this from the folder where the backup should be created:
+
+```powershell
+$db = "$env:LOCALAPPDATA\SmartSchoolTimetable\timetable.db"; $dest = ".\timetable-backup-$(Get-Date -Format yyyyMMdd-HHmmss)"; New-Item -ItemType Directory $dest | Out-Null; Copy-Item "$db*" $dest
+```
+
+This copies `timetable.db` together with any `-wal`/`-shm` sidecar left by an unclean shutdown into a timestamped folder.
+- Restore: stop the app and copy all files from a backup folder back into `%LOCALAPPDATA%\SmartSchoolTimetable\`.
+- If `Database:Path` is configured, use that path instead.
+- Never copy the database while the app is running. The Phase 6 online backup (SQLite Online Backup API, integrity-checked) will replace this procedure.
 
 ## User-facing text, icons, and RTL
 - All user-facing UI, errors, validation, generated files, and offline/network messages are Arabic. The API returns stable error codes and parameters only; the UI maps every code through the Arabic dictionary in `frontend/src/i18n/messages.ts`. English is reserved for developer logs, which must never contain passwords, recovery codes, cookies, session IDs, or launch tokens.
@@ -40,9 +52,9 @@ The app displays the resolved database path and asks for the exact confirmation 
 - ESLint enforces localization and icon/label requirements. Follow the checklist in [CLAUDE.md](./CLAUDE.md) and [TESTING.md](./TESTING.md) for each new screen.
 
 ## Security and owner recovery
-First run creates one local owner and signs in automatically. Before entering the app, the owner must confirm storing the one-time recovery code. If the page is reloaded before acknowledging it, sign in and generate a replacement code in Settings using the current password. The recovery code is the only password-reset path; losing both it and the password has no recovery route. Password changes are optional and require the current password.
+First run creates one local owner and signs in automatically. Before entering the app, the owner must confirm storing the one-time recovery code. If the page is reloaded before acknowledging it, a blocking screen replaces the app until a replacement code is generated with the current password and acknowledged. The recovery code is the only password-reset path; losing both it and the password has no recovery route. Password changes are optional and require the current password.
 
-Passwords use PBKDF2-HMAC-SHA-256 with 600,000 iterations. Failed login uses a fixed one-second delay, with no escalating delay or temporary lockout. Sessions use an HttpOnly, SameSite=Strict cookie; inactivity auto-lock supports a configured duration or `Never`. Kestrel validates Host/Origin and a per-launch token on state-changing requests. Details are in [SECURITY.md](./SECURITY.md).
+Passwords must be 8–1024 characters and use PBKDF2-HMAC-SHA-256 with 600,000 iterations. Failed login uses a fixed one-second delay, with no escalating delay or temporary lockout. Sessions use an HttpOnly, SameSite=Strict cookie; inactivity auto-lock supports a configured duration or `Never`. Kestrel validates Host/Origin and a per-launch token on state-changing requests. Details are in [SECURITY.md](./SECURITY.md).
 
 ## Phase 0 validation notes
 - The Google.OrTools and QuestPDF feasibility spikes are isolated under `spikes/CSharpSpikes/`; the Arabic PDF proof was run with .NET 9, QuestPDF 2026.9.1, and Noto Naskh Arabic. QuestPDF licensing clearance and packaged-runtime visual validation remain pre-Phase-6 gates.

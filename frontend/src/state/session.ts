@@ -1,24 +1,19 @@
 import { create } from "zustand";
 
-export type BootstrapState = {
-  setupRequired: boolean;
-  authenticated: boolean;
-  username: string | null;
-  recoveryCodeAcknowledgementRequired: boolean;
-  launchToken: string;
-  inactivityTimeoutMinutes: number | null;
-};
-
-type SessionStore = {
-  bootstrap: BootstrapState | null;
+/**
+ * UI-only state. Server state (bootstrap/session) lives in the TanStack Query cache.
+ * The recovery code is kept in memory only and is never persisted.
+ */
+type UiStore = {
   recoveryCode: string | null;
-  setBootstrap: (bootstrap: BootstrapState) => void;
+  recoveryFormOpen: boolean;
   setRecoveryCode: (recoveryCode: string | null) => void;
+  setRecoveryFormOpen: (open: boolean) => void;
 };
 
-export const useSessionStore = create<SessionStore>((set) => ({
-  bootstrap: null,
+export const useUiStore = create<UiStore>((set) => ({
   recoveryCode: null,
-  setBootstrap: (bootstrap) => set({ bootstrap }),
+  recoveryFormOpen: false,
   setRecoveryCode: (recoveryCode) => set({ recoveryCode }),
+  setRecoveryFormOpen: (recoveryFormOpen) => set({ recoveryFormOpen }),
 }));

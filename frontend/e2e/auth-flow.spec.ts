@@ -6,6 +6,7 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { messages } from "../src/i18n/messages";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const apiDirectory = join(repositoryRoot, "src", "SmartSchoolTimetable.Api");
@@ -59,7 +60,7 @@ async function waitForApi(page: Page): Promise<void> {
 test.beforeAll(async ({ browser }) => {
   const port = await freePort();
   baseUrl = `http://127.0.0.1:${port}`;
-  databaseDirectory = await mkdtemp(join(tmpdir(), "smart-school-phase-1-2-"));
+  databaseDirectory = await mkdtemp(join(tmpdir(), "smart-school-e2e-"));
   apiProcess = spawn(dotnetHost, [apiAssembly], {
     cwd: dirname(apiAssembly),
     env: {
@@ -88,113 +89,112 @@ test.afterAll(async () => {
   if (databaseDirectory) await rm(databaseDirectory, { recursive: true, force: true });
 });
 
-test("setup, recovery confirmation, automatic entry, logout, login, and password recovery", async ({ page }) => {
+
+// Both tests share one real API process and database and run in file order (fullyParallel: false).
+const initialPassword = "Owner-88"; // exactly the 8-character minimum
+const recoveredPassword = "A-New-Strong-Passphrase-802";
+const recoveryCodePattern = /^[A-F0-9]{8}(-[A-F0-9]{8}){3}$/;
+
+async function expectArabicAlert(page: Page, expected: string): Promise<void> {
+  const alert = page.getByRole("alert");
+  await expect(alert).toContainText(expected);
+  expect(await alert.innerText()).not.toMatch(/[A-Za-z]/);
+}
+
+async function acknowledgeShownCode(page: Page): Promise<string> {
+  await expect(page.getByRole("heading", { name: messages.app.codeTitle })).toBeVisible();
+  const code = (await page.getByRole("status", { name: messages.app.recoveryCode }).textContent()) ?? "";
+  expect(code).toMatch(recoveryCodePattern);
+  await expect(page.getByRole("button", { name: messages.app.continue })).toBeDisabled();
+  await page.getByLabel(messages.app.confirmCodeSaved).check();
+  await page.getByRole("button", { name: messages.app.continue }).click();
+  return code;
+}
+
+test("setup, blocked reload until a new code is confirmed, logout, login, and password recovery", async ({ page }) => {
   await page.goto(baseUrl);
-  await expect(page.getByRole("heading", { name: "إعداد حساب المالك" })).toBeVisible();
-  await page.getByLabel("اسم المستخدم").fill("owner");
-  await page.getByLabel("كلمة المرور", { exact: true }).fill("A-Strong-Passphrase-401");
-  await page.getByLabel("تأكيد كلمة المرور").fill("A-Strong-Passphrase-401");
-  await page.getByRole("button", { name: "إنشاء الحساب" }).click();
+  await expect(page.getByRole("heading", { name: messages.app.setupTitle })).toBeVisible();
+  await page.getByLabel(messages.app.username).fill("owner");
+  await page.getByLabel(messages.app.password, { exact: true }).fill(initialPassword);
+  await page.getByLabel(messages.app.confirmPassword).fill(initialPassword);
+  await page.getByRole("button", { name: messages.app.createAccount }).click();
 
-  const originalRecoveryCode = await page.getByRole("status", { name: "رمز الاسترداد" }).textContent();
-  expect(originalRecoveryCode).toMatch(/^[A-F0-9]{8}(-[A-F0-9]{8}){3}$/);
-  await expect(page.getByRole("button", { name: "متابعة" })).toBeDisabled();
+  await expect(page.getByRole("heading", { name: messages.app.codeTitle })).toBeVisible();
+  const originalRecoveryCode = await page.getByRole("status", { name: messages.app.recoveryCode }).textContent();
+  expect(originalRecoveryCode).toMatch(recoveryCodePattern);
+  await expect(page.getByRole("button", { name: messages.app.continue })).toBeDisabled();
+
+  // Reload before acknowledging: the signed-in owner is blocked, not sent to Home or any app route.
   await page.reload();
-  await expect(page.getByRole("heading", { name: "الرئيسية" })).toBeVisible();
-  await page.getByRole("link", { name: "الإعدادات" }).first().click();
-  await expect(page.getByRole("heading", { name: "الإعدادات" })).toBeVisible();
-  await page.locator("form").first().getByLabel("كلمة المرور الحالية").fill("A-Strong-Passphrase-401");
-  await page.getByRole("button", { name: "إنشاء رمز استرداد جديد" }).click();
-  await expect(page.getByRole("heading", { name: "احفظ رمز الاسترداد" })).toBeVisible();
-  const recoveryCode = await page.getByRole("status", { name: "رمز الاسترداد" }).textContent();
-  expect(recoveryCode).toMatch(/^[A-F0-9]{8}(-[A-F0-9]{8}){3}$/);
+  await expect(page.getByRole("heading", { name: messages.app.recoveryPendingTitle })).toBeVisible();
+  await expect(page.getByRole("heading", { name: messages.app.home })).toHaveCount(0);
+  await page.goto(`${baseUrl}/settings`);
+  await expect(page.getByRole("heading", { name: messages.app.recoveryPendingTitle })).toBeVisible();
+  await expect(page.getByRole("heading", { name: messages.app.settings })).toHaveCount(0);
+
+  await page.getByLabel(messages.app.currentPassword).fill("Wrong-Password-Not-Valid");
+  await page.getByRole("button", { name: messages.app.generateCode }).click();
+  await expectArabicAlert(page, messages.errors.CURRENT_PASSWORD_INCORRECT);
+
+  await page.getByLabel(messages.app.currentPassword).fill(initialPassword);
+  await page.getByRole("button", { name: messages.app.generateCode }).click();
+  const recoveryCode = await acknowledgeShownCode(page);
   expect(recoveryCode).not.toBe(originalRecoveryCode);
-  await page.getByLabel("حفظت رمز الاسترداد في مكان آمن").check();
-  await page.getByRole("button", { name: "متابعة" }).click();
-  await expect(page.getByRole("heading", { name: "الإعدادات" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: messages.app.settings })).toBeVisible();
 
-  await page.getByRole("button", { name: "تسجيل الخروج" }).click();
-  await expect(page.getByRole("heading", { name: "تسجيل الدخول" })).toBeVisible();
-  await page.getByLabel("اسم المستخدم").fill("owner");
-  await page.getByLabel("كلمة المرور", { exact: true }).fill("Wrong-Password-Not-Valid");
-  await page.getByRole("button", { name: "دخول" }).click();
-  const invalidCredentials = await page.getByRole("alert").innerText();
-  expect(invalidCredentials).toContain("اسم المستخدم أو كلمة المرور غير صحيحة.");
-  expect(invalidCredentials).not.toMatch(/[A-Za-z]/);
+  await page.getByRole("button", { name: messages.app.logout }).click();
+  await expect(page.getByRole("heading", { name: messages.app.loginTitle })).toBeVisible();
+  await page.getByLabel(messages.app.username).fill("owner");
+  await page.getByLabel(messages.app.password, { exact: true }).fill("Wrong-Password-Not-Valid");
+  await page.getByRole("button", { name: messages.app.loginAction }).click();
+  await expectArabicAlert(page, messages.errors.INVALID_CREDENTIALS);
 
-  await page.getByLabel("كلمة المرور", { exact: true }).fill("A-Strong-Passphrase-401");
-  await page.getByRole("button", { name: "دخول" }).click();
-  await expect(page.getByRole("heading", { name: "الرئيسية" })).toBeVisible();
-  await page.getByRole("button", { name: "تسجيل الخروج" }).click();
-  await page.getByRole("button", { name: "نسيت كلمة المرور؟" }).click();
-  await page.getByLabel("رمز الاسترداد").fill(recoveryCode!);
-  await page.getByLabel("كلمة المرور الجديدة").fill("A-New-Strong-Passphrase-802");
-  await page.getByLabel("تأكيد كلمة المرور").fill("A-New-Strong-Passphrase-802");
-  await page.getByRole("button", { name: "إعادة تعيين كلمة المرور" }).click();
-  await expect(page.getByRole("heading", { name: "احفظ رمز الاسترداد" })).toBeVisible();
-  await page.getByLabel("حفظت رمز الاسترداد في مكان آمن").check();
-  await page.getByRole("button", { name: "متابعة" }).click();
-  await expect(page.getByRole("heading", { name: "الرئيسية" })).toBeVisible();
+  await page.getByLabel(messages.app.password, { exact: true }).fill(initialPassword);
+  await page.getByRole("button", { name: messages.app.loginAction }).click();
+  await expect(page.getByRole("heading", { name: messages.app.home })).toBeVisible();
+  await page.getByRole("button", { name: messages.app.logout }).click();
+
+  await page.getByRole("button", { name: messages.app.recoveryLink }).click();
+  await page.getByLabel(messages.app.recoveryCode).fill(recoveryCode);
+  await page.getByLabel(messages.app.newPassword).fill(recoveredPassword);
+  await page.getByLabel(messages.app.confirmPassword).fill(recoveredPassword);
+  await page.getByRole("button", { name: messages.app.resetPassword }).click();
+  await acknowledgeShownCode(page);
+  await expect(page.getByRole("heading", { name: messages.app.home })).toBeVisible();
+
+  // After a completed recovery, logging out returns to the login screen rather than the recovery form.
+  await page.getByRole("button", { name: messages.app.logout }).click();
+  await expect(page.getByRole("heading", { name: messages.app.loginTitle })).toBeVisible();
 });
 
-test("validation, not-found, server-stopped, and internal failures stay Arabic", async ({ browser }) => {
+test("real validation and not-found responses, mocked 500, and a stopped server stay Arabic", async ({ browser }) => {
   const context: BrowserContext = await browser.newContext({ baseURL: baseUrl });
   const page = await context.newPage();
-  const visibleAlert = async () => {
-    const text = await page.getByRole("alert").innerText();
-    expect(text).not.toMatch(/[A-Za-z]/);
-    return text;
-  };
 
-  await page.route("**/api/v1/bootstrap", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        setupRequired: true,
-        authenticated: false,
-        username: null,
-        recoveryCodeAcknowledgementRequired: false,
-        launchToken: "validation-test-token",
-        inactivityTimeoutMinutes: 30,
-      }),
-    });
-  });
-  await page.route("**/api/v1/auth/setup", async (route) => {
-    await route.fulfill({
-      status: 422,
-      contentType: "application/json",
-      body: JSON.stringify({
-        code: "VALIDATION_FAILED",
-        correlationId: "validation-test",
-        errors: [{ field: "ConfirmPassword", code: "PASSWORD_MISMATCH" }],
-      }),
-    });
-  });
+  // Real 422 from the server: the login form sends empty fields and the API returns field codes.
   await page.goto(baseUrl);
-  await page.getByLabel("اسم المستخدم").fill("owner");
-  await page.getByLabel("كلمة المرور", { exact: true }).fill("A-Strong-Passphrase-401");
-  await page.getByLabel("تأكيد كلمة المرور").fill("A-Different-Passphrase-401");
-  await page.getByRole("button", { name: "إنشاء الحساب" }).click();
-  expect(await visibleAlert()).toContain("تأكيد كلمة المرور");
-  await page.unroute("**/api/v1/auth/setup");
-  await page.unroute("**/api/v1/bootstrap");
+  await expect(page.getByRole("heading", { name: messages.app.loginTitle })).toBeVisible();
+  const validationResponse = page.waitForResponse((response) => response.url().endsWith("/api/v1/auth/login"));
+  await page.getByRole("button", { name: messages.app.loginAction }).click();
+  expect((await validationResponse).status()).toBe(422);
+  await expectArabicAlert(page, `${messages.fields.Username}: ${messages.errors.REQUIRED}`);
 
+  // Real 404 from the API contract, and the real not-found page for an unknown app route.
   const realNotFound = await page.request.get(`${baseUrl}/api/v1/no-such-browser-route`);
   expect(realNotFound.status()).toBe(404);
   expect((await realNotFound.json()).code).toBe("NOT_FOUND");
 
-  await page.route("**/api/v1/bootstrap", async (route) => {
-    await route.fulfill({
-      status: 404,
-      contentType: "application/json",
-      body: JSON.stringify({ code: "NOT_FOUND", correlationId: "test-404", errors: [] }),
-    });
-  });
-  await page.goto(baseUrl);
-  expect(await visibleAlert()).toContain("المطلوب غير موجود.");
-  await page.unroute("**/api/v1/bootstrap");
+  await page.getByLabel(messages.app.username).fill("owner");
+  await page.getByLabel(messages.app.password, { exact: true }).fill(recoveredPassword);
+  await page.getByRole("button", { name: messages.app.loginAction }).click();
+  await expect(page.getByRole("heading", { name: messages.app.home })).toBeVisible();
+  await page.goto(`${baseUrl}/no-such-page`);
+  await expectArabicAlert(page, messages.app.notFoundPage);
+  await expect(page.getByRole("alert")).toHaveCount(1);
+  await page.getByRole("button", { name: messages.app.logout }).click();
+  await expect(page.getByRole("heading", { name: messages.app.loginTitle })).toBeVisible();
 
+  // An unexpected 500 cannot be produced on demand by the real server, so this path stays mocked.
   await page.route("**/api/v1/bootstrap", async (route) => {
     await route.fulfill({
       status: 500,
@@ -203,33 +203,18 @@ test("validation, not-found, server-stopped, and internal failures stay Arabic",
     });
   });
   await page.reload();
-  expect(await visibleAlert()).toContain("حدث خطأ داخلي.");
+  await expectArabicAlert(page, messages.errors.INTERNAL_ERROR);
   await page.unroute("**/api/v1/bootstrap");
 
-  await page.route("**/api/v1/bootstrap", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        setupRequired: true,
-        authenticated: false,
-        username: null,
-        recoveryCodeAcknowledgementRequired: false,
-        launchToken: "server-stopped-test-token",
-        inactivityTimeoutMinutes: 30,
-      }),
-    });
-  });
+  // Stopped server: load the real login screen, stop the API process, then submit.
   await page.goto(baseUrl);
-  await expect(page.getByRole("heading", { name: "إعداد حساب المالك" })).toBeVisible();
-  await page.unroute("**/api/v1/bootstrap");
+  await expect(page.getByRole("heading", { name: messages.app.loginTitle })).toBeVisible();
   apiProcess.kill();
   await once(apiProcess, "exit");
-  await page.getByLabel("اسم المستخدم").fill("owner");
-  await page.getByLabel("كلمة المرور", { exact: true }).fill("A-Strong-Passphrase-401");
-  await page.getByLabel("تأكيد كلمة المرور").fill("A-Strong-Passphrase-401");
-  await page.getByRole("button", { name: "إنشاء الحساب" }).click();
-  expect(await visibleAlert()).toContain("تعذر الاتصال بالتطبيق المحلي.");
+  await page.getByLabel(messages.app.username).fill("owner");
+  await page.getByLabel(messages.app.password, { exact: true }).fill(recoveredPassword);
+  await page.getByRole("button", { name: messages.app.loginAction }).click();
+  await expectArabicAlert(page, messages.errors.NETWORK_ERROR);
 
   await context.close();
 });

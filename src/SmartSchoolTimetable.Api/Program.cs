@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text;
 using FluentValidation;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
@@ -24,6 +25,9 @@ var databasePath = builder.Configuration["Database:Path"] ??
 
 if (resetRequested)
 {
+    // The reset prompts are Arabic; make the console exchange UTF-8 text on Windows.
+    Console.OutputEncoding = Encoding.UTF8;
+    Console.InputEncoding = Encoding.UTF8;
     LocalDatabaseReset.DeleteAfterConfirmation(databasePath, Console.In, Console.Out);
     return;
 }
@@ -74,7 +78,7 @@ app.MapFallback(async (HttpContext context) =>
                 endpoint.Metadata.GetMetadata<IHttpMethodMetadata>() is not null);
         if (methodEndpoint is null)
         {
-            context.Items[UnifiedApiErrorMiddleware.ErrorCodeItem] = "NOT_FOUND";
+            context.Items[UnifiedApiErrorMiddleware.ErrorCodeItem] = ErrorCodes.NotFound;
             context.Response.StatusCode = StatusCodes.Status404NotFound;
             return;
         }
@@ -82,12 +86,12 @@ app.MapFallback(async (HttpContext context) =>
         var supportedMethods = methodEndpoint.Metadata.GetMetadata<IHttpMethodMetadata>()!.HttpMethods;
         if (supportedMethods.Contains(context.Request.Method, StringComparer.OrdinalIgnoreCase))
         {
-            context.Items[UnifiedApiErrorMiddleware.ErrorCodeItem] = "UNSUPPORTED_MEDIA_TYPE";
+            context.Items[UnifiedApiErrorMiddleware.ErrorCodeItem] = ErrorCodes.UnsupportedMediaType;
             context.Response.StatusCode = StatusCodes.Status415UnsupportedMediaType;
             return;
         }
 
-        context.Items[UnifiedApiErrorMiddleware.ErrorCodeItem] = "METHOD_NOT_ALLOWED";
+        context.Items[UnifiedApiErrorMiddleware.ErrorCodeItem] = ErrorCodes.MethodNotAllowed;
         context.Response.StatusCode = StatusCodes.Status405MethodNotAllowed;
         context.Response.Headers.Allow = string.Join(", ", supportedMethods);
         return;

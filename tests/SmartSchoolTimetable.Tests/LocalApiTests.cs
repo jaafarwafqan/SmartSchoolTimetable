@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Data.Sqlite;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -29,6 +30,7 @@ public sealed class LocalApiTests
 {
     private static readonly Uri LocalOrigin = new("http://127.0.0.1:5080");
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly DateTimeOffset TestClockStart = new(2026, 10, 3, 10, 0, 0, TimeSpan.Zero);
 
     [Fact]
     public async Task SetupCreatesSingleOwnerWithOneTimeCodeHashedCredentialsWalAndAudit()
@@ -125,7 +127,7 @@ public sealed class LocalApiTests
     [Fact]
     public async Task EfCommandLoggingIsWarningByDefaultAndSensitiveDataLoggingIsDisabled()
     {
-        var repositoryRoot = FindRepositoryRoot();
+        var repositoryRoot = TestPaths.FindRepositoryRoot();
         using var defaultSettings = JsonDocument.Parse(File.ReadAllText(
             Path.Combine(repositoryRoot, "src", "SmartSchoolTimetable.Api", "appsettings.json")));
         using var developmentSettings = JsonDocument.Parse(File.ReadAllText(
@@ -150,7 +152,7 @@ public sealed class LocalApiTests
     public void EveryApiErrorCodeHasAnArabicDictionaryEntry()
     {
         var dictionary = File.ReadAllText(Path.Combine(
-            FindRepositoryRoot(),
+            TestPaths.FindRepositoryRoot(),
             "frontend",
             "src",
             "i18n",
@@ -181,7 +183,7 @@ public sealed class LocalApiTests
         Assert.Null(options.InactivityTimeout);
         Assert.Null(options.InactivityTimeoutMinutes);
 
-        var clock = new TestTimeProvider(DateTimeOffset.Parse("2026-10-03T10:00:00Z"));
+        var clock = new TestTimeProvider(TestClockStart);
         var store = new LocalSessionStore(clock);
         var sessionId = store.Issue("owner");
         clock.Advance(TimeSpan.FromDays(365));
@@ -270,7 +272,7 @@ public sealed class LocalApiTests
     public void LoginPasswordVisibilityToggleHasAccessibleLabelAndPressedState()
     {
         var passwordField = File.ReadAllText(Path.Combine(
-            FindRepositoryRoot(),
+            TestPaths.FindRepositoryRoot(),
             "frontend",
             "src",
             "components",
@@ -590,7 +592,7 @@ public sealed class LocalApiTests
     [Fact]
     public async Task LiveKestrelStartupBindsOnlyToLoopback()
     {
-        var repositoryRoot = FindRepositoryRoot();
+        var repositoryRoot = TestPaths.FindRepositoryRoot();
         var buildConfiguration =
 #if DEBUG
             "Debug";
@@ -674,6 +676,113 @@ public sealed class LocalApiTests
     }
 
     [Fact]
+    public async Task ChangePasswordWithBogusOrExpiredSessionCookieReturns401Unauthenticated()
+    {
+        await using var host = new TestHost();
+        var (token, _) = await SetupOwnerAsync(host);
+        var changePasswordBody = new
+        {
+            currentPassword = "A-Strong-Passphrase-401",
+            newPassword = "A-Changed-Strong-Passphrase-805"
+        };
+
+        using var bogusClient = host.CreateClientWithoutCookies();
+        using var bogusRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/change-password")
+        {
+            Content = JsonContent.Create(changePasswordBody)
+        };
+        bogusRequest.Headers.TryAddWithoutValidation("Origin", LocalOrigin.ToString().TrimEnd('/'));
+        bogusRequest.Headers.TryAddWithoutValidation("X-Local-Launch-Token", token);
+        bogusRequest.Headers.TryAddWithoutValidation("Cookie", $"{AuthEndpoints.SessionCookieName}=not-a-real-session");
+        var bogus = await bogusClient.SendAsync(bogusRequest);
+        Assert.Equal(HttpStatusCode.Unauthorized, bogus.StatusCode);
+        await AssertApiErrorAsync(bogus, "UNAUTHENTICATED");
+
+        // The setup session is valid; advance past the 5-minute test inactivity timeout to expire it.
+        host.Clock.Advance(TimeSpan.FromMinutes(6));
+        var expired = await host.PostAsync("/api/v1/auth/change-password", changePasswordBody, token);
+        Assert.Equal(HttpStatusCode.Unauthorized, expired.StatusCode);
+        await AssertApiErrorAsync(expired, "UNAUTHENTICATED");
+
+        // The password was not changed by either rejected request.
+        var login = await host.PostAsync(
+            "/api/v1/auth/login",
+            new { username = "owner", password = "A-Strong-Passphrase-401" },
+            token);
+        Assert.Equal(HttpStatusCode.NoContent, login.StatusCode);
+    }
+
+    [Fact]
+    public async Task PasswordMinimumIsEightCharacters()
+    {
+        Assert.Equal(8, CredentialRules.PasswordMinLength);
+        await using var host = new TestHost();
+        var bootstrap = await host.GetBootstrapAsync();
+
+        var tooShort = await host.PostAsync(
+            "/api/v1/auth/setup",
+            new { username = "owner", password = "Seven-7", confirmPassword = "Seven-7" },
+            bootstrap.LaunchToken);
+        Assert.Equal((HttpStatusCode)422, tooShort.StatusCode);
+        var error = await AssertApiErrorAsync(tooShort, "VALIDATION_FAILED");
+        Assert.Contains(error.Errors, issue => issue.Field == "Password" && issue.Code == "PASSWORD_TOO_SHORT");
+
+        var eight = await host.PostAsync(
+            "/api/v1/auth/setup",
+            new { username = "owner", password = "Eight-88", confirmPassword = "Eight-88" },
+            bootstrap.LaunchToken);
+        Assert.Equal(HttpStatusCode.Created, eight.StatusCode);
+
+        var changeToSeven = await host.PostAsync(
+            "/api/v1/auth/change-password",
+            new { currentPassword = "Eight-88", newPassword = "Seven-7" },
+            bootstrap.LaunchToken);
+        Assert.Equal((HttpStatusCode)422, changeToSeven.StatusCode);
+
+        var loginWithEight = await host.PostAsync(
+            "/api/v1/auth/login",
+            new { username = "owner", password = "Eight-88" },
+            bootstrap.LaunchToken);
+        Assert.Equal(HttpStatusCode.NoContent, loginWithEight.StatusCode);
+    }
+
+    [Fact]
+    public async Task EveryEfCoreConnectionAppliesSynchronousFull()
+    {
+        await using var host = new TestHost();
+        var options = host.Services.GetRequiredService<DbContextOptions<LocalDbContext>>();
+        var coreOptions = Assert.Single(options.Extensions.OfType<CoreOptionsExtension>());
+        Assert.Contains(SqlitePragmaInterceptor.Instance, coreOptions.Interceptors ?? []);
+
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<LocalDbContext>();
+            await db.Database.OpenConnectionAsync();
+            await using var command = db.Database.GetDbConnection().CreateCommand();
+            command.CommandText = "PRAGMA synchronous;";
+            Assert.Equal(2L, Assert.IsType<long>(await command.ExecuteScalarAsync()));
+        }
+
+        // Prove the interceptor itself changes the setting, independent of SQLite's compiled default.
+        await using var connection = new SqliteConnection($"Data Source={host.DatabasePath};Pooling=False");
+        await connection.OpenAsync();
+        await using (var off = connection.CreateCommand())
+        {
+            off.CommandText = "PRAGMA synchronous=OFF;";
+            await off.ExecuteNonQueryAsync();
+        }
+        await using (var offCheck = connection.CreateCommand())
+        {
+            offCheck.CommandText = "PRAGMA synchronous;";
+            Assert.Equal(0L, Assert.IsType<long>(await offCheck.ExecuteScalarAsync()));
+        }
+        await SqlitePragmaInterceptor.ApplyAsync(connection, CancellationToken.None);
+        await using var check = connection.CreateCommand();
+        check.CommandText = "PRAGMA synchronous;";
+        Assert.Equal(2L, Assert.IsType<long>(await check.ExecuteScalarAsync()));
+    }
+
+    [Fact]
     public void ArchitectureDependenciesFlowInward()
     {
         var domainReferences = ReferencedAssemblyNames(typeof(SmartSchoolTimetable.Domain.OwnerAccount).Assembly);
@@ -709,7 +818,9 @@ public sealed class LocalApiTests
                 new StringReader("reset"),
                 declinedOutput));
             Assert.All(sidecarPaths, path => Assert.True(File.Exists(path)));
-            Assert.Contains("Reset cancelled", declinedOutput.ToString());
+            Assert.Contains(LocalDatabaseReset.CancelledMessage, declinedOutput.ToString());
+            Assert.Matches(@"\p{IsArabic}", declinedOutput.ToString());
+            Assert.DoesNotMatch("Reset cancelled|permanently deletes|to confirm", declinedOutput.ToString());
 
             using var confirmedOutput = new StringWriter();
             Assert.True(LocalDatabaseReset.DeleteAfterConfirmation(
@@ -717,6 +828,12 @@ public sealed class LocalApiTests
                 new StringReader("RESET"),
                 confirmedOutput));
             Assert.All(sidecarPaths, path => Assert.False(File.Exists(path)));
+            Assert.Contains(LocalDatabaseReset.CompletedMessage, confirmedOutput.ToString());
+            Assert.Contains(LocalDatabaseReset.WarningMessage, confirmedOutput.ToString());
+            Assert.All(
+                [LocalDatabaseReset.WarningMessage, LocalDatabaseReset.ConfirmationPrompt,
+                 LocalDatabaseReset.CancelledMessage, LocalDatabaseReset.CompletedMessage],
+                message => Assert.Matches(@"\p{IsArabic}", message));
         }
         finally
         {
@@ -743,7 +860,7 @@ public sealed class LocalApiTests
     [Fact]
     public void LocalSessionStoreExpiresOnInactivityAndCanBeRevoked()
     {
-        var clock = new TestTimeProvider(DateTimeOffset.Parse("2026-10-03T10:00:00Z"));
+        var clock = new TestTimeProvider(TestClockStart);
         var store = new LocalSessionStore(clock);
         var sessionId = store.Issue("owner");
         Assert.True(store.TryValidateAndTouch(sessionId, TimeSpan.FromMinutes(5), out var username));
@@ -828,6 +945,14 @@ public sealed class LocalApiTests
         }
 
         public HttpClient Client { get; }
+
+        public HttpClient CreateClientWithoutCookies() =>
+            _factory.CreateClient(new WebApplicationFactoryClientOptions
+            {
+                BaseAddress = LocalOrigin,
+                HandleCookies = false
+            });
+
         public string DatabasePath => Path.Combine(_directory, "test.db");
         public TestTimeProvider Clock => _factory.Services.GetRequiredService<TestTimeProvider>();
         public RecordingLoginDelay LoginDelay => _factory.Services.GetRequiredService<RecordingLoginDelay>();
@@ -884,7 +1009,7 @@ public sealed class LocalApiTests
             builder.ConfigureTestServices(services =>
             {
                 services.RemoveAll<TimeProvider>();
-                var clock = new TestTimeProvider(DateTimeOffset.Parse("2026-10-03T10:00:00Z"));
+                var clock = new TestTimeProvider(TestClockStart);
                 services.AddSingleton(clock);
                 services.AddSingleton<TimeProvider>(clock);
 
@@ -952,14 +1077,6 @@ public sealed class LocalApiTests
 
     private static HashSet<string> ReferencedAssemblyNames(System.Reflection.Assembly assembly) =>
         assembly.GetReferencedAssemblies().Select(name => name.Name!).ToHashSet(StringComparer.Ordinal);
-
-    private static string FindRepositoryRoot()
-    {
-        for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
-            if (File.Exists(Path.Combine(directory.FullName, "SmartSchoolTimetable.sln")))
-                return directory.FullName;
-        throw new DirectoryNotFoundException("Could not locate SmartSchoolTimetable.sln from the test output directory.");
-    }
 
     private static string FindDotnetHost()
     {

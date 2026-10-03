@@ -1,12 +1,11 @@
 using FluentValidation;
-using FluentValidation.Results;
 using SmartSchoolTimetable.Application;
 
 namespace SmartSchoolTimetable.Api;
 
 public static class AuthEndpoints
 {
-    public const string SessionCookieName = "smartschool.local-session";
+    public const string SessionCookieName = SessionCookie.Name;
 
     public static IEndpointRouteBuilder MapLocalAuthEndpoints(this IEndpointRouteBuilder endpoints)
     {
@@ -30,11 +29,10 @@ public static class AuthEndpoints
         LocalApplicationOptions options,
         CancellationToken cancellationToken)
     {
-        var status = await authService.GetStatusAsync(
-            context.Request.Cookies[SessionCookieName],
-            cancellationToken);
-        if (status.Authenticated)
-            AppendSessionCookie(context, context.Request.Cookies[SessionCookieName]!, options);
+        var sessionId = SessionCookie.Read(context);
+        var status = await authService.GetStatusAsync(sessionId, cancellationToken);
+        if (status.Authenticated && sessionId is not null)
+            SessionCookie.Append(context, sessionId, options.InactivityTimeout);
         return Results.Ok(new BootstrapResponse(
             status.SetupRequired,
             status.Authenticated,
@@ -52,21 +50,15 @@ public static class AuthEndpoints
         LocalApplicationOptions options,
         CancellationToken cancellationToken)
     {
-        var validation = await ValidateAsync(request, validator, context, cancellationToken);
-        if (validation is not null)
-            return validation;
+        if (await ValidateAsync(request, validator, context, cancellationToken) is { } invalid)
+            return invalid;
 
         var result = await authService.SetupAsync(request.Username!, request.Password!, cancellationToken);
-        if (!result.Succeeded)
-            return Failure(
-                context,
-                result.ErrorCode == "SETUP_ALREADY_COMPLETE" ? StatusCodes.Status409Conflict : StatusCodes.Status400BadRequest,
-                result.ErrorCode ?? "INVALID_SETUP");
+        if (!result.Succeeded || result.SessionId is null || result.RecoveryCode is null)
+            return Failure(context, result);
 
-        AppendSessionCookie(context, result.SessionId!, options);
-        return Results.Created(
-            "/api/v1/bootstrap",
-            new SetupResponse(result.RecoveryCode!));
+        SessionCookie.Append(context, result.SessionId, options.InactivityTimeout);
+        return Results.Created("/api/v1/bootstrap", new SetupResponse(result.RecoveryCode));
     }
 
     private static async Task<IResult> Login(
@@ -77,15 +69,14 @@ public static class AuthEndpoints
         LocalApplicationOptions options,
         CancellationToken cancellationToken)
     {
-        var validation = await ValidateAsync(request, validator, context, cancellationToken);
-        if (validation is not null)
-            return validation;
+        if (await ValidateAsync(request, validator, context, cancellationToken) is { } invalid)
+            return invalid;
 
         var result = await authService.LoginAsync(request.Username!, request.Password!, cancellationToken);
-        if (!result.Succeeded)
-            return Failure(context, StatusCodes.Status401Unauthorized, result.ErrorCode ?? "INVALID_CREDENTIALS");
+        if (!result.Succeeded || result.SessionId is null)
+            return Failure(context, result);
 
-        AppendSessionCookie(context, result.SessionId!, options);
+        SessionCookie.Append(context, result.SessionId, options.InactivityTimeout);
         return Results.NoContent();
     }
 
@@ -97,19 +88,15 @@ public static class AuthEndpoints
         LocalApplicationOptions options,
         CancellationToken cancellationToken)
     {
-        var validation = await ValidateAsync(request, validator, context, cancellationToken);
-        if (validation is not null)
-            return validation;
+        if (await ValidateAsync(request, validator, context, cancellationToken) is { } invalid)
+            return invalid;
 
         var result = await authService.RecoverAsync(request.RecoveryCode!, request.NewPassword!, cancellationToken);
-        if (!result.Succeeded)
-            return Failure(
-                context,
-                result.ErrorCode == "INVALID_PASSWORD" ? StatusCodes.Status422UnprocessableEntity : StatusCodes.Status401Unauthorized,
-                result.ErrorCode ?? "INVALID_RECOVERY_CODE");
+        if (!result.Succeeded || result.SessionId is null || result.RecoveryCode is null)
+            return Failure(context, result);
 
-        AppendSessionCookie(context, result.SessionId!, options);
-        return Results.Ok(new RecoveryResponse(result.RecoveryCode!));
+        SessionCookie.Append(context, result.SessionId, options.InactivityTimeout);
+        return Results.Ok(new RecoveryResponse(result.RecoveryCode));
     }
 
     private static async Task<IResult> RegenerateRecoveryCode(
@@ -119,26 +106,19 @@ public static class AuthEndpoints
         ILocalAuthService authService,
         CancellationToken cancellationToken)
     {
-        var sessionId = context.Request.Cookies[SessionCookieName];
-        if (sessionId is null)
-            return Failure(context, StatusCodes.Status401Unauthorized, "UNAUTHENTICATED");
-
-        var validation = await ValidateAsync(request, validator, context, cancellationToken);
-        if (validation is not null)
-            return validation;
+        if (SessionCookie.Read(context) is not { } sessionId)
+            return Failure(context, ErrorCodes.Unauthenticated);
+        if (await ValidateAsync(request, validator, context, cancellationToken) is { } invalid)
+            return invalid;
 
         var result = await authService.RegenerateRecoveryCodeAsync(
             sessionId,
             request.CurrentPassword!,
             cancellationToken);
-        if (!result.Succeeded)
-            return Failure(
-                context,
-                result.ErrorCode == "CURRENT_PASSWORD_INCORRECT" ? StatusCodes.Status401Unauthorized : StatusCodes.Status403Forbidden,
-                result.ErrorCode ?? "RECOVERY_CODE_REGENERATION_FAILED");
+        if (!result.Succeeded || result.RecoveryCode is null)
+            return Failure(context, result);
 
-        context.Items["RecoveryCodeRegeneration"] = true;
-        return Results.Ok(new RecoveryResponse(result.RecoveryCode!));
+        return Results.Ok(new RecoveryResponse(result.RecoveryCode));
     }
 
     private static async Task<IResult> AcknowledgeRecoveryCode(
@@ -146,24 +126,17 @@ public static class AuthEndpoints
         ILocalAuthService authService,
         CancellationToken cancellationToken)
     {
-        var sessionId = context.Request.Cookies[SessionCookieName];
-        if (sessionId is null)
-            return Failure(context, StatusCodes.Status401Unauthorized, "UNAUTHENTICATED");
+        if (SessionCookie.Read(context) is not { } sessionId)
+            return Failure(context, ErrorCodes.Unauthenticated);
 
         var result = await authService.AcknowledgeRecoveryCodeAsync(sessionId, cancellationToken);
-        if (!result.Succeeded)
-            return Failure(
-                context,
-                result.ErrorCode == "RECOVERY_MISSING" ? StatusCodes.Status409Conflict : StatusCodes.Status401Unauthorized,
-                result.ErrorCode ?? "UNAUTHENTICATED");
-        context.Items["RecoveryCodeAcknowledged"] = true;
-        return Results.NoContent();
+        return result.Succeeded ? Results.NoContent() : Failure(context, result);
     }
 
     private static IResult Logout(HttpContext context, ILocalAuthService authService)
     {
-        authService.Logout(context.Request.Cookies[SessionCookieName]);
-        DeleteSessionCookie(context);
+        authService.Logout(SessionCookie.Read(context));
+        SessionCookie.Delete(context);
         return Results.NoContent();
     }
 
@@ -174,13 +147,10 @@ public static class AuthEndpoints
         ILocalAuthService authService,
         CancellationToken cancellationToken)
     {
-        var sessionId = context.Request.Cookies[SessionCookieName];
-        if (sessionId is null)
-            return Failure(context, StatusCodes.Status401Unauthorized, "UNAUTHENTICATED");
-
-        var validation = await ValidateAsync(request, validator, context, cancellationToken);
-        if (validation is not null)
-            return validation;
+        if (SessionCookie.Read(context) is not { } sessionId)
+            return Failure(context, ErrorCodes.Unauthenticated);
+        if (await ValidateAsync(request, validator, context, cancellationToken) is { } invalid)
+            return invalid;
 
         var result = await authService.ChangePasswordAsync(
             sessionId,
@@ -188,12 +158,9 @@ public static class AuthEndpoints
             request.NewPassword!,
             cancellationToken);
         if (!result.Succeeded)
-            return Failure(
-                context,
-                result.ErrorCode == "CURRENT_PASSWORD_INCORRECT" ? StatusCodes.Status401Unauthorized : StatusCodes.Status422UnprocessableEntity,
-                result.ErrorCode ?? "PASSWORD_CHANGE_FAILED");
+            return Failure(context, result);
 
-        DeleteSessionCookie(context);
+        SessionCookie.Delete(context);
         return Results.NoContent();
     }
 
@@ -203,13 +170,12 @@ public static class AuthEndpoints
         LocalApplicationOptions options,
         CancellationToken cancellationToken)
     {
-        var status = await authService.GetStatusAsync(
-            context.Request.Cookies[SessionCookieName],
-            cancellationToken);
-        if (!status.Authenticated)
-            return Failure(context, StatusCodes.Status401Unauthorized, "UNAUTHENTICATED");
+        var sessionId = SessionCookie.Read(context);
+        var status = await authService.GetStatusAsync(sessionId, cancellationToken);
+        if (!status.Authenticated || sessionId is null)
+            return Failure(context, ErrorCodes.Unauthenticated);
 
-        AppendSessionCookie(context, context.Request.Cookies[SessionCookieName]!, options);
+        SessionCookie.Append(context, sessionId, options.InactivityTimeout);
         return Results.Ok(new PrivateStatusResponse("authenticated"));
     }
 
@@ -226,116 +192,15 @@ public static class AuthEndpoints
         context.Items[UnifiedApiErrorMiddleware.ValidationErrorsItem] = result.Errors
             .Select(error => new ValidationIssue(error.PropertyName, error.ErrorCode))
             .ToArray();
-        return Failure(context, StatusCodes.Status422UnprocessableEntity, "VALIDATION_FAILED");
+        return Failure(context, ErrorCodes.ValidationFailed);
     }
 
-    private static IResult Failure(HttpContext context, int statusCode, string code)
+    private static IResult Failure(HttpContext context, AuthOperationResult result) =>
+        Failure(context, result.ErrorCode ?? ErrorCodes.InternalError);
+
+    private static IResult Failure(HttpContext context, string code)
     {
         context.Items[UnifiedApiErrorMiddleware.ErrorCodeItem] = code;
-        return Results.StatusCode(statusCode);
-    }
-
-    private static void AppendSessionCookie(
-        HttpContext context,
-        string sessionId,
-        LocalApplicationOptions options)
-    {
-        var cookie = new CookieOptions
-        {
-            HttpOnly = true,
-            SameSite = SameSiteMode.Strict,
-            Secure = context.Request.IsHttps,
-            IsEssential = true,
-            Path = "/"
-        };
-        if (options.InactivityTimeout is { } timeout)
-            cookie.MaxAge = timeout;
-        context.Response.Cookies.Append(SessionCookieName, sessionId, cookie);
-    }
-
-    private static void DeleteSessionCookie(HttpContext context) =>
-        context.Response.Cookies.Delete(SessionCookieName, new CookieOptions
-        {
-            HttpOnly = true,
-            SameSite = SameSiteMode.Strict,
-            Secure = context.Request.IsHttps,
-            Path = "/"
-        });
-}
-
-public sealed record BootstrapResponse(
-    bool SetupRequired,
-    bool Authenticated,
-    string? Username,
-    bool RecoveryCodeAcknowledgementRequired,
-    string LaunchToken,
-    int? InactivityTimeoutMinutes);
-
-public sealed record SetupRequest(string? Username, string? Password, string? ConfirmPassword);
-public sealed record SetupResponse(string RecoveryCode);
-public sealed record LoginRequest(string? Username, string? Password);
-public sealed record RecoveryRequest(string? RecoveryCode, string? NewPassword);
-public sealed record RecoveryCodeRequest(string? CurrentPassword);
-public sealed record RecoveryResponse(string RecoveryCode);
-public sealed record ChangePasswordRequest(string? CurrentPassword, string? NewPassword);
-public sealed record PrivateStatusResponse(string Status);
-public sealed record ValidationIssue(string Field, string Code);
-public sealed record ApiErrorResponse(string Code, string CorrelationId, IReadOnlyList<ValidationIssue> Errors);
-
-public sealed class SetupRequestValidator : AbstractValidator<SetupRequest>
-{
-    public SetupRequestValidator()
-    {
-        RuleFor(request => request.Username)
-            .NotEmpty().WithErrorCode("REQUIRED").WithMessage("REQUIRED")
-            .MinimumLength(3).WithErrorCode("USERNAME_TOO_SHORT").WithMessage("USERNAME_TOO_SHORT")
-            .MaximumLength(64).WithErrorCode("USERNAME_TOO_LONG").WithMessage("USERNAME_TOO_LONG");
-        RuleFor(request => request.Password)
-            .NotEmpty().WithErrorCode("REQUIRED").WithMessage("REQUIRED")
-            .MinimumLength(12).WithErrorCode("PASSWORD_TOO_SHORT").WithMessage("PASSWORD_TOO_SHORT")
-            .MaximumLength(1024).WithErrorCode("PASSWORD_TOO_LONG").WithMessage("PASSWORD_TOO_LONG");
-        RuleFor(request => request.ConfirmPassword)
-            .Equal(request => request.Password).WithErrorCode("PASSWORD_MISMATCH").WithMessage("PASSWORD_MISMATCH");
-    }
-}
-
-public sealed class LoginRequestValidator : AbstractValidator<LoginRequest>
-{
-    public LoginRequestValidator()
-    {
-        RuleFor(request => request.Username).NotEmpty().WithErrorCode("REQUIRED").WithMessage("REQUIRED");
-        RuleFor(request => request.Password).NotEmpty().WithErrorCode("REQUIRED").WithMessage("REQUIRED");
-    }
-}
-
-public sealed class RecoveryRequestValidator : AbstractValidator<RecoveryRequest>
-{
-    public RecoveryRequestValidator()
-    {
-        RuleFor(request => request.RecoveryCode).NotEmpty().WithErrorCode("REQUIRED").WithMessage("REQUIRED");
-        RuleFor(request => request.NewPassword)
-            .NotEmpty().WithErrorCode("REQUIRED").WithMessage("REQUIRED")
-            .MinimumLength(12).WithErrorCode("PASSWORD_TOO_SHORT").WithMessage("PASSWORD_TOO_SHORT")
-            .MaximumLength(1024).WithErrorCode("PASSWORD_TOO_LONG").WithMessage("PASSWORD_TOO_LONG");
-    }
-}
-
-public sealed class RecoveryCodeRequestValidator : AbstractValidator<RecoveryCodeRequest>
-{
-    public RecoveryCodeRequestValidator()
-    {
-        RuleFor(request => request.CurrentPassword).NotEmpty().WithErrorCode("REQUIRED").WithMessage("REQUIRED");
-    }
-}
-
-public sealed class ChangePasswordRequestValidator : AbstractValidator<ChangePasswordRequest>
-{
-    public ChangePasswordRequestValidator()
-    {
-        RuleFor(request => request.CurrentPassword).NotEmpty().WithErrorCode("REQUIRED").WithMessage("REQUIRED");
-        RuleFor(request => request.NewPassword)
-            .NotEmpty().WithErrorCode("REQUIRED").WithMessage("REQUIRED")
-            .MinimumLength(12).WithErrorCode("PASSWORD_TOO_SHORT").WithMessage("PASSWORD_TOO_SHORT")
-            .MaximumLength(1024).WithErrorCode("PASSWORD_TOO_LONG").WithMessage("PASSWORD_TOO_LONG");
+        return Results.StatusCode(ApiErrorCodes.StatusFor(code) ?? StatusCodes.Status500InternalServerError);
     }
 }

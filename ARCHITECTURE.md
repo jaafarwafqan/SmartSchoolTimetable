@@ -5,9 +5,10 @@ This is a single-user, local school timetable application. One installation stor
 
 ## Layering
 - Domain: entities, value objects, invariants, and domain events; no infrastructure dependencies.
-- Application: use cases, validation, interfaces, and DTOs.
-- Infrastructure: EF Core with local SQLite in WAL mode, local file storage, local audit history, and the Google.OrTools adapter.
-- Api: composition root and thin local endpoints. Endpoints dispatch through IMediator.
+- Application: use-case services (for example `LocalAuthService`), interfaces, the `ErrorCodes` registry, credential rules, and DTOs.
+- Infrastructure: EF Core with local SQLite in WAL mode (per-connection `synchronous=FULL` via an EF connection interceptor), local audit history, and later the Google.OrTools adapter (Phase 4) and local file storage.
+- Api: composition root and thin local endpoints. Endpoints bind and validate the request (FluentValidation), call one Application service method directly, and map failures through the central error-code table. MediatR/CQRS is not used (see [ADR 0013](./adr/0013-phase-1-scope-trimming.md)).
+- Enforcement: `tests/SmartSchoolTimetable.Tests/ArchitectureTests.cs` and `ArchitectureDependenciesFlowInward` fail the build's test run if Domain/Application reference outer layers, if the Api assembly references Domain or EF Core, if any Api type uses a `DbContext` or Domain entity, or if Google.OrTools appears in Domain/Application. All projects build with nullable enabled, `TreatWarningsAsErrors`, and `AnalysisLevel=latest-recommended` (`Directory.Build.props`, `.editorconfig`).
 
 ## Local process flow
 1. The local host performs first-run owner setup when no account exists; otherwise it shows the login screen before loading application routes.

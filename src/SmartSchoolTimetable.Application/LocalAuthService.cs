@@ -14,6 +14,7 @@ public sealed class LocalAuthService(
     SemaphoreSlim operationGate) : ILocalAuthService
 {
     public const int RecoveryCodeEntropyBits = 128;
+    public static readonly TimeSpan FailedLoginDelay = TimeSpan.FromSeconds(1);
 
     public async Task<LocalAuthStatus> GetStatusAsync(string? sessionId, CancellationToken cancellationToken)
     {
@@ -43,7 +44,7 @@ public sealed class LocalAuthService(
         try
         {
             if (await ownerRepository.GetOwnerAsync(cancellationToken) is not null)
-                return new AuthOperationResult(false, "SETUP_ALREADY_COMPLETE");
+                return new AuthOperationResult(false, ErrorCodes.SetupAlreadyComplete);
 
             var now = timeProvider.GetUtcNow();
             var (passwordSalt, passwordHash) = credentialHasher.HashPassword(password);
@@ -77,34 +78,43 @@ public sealed class LocalAuthService(
         string password,
         CancellationToken cancellationToken)
     {
+        AuthOperationResult result;
         await operationGate.WaitAsync(cancellationToken);
         try
         {
-            var owner = await ownerRepository.GetOwnerAsync(cancellationToken);
-            if (owner is null)
-                return new AuthOperationResult(false, "SETUP_REQUIRED");
-
-            var normalizedUsername = NormalizeUsername(username);
-            var passwordValid = credentialHasher.VerifyPassword(
-                password,
-                owner.PasswordSalt,
-                owner.PasswordHash,
-                owner.PasswordIterations);
-            var usernameValid = FixedTimeEquals(normalizedUsername, owner.NormalizedUsername);
-
-            if (!passwordValid || !usernameValid)
-            {
-                await loginDelay.WaitAsync(TimeSpan.FromSeconds(1), cancellationToken);
-                return new AuthOperationResult(false, "INVALID_CREDENTIALS");
-            }
-
-            var sessionId = sessionStore.Issue(owner.Username);
-            return new AuthOperationResult(true, SessionId: sessionId);
+            result = await VerifyLoginAsync(username, password, cancellationToken);
         }
         finally
         {
             operationGate.Release();
         }
+
+        // The fixed delay runs after the gate is released so a failed attempt never blocks other operations.
+        if (result.ErrorCode == ErrorCodes.InvalidCredentials)
+            await loginDelay.WaitAsync(FailedLoginDelay, cancellationToken);
+        return result;
+    }
+
+    private async Task<AuthOperationResult> VerifyLoginAsync(
+        string username,
+        string password,
+        CancellationToken cancellationToken)
+    {
+        var owner = await ownerRepository.GetOwnerAsync(cancellationToken);
+        if (owner is null)
+            return new AuthOperationResult(false, ErrorCodes.SetupRequired);
+
+        var normalizedUsername = NormalizeUsername(username);
+        var passwordValid = credentialHasher.VerifyPassword(
+            password,
+            owner.PasswordSalt,
+            owner.PasswordHash,
+            owner.PasswordIterations);
+        var usernameValid = FixedTimeEquals(normalizedUsername, owner.NormalizedUsername);
+        if (!passwordValid || !usernameValid)
+            return new AuthOperationResult(false, ErrorCodes.InvalidCredentials);
+
+        return new AuthOperationResult(true, SessionId: sessionStore.Issue(owner.Username));
     }
 
     public async Task<AuthOperationResult> RegenerateRecoveryCodeAsync(
@@ -113,20 +123,20 @@ public sealed class LocalAuthService(
         CancellationToken cancellationToken)
     {
         if (!sessionStore.TryValidateAndTouch(sessionId, inactivityTimeout, out _))
-            return new AuthOperationResult(false, "UNAUTHENTICATED");
+            return new AuthOperationResult(false, ErrorCodes.Unauthenticated);
 
         await operationGate.WaitAsync(cancellationToken);
         try
         {
             var owner = await ownerRepository.GetOwnerAsync(cancellationToken);
             if (owner is null)
-                return new AuthOperationResult(false, "SETUP_REQUIRED");
+                return new AuthOperationResult(false, ErrorCodes.SetupRequired);
             if (!credentialHasher.VerifyPassword(
                     currentPassword,
                     owner.PasswordSalt,
                     owner.PasswordHash,
                     owner.PasswordIterations))
-                return new AuthOperationResult(false, "CURRENT_PASSWORD_INCORRECT");
+                return new AuthOperationResult(false, ErrorCodes.CurrentPasswordIncorrect);
 
             var recoveryCode = GenerateRecoveryCode();
             var (salt, hash) = credentialHasher.HashRecoveryCode(NormalizeRecoveryCode(recoveryCode));
@@ -150,16 +160,16 @@ public sealed class LocalAuthService(
         CancellationToken cancellationToken)
     {
         if (!sessionStore.TryValidateAndTouch(sessionId, inactivityTimeout, out _))
-            return new AuthOperationResult(false, "UNAUTHENTICATED");
+            return new AuthOperationResult(false, ErrorCodes.Unauthenticated);
         if (!sessionStore.HasRecoveryCodeIssued(sessionId))
-            return new AuthOperationResult(false, "RECOVERY_MISSING");
+            return new AuthOperationResult(false, ErrorCodes.RecoveryMissing);
 
         await operationGate.WaitAsync(cancellationToken);
         try
         {
             var owner = await ownerRepository.GetOwnerAsync(cancellationToken);
             if (owner is null)
-                return new AuthOperationResult(false, "SETUP_REQUIRED");
+                return new AuthOperationResult(false, ErrorCodes.SetupRequired);
 
             var now = timeProvider.GetUtcNow();
             owner.AcknowledgeRecoveryCode(now);
@@ -186,13 +196,13 @@ public sealed class LocalAuthService(
         {
             var owner = await ownerRepository.GetOwnerAsync(cancellationToken);
             if (owner is null)
-                return new AuthOperationResult(false, "SETUP_REQUIRED");
+                return new AuthOperationResult(false, ErrorCodes.SetupRequired);
 
             if (!credentialHasher.VerifyRecoveryCode(
                     NormalizeRecoveryCode(recoveryCode),
                     owner.RecoverySalt,
                     owner.RecoveryCodeHash))
-                return new AuthOperationResult(false, "INVALID_RECOVERY_CODE");
+                return new AuthOperationResult(false, ErrorCodes.InvalidRecoveryCode);
 
             var now = timeProvider.GetUtcNow();
             var (passwordSalt, passwordHash) = credentialHasher.HashPassword(newPassword);
@@ -228,21 +238,21 @@ public sealed class LocalAuthService(
             return new AuthOperationResult(false, validationError);
 
         if (!sessionStore.TryValidateAndTouch(sessionId, inactivityTimeout, out _))
-            return new AuthOperationResult(false, "unauthenticated");
+            return new AuthOperationResult(false, ErrorCodes.Unauthenticated);
 
         await operationGate.WaitAsync(cancellationToken);
         try
         {
             var owner = await ownerRepository.GetOwnerAsync(cancellationToken);
             if (owner is null)
-                return new AuthOperationResult(false, "SETUP_REQUIRED");
+                return new AuthOperationResult(false, ErrorCodes.SetupRequired);
 
             if (!credentialHasher.VerifyPassword(
                     currentPassword,
                     owner.PasswordSalt,
                     owner.PasswordHash,
                     owner.PasswordIterations))
-                return new AuthOperationResult(false, "CURRENT_PASSWORD_INCORRECT");
+                return new AuthOperationResult(false, ErrorCodes.CurrentPasswordIncorrect);
 
             var now = timeProvider.GetUtcNow();
             var (salt, hash) = credentialHasher.HashPassword(newPassword);
@@ -272,17 +282,11 @@ public sealed class LocalAuthService(
     private static string NormalizeRecoveryCode(string value) =>
         new(value.Where(char.IsAsciiLetterOrDigit).Select(char.ToUpperInvariant).ToArray());
 
-    private static string? ValidateCredentials(string username, string password)
-    {
-        if (username.Length is < 3 or > 64)
-            return "INVALID_USERNAME";
-        if (username.Any(char.IsControl))
-            return "INVALID_USERNAME";
-        return ValidatePassword(password);
-    }
+    private static string? ValidateCredentials(string normalizedUsername, string password) =>
+        CredentialRules.IsUsernameValid(normalizedUsername) ? ValidatePassword(password) : ErrorCodes.InvalidUsername;
 
     private static string? ValidatePassword(string password) =>
-        password.Length is < 12 or > 1024 ? "INVALID_PASSWORD" : null;
+        CredentialRules.IsPasswordLengthValid(password) ? null : ErrorCodes.InvalidPassword;
 
     private static string GenerateRecoveryCode()
     {

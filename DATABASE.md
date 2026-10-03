@@ -14,12 +14,14 @@ Domain and Application depend on repository/unit-of-work contracts, not SQLite c
 ## Owner account
 The local `Users` table stores the single owner account and is intentionally shaped as one account row per identity so additional users could be added later without replacing the identity table. The application enforces exactly one owner account at present; the schema does not include tenant, role, or permission columns.
 
-Account fields include:
-- stable account id and unique normalized username;
-- versioned password hash, random salt, and password-hash parameters;
-- one-time recovery-code hash, nullable after use or rotation;
-- failed-login count, last failure time, and temporary lockout-until value;
-- created/updated timestamps.
+Account fields (`Users` table, migrations in `src/SmartSchoolTimetable.Infrastructure/Migrations/`):
+- `Id` (INTEGER PK); `OwnerSlot` (always `owner`, unique index — enforces the single owner); `Username`; `NormalizedUsername` (unique index);
+- `PasswordSalt` (16 bytes), `PasswordHash` (32 bytes), `PasswordIterations` (600,000). The algorithm (PBKDF2-HMAC-SHA-256) is fixed in code; there is no algorithm/version column, so changing algorithms requires an ADR, a version column and a migration;
+- `RecoverySalt` (16 bytes) and `RecoveryCodeHash` (32-byte salted SHA-256), both NOT NULL; the hash is replaced (never nulled) on recovery or regeneration;
+- `RecoveryCodeAcknowledged` (bool);
+- `CreatedAt`, `UpdatedAt`.
+
+The failed-login/lockout columns from the initial migration were removed by `20261003160000_RemoveEscalatingLoginLockoutFields`. `AuditHistory` stores `Id`, `OccurredAt` (indexed), `EventType`, `Target`, `Summary`; current events are `OwnerAccountCreated`, `RecoveryCodeRegenerated`, and `PasswordChanged`.
 
 First-run setup is permitted only while the account table is empty. It atomically creates the owner and stores only the recovery-code hash. There is no refresh-token table.
 
@@ -29,8 +31,13 @@ First-run setup is permitted only while the account table is empty. It atomicall
 - Local audit history for version changes, publish, rollback, backup/restore, password changes, and imports
 - Any future application tables use local stable identifiers and explicit foreign keys; no `TenantId`
 
+## Connection settings
+- `Foreign Keys=True`, `Default Timeout=30`, `Pooling=False` in the connection string (`LocalInfrastructureRegistration`).
+- `PRAGMA journal_mode=WAL` is set once at startup and persists in the database file.
+- `PRAGMA synchronous=FULL` is connection-scoped, so `SqlitePragmaInterceptor` applies it every time EF Core opens a connection (tested by `EveryEfCoreConnectionAppliesSynchronousFull`).
+
 ## Integrity and concurrency
-- Foreign keys, unique constraints, check constraints, and optimistic version columns protect local data.
+- Current tables use primary keys and unique indexes only (no relations exist yet). Future application tables must add foreign keys, unique and check constraints, and optimistic version columns where they protect local data.
 - A local single-user process does not need cross-tenant isolation or distributed concurrency coordination.
 - UI and application services prevent conflicting local edits and concurrent generation jobs.
-- Backups/restores operate on the local database and files and must be validated before replacement.
+- Backups/restores operate on the local database and files and must be validated before replacement. Until the Phase 6 in-app backup exists, the README documents an interim stopped-app file copy.

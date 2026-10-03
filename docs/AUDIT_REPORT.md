@@ -560,6 +560,48 @@ Codes in the dictionary that the server never emits in the current code: `TOO_MA
 
 ## 11. Deviations, defects and unfinished items
 
+### 11.0 Phase 1.3 resolution status (updated 2026-10-03, tag `phase-1.3`)
+
+This subsection records what Phase 1.3 did about each finding below. The original findings in 11.1–11.5 are kept unchanged as the historical record, except for the correction noted in 11.2.
+
+Verification at `phase-1.3`:
+- `dotnet build SmartSchoolTimetable.sln -c Release`: 0 warnings, 0 errors, with `TreatWarningsAsErrors` and `AnalysisLevel=latest-recommended`.
+- `dotnet test SmartSchoolTimetable.sln -c Release --no-build`: **41/41**.
+- `npx tsc --noEmit` and `npx eslint .`: clean.
+- `npx vitest run`: **7/7**.
+- `npx playwright test`: **2/2**.
+- Coverage (coverlet line/branch): Domain 96.36%/100%, Application 94.70%/76.47%, Api 93.44%/82.53%, Infrastructure 88.72%/70.00%.
+
+| Finding | Status | Evidence |
+|---|---|---|
+| D1 — unmapped error code returned as HTTP 200 | **DONE** | `UnifiedApiErrorMiddleware.ResolveError` captures the status before `Response.Clear()`; unregistered codes keep the error status or become 500 `INTERNAL_ERROR`. `"unauthenticated"` replaced by `ErrorCodes.Unauthenticated`; dead fallbacks removed. Tests: `ChangePasswordWithBogusOrExpiredSessionCookieReturns401Unauthenticated`, `MiddlewareNeverSendsAnErrorWithASuccessStatus` (9 cases), `ResolveErrorNeverReturnsANonErrorStatusForAnyInput`, `BackendSourceEmitsErrorCodesOnlyThroughRegisteredConstants` (mutation-checked: re-inserting the lowercase literal makes it fail), `EveryErrorCodeConstantIsRegisteredMappedToAnErrorStatusAndTranslated`. Client: `api.ts` rejects 2xx bodies with `code` (`api.test.ts`). |
+| D2 — reload skipped the recovery-code gate | **DONE** | `features/auth/RecoveryPendingScreen.tsx` via `AppGate.tsx`. Playwright test 1 asserts that Home and `/settings` are unreachable after reload, a wrong current password is rejected in Arabic, and regeneration plus acknowledgement then enters the app. SECURITY.md, ADR 0009 (amended), DELIVERY_PLAN, TESTING.md and README updated. |
+| D3 — `synchronous=FULL` only on startup connection | **DONE** | `SqlitePragmaInterceptor` registered in `AddLocalInfrastructure`; test `EveryEfCoreConnectionAppliesSynchronousFull` (it also proves the interceptor flips OFF→FULL). |
+| D4 — failed-login delay inside global semaphore | **DONE** | `LocalAuthService.LoginAsync` awaits the delay after `Release()`; test `FailedLoginDelayRunsAfterTheOperationGateIsReleased`. |
+| D5 — `CLIPBOARD_FAILED` unused, `PASSWORD_CHANGE_FAILED` unregistered, dead `context.Items` writes | **DONE** | All removed (`messages.ts`, `AuthEndpoints.cs`). |
+| D6 — `SmartSchoolTimetable.Api.http` template | **DONE** | File deleted. |
+| Password minimum 12 → 8 (owner request) | **DONE** | `CredentialRules.PasswordMinLength = 8` used by validators and service; `frontend/src/lib/credentialRules.ts`; test `PasswordMinimumIsEightCharacters`; the Playwright setup uses an 8-character password; docs updated. |
+| Playwright mocked validation/404 | **DONE** | Validation: real 422 from `/auth/login`. 404: real API JSON and the real unknown-route page. Stopped server is now real (the server is killed after a real page load). Only the 500 stays mocked. |
+| `App.tsx` monolith, `RecoveryGate`, nested `role="alert"`, hard-coded strings, `in` lookup | **DONE** | `App.tsx` is now 9 lines; one component per file under `features/auth`, `features/home`, `features/settings`, `layout/`, `components/`; hooks in `lib/` and `features/auth/use*.ts`. Playwright asserts exactly one alert on the not-found page. `showPassword`/`hidePassword`/`recoveryCodeFileName` are in the dictionary. `Object.hasOwn` is used in `i18n/errors.ts`. |
+| Duplicated headers, cookie options, token generation, password rules | **DONE** | `LocalSecurityHeaders`, `SessionCookie` (`LocalHttpPolicies.cs`), `SecureToken` (Application), `CredentialRules` + `ValidPassword()`/`ValidUsername()` rule extensions (`AuthValidators.cs`). |
+| Server state duplicated in Zustand | **DONE** | Bootstrap is read only from the TanStack Query cache (`useBootstrap`; `api.ts` reads the launch token via `queryClient.getQueryData`). `state/session.ts` holds only `recoveryCode` and `recoveryFormOpen`. |
+| Also found while splitting: after recovery, logout showed the recovery form | **DONE** | `RecoveryForm` closes the flag after a successful recovery; Playwright test 1 asserts logout returns to the login screen. |
+| No warnings-as-errors / analyzers / `.editorconfig` | **DONE** | `Directory.Build.props`, `.editorconfig`, `spikes/Directory.Build.props` (isolates the spike). Findings fixed: CA1848 (×3, via `LocalLog` source-generated logging) and CA1305 (×3 in tests). |
+| Architecture tests missing endpoint/DbContext and OR-Tools rules | **DONE** | `ArchitectureTests.cs`: `ApiDoesNotReferenceDomainOrEntityFrameworkCore`, `EndpointsAndOtherApiTypesDoNotUseDbContextOrDomainEntities`, `OrToolsIsNotUsedByDomainOrApplication`. Reflection plus a source scan; NetArchTest was not added (no new dependency). |
+| Reset console prompts in English | **DONE** | `LocalDatabaseReset` messages are Arabic constants and the console uses UTF-8. The typed confirmation word stays ASCII `RESET` by design. Test asserts Arabic and no English. |
+| MediatR/`IMediator` absent; Serilog, health endpoints, CI, generated OpenAPI client absent | **NOT DONE (deferred by decision)** | `adr/0013-phase-1-scope-trimming.md` (Proposed, awaiting owner approval). ARCHITECTURE.md and OBSERVABILITY.md corrected to match. |
+| ARCHITECTURE/API/DATABASE/SECURITY describe non-existent behaviour | **DONE** | API.md: endpoint table, 422 (not 400), no 423. DATABASE.md: real columns, pragmas, constraints. SECURITY.md: iteration count stored, algorithm fixed in code (text fixed; **no hash-version column added**). |
+| CHANGELOG missing Phase 1/1.1/1.2 | **DONE** | Entries for 1, 1.1, 1.2 and 1.3 added. |
+| No backup procedure | **DONE (interim)** | README "Interim database backup": one PowerShell command copying `timetable.db*` with the app stopped; verified on temp files. The Phase 6 online backup remains NOT DONE. |
+| CLAUDE.md status | **DONE** | Updated to Phase 1.3. The audit's original claim about it was wrong; see the correction in 11.2. |
+| Spikes folder not deleted after Phase 0 approval | **NOT DONE** | Not in the Phase 1.3 scope; still tracked. |
+| Test #7 does not assert cookie/session id/launch token absence from logs | **NOT DONE** | Not in the Phase 1.3 scope. |
+| English startup exception messages (`LocalSecurity.cs`) | **NOT DONE** | Operator/developer-facing; not in the Phase 1.3 scope. |
+| Login/logout/acknowledge not audited; audit shape reduced vs MASTER §5 | **NOT DONE** | Not in the Phase 1.3 scope; covered by ADR 0008 local-history scope only informally. |
+| QuestPDF licence gate, 40/54 solver risk, Phase 6 backup, SQLCipher NO-GO, WebView2 | **NOT DONE (open by plan)** | Unchanged; tracked in DELIVERY_PLAN/README. |
+| Unrelated: untracked `temp_check/` directory appeared in the working tree during this session (17:52) | **Not touched** | Not created by this work; left uncommitted for the owner to review. |
+
+
 ### 11.1 Defects
 - **D1 (High):** Error codes not listed in `UnifiedApiErrorMiddleware.StatusCodeFor` are returned with HTTP **200**, because `Response.Clear()` resets the status before the fallback is read (`UnifiedApiErrorMiddleware.cs:42-43`). Reachable path: change-password with an expired or invalid session cookie returns `200 {"code":"unauthenticated"}` (live probe), and the UI shows "password changed". The lowercase code (`LocalAuthService.cs:231`) is also absent from `ApiErrorCodes` and the Arabic dictionary. No test covers it.
 - **D2 (Medium, spec mismatch):** A reload before acknowledging the recovery code skips the gate and lands on Home without a sign-in, because the session survives (Playwright `auth-flow.spec.ts:102-103` asserts this). SECURITY.md:11, ADR 0009 and the DELIVERY_PLAN Phase 1 acceptance criterion all say the owner must sign in. Settings shows a warning (`App.tsx:384-385`) but nothing blocks use.
@@ -569,7 +611,7 @@ Codes in the dictionary that the server never emits in the current code: `TOO_MA
 - **D6 (Low):** `SmartSchoolTimetable.Api.http` is a template leftover pointing at `/weatherforecast` on port 5240.
 
 ### 11.2 Deviations from project CLAUDE.md
-- `CLAUDE.md` says "Active phase: Phase 0 documentation only … No application code before Phase 1 approval" and "Awaiting owner approval before implementation", but HEAD is tagged `phase-1.2` with application code. **CLAUDE.md is stale.** Owner `approved` messages are not recorded in the repo, so approval could not be verified.
+- ~~`CLAUDE.md` says "Active phase: Phase 0 documentation only"…~~ **Audit error, corrected in Phase 1.3:** the committed `CLAUDE.md` at `1c032f3` already said "Phase 1.2 React migration and owner-authentication acceptance". The original claim quoted a stale context copy rather than the file. The real gap was smaller: its status line said "in progress". Owner `approved` messages are not recorded in the repo, so approval could not be verified.
 - "Never log … cookies, session tokens": implemented. Test #7 covers only passwords and recovery codes.
 
 ### 11.3 Deviations from the root `Desktop/CLAUDE.md` and MASTER_EXECUTION_PROMPT_v2
