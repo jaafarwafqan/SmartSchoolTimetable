@@ -57,7 +57,10 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<bool>("RecoveryCodeAcknowledged")
+                    b.Property<bool>("HasCustomInactivityTimeout")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("InactivityTimeoutMinutes")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("NormalizedUsername")
@@ -80,6 +83,9 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                     b.Property<byte[]>("PasswordSalt")
                         .IsRequired()
                         .HasColumnType("BLOB");
+
+                    b.Property<bool>("RecoveryCodeAcknowledged")
+                        .HasColumnType("INTEGER");
 
                     b.Property<byte[]>("RecoveryCodeHash")
                         .IsRequired()

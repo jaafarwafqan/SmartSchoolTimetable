@@ -1,6 +1,6 @@
-import { RefreshCw } from "lucide-react";
+import { LoaderCircle, RefreshCw } from "lucide-react";
+import { Alert } from "../../components/ui/alert";
 import { userErrorMessage } from "../../api";
-import { AlertMessage } from "../../components/AlertMessage";
 import { Button } from "../../components/ui/button";
 import { messages } from "../../i18n/messages";
 import { AppShell } from "../../layout/AppShell";
@@ -22,17 +22,25 @@ export function AppGate() {
   const acknowledgeRecoveryCode = useAcknowledgeRecoveryCode();
 
   if (bootstrapQuery.isPending) {
-    return <AuthLayout><p role="status">{messages.app.loading}</p></AuthLayout>;
+    return (
+      <AuthLayout>
+        <p className="loading-state" role="status">
+          <LoaderCircle className="ui-spin" aria-hidden="true" size={22} />
+          <span>{messages.app.loading}</span>
+        </p>
+      </AuthLayout>
+    );
   }
 
   const bootstrap = bootstrapQuery.data;
   if (!bootstrap) {
     return (
       <AuthLayout>
-        <AlertMessage message={userErrorMessage(bootstrapQuery.error)} />
+        <Alert tone="error" message={userErrorMessage(bootstrapQuery.error)} />
         <Button
-          type="button"
-          icon={<RefreshCw aria-hidden="true" size={20} />}
+          block
+          icon={<RefreshCw aria-hidden="true" size={18} />}
+          loading={bootstrapQuery.isFetching}
           onClick={() => void bootstrapQuery.refetch()}
         >
           {messages.app.retry}

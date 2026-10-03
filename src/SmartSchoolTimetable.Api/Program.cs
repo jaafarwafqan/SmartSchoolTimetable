@@ -45,7 +45,7 @@ builder.Services.AddScoped<ILocalAuthService>(services => new LocalAuthService(
     services.GetRequiredService<ILocalSessionStore>(),
     services.GetRequiredService<ILoginDelay>(),
     services.GetRequiredService<TimeProvider>(),
-    localOptions.InactivityTimeout,
+    localOptions.InactivityTimeout, // configured default; an owner preference overrides it at runtime
     services.GetRequiredService<SemaphoreSlim>()));
 builder.Services.AddLocalInfrastructure(
     databasePath,

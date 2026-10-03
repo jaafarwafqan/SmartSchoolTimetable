@@ -31,7 +31,7 @@ public sealed class LocalAuthServiceTests
             new LocalSessionStore(TimeProvider.System),
             delay,
             TimeProvider.System,
-            inactivityTimeout: null,
+            defaultInactivityTimeout: null,
             gate);
 
         var failedLogin = service.LoginAsync("owner", "Wrong-Pass-1", CancellationToken.None);

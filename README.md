@@ -1,10 +1,10 @@
 # SmartSchoolTimetable
 
-Single-user, offline-first school timetable application for one local school and one owner account. The browser UI is served by the ASP.NET Core app, which binds only to `127.0.0.1`. Phase 1.3 (audit fixes, tag `phase-1.3`) is under owner acceptance; do not begin Phase 2 before acceptance.
+Single-user, offline-first school timetable application for one local school and one owner account. The browser UI is served by the ASP.NET Core app, which binds only to `127.0.0.1`. Phase 1.4 (design system adoption, tag `phase-1.4`) is complete; Phase 2 work happens on the `phase-2` branch until the owner accepts it.
 
 ## Stack and environment
 - .NET SDK 9.0.318 and Node.js v24.18.0 are available in the current development environment. Node/npm are required for the React build and frontend tests.
-- Frontend: React 19, strict TypeScript, Vite, Tailwind CSS, shadcn-style components, TanStack Query, Zustand, React Router, lucide-react, Vitest, and Playwright.
+- Frontend: React 19, strict TypeScript, Vite, Tailwind CSS, shadcn-style components, TanStack Query, Zustand, React Router, lucide-react, the bundled Noto Sans Arabic font (offline, [ADR 0014](./adr/0014-bundled-ui-font.md)), Stylelint, axe, Vitest, and Playwright.
 - The API serves Vite's built files from `src/SmartSchoolTimetable.Api/wwwroot`. The login/setup UI source is `frontend/src/App.tsx`.
 - Docker, PostgreSQL, and Redis are not required. SQLite is embedded/local; the default database is `%LOCALAPPDATA%\SmartSchoolTimetable\timetable.db`.
 - Never bind the application to `0.0.0.0`, a LAN address, or a wildcard interface.
@@ -36,13 +36,19 @@ The app displays the resolved database path and the prompts in Arabic, and asks 
 There is no in-app backup yet. **Stop the app first** (close the console or press Ctrl+C), then run this from the folder where the backup should be created:
 
 ```powershell
-$db = "$env:LOCALAPPDATA\SmartSchoolTimetable\timetable.db"; $dest = ".\timetable-backup-$(Get-Date -Format yyyyMMdd-HHmmss)"; New-Item -ItemType Directory $dest | Out-Null; Copy-Item "$db*" $dest
+if (Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'SmartSchoolTimetable.Api.exe' -or ($_.Name -eq 'dotnet.exe' -and $_.CommandLine -like '*SmartSchoolTimetable.Api.dll*') }) { Write-Error 'التطبيق يعمل. أوقفه أولاً ثم أعد تنفيذ النسخ الاحتياطي.' } else { $db = "$env:LOCALAPPDATA\SmartSchoolTimetable\timetable.db"; $dest = ".\timetable-backup-$(Get-Date -Format yyyyMMdd-HHmmss)"; New-Item -ItemType Directory $dest | Out-Null; Copy-Item "$db*" $dest; Get-ChildItem $dest }
 ```
 
-This copies `timetable.db` together with any `-wal`/`-shm` sidecar left by an unclean shutdown into a timestamped folder.
+The command **refuses to run while the app is running**: it checks for the app process, because the app does not keep the database file locked between requests, so a file-lock check cannot detect it. Once the app is stopped it copies `timetable.db` together with `timetable.db-wal` and `timetable.db-shm` (present after an unclean shutdown) into a timestamped folder, and lists what was copied. Both cases were verified in Phase 1.4. Paste the command into PowerShell directly; script files may be blocked by the execution policy.
 - Restore: stop the app and copy all files from a backup folder back into `%LOCALAPPDATA%\SmartSchoolTimetable\`.
 - If `Database:Path` is configured, use that path instead.
 - Never copy the database while the app is running. The Phase 6 online backup (SQLite Online Backup API, integrity-checked) will replace this procedure.
+
+### Style guide (`/design`, development only)
+```powershell
+npm.cmd --prefix .\frontend run dev
+```
+Then open <http://127.0.0.1:5173/design>. The route exists only in the Vite development server; production builds served by the API do not include it.
 
 ## User-facing text, icons, and RTL
 - All user-facing UI, errors, validation, generated files, and offline/network messages are Arabic. The API returns stable error codes and parameters only; the UI maps every code through the Arabic dictionary in `frontend/src/i18n/messages.ts`. English is reserved for developer logs, which must never contain passwords, recovery codes, cookies, session IDs, or launch tokens.

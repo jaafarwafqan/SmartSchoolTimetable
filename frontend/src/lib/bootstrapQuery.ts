@@ -6,6 +6,7 @@ export type Bootstrap = {
   recoveryCodeAcknowledgementRequired: boolean;
   launchToken: string;
   inactivityTimeoutMinutes: number | null;
+  inactivityTimeoutChoices: number[];
 };
 
 export const bootstrapQueryKey = ["bootstrap"] as const;

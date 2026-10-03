@@ -10,7 +10,7 @@ public sealed class LocalAuthService(
     ILocalSessionStore sessionStore,
     ILoginDelay loginDelay,
     TimeProvider timeProvider,
-    TimeSpan? inactivityTimeout,
+    TimeSpan? defaultInactivityTimeout,
     SemaphoreSlim operationGate) : ILocalAuthService
 {
     public const int RecoveryCodeEntropyBits = 128;
@@ -20,14 +20,15 @@ public sealed class LocalAuthService(
     {
         var owner = await ownerRepository.GetOwnerAsync(cancellationToken);
         if (owner is null)
-            return new LocalAuthStatus(true, false, null, false);
+            return new LocalAuthStatus(true, false, null, false, defaultInactivityTimeout);
 
+        var timeout = EffectiveTimeout(owner);
         var username = string.Empty;
         var authenticated = sessionId is not null &&
-            sessionStore.TryValidateAndTouch(sessionId, inactivityTimeout, out username);
+            sessionStore.TryValidateAndTouch(sessionId, timeout, out username);
         return authenticated
-            ? new LocalAuthStatus(false, true, username, !owner.RecoveryCodeAcknowledged)
-            : new LocalAuthStatus(false, false, null, !owner.RecoveryCodeAcknowledged);
+            ? new LocalAuthStatus(false, true, username, !owner.RecoveryCodeAcknowledged, timeout)
+            : new LocalAuthStatus(false, false, null, !owner.RecoveryCodeAcknowledged, timeout);
     }
 
     public async Task<AuthOperationResult> SetupAsync(
@@ -65,7 +66,11 @@ public sealed class LocalAuthService(
                 LocalAuditEntry.Create(now, "OwnerAccountCreated", "owner-account", "Initial owner setup completed."),
                 cancellationToken);
             var sessionId = sessionStore.Issue(owner.Username, recoveryCodeIssued: true);
-            return new AuthOperationResult(true, RecoveryCode: recoveryCode, SessionId: sessionId);
+            return new AuthOperationResult(
+                true,
+                RecoveryCode: recoveryCode,
+                SessionId: sessionId,
+                InactivityTimeout: EffectiveTimeout(owner));
         }
         finally
         {
@@ -114,7 +119,10 @@ public sealed class LocalAuthService(
         if (!passwordValid || !usernameValid)
             return new AuthOperationResult(false, ErrorCodes.InvalidCredentials);
 
-        return new AuthOperationResult(true, SessionId: sessionStore.Issue(owner.Username));
+        return new AuthOperationResult(
+            true,
+            SessionId: sessionStore.Issue(owner.Username),
+            InactivityTimeout: EffectiveTimeout(owner));
     }
 
     public async Task<AuthOperationResult> RegenerateRecoveryCodeAsync(
@@ -122,7 +130,7 @@ public sealed class LocalAuthService(
         string currentPassword,
         CancellationToken cancellationToken)
     {
-        if (!sessionStore.TryValidateAndTouch(sessionId, inactivityTimeout, out _))
+        if (!await IsSessionValidAsync(sessionId, cancellationToken))
             return new AuthOperationResult(false, ErrorCodes.Unauthenticated);
 
         await operationGate.WaitAsync(cancellationToken);
@@ -159,7 +167,7 @@ public sealed class LocalAuthService(
         string sessionId,
         CancellationToken cancellationToken)
     {
-        if (!sessionStore.TryValidateAndTouch(sessionId, inactivityTimeout, out _))
+        if (!await IsSessionValidAsync(sessionId, cancellationToken))
             return new AuthOperationResult(false, ErrorCodes.Unauthenticated);
         if (!sessionStore.HasRecoveryCodeIssued(sessionId))
             return new AuthOperationResult(false, ErrorCodes.RecoveryMissing);
@@ -219,7 +227,8 @@ public sealed class LocalAuthService(
             return new AuthOperationResult(
                 true,
                 RecoveryCode: replacementCode,
-                SessionId: sessionStore.Issue(owner.Username, recoveryCodeIssued: true));
+                SessionId: sessionStore.Issue(owner.Username, recoveryCodeIssued: true),
+                InactivityTimeout: EffectiveTimeout(owner));
         }
         finally
         {
@@ -237,7 +246,7 @@ public sealed class LocalAuthService(
         if (validationError is not null)
             return new AuthOperationResult(false, validationError);
 
-        if (!sessionStore.TryValidateAndTouch(sessionId, inactivityTimeout, out _))
+        if (!await IsSessionValidAsync(sessionId, cancellationToken))
             return new AuthOperationResult(false, ErrorCodes.Unauthenticated);
 
         await operationGate.WaitAsync(cancellationToken);
@@ -271,10 +280,51 @@ public sealed class LocalAuthService(
         }
     }
 
+    public async Task<AuthOperationResult> SetInactivityTimeoutAsync(
+        string sessionId,
+        int? minutes,
+        CancellationToken cancellationToken)
+    {
+        if (minutes is { } value && !InactivityTimeoutChoices.Minutes.Contains(value))
+            return new AuthOperationResult(false, ErrorCodes.InvalidInactivityTimeout);
+        if (!await IsSessionValidAsync(sessionId, cancellationToken))
+            return new AuthOperationResult(false, ErrorCodes.Unauthenticated);
+
+        await operationGate.WaitAsync(cancellationToken);
+        try
+        {
+            var owner = await ownerRepository.GetOwnerAsync(cancellationToken);
+            if (owner is null)
+                return new AuthOperationResult(false, ErrorCodes.SetupRequired);
+
+            var now = timeProvider.GetUtcNow();
+            owner.SetInactivityTimeout(minutes, now);
+            await ownerRepository.SaveOwnerAsync(
+                owner,
+                LocalAuditEntry.Create(now, "InactivityTimeoutChanged", "owner-account", "Inactivity auto-lock changed."),
+                cancellationToken);
+            return new AuthOperationResult(true, SessionId: sessionId, InactivityTimeout: EffectiveTimeout(owner));
+        }
+        finally
+        {
+            operationGate.Release();
+        }
+    }
+
     public void Logout(string? sessionId)
     {
         if (sessionId is not null)
             sessionStore.Revoke(sessionId);
+    }
+
+    private TimeSpan? EffectiveTimeout(OwnerAccount? owner) =>
+        owner is null ? defaultInactivityTimeout : owner.EffectiveInactivityTimeout(defaultInactivityTimeout);
+
+    /// <summary>Validates and touches the session with the current effective timeout, so changes apply immediately.</summary>
+    private async Task<bool> IsSessionValidAsync(string sessionId, CancellationToken cancellationToken)
+    {
+        var owner = await ownerRepository.GetOwnerAsync(cancellationToken);
+        return sessionStore.TryValidateAndTouch(sessionId, EffectiveTimeout(owner), out _);
     }
 
     private static string NormalizeUsername(string value) => value.Trim().ToUpperInvariant();

@@ -2,6 +2,9 @@ namespace SmartSchoolTimetable.Domain;
 
 public sealed class OwnerAccount
 {
+    /// <summary>Inactivity auto-lock choices (minutes) the owner may select; "never" is represented by <c>null</c>.</summary>
+    public static readonly IReadOnlyList<int> InactivityTimeoutChoicesMinutes = [5, 15, 30, 60];
+
     private OwnerAccount()
     {
     }
@@ -16,6 +19,12 @@ public sealed class OwnerAccount
     public byte[] RecoverySalt { get; private set; } = [];
     public byte[] RecoveryCodeHash { get; private set; } = [];
     public bool RecoveryCodeAcknowledged { get; private set; }
+
+    /// <summary>False until the owner picks a value; the configured application default applies meanwhile.</summary>
+    public bool HasCustomInactivityTimeout { get; private set; }
+
+    /// <summary>The chosen timeout in minutes; <c>null</c> together with a custom setting means "never lock".</summary>
+    public int? InactivityTimeoutMinutes { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
 
@@ -56,6 +65,20 @@ public sealed class OwnerAccount
         RecoveryCodeAcknowledged = false;
         UpdatedAt = now;
     }
+
+    public void SetInactivityTimeout(int? minutes, DateTimeOffset now)
+    {
+        if (minutes is { } value && !InactivityTimeoutChoicesMinutes.Contains(value))
+            throw new ArgumentOutOfRangeException(nameof(minutes), value, "Unsupported inactivity timeout.");
+        HasCustomInactivityTimeout = true;
+        InactivityTimeoutMinutes = minutes;
+        UpdatedAt = now;
+    }
+
+    public TimeSpan? EffectiveInactivityTimeout(TimeSpan? configuredDefault) =>
+        !HasCustomInactivityTimeout
+            ? configuredDefault
+            : InactivityTimeoutMinutes is { } minutes ? TimeSpan.FromMinutes(minutes) : null;
 
     public void ChangePassword(byte[] salt, byte[] hash, int iterations, DateTimeOffset now)
     {

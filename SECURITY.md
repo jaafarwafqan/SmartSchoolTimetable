@@ -26,7 +26,7 @@ The product is a single-user local application: one local owner account, one app
 
 ## Session and inactivity lock
 - Baseline: server-side local session cookie with `HttpOnly`, `SameSite=Strict`, and `Path=/`. Set `Secure` when HTTPS is used; it is intentionally omitted for baseline loopback HTTP because Kestrel binds only to `127.0.0.1`. No `Secure` attribute is required for the agreed local HTTP baseline. Do not use refresh tokens.
-- Configure `Authentication:InactivityTimeoutMinutes` to an integer from 1 through 1440 or `Never` (default: 30). On expiry, invalidate the session and return to the separate login screen; do not leave protected content accessible.
+- Configure `Authentication:InactivityTimeoutMinutes` to an integer from 1 through 1440 or `Never` (default: 30). This is the default only. The owner can choose 5, 15, 30 or 60 minutes or never in Settings. The choice is stored per owner, applied by the server on the next request without a restart, and audited. On expiry, invalidate the session and return to the separate login screen; do not leave protected content accessible.
 - Logout and password change invalidate the local session.
 
 ## Loopback-only listener and localhost attacks

@@ -1,16 +1,20 @@
 namespace SmartSchoolTimetable.Application;
 
+/// <param name="InactivityTimeout">Effective timeout for the issued or refreshed session (null means it never expires).</param>
 public sealed record AuthOperationResult(
     bool Succeeded,
     string? ErrorCode = null,
     string? RecoveryCode = null,
-    string? SessionId = null);
+    string? SessionId = null,
+    TimeSpan? InactivityTimeout = null);
 
+/// <param name="InactivityTimeout">Effective inactivity timeout: the owner preference, else the configured default.</param>
 public sealed record LocalAuthStatus(
     bool SetupRequired,
     bool Authenticated,
     string? Username,
-    bool RecoveryCodeAcknowledgementRequired);
+    bool RecoveryCodeAcknowledgementRequired,
+    TimeSpan? InactivityTimeout);
 
 public interface ILocalAuthService
 {
@@ -27,6 +31,11 @@ public interface ILocalAuthService
         string sessionId,
         string currentPassword,
         string newPassword,
+        CancellationToken cancellationToken);
+    /// <param name="minutes">One of the allowed choices, or null for "never".</param>
+    Task<AuthOperationResult> SetInactivityTimeoutAsync(
+        string sessionId,
+        int? minutes,
         CancellationToken cancellationToken);
     void Logout(string? sessionId);
 }

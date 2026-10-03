@@ -6,11 +6,11 @@ export type ApiFailure = {
   errors?: Array<{ field: string; code: string }>;
 };
 
-function isApiErrorCode(code: string): code is ApiErrorCode {
+export function isApiErrorCode(code: string): code is ApiErrorCode {
   return Object.hasOwn(messages.errors, code);
 }
 
-function isFieldName(field: string): field is FieldName {
+export function isFieldName(field: string): field is FieldName {
   return Object.hasOwn(messages.fields, field);
 }
 
@@ -27,6 +27,11 @@ export class ApiRequestError extends Error {
   get arabicMessage(): string {
     return messages.errors[this.code];
   }
+}
+
+/** Arabic message for a field-level validation code, shown directly under the field. */
+export function fieldErrorMessage(code: string): string {
+  return isApiErrorCode(code) ? messages.errors[code] : messages.errors.VALIDATION_FAILED;
 }
 
 export function translatedFieldError(field: string, code: string): string {

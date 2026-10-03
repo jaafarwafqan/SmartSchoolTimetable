@@ -19,9 +19,10 @@ Account fields (`Users` table, migrations in `src/SmartSchoolTimetable.Infrastru
 - `PasswordSalt` (16 bytes), `PasswordHash` (32 bytes), `PasswordIterations` (600,000). The algorithm (PBKDF2-HMAC-SHA-256) is fixed in code; there is no algorithm/version column, so changing algorithms requires an ADR, a version column and a migration;
 - `RecoverySalt` (16 bytes) and `RecoveryCodeHash` (32-byte salted SHA-256), both NOT NULL; the hash is replaced (never nulled) on recovery or regeneration;
 - `RecoveryCodeAcknowledged` (bool);
+- `HasCustomInactivityTimeout` (bool, default false) and `InactivityTimeoutMinutes` (int, nullable) hold the owner's auto-lock choice. Until a choice is made the configured default applies; when `HasCustomInactivityTimeout` is true, a `NULL` value means "never". These columns were added by `20261003175642_AddOwnerInactivityTimeoutPreference`, generated with the local `dotnet-ef` tool (ADR 0015);
 - `CreatedAt`, `UpdatedAt`.
 
-The failed-login/lockout columns from the initial migration were removed by `20261003160000_RemoveEscalatingLoginLockoutFields`. `AuditHistory` stores `Id`, `OccurredAt` (indexed), `EventType`, `Target`, `Summary`; current events are `OwnerAccountCreated`, `RecoveryCodeRegenerated`, and `PasswordChanged`.
+The failed-login/lockout columns from the initial migration were removed by `20261003160000_RemoveEscalatingLoginLockoutFields`. `AuditHistory` stores `Id`, `OccurredAt` (indexed), `EventType`, `Target`, `Summary`; current events are `OwnerAccountCreated`, `RecoveryCodeRegenerated`, `PasswordChanged`, and `InactivityTimeoutChanged`. The test `EfModelHasNoPendingChangesVersusTheLatestMigration` fails if the EF model drifts from the latest migration.
 
 First-run setup is permitted only while the account table is empty. It atomically creates the owner and stores only the recovery-code hash. There is no refresh-token table.
 

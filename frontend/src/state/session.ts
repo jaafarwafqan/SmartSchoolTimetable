@@ -7,13 +7,18 @@ import { create } from "zustand";
 type UiStore = {
   recoveryCode: string | null;
   recoveryFormOpen: boolean;
+  /** One-time confirmation shown on the login screen (for example after a password change). */
+  loginNotice: string | null;
   setRecoveryCode: (recoveryCode: string | null) => void;
   setRecoveryFormOpen: (open: boolean) => void;
+  setLoginNotice: (notice: string | null) => void;
 };
 
 export const useUiStore = create<UiStore>((set) => ({
   recoveryCode: null,
   recoveryFormOpen: false,
+  loginNotice: null,
   setRecoveryCode: (recoveryCode) => set({ recoveryCode }),
   setRecoveryFormOpen: (recoveryFormOpen) => set({ recoveryFormOpen }),
+  setLoginNotice: (loginNotice) => set({ loginNotice }),
 }));

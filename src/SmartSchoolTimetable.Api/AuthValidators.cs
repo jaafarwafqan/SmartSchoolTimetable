@@ -61,6 +61,17 @@ public sealed class RecoveryCodeRequestValidator : AbstractValidator<RecoveryCod
     }
 }
 
+public sealed class InactivityTimeoutRequestValidator : AbstractValidator<InactivityTimeoutRequest>
+{
+    public InactivityTimeoutRequestValidator()
+    {
+        RuleFor(request => request.InactivityTimeout)
+            .RequiredCode()
+            .Must(value => InactivityTimeoutChoices.TryParse(value, out _))
+            .WithErrorCode(ErrorCodes.InvalidInactivityTimeout).WithMessage(ErrorCodes.InvalidInactivityTimeout);
+    }
+}
+
 public sealed class ChangePasswordRequestValidator : AbstractValidator<ChangePasswordRequest>
 {
     public ChangePasswordRequestValidator()

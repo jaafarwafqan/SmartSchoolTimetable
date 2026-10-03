@@ -1,0 +1,93 @@
+/* Base element styles. Values come only from tokens.css (DESIGN_SYSTEM.md). */
+
+body {
+  min-inline-size: 20rem;
+  min-block-size: 100vh;
+  margin: 0;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h1,
+.type-h1 {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  line-height: var(--leading-tight);
+}
+
+h2,
+.type-h2 {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  line-height: var(--leading-tight);
+}
+
+h3,
+.type-h3 {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  line-height: var(--leading-tight);
+}
+
+.type-body {
+  font-size: var(--text-base);
+  font-weight: 400;
+  line-height: var(--leading-normal);
+}
+
+.type-label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.type-caption {
+  color: var(--color-ink-subtle);
+  font-size: var(--text-xs);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+@media (min-width: 64rem) {
+  h1,
+  .type-h1 {
+    font-size: var(--text-3xl);
+  }
+}
+
+a {
+  color: var(--color-primary);
+}
+
+/* Latin identifiers inside Arabic text (DESIGN_SYSTEM.md 8). */
+[dir="ltr"] {
+  unicode-bidi: isolate;
+}
+
+.sr-only {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.ui-spin {
+  animation: ui-spin 0.8s linear infinite;
+}
+
+@keyframes ui-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

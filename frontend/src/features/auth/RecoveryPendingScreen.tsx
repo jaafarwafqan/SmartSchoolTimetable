@@ -1,11 +1,11 @@
 import { LogOut, RefreshCw } from "lucide-react";
+import { Alert } from "../../components/ui/alert";
 import type { FormEvent } from "react";
-import { AlertMessage } from "../../components/AlertMessage";
 import { PasswordField } from "../../components/PasswordField";
 import { Button } from "../../components/ui/button";
 import { messages } from "../../i18n/messages";
 import { AuthLayout } from "../../layout/AuthLayout";
-import { useErrorText } from "../../lib/useErrorText";
+import { useFormFeedback } from "../../lib/useFormFeedback";
 import { useLogout } from "./useLogout";
 import { useRegenerateRecoveryCode } from "./useRecoveryCode";
 
@@ -15,44 +15,51 @@ import { useRegenerateRecoveryCode } from "./useRecoveryCode";
  * until a replacement code is generated with the current password and acknowledged.
  */
 export function RecoveryPendingScreen() {
-  const { error, setError, showError } = useErrorText();
-  const regenerate = useRegenerateRecoveryCode(showError);
-  const logout = useLogout(showError);
+  const feedback = useFormFeedback();
+  const regenerate = useRegenerateRecoveryCode(feedback.showError);
+  const logout = useLogout(feedback.showError);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError(null);
+    feedback.reset();
     const form = new FormData(event.currentTarget);
-    regenerate.mutate(String(form.get("pendingCurrentPassword") ?? ""));
+    const currentPassword = String(form.get("pendingCurrentPassword") ?? "");
+    if (!currentPassword) {
+      feedback.showFieldErrors({ CurrentPassword: messages.errors.REQUIRED });
+      return;
+    }
+    regenerate.mutate(currentPassword);
   }
 
   return (
-    <AuthLayout>
-      <h2>{messages.app.recoveryPendingTitle}</h2>
-      <p className="warning-text">{messages.app.recoveryPendingDescription}</p>
-      <AlertMessage message={error} />
-      <form noValidate onSubmit={submit}>
+    <AuthLayout title={messages.app.recoveryPendingTitle}>
+      <Alert tone="warning" message={messages.app.recoveryPendingDescription} />
+      <Alert tone="error" message={feedback.error} />
+      <form ref={feedback.formRef} className="form-stack" noValidate onSubmit={submit} onInput={feedback.clearFieldFromEvent}>
         <PasswordField
           id="pendingCurrentPassword"
           label={messages.app.currentPassword}
           autoComplete="current-password"
+          field="CurrentPassword"
+          errors={feedback.fieldErrors}
         />
-        <Button type="submit" icon={<RefreshCw aria-hidden="true" size={20} />} disabled={regenerate.isPending}>
+        <Button type="submit" block icon={<RefreshCw aria-hidden="true" size={18} />} loading={regenerate.isPending}>
           {messages.app.generateCode}
         </Button>
       </form>
-      <Button
-        type="button"
-        variant="ghost"
-        icon={<LogOut aria-hidden="true" size={18} />}
-        disabled={logout.isPending}
-        onClick={() => {
-          setError(null);
-          logout.mutate();
-        }}
-      >
-        {messages.app.logout}
-      </Button>
+      <div className="auth-footer-actions">
+        <Button
+          variant="ghost"
+          icon={<LogOut aria-hidden="true" size={18} />}
+          loading={logout.isPending}
+          onClick={() => {
+            feedback.reset();
+            logout.mutate();
+          }}
+        >
+          {messages.app.logout}
+        </Button>
+      </div>
     </AuthLayout>
   );
 }

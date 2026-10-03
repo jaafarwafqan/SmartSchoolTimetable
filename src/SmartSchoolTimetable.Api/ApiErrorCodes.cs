@@ -39,6 +39,7 @@ public static class ApiErrorCodes
             [ErrorCodes.PasswordTooShort] = StatusCodes.Status422UnprocessableEntity,
             [ErrorCodes.PasswordTooLong] = StatusCodes.Status422UnprocessableEntity,
             [ErrorCodes.PasswordMismatch] = StatusCodes.Status422UnprocessableEntity,
+            [ErrorCodes.InvalidInactivityTimeout] = StatusCodes.Status422UnprocessableEntity,
 
             [ErrorCodes.TooManyRequests] = StatusCodes.Status429TooManyRequests,
             [ErrorCodes.InternalError] = StatusCodes.Status500InternalServerError

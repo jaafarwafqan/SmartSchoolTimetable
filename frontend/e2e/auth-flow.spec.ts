@@ -1,99 +1,25 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
-import { spawn, type ChildProcess } from "node:child_process";
-import { once } from "node:events";
-import { mkdtemp, rm } from "node:fs/promises";
-import { createServer } from "node:net";
-import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { messages } from "../src/i18n/messages";
+import { formatInactivityTimeout } from "../src/lib/format";
+import { ApiServer } from "./support/apiServer";
 
-const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const apiDirectory = join(repositoryRoot, "src", "SmartSchoolTimetable.Api");
-const apiAssembly = join(apiDirectory, "bin", "Release", "net9.0", "SmartSchoolTimetable.Api.dll");
-const dotnetHost = process.env.DOTNET_HOST_PATH ??
-  join(process.env.ProgramFiles ?? "C:\\Program Files", "dotnet", "dotnet.exe");
-
-let apiProcess: ChildProcess;
-let databaseDirectory: string;
-let baseUrl: string;
-let output = "";
-let errors = "";
-
-async function freePort(): Promise<number> {
-  const server = createServer();
-  server.listen(0, "127.0.0.1");
-  await once(server, "listening");
-  const address = server.address();
-  if (!address || typeof address === "string") throw new Error("Could not allocate a local test port.");
-  const port = address.port;
-  await new Promise<void>((resolveClose, reject) =>
-    server.close((error) => error ? reject(error) : resolveClose()),
-  );
-  return port;
-}
-
-async function waitForApi(page: Page): Promise<void> {
-  const startedAt = Date.now();
-  while (Date.now() - startedAt < 30_000) {
-    try {
-      const response = await page.request.get(`${baseUrl}/api/v1/bootstrap`, { timeout: 1_000 });
-      if (response.ok()) {
-        const indexResponse = await page.request.get(baseUrl);
-        const html = await indexResponse.text();
-        const scriptPath = html.match(/src="([^"]+\.js)"/)?.[1];
-        if (!scriptPath) throw new Error("The API index does not reference a built JavaScript asset.");
-        const scriptResponse = await page.request.get(new URL(scriptPath, baseUrl).toString());
-        if (!scriptResponse.ok()) {
-          throw new Error(`The JavaScript asset returned HTTP ${scriptResponse.status()}.`);
-        }
-        return;
-      }
-    } catch {
-      await new Promise((resolveWait) => setTimeout(resolveWait, 150));
-    }
-    if (apiProcess.exitCode !== null) throw new Error(`API exited early: ${output}\n${errors}`);
-  }
-  throw new Error(`API did not start: ${output}\n${errors}`);
-}
+const server = new ApiServer();
+let baseUrl = "";
 
 test.beforeAll(async ({ browser }) => {
-  const port = await freePort();
-  baseUrl = `http://127.0.0.1:${port}`;
-  databaseDirectory = await mkdtemp(join(tmpdir(), "smart-school-e2e-"));
-  apiProcess = spawn(dotnetHost, [apiAssembly], {
-    cwd: dirname(apiAssembly),
-    env: {
-      ...process.env,
-      ASPNETCORE_ENVIRONMENT: "Production",
-      Database__Path: join(databaseDirectory, "e2e.db"),
-      LocalHost__Port: String(port),
-    },
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-  apiProcess.stdout?.on("data", (chunk: Buffer) => { output += chunk.toString(); });
-  apiProcess.stderr?.on("data", (chunk: Buffer) => { errors += chunk.toString(); });
-  const page = await browser.newPage({ baseURL: baseUrl });
-  try {
-    await waitForApi(page);
-  } finally {
-    await page.close();
-  }
+  await server.start(browser, "auth-flow");
+  baseUrl = server.baseUrl;
 });
 
 test.afterAll(async () => {
-  if (apiProcess?.exitCode === null && apiProcess?.pid) {
-    apiProcess.kill();
-    await Promise.race([once(apiProcess, "exit"), new Promise((resolveWait) => setTimeout(resolveWait, 5_000))]);
-  }
-  if (databaseDirectory) await rm(databaseDirectory, { recursive: true, force: true });
+  await server.stop();
 });
-
 
 // Both tests share one real API process and database and run in file order (fullyParallel: false).
 const initialPassword = "Owner-88"; // exactly the 8-character minimum
 const recoveredPassword = "A-New-Strong-Passphrase-802";
 const recoveryCodePattern = /^[A-F0-9]{8}(-[A-F0-9]{8}){3}$/;
+const homeHeading = messages.app.greeting("owner");
 
 async function expectArabicAlert(page: Page, expected: string): Promise<void> {
   const alert = page.getByRole("alert");
@@ -127,7 +53,7 @@ test("setup, blocked reload until a new code is confirmed, logout, login, and pa
   // Reload before acknowledging: the signed-in owner is blocked, not sent to Home or any app route.
   await page.reload();
   await expect(page.getByRole("heading", { name: messages.app.recoveryPendingTitle })).toBeVisible();
-  await expect(page.getByRole("heading", { name: messages.app.home })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: homeHeading })).toHaveCount(0);
   await page.goto(`${baseUrl}/settings`);
   await expect(page.getByRole("heading", { name: messages.app.recoveryPendingTitle })).toBeVisible();
   await expect(page.getByRole("heading", { name: messages.app.settings })).toHaveCount(0);
@@ -142,6 +68,14 @@ test("setup, blocked reload until a new code is confirmed, logout, login, and pa
   expect(recoveryCode).not.toBe(originalRecoveryCode);
   await expect(page.getByRole("heading", { name: messages.app.settings })).toBeVisible();
 
+  // Inactivity auto-lock is chosen in Settings, saved to the database and applied immediately.
+  await page.getByLabel(messages.app.inactivityLabel).selectOption("15");
+  await page.getByRole("button", { name: messages.app.saveInactivity }).click();
+  await expect(page.getByRole("status").filter({ hasText: messages.app.inactivitySaved })).toBeVisible();
+  await expect(page.locator(".info-row")).toContainText(formatInactivityTimeout(15));
+  await page.reload();
+  await expect(page.getByLabel(messages.app.inactivityLabel)).toHaveValue("15");
+
   await page.getByRole("button", { name: messages.app.logout }).click();
   await expect(page.getByRole("heading", { name: messages.app.loginTitle })).toBeVisible();
   await page.getByLabel(messages.app.username).fill("owner");
@@ -151,7 +85,7 @@ test("setup, blocked reload until a new code is confirmed, logout, login, and pa
 
   await page.getByLabel(messages.app.password, { exact: true }).fill(initialPassword);
   await page.getByRole("button", { name: messages.app.loginAction }).click();
-  await expect(page.getByRole("heading", { name: messages.app.home })).toBeVisible();
+  await expect(page.getByRole("heading", { name: homeHeading })).toBeVisible();
   await page.getByRole("button", { name: messages.app.logout }).click();
 
   await page.getByRole("button", { name: messages.app.recoveryLink }).click();
@@ -160,7 +94,7 @@ test("setup, blocked reload until a new code is confirmed, logout, login, and pa
   await page.getByLabel(messages.app.confirmPassword).fill(recoveredPassword);
   await page.getByRole("button", { name: messages.app.resetPassword }).click();
   await acknowledgeShownCode(page);
-  await expect(page.getByRole("heading", { name: messages.app.home })).toBeVisible();
+  await expect(page.getByRole("heading", { name: homeHeading })).toBeVisible();
 
   // After a completed recovery, logging out returns to the login screen rather than the recovery form.
   await page.getByRole("button", { name: messages.app.logout }).click();
@@ -171,13 +105,31 @@ test("real validation and not-found responses, mocked 500, and a stopped server 
   const context: BrowserContext = await browser.newContext({ baseURL: baseUrl });
   const page = await context.newPage();
 
-  // Real 422 from the server: the login form sends empty fields and the API returns field codes.
+  // Empty fields are caught in the browser and shown under each field; no request is sent.
   await page.goto(baseUrl);
   await expect(page.getByRole("heading", { name: messages.app.loginTitle })).toBeVisible();
-  const validationResponse = page.waitForResponse((response) => response.url().endsWith("/api/v1/auth/login"));
+  let loginRequests = 0;
+  page.on("request", (request) => {
+    if (request.url().endsWith("/api/v1/auth/login")) loginRequests += 1;
+  });
   await page.getByRole("button", { name: messages.app.loginAction }).click();
+  await expect(page.getByText(messages.errors.REQUIRED)).toHaveCount(2);
+  await expect(page.getByLabel(messages.app.username)).toHaveAttribute("aria-invalid", "true");
+  expect(loginRequests).toBe(0);
+
+  // Real 422 from the server: the recovery form leaves password length to the API, which returns field codes.
+  await page.getByRole("button", { name: messages.app.recoveryLink }).click();
+  await page.getByLabel(messages.app.recoveryCode).fill("00000000-00000000-00000000-00000000");
+  await page.getByLabel(messages.app.newPassword).fill("short1");
+  await page.getByLabel(messages.app.confirmPassword).fill("short1");
+  const validationResponse = page.waitForResponse((response) => response.url().endsWith("/api/v1/auth/recovery"));
+  await page.getByRole("button", { name: messages.app.resetPassword }).click();
   expect((await validationResponse).status()).toBe(422);
-  await expectArabicAlert(page, `${messages.fields.Username}: ${messages.errors.REQUIRED}`);
+  await expectArabicAlert(page, messages.errors.VALIDATION_FAILED);
+  await expect(page.getByText(messages.errors.PASSWORD_TOO_SHORT)).toBeVisible();
+  await expect(page.getByLabel(messages.app.newPassword)).toHaveAttribute("aria-invalid", "true");
+  await page.getByRole("button", { name: messages.app.backToLogin }).click();
+  await expect(page.getByRole("heading", { name: messages.app.loginTitle })).toBeVisible();
 
   // Real 404 from the API contract, and the real not-found page for an unknown app route.
   const realNotFound = await page.request.get(`${baseUrl}/api/v1/no-such-browser-route`);
@@ -187,7 +139,7 @@ test("real validation and not-found responses, mocked 500, and a stopped server 
   await page.getByLabel(messages.app.username).fill("owner");
   await page.getByLabel(messages.app.password, { exact: true }).fill(recoveredPassword);
   await page.getByRole("button", { name: messages.app.loginAction }).click();
-  await expect(page.getByRole("heading", { name: messages.app.home })).toBeVisible();
+  await expect(page.getByRole("heading", { name: homeHeading })).toBeVisible();
   await page.goto(`${baseUrl}/no-such-page`);
   await expectArabicAlert(page, messages.app.notFoundPage);
   await expect(page.getByRole("alert")).toHaveCount(1);
@@ -209,8 +161,7 @@ test("real validation and not-found responses, mocked 500, and a stopped server 
   // Stopped server: load the real login screen, stop the API process, then submit.
   await page.goto(baseUrl);
   await expect(page.getByRole("heading", { name: messages.app.loginTitle })).toBeVisible();
-  apiProcess.kill();
-  await once(apiProcess, "exit");
+  await server.kill();
   await page.getByLabel(messages.app.username).fill("owner");
   await page.getByLabel(messages.app.password, { exact: true }).fill(recoveredPassword);
   await page.getByRole("button", { name: messages.app.loginAction }).click();

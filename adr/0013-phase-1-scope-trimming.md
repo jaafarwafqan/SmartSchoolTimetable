@@ -1,6 +1,6 @@
 # ADR 0013: Phase 1 scope trimming of enterprise-stack items
 
-- Status: Proposed in Phase 1.3; awaiting owner approval together with Phase 1.3
+- Status: Accepted by the owner (Phase 1.4 instruction, 2026-10-03)
 - Date: 2026-10-03
 
 ## Context

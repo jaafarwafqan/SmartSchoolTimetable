@@ -6,7 +6,8 @@ public sealed record BootstrapResponse(
     string? Username,
     bool RecoveryCodeAcknowledgementRequired,
     string LaunchToken,
-    int? InactivityTimeoutMinutes);
+    int? InactivityTimeoutMinutes,
+    IReadOnlyList<int> InactivityTimeoutChoices);
 
 public sealed record SetupRequest(string? Username, string? Password, string? ConfirmPassword);
 public sealed record SetupResponse(string RecoveryCode);
@@ -16,5 +17,7 @@ public sealed record RecoveryCodeRequest(string? CurrentPassword);
 public sealed record RecoveryResponse(string RecoveryCode);
 public sealed record ChangePasswordRequest(string? CurrentPassword, string? NewPassword);
 public sealed record PrivateStatusResponse(string Status);
+public sealed record InactivityTimeoutRequest(string? InactivityTimeout);
+public sealed record InactivityTimeoutResponse(int? InactivityTimeoutMinutes);
 public sealed record ValidationIssue(string Field, string Code);
 public sealed record ApiErrorResponse(string Code, string CorrelationId, IReadOnlyList<ValidationIssue> Errors);

@@ -4,6 +4,12 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // Development server only (npm run dev); bound to loopback like the application itself.
+  server: {
+    host: "127.0.0.1",
+    port: 5173,
+    strictPort: true,
+  },
   build: {
     outDir: "../src/SmartSchoolTimetable.Api/wwwroot",
     emptyOutDir: true,

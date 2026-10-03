@@ -60,6 +60,19 @@ Fixes the defects and documentation gaps recorded in `docs/AUDIT_REPORT.md` §11
 
 Acceptance: `dotnet build -c Release` with 0 warnings and 0 errors; all .NET, Vitest and Playwright tests pass; `tsc` and ESLint clean; the audit section 11 items each marked DONE or NOT DONE with evidence.
 
+### Phase 1.4 - design system adoption (no new features)
+- `DESIGN_SYSTEM.md` and `frontend/src/styles/tokens.css` are the only design authority.
+- Bundled Noto Sans Arabic; all styles use tokens; `components/ui` primitives (Alert, Field, Dialog, Table, Badge, Spinner, Select, Checkbox, IconButton, TimetableCell).
+- `/design` style guide in development only.
+- Enforcement: Stylelint, ESLint design rules, the contrast test, axe, and breakpoint screenshots.
+- Inactivity auto-lock setting in Settings (persisted per owner, applied at runtime).
+- Quieter test logs; a guarded interim backup command.
+
+Acceptance:
+- `dotnet build -c Release --no-incremental` reports 0 warnings and 0 errors.
+- `dotnet test`, `npm run lint` and `npm test` are green.
+- No serious or critical axe violations on the account screens.
+
 ## Phase 2 - School setup
 - School profile, teachers, subjects, stages, sections, shifts, bell system, and academic calendar.
 ### Acceptance criteria
@@ -140,4 +153,4 @@ The exploratory **40-section / 54-teacher** case found no feasible solution with
 - Docker, PostgreSQL, and Redis are not required. SQLite is embedded/local.
 
 ## Approval gate
-Phase 1.3 remains under owner acceptance. Do not start Phase 2 until the owner accepts Phase 1.3.
+Phase 1.4 is tagged. Phase 2 is developed on the `phase-2` branch in checkpoints 2A–2F and is merged only after owner acceptance.

@@ -1,26 +1,40 @@
-import { Check, Clipboard, Printer, Save } from "lucide-react";
-import { useState } from "react";
-import { AlertMessage } from "../../components/AlertMessage";
+import { Check, Clipboard, ClipboardCheck, Printer, Save } from "lucide-react";
+import { Alert } from "../../components/ui/alert";
+import { useEffect, useState } from "react";
 import { Button } from "../../components/ui/button";
+import { Checkbox } from "../../components/ui/checkbox";
 import { messages } from "../../i18n/messages";
 import { AuthLayout } from "../../layout/AuthLayout";
-import { useErrorText } from "../../lib/useErrorText";
+import { useFormFeedback } from "../../lib/useFormFeedback";
 
 type RecoveryCodeScreenProps = {
   code: string;
   onContinue: () => Promise<void>;
 };
 
+const copiedResetMs = 2_500;
+/** Group separator of the recovery code value itself (not display text). */
+const codeSeparator = "-";
+
 export function RecoveryCodeScreen({ code, onContinue }: RecoveryCodeScreenProps) {
   const [saved, setSaved] = useState(false);
-  const { error, setError, showError } = useErrorText();
+  const [copied, setCopied] = useState(false);
+  const [continuing, setContinuing] = useState(false);
+  const feedback = useFormFeedback();
+
+  useEffect(() => {
+    if (!copied) return;
+    const timeout = window.setTimeout(() => setCopied(false), copiedResetMs);
+    return () => window.clearTimeout(timeout);
+  }, [copied]);
 
   async function copyCode() {
     try {
       await navigator.clipboard.writeText(code);
-      setError(messages.app.codeCopied);
+      setCopied(true);
+      feedback.showSuccess(messages.app.codeCopied);
     } catch {
-      setError(messages.app.codeCopyFailed);
+      feedback.setError(messages.app.codeCopyFailed);
     }
   }
 
@@ -33,56 +47,64 @@ export function RecoveryCodeScreen({ code, onContinue }: RecoveryCodeScreenProps
     link.download = messages.app.recoveryCodeFileName;
     link.click();
     URL.revokeObjectURL(url);
-    setError(messages.app.fileSaved);
+    feedback.showSuccess(messages.app.fileSaved);
   }
 
   async function continueToApp() {
-    setError(null);
+    feedback.reset();
+    setContinuing(true);
     try {
       await onContinue();
     } catch (reason) {
-      showError(reason);
+      feedback.showError(reason);
+      setContinuing(false);
     }
   }
 
   return (
-    <AuthLayout>
-      <h2>{messages.app.codeTitle}</h2>
-      <p className="warning-text">{messages.app.codeWarning}</p>
+    <AuthLayout title={messages.app.codeTitle}>
+      <Alert tone="warning" message={messages.app.codeWarning} />
       <output className="recovery-code" aria-label={messages.app.recoveryCode} dir="ltr">
-        {code}
+        {code.split(codeSeparator).map((group, index) => (
+          <span key={index} className="code-group">
+            {index > 0 && <span className="code-separator">{codeSeparator}</span>}
+            {group}
+          </span>
+        ))}
       </output>
-      <AlertMessage message={error} />
-      <div className="action-row">
-        <Button type="button" variant="secondary" icon={<Clipboard aria-hidden="true" size={20} />} onClick={copyCode}>
-          {messages.app.copyCode}
-        </Button>
+      <div className="code-actions">
         <Button
-          type="button"
           variant="secondary"
-          icon={<Printer aria-hidden="true" size={20} />}
-          onClick={() => window.print()}
+          icon={copied
+            ? <ClipboardCheck aria-hidden="true" size={18} />
+            : <Clipboard aria-hidden="true" size={18} />}
+          onClick={copyCode}
         >
+          {copied ? messages.app.copied : messages.app.copyCode}
+        </Button>
+        <Button variant="secondary" icon={<Printer aria-hidden="true" size={18} />} onClick={() => window.print()}>
           {messages.app.printCode}
         </Button>
-        <Button type="button" variant="secondary" icon={<Save aria-hidden="true" size={20} />} onClick={saveCode}>
+        <Button variant="secondary" icon={<Save aria-hidden="true" size={18} />} onClick={saveCode}>
           {messages.app.saveCode}
         </Button>
       </div>
+      <Alert tone="success" message={feedback.success} />
+      <Alert tone="error" message={feedback.error} />
       <p className="helper-text">{messages.app.codeStored}</p>
-      <label className="checkbox-row">
-        <input type="checkbox" checked={saved} onChange={(event) => setSaved(event.currentTarget.checked)} />
-        <span>{messages.app.confirmCodeSaved}</span>
-      </label>
+      <Checkbox checked={saved} onChange={(event) => setSaved(event.currentTarget.checked)}>
+        {messages.app.confirmCodeSaved}
+      </Checkbox>
       <Button
-        type="button"
-        icon={<Check aria-hidden="true" size={20} />}
+        block
+        icon={<Check aria-hidden="true" size={18} />}
         disabled={!saved}
+        loading={continuing}
         onClick={continueToApp}
       >
         {messages.app.continue}
       </Button>
-      {!saved && <p className="helper-text">{messages.app.continueDisabled}</p>}
+      {!saved && <p className="helper-text helper-center">{messages.app.continueDisabled}</p>}
     </AuthLayout>
   );
 }

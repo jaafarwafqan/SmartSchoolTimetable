@@ -33,10 +33,22 @@
 - ESLint rejects hard-coded JSX text/labels, requires icon plus label on shared `Button` components, and requires an accessible label on native buttons. Review new screens for RTL directional-icon mirroring, logical CSS properties, consistent stroke/size, and WCAG AA contrast.
 - Review native browser APIs, form validation, and all translated setup/login/recovery/password/settings messages whenever a screen changes.
 
-## Phase 1.3 test inventory
-- .NET (41): `LocalApiTests.cs` (25 tests), `ErrorContractTests.cs` (12 test cases: 3 facts + 9 theory rows), `ArchitectureTests.cs` (3), `LocalAuthServiceTests.cs` (1). The per-criterion mapping is in [DELIVERY_PLAN.md](./DELIVERY_PLAN.md).
-- Vitest (7): `src/i18n/errors.test.ts` (3), `src/components/PasswordField.test.tsx` (1), `src/api.test.ts` (3: 2xx-with-code is an error, unregistered code maps to the generic Arabic message, launch token is read from the bootstrap query cache).
-- Playwright (2): `setup, blocked reload until a new code is confirmed, logout, login, and password recovery`; `real validation and not-found responses, mocked 500, and a stopped server stay Arabic`.
+## Phase 1.4 test inventory
+- .NET (45):
+  - `LocalApiTests.cs` (25)
+  - `ErrorContractTests.cs` (3 facts + 9 theory rows)
+  - `ArchitectureTests.cs` (3)
+  - `LocalAuthServiceTests.cs` (1)
+  - `InactivityTimeoutSettingTests.cs` (4): runtime apply without restart, invalid/missing/unauthenticated changes, domain choices, and no pending EF model changes
+- Vitest (32):
+  - `i18n/errors.test.ts` (3)
+  - `components/PasswordField.test.tsx` (1)
+  - `api.test.ts` (3)
+  - `styles/tokens.contrast.test.ts` (25): every pair documented in DESIGN_SYSTEM.md, plus `line-strong` on `surface` at 3:1
+- Playwright (3):
+  - `auth-flow.spec.ts` (2), which now also changes the inactivity auto-lock in Settings.
+  - `design-quality.spec.ts` (1): axe (no serious or critical violations) on setup, recovery code, recovery pending, settings, login and the recovery form; screenshots of login and settings at 375/768/1024/1440 px with no horizontal scroll. Baselines are in `frontend/e2e/design-quality.spec.ts-snapshots/` (Windows/Chromium). Update them with `npx playwright test design-quality --update-snapshots` after an approved design change.
+- Lint: `npm run lint` runs ESLint (localization, icon + label, design-system rules) and Stylelint (`color-no-hex`, logical properties, no `font-family` outside `tokens.css`, no `px` font sizes).
 
 ## Later-phase acceptance suites
 - Phase 4 infeasibility test must construct a conflict involving two teachers, a shared lab, and a blocked period; the diagnostic must identify the conflict groups and actionable correction, not merely report infeasible.

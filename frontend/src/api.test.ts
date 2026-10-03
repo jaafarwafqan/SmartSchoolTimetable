@@ -44,6 +44,7 @@ describe("apiRequest", () => {
       recoveryCodeAcknowledgementRequired: false,
       launchToken: "launch-token-from-cache",
       inactivityTimeoutMinutes: 30,
+      inactivityTimeoutChoices: [5, 15, 30, 60],
     };
     queryClient.setQueryData(bootstrapQueryKey, bootstrap);
     const fetchMock = vi.fn<(path: string, init?: RequestInit) => Promise<Response>>(async () =>

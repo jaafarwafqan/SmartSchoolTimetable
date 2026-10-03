@@ -19,6 +19,7 @@ public static class AuthEndpoints
         group.MapPost("/auth/logout", Logout);
         group.MapPost("/auth/change-password", ChangePassword);
         group.MapGet("/private/status", GetPrivateStatus);
+        group.MapPut("/settings/inactivity-timeout", SetInactivityTimeout);
         return endpoints;
     }
 
@@ -26,20 +27,20 @@ public static class AuthEndpoints
         HttpContext context,
         ILocalAuthService authService,
         LocalLaunchToken launchToken,
-        LocalApplicationOptions options,
         CancellationToken cancellationToken)
     {
         var sessionId = SessionCookie.Read(context);
         var status = await authService.GetStatusAsync(sessionId, cancellationToken);
         if (status.Authenticated && sessionId is not null)
-            SessionCookie.Append(context, sessionId, options.InactivityTimeout);
+            SessionCookie.Append(context, sessionId, status.InactivityTimeout);
         return Results.Ok(new BootstrapResponse(
             status.SetupRequired,
             status.Authenticated,
             status.Username,
             status.RecoveryCodeAcknowledgementRequired,
             launchToken.Value,
-            options.InactivityTimeoutMinutes));
+            ToMinutes(status.InactivityTimeout),
+            InactivityTimeoutChoices.Minutes));
     }
 
     private static async Task<IResult> Setup(
@@ -47,7 +48,6 @@ public static class AuthEndpoints
         HttpContext context,
         IValidator<SetupRequest> validator,
         ILocalAuthService authService,
-        LocalApplicationOptions options,
         CancellationToken cancellationToken)
     {
         if (await ValidateAsync(request, validator, context, cancellationToken) is { } invalid)
@@ -57,7 +57,7 @@ public static class AuthEndpoints
         if (!result.Succeeded || result.SessionId is null || result.RecoveryCode is null)
             return Failure(context, result);
 
-        SessionCookie.Append(context, result.SessionId, options.InactivityTimeout);
+        SessionCookie.Append(context, result.SessionId, result.InactivityTimeout);
         return Results.Created("/api/v1/bootstrap", new SetupResponse(result.RecoveryCode));
     }
 
@@ -66,7 +66,6 @@ public static class AuthEndpoints
         HttpContext context,
         IValidator<LoginRequest> validator,
         ILocalAuthService authService,
-        LocalApplicationOptions options,
         CancellationToken cancellationToken)
     {
         if (await ValidateAsync(request, validator, context, cancellationToken) is { } invalid)
@@ -76,7 +75,7 @@ public static class AuthEndpoints
         if (!result.Succeeded || result.SessionId is null)
             return Failure(context, result);
 
-        SessionCookie.Append(context, result.SessionId, options.InactivityTimeout);
+        SessionCookie.Append(context, result.SessionId, result.InactivityTimeout);
         return Results.NoContent();
     }
 
@@ -85,7 +84,6 @@ public static class AuthEndpoints
         HttpContext context,
         IValidator<RecoveryRequest> validator,
         ILocalAuthService authService,
-        LocalApplicationOptions options,
         CancellationToken cancellationToken)
     {
         if (await ValidateAsync(request, validator, context, cancellationToken) is { } invalid)
@@ -95,7 +93,7 @@ public static class AuthEndpoints
         if (!result.Succeeded || result.SessionId is null || result.RecoveryCode is null)
             return Failure(context, result);
 
-        SessionCookie.Append(context, result.SessionId, options.InactivityTimeout);
+        SessionCookie.Append(context, result.SessionId, result.InactivityTimeout);
         return Results.Ok(new RecoveryResponse(result.RecoveryCode));
     }
 
@@ -167,7 +165,6 @@ public static class AuthEndpoints
     private static async Task<IResult> GetPrivateStatus(
         HttpContext context,
         ILocalAuthService authService,
-        LocalApplicationOptions options,
         CancellationToken cancellationToken)
     {
         var sessionId = SessionCookie.Read(context);
@@ -175,9 +172,35 @@ public static class AuthEndpoints
         if (!status.Authenticated || sessionId is null)
             return Failure(context, ErrorCodes.Unauthenticated);
 
-        SessionCookie.Append(context, sessionId, options.InactivityTimeout);
+        SessionCookie.Append(context, sessionId, status.InactivityTimeout);
         return Results.Ok(new PrivateStatusResponse("authenticated"));
     }
+
+    private static async Task<IResult> SetInactivityTimeout(
+        InactivityTimeoutRequest request,
+        HttpContext context,
+        IValidator<InactivityTimeoutRequest> validator,
+        ILocalAuthService authService,
+        CancellationToken cancellationToken)
+    {
+        if (SessionCookie.Read(context) is not { } sessionId)
+            return Failure(context, ErrorCodes.Unauthenticated);
+        if (await ValidateAsync(request, validator, context, cancellationToken) is { } invalid)
+            return invalid;
+
+        if (!InactivityTimeoutChoices.TryParse(request.InactivityTimeout, out var minutes))
+            return Failure(context, ErrorCodes.InvalidInactivityTimeout);
+        var result = await authService.SetInactivityTimeoutAsync(sessionId, minutes, cancellationToken);
+        if (!result.Succeeded)
+            return Failure(context, result);
+
+        // Refresh the cookie so its lifetime matches the newly effective timeout.
+        SessionCookie.Append(context, sessionId, result.InactivityTimeout);
+        return Results.Ok(new InactivityTimeoutResponse(ToMinutes(result.InactivityTimeout)));
+    }
+
+    private static int? ToMinutes(TimeSpan? timeout) =>
+        timeout is { } value ? (int)value.TotalMinutes : null;
 
     private static async Task<IResult?> ValidateAsync<T>(
         T request,

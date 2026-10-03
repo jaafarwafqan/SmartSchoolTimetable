@@ -35,4 +35,5 @@ public static class ErrorCodes
     public const string PasswordTooShort = "PASSWORD_TOO_SHORT";
     public const string PasswordTooLong = "PASSWORD_TOO_LONG";
     public const string PasswordMismatch = "PASSWORD_MISMATCH";
+    public const string InvalidInactivityTimeout = "INVALID_INACTIVITY_TIMEOUT";
 }
