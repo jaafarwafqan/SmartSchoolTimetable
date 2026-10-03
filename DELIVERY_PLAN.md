@@ -81,6 +81,18 @@ Acceptance:
 - Arabic/RTL forms and tables work at supported desktop/tablet sizes; validation errors are actionable and localized.
 - Unit and SQLite integration tests cover CRUD, invalid references, uniqueness, and migrations.
 
+### Phase 2 checkpoints (branch `phase-2`)
+| Checkpoint | Scope | Tag |
+|---|---|---|
+| 2A | App shell (sidebar, drawer, top bar, breadcrumbs), school profile with logo and stamp, academic years and terms, settings, formatter, Arabic normalization, concurrency versions, audit, dashboard, `dotnet-ef` tool and pending-model test | `phase-2a` |
+| 2B | Shifts, working days, lesson periods (with a generator), bells (Web Audio) | `phase-2b` |
+| 2C | Stages and sections | `phase-2c` |
+| 2D | Subjects | `phase-2d` |
+| 2E | Teachers | `phase-2e` |
+| 2F | Calendar, demo seed, hardening, docs, full E2E, owner test script | `phase-2f`, then `phase-2` |
+
+Each checkpoint is one commit with a green build and tests, plus updated docs and CHANGELOG. Decisions taken without the owner are listed in `docs/DECISIONS_PENDING.md`.
+
 ## Phase 3 - Workload and capacity
 - Workload, resources, scheduling profiles, capacity analysis, and deterministic validation.
 ### Acceptance criteria

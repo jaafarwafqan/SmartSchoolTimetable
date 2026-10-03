@@ -113,6 +113,219 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
 
                     b.ToTable("Users", (string)null);
                 });
+
+            modelBuilder.Entity("SmartSchoolTimetable.Domain.SchoolSetup.AcademicYear", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("CurrentTermId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsCurrent")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NormalizedLabel")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsCurrent")
+                        .IsUnique()
+                        .HasFilter("\"IsCurrent\" = 1");
+
+                    b.HasIndex("NormalizedLabel")
+                        .IsUnique();
+
+                    b.ToTable("AcademicYears", (string)null);
+                });
+
+            modelBuilder.Entity("SmartSchoolTimetable.Domain.SchoolSetup.SchoolProfile", b =>
+                {
+                    b.Property<long>("Id")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("CalendarDisplay")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NumeralSystem")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PrincipalName")
+                        .HasMaxLength(150)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ScheduleOfficerName")
+                        .HasMaxLength(150)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SchoolType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("StudyType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SchoolProfile", (string)null);
+                });
+
+            modelBuilder.Entity("SmartSchoolTimetable.Domain.SchoolSetup.AcademicYear", b =>
+                {
+                    b.OwnsMany("SmartSchoolTimetable.Domain.SchoolSetup.Term", "Terms", b1 =>
+                        {
+                            b1.Property<long>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("INTEGER");
+
+                            b1.Property<long>("AcademicYearId")
+                                .HasColumnType("INTEGER");
+
+                            b1.Property<DateOnly>("EndDate")
+                                .HasColumnType("TEXT");
+
+                            b1.Property<string>("Name")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("TEXT");
+
+                            b1.Property<string>("NormalizedName")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("TEXT");
+
+                            b1.Property<DateOnly>("StartDate")
+                                .HasColumnType("TEXT");
+
+                            b1.HasKey("Id");
+
+                            b1.HasIndex("AcademicYearId", "NormalizedName")
+                                .IsUnique();
+
+                            b1.ToTable("Terms", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("AcademicYearId");
+                        });
+
+                    b.Navigation("Terms");
+                });
+
+            modelBuilder.Entity("SmartSchoolTimetable.Domain.SchoolSetup.SchoolProfile", b =>
+                {
+                    b.OwnsOne("SmartSchoolTimetable.Domain.SchoolSetup.SchoolAsset", "Logo", b1 =>
+                        {
+                            b1.Property<long>("SchoolProfileId")
+                                .HasColumnType("INTEGER");
+
+                            b1.Property<string>("ContentType")
+                                .IsRequired()
+                                .HasMaxLength(50)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("LogoContentType");
+
+                            b1.Property<long>("SizeBytes")
+                                .HasColumnType("INTEGER")
+                                .HasColumnName("LogoSizeBytes");
+
+                            b1.Property<string>("StoredFileName")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("LogoStoredFileName");
+
+                            b1.Property<DateTimeOffset>("UploadedAt")
+                                .HasColumnType("TEXT")
+                                .HasColumnName("LogoUploadedAt");
+
+                            b1.HasKey("SchoolProfileId");
+
+                            b1.ToTable("SchoolProfile");
+
+                            b1.WithOwner()
+                                .HasForeignKey("SchoolProfileId");
+                        });
+
+                    b.OwnsOne("SmartSchoolTimetable.Domain.SchoolSetup.SchoolAsset", "Stamp", b1 =>
+                        {
+                            b1.Property<long>("SchoolProfileId")
+                                .HasColumnType("INTEGER");
+
+                            b1.Property<string>("ContentType")
+                                .IsRequired()
+                                .HasMaxLength(50)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("StampContentType");
+
+                            b1.Property<long>("SizeBytes")
+                                .HasColumnType("INTEGER")
+                                .HasColumnName("StampSizeBytes");
+
+                            b1.Property<string>("StoredFileName")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("StampStoredFileName");
+
+                            b1.Property<DateTimeOffset>("UploadedAt")
+                                .HasColumnType("TEXT")
+                                .HasColumnName("StampUploadedAt");
+
+                            b1.HasKey("SchoolProfileId");
+
+                            b1.ToTable("SchoolProfile");
+
+                            b1.WithOwner()
+                                .HasForeignKey("SchoolProfileId");
+                        });
+
+                    b.Navigation("Logo");
+
+                    b.Navigation("Stamp");
+                });
 #pragma warning restore 612, 618
         }
     }

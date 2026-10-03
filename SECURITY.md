@@ -42,8 +42,17 @@ The product is a single-user local application: one local owner account, one app
 - FluentValidation emits error codes only. The React UI maps every known code to Arabic and uses a generic Arabic fallback for unknown/missing codes and network/offline/timeout failures. Do not render exception text, English framework messages, or API-provided prose.
 - Browser forms disable native validation popups; use localized app validation instead. Do not call `window.alert`, `window.confirm`, or `window.prompt`.
 
+## School logo and stamp uploads (Phase 2)
+See [ADR 0016](./adr/0016-school-asset-storage.md).
+- **Who can upload:** the owner session, Origin and the per-launch token are required. The upload endpoint opts out of the antiforgery middleware only because those checks already protect it.
+- **Size:** a request whose `Content-Length` exceeds 3 MB is rejected before it is read (413 `PAYLOAD_TOO_LARGE`). The file itself must be ≤ 2 MB (`ASSET_TOO_LARGE`).
+- **Type:** only PNG, JPEG and WebP are accepted, identified by magic bytes, never by the extension or the declared type alone. SVG and every other type is `ASSET_TYPE_NOT_ALLOWED`. A declared type that disagrees with the bytes is `ASSET_TYPE_MISMATCH`.
+- **Storage:** files are written under a generated name (random 128-bit hex) inside the app data `assets` folder. The original file name is never used for storage or echoed back. Reads accept only names that match the strict stored-name pattern, which rules out path traversal.
+- **Serving:** files go only to the owner session, with the detected content type, `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'none'; sandbox` and `Cache-Control: no-store`.
+- **Clean-up:** a replaced or removed file is deleted only after the database change commits. If the save fails, the newly written file is removed.
+
 ## Local audit history
-Keep a lightweight local history for timetable version changes, publish, rollback, backup/restore, password changes, and imports. Multi-user attribution is not needed. Record event type, local timestamp, affected entity/version, and a concise before/after summary where appropriate. Never record passwords, recovery codes, session cookies, or per-launch tokens.
+From Phase 2, school-setup create, update, archive and delete events are audited (event names are in `API.md`). Keep a lightweight local history for timetable version changes, publish, rollback, backup/restore, password changes, and imports. Multi-user attribution is not needed. Record event type, local timestamp, affected entity/version, and a concise before/after summary where appropriate. Never record passwords, recovery codes, session cookies, or per-launch tokens.
 
 ## Optional final-phase encryption decision
 Baseline SQLite is unencrypted. `adr/0010-sqlcipher-go-no-go.md` records a **NO-GO for the initial release** and a final-phase go/no-go evaluation for SQLCipher, including key storage, packaging, recovery, backup, performance, and licensing. Do not claim database encryption unless that decision changes and is implemented/tested.

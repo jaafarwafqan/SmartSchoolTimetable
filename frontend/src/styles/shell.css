@@ -1,0 +1,195 @@
+/* Application shell: top bar, right-hand sidebar (collapsible), mobile drawer (DESIGN_SYSTEM.md 6.6). */
+
+.app-shell {
+  min-block-size: 100vh;
+}
+
+.app-topbar {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  min-block-size: 3.75rem;
+  padding: 0.5rem 1.25rem;
+  border-block-end: 1px solid var(--color-line);
+  background: var(--color-surface);
+}
+
+.brand-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  color: var(--color-ink);
+  font-size: var(--text-base);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.topbar-context {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.drawer-trigger {
+  display: none;
+}
+
+.app-body {
+  display: grid;
+  grid-template-columns: 16rem minmax(0, 1fr);
+  align-items: start;
+}
+
+.app-shell.is-sidebar-collapsed .app-body {
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+}
+
+.app-sidebar {
+  position: sticky;
+  inset-block-start: 3.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-block-size: calc(100vh - 3.75rem);
+  padding: 1rem 0.75rem;
+  border-inline-end: 1px solid var(--color-line);
+  background: var(--color-surface);
+}
+
+.app-sidebar ul {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-block-size: var(--touch-target-min);
+  padding-inline: 0.75rem;
+  border-radius: var(--radius-md);
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+}
+
+.sidebar-link:hover {
+  background: var(--color-surface-muted);
+  color: var(--color-ink);
+}
+
+.sidebar-link.is-active {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-ink);
+}
+
+.sidebar-link svg {
+  flex: none;
+}
+
+.sidebar-footer {
+  margin-block-start: auto;
+}
+
+.app-sidebar.is-collapsed .sidebar-link {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.app-sidebar.is-collapsed .sidebar-label,
+.app-sidebar.is-collapsed .sidebar-toggle span {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.app-sidebar.is-collapsed .sidebar-toggle {
+  inline-size: 100%;
+  padding-inline: 0;
+}
+
+.app-main {
+  min-inline-size: 0;
+  max-inline-size: 80rem;
+  padding: 1.5rem 1.5rem 3rem;
+}
+
+.app-main > .ui-alert {
+  margin-block-end: 1rem;
+}
+
+.user-menu-name {
+  max-inline-size: 10rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- Mobile drawer ---------- */
+.app-drawer {
+  inline-size: min(85vw, 18rem);
+  block-size: 100vh;
+  max-block-size: 100vh;
+  /* Anchored to the inline start (right in RTL), the side the sidebar occupies on wide screens. */
+  inset-inline-start: 0;
+  inset-inline-end: auto;
+  margin: 0;
+  padding: 0.75rem;
+  border: 0;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-popover);
+}
+
+.app-drawer::backdrop {
+  background: color-mix(in srgb, var(--color-ink) 45%, transparent);
+}
+
+.app-drawer .app-sidebar {
+  position: static;
+  min-block-size: 0;
+  padding: 0;
+  border: 0;
+}
+
+.app-drawer-header {
+  display: flex;
+  justify-content: flex-end;
+  margin-block-end: 0.5rem;
+}
+
+@media (max-width: 47.99rem) {
+  .drawer-trigger {
+    display: inline-flex;
+  }
+
+  .app-body,
+  .app-shell.is-sidebar-collapsed .app-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-body > .app-sidebar {
+    display: none;
+  }
+
+  .topbar-context {
+    order: 3;
+    flex-basis: 100%;
+  }
+
+  .app-main {
+    padding: 1rem 1rem 2.5rem;
+  }
+}

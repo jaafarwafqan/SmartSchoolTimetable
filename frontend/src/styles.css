@@ -3,4 +3,7 @@
 @import "./styles/base.css";
 @import "./styles/components.css";
 @import "./styles/layout.css";
+@import "./styles/shell.css";
+@import "./styles/controls.css";
+@import "./styles/pages.css";
 @import "./styles/design-guide.css";

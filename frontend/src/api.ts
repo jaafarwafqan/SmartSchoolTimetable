@@ -20,17 +20,17 @@ export async function apiRequest<T>(
   body?: unknown,
 ): Promise<T> {
   const headers = new Headers();
-  if (body !== undefined) {
-    headers.set("Content-Type", "application/json");
-    headers.set("X-Local-Launch-Token", launchToken());
-  }
+  const isForm = body instanceof FormData;
+  if (body !== undefined && !isForm) headers.set("Content-Type", "application/json");
+  // Every state-changing request carries the per-launch token, with or without a body.
+  if (method !== "GET" && method !== "HEAD") headers.set("X-Local-Launch-Token", launchToken());
 
   let response: Response;
   try {
     response = await fetch(path, {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
       credentials: "same-origin",
       cache: "no-store",
       signal: AbortSignal.timeout(10_000),

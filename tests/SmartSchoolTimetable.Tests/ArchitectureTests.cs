@@ -62,6 +62,39 @@ public sealed class ArchitectureTests
         }
     }
 
+    /// <summary>
+    /// Feature folders depend inward only: a Domain feature may use the shared Common/Text/SchoolSetup structure;
+    /// an Application feature may use Application.Common and the shared SchoolSetup context, never another
+    /// feature. Dashboard is the documented exception: it is a read model over every feature.
+    /// </summary>
+    [Fact]
+    public void FeatureFoldersRespectDependencyDirection()
+    {
+        var domainViolations = FeatureViolations(DomainAssembly, "SmartSchoolTimetable.Domain", ["Common", "Text", "SchoolSetup"], []);
+        var applicationViolations = FeatureViolations(ApplicationAssembly, "SmartSchoolTimetable.Application", ["Common", "SchoolSetup"], ["Dashboard"]);
+        Assert.Empty(domainViolations);
+        Assert.Empty(applicationViolations);
+    }
+
+    private static string[] FeatureViolations(Assembly assembly, string root, string[] shared, string[] readModels)
+    {
+        static string? FeatureOf(Type type, string root) =>
+            type.Namespace is { } ns && ns.StartsWith(root + ".", StringComparison.Ordinal)
+                ? ns[(root.Length + 1)..].Split('.')[0]
+                : null;
+
+        return assembly.GetTypes()
+            .Select(type => (type, feature: FeatureOf(type, root)))
+            .Where(pair => pair.feature is not null && !shared.Contains(pair.feature) && !readModels.Contains(pair.feature))
+            .SelectMany(pair => ReferencedTypes(pair.type)
+                .Where(referenced => referenced.Assembly == assembly)
+                .Select(referenced => (pair.type, pair.feature, referenced, target: FeatureOf(referenced, root))))
+            .Where(item => item.target is not null && item.target != item.feature && !shared.Contains(item.target))
+            .Select(item => $"{item.type.FullName} -> {item.referenced.FullName}")
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+    }
+
     private static HashSet<string> ReferencedAssemblyNames(Assembly assembly) =>
         assembly.GetReferencedAssemblies().Select(name => name.Name!).ToHashSet(StringComparer.Ordinal);
 

@@ -17,6 +17,7 @@ export function LoginScreen() {
   const setRecoveryFormOpen = useUiStore((state) => state.setRecoveryFormOpen);
   const loginNotice = useUiStore((state) => state.loginNotice);
   const setLoginNotice = useUiStore((state) => state.setLoginNotice);
+  const lockedUsername = useUiStore((state) => state.lockedUsername);
   const feedback = useFormFeedback();
   const login = useMutation({
     mutationFn: (payload: { username: string; password: string }) =>
@@ -51,6 +52,7 @@ export function LoginScreen() {
           id="username"
           label={messages.app.username}
           autoComplete="username"
+          defaultValue={lockedUsername ?? undefined}
           required
           field="Username"
           errors={feedback.fieldErrors}

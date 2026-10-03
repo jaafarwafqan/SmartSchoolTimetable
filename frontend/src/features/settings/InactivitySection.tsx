@@ -9,7 +9,7 @@ import { Field } from "../../components/ui/field";
 import { Select, type SelectOption } from "../../components/ui/select";
 import { messages } from "../../i18n/messages";
 import type { Bootstrap } from "../../lib/bootstrapQuery";
-import { formatInactivityTimeout } from "../../lib/format";
+import { useFormatter } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
 import { useRefreshBootstrap } from "../auth/useBootstrap";
 import { SettingsSection } from "./SettingsSection";
@@ -25,6 +25,7 @@ function toValue(minutes: number | null): string {
 export function InactivitySection({ bootstrap }: { bootstrap: Bootstrap }) {
   const refreshBootstrap = useRefreshBootstrap();
   const feedback = useFormFeedback();
+  const format = useFormatter();
   const current = bootstrap.inactivityTimeoutMinutes;
 
   const options = useMemo<SelectOption[]>(() => {
@@ -32,10 +33,10 @@ export function InactivitySection({ bootstrap }: { bootstrap: Bootstrap }) {
     // A configured default outside the offered choices stays visible as the current value.
     if (current !== null && !minutes.includes(current)) minutes.push(current);
     return [
-      ...minutes.sort((a, b) => a - b).map((value) => ({ value: String(value), label: formatInactivityTimeout(value) })),
-      { value: neverValue, label: formatInactivityTimeout(null) },
+      ...minutes.sort((a, b) => a - b).map((value) => ({ value: String(value), label: format.inactivity(value) })),
+      { value: neverValue, label: format.inactivity(null) },
     ];
-  }, [bootstrap.inactivityTimeoutChoices, current]);
+  }, [bootstrap.inactivityTimeoutChoices, current, format]);
 
   const save = useMutation({
     mutationFn: (inactivityTimeout: string) =>
@@ -66,7 +67,7 @@ export function InactivitySection({ bootstrap }: { bootstrap: Bootstrap }) {
     >
       <dl className="info-row">
         <dt>{messages.app.inactivityCurrent}</dt>
-        <dd><Badge tone="primary" icon={<Clock aria-hidden="true" size={16} />}>{formatInactivityTimeout(current)}</Badge></dd>
+        <dd><Badge tone="primary" icon={<Clock aria-hidden="true" size={16} />}>{format.inactivity(current)}</Badge></dd>
       </dl>
       <Alert tone="success" message={feedback.success} />
       <Alert tone="error" message={feedback.error} />

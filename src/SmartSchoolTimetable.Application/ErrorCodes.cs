@@ -36,4 +36,33 @@ public static class ErrorCodes
     public const string PasswordTooLong = "PASSWORD_TOO_LONG";
     public const string PasswordMismatch = "PASSWORD_MISMATCH";
     public const string InvalidInactivityTimeout = "INVALID_INACTIVITY_TIMEOUT";
+
+    // Phase 2: school data. Top-level codes.
+    public const string RecordInUse = "RECORD_IN_USE";
+    public const string CurrentYearRequired = "CURRENT_YEAR_REQUIRED";
+    public const string PayloadTooLarge = "PAYLOAD_TOO_LARGE";
+
+    // Phase 2: field-level validation codes.
+    public const string ValueTooLong = "VALUE_TOO_LONG";
+    public const string ValueOutOfRange = "VALUE_OUT_OF_RANGE";
+    public const string InvalidOption = "INVALID_OPTION";
+    public const string InvalidDate = "INVALID_DATE";
+    public const string InvalidTime = "INVALID_TIME";
+    public const string InvalidDateRange = "INVALID_DATE_RANGE";
+    public const string DuplicateName = "DUPLICATE_NAME";
+    public const string TermOutsideYear = "TERM_OUTSIDE_YEAR";
+    public const string TermsOverlap = "TERMS_OVERLAP";
+    public const string InvalidTimeRange = "INVALID_TIME_RANGE";
+    public const string PeriodsOverlap = "PERIODS_OVERLAP";
+    public const string PeriodsNotAscending = "PERIODS_NOT_ASCENDING";
+    public const string NoLessonPeriods = "NO_LESSON_PERIODS";
+    public const string TooManyPeriods = "TOO_MANY_PERIODS";
+    public const string NoWorkingDays = "NO_WORKING_DAYS";
+    public const string BlockedPeriodInvalid = "BLOCKED_PERIOD_INVALID";
+    public const string MaxPerDayExceedsPeriods = "MAX_PER_DAY_EXCEEDS_PERIODS";
+    public const string MaxPerWeekExceedsCapacity = "MAX_PER_WEEK_EXCEEDS_CAPACITY";
+    public const string ShiftNotInYear = "SHIFT_NOT_IN_YEAR";
+    public const string AssetTooLarge = "ASSET_TOO_LARGE";
+    public const string AssetTypeNotAllowed = "ASSET_TYPE_NOT_ALLOWED";
+    public const string AssetTypeMismatch = "ASSET_TYPE_MISMATCH";
 }

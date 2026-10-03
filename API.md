@@ -30,14 +30,15 @@ Every failure returns `{ "code": string, "correlationId": string, "errors": [{ "
 
 | Status | Codes |
 |---|---|
-| 400 | `INVALID_HOST`, `INVALID_REQUEST` (malformed JSON/body) |
+| 400 | `INVALID_HOST`, `INVALID_REQUEST` (malformed JSON/body, or a non-multipart upload) |
 | 401 | `UNAUTHENTICATED`, `INVALID_CREDENTIALS`, `INVALID_RECOVERY_CODE`, `CURRENT_PASSWORD_INCORRECT` |
 | 403 | `INVALID_ORIGIN`, `INVALID_LAUNCH_TOKEN`, `REQUEST_FORBIDDEN`, `SETUP_REQUIRED` |
 | 404 | `NOT_FOUND` |
 | 405 | `METHOD_NOT_ALLOWED` |
-| 409 | `SETUP_ALREADY_COMPLETE`, `RECOVERY_MISSING`, `CONFLICT` |
+| 409 | `SETUP_ALREADY_COMPLETE`, `RECOVERY_MISSING`, `CONFLICT` (stale `version`), `RECORD_IN_USE`, `CURRENT_YEAR_REQUIRED` |
+| 413 | `PAYLOAD_TOO_LARGE` (request body over the endpoint limit) |
 | 415 | `UNSUPPORTED_MEDIA_TYPE` |
-| 422 | `VALIDATION_FAILED` (with field codes `REQUIRED`, `USERNAME_TOO_SHORT`, `USERNAME_TOO_LONG`, `PASSWORD_TOO_SHORT`, `PASSWORD_TOO_LONG`, `PASSWORD_MISMATCH`, `INVALID_INACTIVITY_TIMEOUT`), `INVALID_USERNAME`, `INVALID_PASSWORD` |
+| 422 | `VALIDATION_FAILED` (with field codes `REQUIRED`, `USERNAME_TOO_SHORT`, `USERNAME_TOO_LONG`, `PASSWORD_TOO_SHORT`, `PASSWORD_TOO_LONG`, `PASSWORD_MISMATCH`, `INVALID_INACTIVITY_TIMEOUT`; Phase 2: `VALUE_TOO_LONG`, `VALUE_OUT_OF_RANGE`, `INVALID_OPTION`, `INVALID_DATE`, `INVALID_TIME`, `INVALID_DATE_RANGE`, `DUPLICATE_NAME`, `TERM_OUTSIDE_YEAR`, `TERMS_OVERLAP`, `INVALID_TIME_RANGE`, `PERIODS_OVERLAP`, `PERIODS_NOT_ASCENDING`, `NO_LESSON_PERIODS`, `TOO_MANY_PERIODS`, `NO_WORKING_DAYS`, `BLOCKED_PERIOD_INVALID`, `MAX_PER_DAY_EXCEEDS_PERIODS`, `MAX_PER_WEEK_EXCEEDS_CAPACITY`, `SHIFT_NOT_IN_YEAR`, `ASSET_TOO_LARGE`, `ASSET_TYPE_NOT_ALLOWED`, `ASSET_TYPE_MISMATCH`), `INVALID_USERNAME`, `INVALID_PASSWORD` |
 | 429 | `TOO_MANY_REQUESTS` (reserved; no rate limiter exists) |
 | 500 | `INTERNAL_ERROR` |
 
@@ -58,6 +59,31 @@ Global rules apply to every route: the exact Host is required (400 `INVALID_HOST
 | POST | `/auth/change-password` | Yes | `{ currentPassword, newPassword }` | 204 + cookie deletion (all sessions revoked) | 401 `UNAUTHENTICATED`, 422 `VALIDATION_FAILED`, 401 `CURRENT_PASSWORD_INCORRECT` |
 | PUT | `/settings/inactivity-timeout` | Yes | `{ inactivityTimeout: "5" \| "15" \| "30" \| "60" \| "never" }` | 200 `{ inactivityTimeoutMinutes }` + session cookie with the new lifetime; applies immediately | 401 `UNAUTHENTICATED`, 422 `VALIDATION_FAILED` (field `InactivityTimeout`: `REQUIRED` or `INVALID_INACTIVITY_TIMEOUT`) |
 | GET | `/private/status` | Yes | — | 200 `{ status: "authenticated" }` | 401 `UNAUTHENTICATED` |
+
+### School setup (Phase 2, checkpoint 2A)
+Every route below requires the owner session (401 `UNAUTHENTICATED`). Editable records carry an integer `version`. Updates, deletes and state changes must send the version that was read; a stale one returns 409 `CONFLICT`, and the UI shows an Arabic reload message. Validation failures are 422 `VALIDATION_FAILED` with per-field codes. Enum values travel as camelCase strings (for example `preparatory`, `arabicIndic`). Dates are `yyyy-MM-dd`.
+
+| Method | Route | Request | Success | Endpoint-specific errors |
+|---|---|---|---|---|
+| GET | `/school-profile` | — | 200 profile (name, types, people, time zone, numeral system, calendar display, `hasLogo`, `hasStamp`, `version`, allowed `options`) | — |
+| PUT | `/school-profile` | `{ name, schoolType, studyType, principalName, scheduleOfficerName, timeZone, numeralSystem, calendarDisplay, version }` | 200 profile | 422, 409 `CONFLICT` |
+| GET | `/school-profile/{logo\|stamp}` | — | 200 image bytes with `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'none'; sandbox` and `Cache-Control: no-store` | 404 `NOT_FOUND` |
+| POST | `/school-profile/{logo\|stamp}` | multipart: `file`, `version` | 200 profile | 400 `INVALID_REQUEST`, 413 `PAYLOAD_TOO_LARGE`, 422 (`File`: `REQUIRED`, `ASSET_TOO_LARGE`, `ASSET_TYPE_NOT_ALLOWED`, `ASSET_TYPE_MISMATCH`), 409 `CONFLICT`, 404 |
+| DELETE | `/school-profile/{logo\|stamp}?version=` | — | 200 profile | 404, 409 |
+| GET | `/school-context` | — | 200 `{ schoolName, numeralSystem, calendarDisplay, timeZone, currentYear?, currentTerm? }`; drives the top bar and the formatter | — |
+| GET | `/dashboard-summary` | — | 200 `{ counts: [{ key, value }], checklist: [{ key, done }] }`, computed from stored data only | — |
+| GET | `/academic-years?search=&sort=&page=&pageSize=` | sort: `label`, `-label`, `startDate`, `-startDate` (default `-startDate`); `pageSize` ≤ 100 | 200 `{ items, total, page, pageSize }` | — |
+| GET | `/academic-years/{id}` | — | 200 year with terms | 404 |
+| POST | `/academic-years` | `{ label, startDate, endDate, version: 0, copyStructureFromYearId? }` | 201 year (the first year becomes current) | 422 (`DUPLICATE_NAME`, `INVALID_DATE_RANGE`, …) |
+| PUT | `/academic-years/{id}` | same shape with the read `version` | 200 year | 404, 409, 422 (`TERM_OUTSIDE_YEAR` if a term would fall outside) |
+| DELETE | `/academic-years/{id}?version=` | — | 204 | 404, 409 `CONFLICT`, 409 `RECORD_IN_USE` (structure exists), 409 `CURRENT_YEAR_REQUIRED` (the current year while other years exist) |
+| POST | `/academic-years/{id}/make-current` | `{ version }` | 200 year | 404, 409 |
+| POST | `/academic-years/{id}/terms` | `{ name, startDate, endDate, version }` (the year's version) | 200 year | 404, 409, 422 (`TERM_OUTSIDE_YEAR`, `TERMS_OVERLAP`, `DUPLICATE_NAME`) |
+| PUT | `/academic-years/{id}/terms/{termId}` | same | 200 year | 404, 409, 422 |
+| DELETE | `/academic-years/{id}/terms/{termId}?version=` | — | 200 year | 404, 409 |
+| POST | `/academic-years/{id}/terms/{termId}/make-current` | `{ version }` | 200 year | 404, 409 |
+
+Audit events: `SchoolProfileUpdated`, `SchoolAssetUploaded`, `SchoolAssetRemoved`, `AcademicYearCreated`, `AcademicYearUpdated`, `AcademicYearDeleted`, `AcademicYearMadeCurrent`, `TermCreated`, `TermUpdated`, `TermDeleted`, `TermMadeCurrent`.
 
 Passwords are 8–1024 characters and usernames are 3–64 characters (`CredentialRules`). Unknown `/api` paths return 404 `NOT_FOUND`, wrong methods return 405 `METHOD_NOT_ALLOWED`, wrong content types return 415 `UNSUPPORTED_MEDIA_TYPE`, and unhandled exceptions return 500 `INTERNAL_ERROR`. The OpenAPI document is served only in the Development environment, and the frontend client is hand-written (ADR 0013).
 

@@ -4,7 +4,10 @@ using FluentValidation;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using SmartSchoolTimetable.Api;
+using SmartSchoolTimetable.Api.Endpoints;
 using SmartSchoolTimetable.Application;
+using SmartSchoolTimetable.Application.Dashboard;
+using SmartSchoolTimetable.Application.SchoolSetup;
 using SmartSchoolTimetable.Infrastructure;
 
 const string resetArgument = "--reset-local-database";
@@ -47,6 +50,12 @@ builder.Services.AddScoped<ILocalAuthService>(services => new LocalAuthService(
     services.GetRequiredService<TimeProvider>(),
     localOptions.InactivityTimeout, // configured default; an owner preference overrides it at runtime
     services.GetRequiredService<SemaphoreSlim>()));
+builder.Services.AddScoped<RequireOwnerSessionFilter>();
+builder.Services.AddScoped<SchoolProfileService>();
+builder.Services.AddScoped<SchoolContextService>();
+builder.Services.AddScoped<AcademicYearService>();
+builder.Services.AddScoped<IYearStructure, YearStructureService>();
+builder.Services.AddScoped<DashboardService>();
 builder.Services.AddLocalInfrastructure(
     databasePath,
     builder.Environment.IsEnvironment("Testing"));
@@ -63,6 +72,8 @@ if (app.Environment.IsDevelopment())
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.MapLocalAuthEndpoints();
+app.MapSchoolSetupEndpoints();
+app.MapAcademicYearEndpoints();
 app.MapFallback(async (HttpContext context) =>
 {
     if (context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))

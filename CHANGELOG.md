@@ -1,6 +1,31 @@
 # Changelog
 
 ## [Unreleased]
+### Phase 2A - shell, school profile, academic years (tag `phase-2a`, branch `phase-2`)
+- **App shell:**
+  - A right-hand sidebar (collapsible; a drawer below 768 px) and a top bar showing the school name and the current year and term.
+  - A user menu (settings, lock, log out), breadcrumbs and an Arabic 404 page.
+  - Routes: dashboard, school profile, academic years, settings.
+- **School profile:** name, school and study type, principal and schedule officer, time zone (default Asia/Baghdad), numeral system and calendar display.
+  - Logo and stamp upload: PNG, JPEG or WebP up to 2 MB, checked by magic bytes; no SVG.
+  - Files are stored under generated names in the app data `assets` folder and served only to the owner, with `nosniff` and a sandbox CSP (ADR 0016).
+- **Academic years and terms:**
+  - A list with search, sort and paging.
+  - Create, edit and make current. Delete is refused while the year is in use, or while it is the current year and other years exist.
+  - Terms must fall inside the year without overlapping; one term can be marked current.
+  - A partial unique index enforces a single current year.
+- **Dashboard:** real counts and a setup checklist computed from stored data, with a link to each step.
+- **Formatter:** `createFormatter`/`useFormatter` in `lib/format.ts` follow the school's numeral system, calendar and time zone (ADR 0017). User values inside Arabic sentences are bidi-isolated.
+- **Foundations:**
+  - An integer `Version` concurrency token on every editable entity; a stale edit returns 409 `CONFLICT` and the UI offers an Arabic reload prompt.
+  - Arabic normalization for uniqueness and search.
+  - Audit events for every change.
+  - The `IDataStore` port, `OperationResult`, list queries (search, sort, page, include archived) and domain-error mapping.
+- **Errors:** 25 new codes, each with a status and an Arabic message. The Arabic dictionary is split into `i18n/ar/*` files. Request-size failures now return 413 `PAYLOAD_TOO_LARGE` instead of 500.
+- **Tooling:** migration `20261003183255_Phase2ASchoolProfileAndAcademicYears`, generated with the local `dotnet-ef` tool (ADR 0015), and a feature-folder dependency test.
+- **Tests:** .NET 79, Vitest 40, Playwright 4. Line coverage: Domain 98.9%, Application 97.4%.
+- Decisions taken without the owner are listed in `docs/DECISIONS_PENDING.md`.
+
 ### Phase 1.4 - design system adoption and housekeeping (tag `phase-1.4`)
 No Phase 2 work.
 - **Design system:**

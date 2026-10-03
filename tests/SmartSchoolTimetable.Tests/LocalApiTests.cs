@@ -156,13 +156,14 @@ public sealed class LocalApiTests
             "frontend",
             "src",
             "i18n",
-            "messages.ts"));
+            "ar",
+            "errors.ts"));
 
         foreach (var code in ApiErrorCodes.All)
         {
             var match = Regex.Match(
                 dictionary,
-                $@"^\s{{4}}{Regex.Escape(code)}:\s*""([^""]+)""",
+                $@"^\s{{2}}{Regex.Escape(code)}:\s*""([^""]+)""",
                 RegexOptions.Multiline);
             Assert.True(match.Success, $"Arabic error dictionary is missing API error code {code}.");
             Assert.Matches(@"\p{IsArabic}", match.Groups[1].Value);

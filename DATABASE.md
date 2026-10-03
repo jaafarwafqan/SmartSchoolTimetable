@@ -26,6 +26,23 @@ The failed-login/lockout columns from the initial migration were removed by `202
 
 First-run setup is permitted only while the account table is empty. It atomically creates the owner and stores only the recovery-code hash. There is no refresh-token table.
 
+## School setup tables (Phase 2)
+Every editable table carries `Version` (INTEGER). It starts at 1 and the domain increments it on each change. EF Core treats it as a concurrency token by convention for every `VersionedEntity`. A stale write raises `DbUpdateConcurrencyException`, which `EfDataStore` turns into the 409 `CONFLICT` path. A SQLite constraint violation (error 19) becomes `DataConflictException` (duplicate name or record in use).
+
+Names used for uniqueness and search are stored twice: as typed, and as a `Normalized…` column produced by `ArabicText.Normalize`. Normalization trims and collapses spaces, removes tatweel and diacritics, unifies alef and yaa forms, converts to Western digits and lower-cases.
+
+Migration `20261003183255_Phase2ASchoolProfileAndAcademicYears` was generated with the local `dotnet-ef` tool and includes its Designer file:
+- `SchoolProfile`: exactly one row (`Id` = 1, seeded at startup).
+  - `Name`, `SchoolType` and `StudyType` (enum strings), `PrincipalName`, `ScheduleOfficerName`.
+  - `TimeZoneId` (default `Asia/Baghdad`), `NumeralSystem` (default `ArabicIndic`), `CalendarDisplay` (default `Gregorian`).
+  - `UpdatedAt`, `Version`.
+  - Nullable owned columns `LogoStoredFileName`, `LogoContentType`, `StampStoredFileName`, `StampContentType`.
+- `AcademicYears`: `Label`, `NormalizedLabel` (unique), `StartDate`, `EndDate`, `IsCurrent`, `CurrentTermId`, `Version`. A partial unique index on `"IsCurrent" = 1` allows at most one current year.
+- `Terms` (owned by a year, cascade delete): `AcademicYearId`, `Name`, `NormalizedName` (unique per year), `StartDate`, `EndDate`.
+- Changing the current year clears the old flag and sets the new one in two saves inside one transaction, so the partial unique index is never violated mid-statement.
+
+Image files are not stored in the database. Logo and stamp bytes live in `<database folder>/assets/` under generated names matching `^(logo|stamp)-[0-9a-f]{32}\.(png|jpg|webp)$` ([ADR 0016](./adr/0016-school-asset-storage.md)). Backups must copy this folder together with the database.
+
 ## Application data
 - School profile; teachers, subjects, resources, stages, sections, workload, shifts, bell times, calendar
 - Timetable versions and lessons

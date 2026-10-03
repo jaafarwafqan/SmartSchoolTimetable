@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SmartSchoolTimetable.Domain;
+using SmartSchoolTimetable.Domain.Common;
 
 namespace SmartSchoolTimetable.Infrastructure;
 
@@ -34,5 +35,15 @@ public sealed class LocalDbContext(DbContextOptions<LocalDbContext> options) : D
             entity.Property(entry => entry.Summary).HasMaxLength(512).IsRequired();
             entity.HasIndex(entry => entry.OccurredAt);
         });
+
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(LocalDbContext).Assembly);
+
+        // Optimistic concurrency: every editable aggregate carries an integer Version that the Domain
+        // increments on each change; EF adds "WHERE Version = <loaded>" to updates and deletes.
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes()
+                     .Where(type => typeof(VersionedEntity).IsAssignableFrom(type.ClrType) && !type.IsOwned()))
+        {
+            modelBuilder.Entity(entityType.ClrType).Property(nameof(VersionedEntity.Version)).IsConcurrencyToken();
+        }
     }
 }

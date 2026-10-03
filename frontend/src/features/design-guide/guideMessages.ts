@@ -58,4 +58,13 @@ export const guideMessages = {
   conflictDescription: "تعارض: المعلم مشغول في الحصة نفسها.",
   blockedDescription: "حصة محجوبة لا يمكن التوزيع فيها.",
   subjectsHeading: "ألوان المواد",
+  navigation: "التنقل والأدوات المساعدة",
+  breadcrumbRoot: "لوحة التحكم",
+  breadcrumbParent: "المراحل والشعب",
+  breadcrumbCurrent: "الأول المتوسط",
+  menuLabel: "قائمة المستخدم",
+  searchLabel: "بحث في المعلمين",
+  uploadLabel: "رفع صورة",
+  emptyMessage: "لا توجد مواد بعد.",
+  addSubject: "إضافة مادة",
 } as const;

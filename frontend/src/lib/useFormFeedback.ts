@@ -22,6 +22,8 @@ export function useFormFeedback() {
   const [success, setSuccess] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [focusRequest, setFocusRequest] = useState(0);
+  /** True after a 409 CONFLICT: the record changed elsewhere and must be reloaded before editing again. */
+  const [conflict, setConflict] = useState(false);
 
   useEffect(() => {
     if (focusRequest === 0) return;
@@ -32,6 +34,7 @@ export function useFormFeedback() {
     setError(null);
     setSuccess(null);
     setFieldErrors({});
+    setConflict(false);
   }, []);
 
   const showFieldErrors = useCallback((errors: FieldErrors) => {
@@ -49,6 +52,12 @@ export function useFormFeedback() {
 
   const showError = useCallback((reason: unknown) => {
     setSuccess(null);
+    if (reason instanceof ApiRequestError && reason.code === "CONFLICT") {
+      setFieldErrors({});
+      setError(null);
+      setConflict(true);
+      return;
+    }
     if (reason instanceof ApiRequestError && reason.fields.length > 0) {
       const inline: FieldErrors = {};
       const unmatched: string[] = [];
@@ -81,6 +90,7 @@ export function useFormFeedback() {
 
   return {
     formRef,
+    conflict,
     error,
     success,
     fieldErrors,

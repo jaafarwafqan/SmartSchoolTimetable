@@ -50,6 +50,22 @@
   - `design-quality.spec.ts` (1): axe (no serious or critical violations) on setup, recovery code, recovery pending, settings, login and the recovery form; screenshots of login and settings at 375/768/1024/1440 px with no horizontal scroll. Baselines are in `frontend/e2e/design-quality.spec.ts-snapshots/` (Windows/Chromium). Update them with `npx playwright test design-quality --update-snapshots` after an approved design change.
 - Lint: `npm run lint` runs ESLint (localization, icon + label, design-system rules) and Stylelint (`color-no-hex`, logical properties, no `font-family` outside `tokens.css`, no `px` font sizes).
 
+## Phase 2 test inventory (updated per checkpoint)
+Checkpoint 2A:
+- .NET (79): the Phase 1.4 suite plus:
+  - `Phase2/SchoolSetupDomainTests.cs`: Arabic normalization, profile and year/term invariants, image signatures, domain-error mapping and list queries.
+  - `Phase2/SchoolSetupServiceTests.cs`: Application services against an in-memory `FakeDataStore` (not found, stale versions, record in use, save conflicts, asset clean-up).
+  - `Phase2/SchoolProfileApiTests.cs` and `Phase2/AcademicYearApiTests.cs`: every endpoint over the real HTTP pipeline and a temporary SQLite database. They cover the session requirement, validation, 409 conflicts, and uploads including SVG, type mismatch and 413.
+  - `ArchitectureTests.FeatureFoldersRespectDependencyDirection`: a feature folder may depend only on shared folders.
+- Coverage (Cobertura, `dotnet test --collect:"XPlat Code Coverage"`): Domain 98.9% and Application 97.4% of lines (target ≥ 90%).
+- Vitest (40): adds `lib/format.test.ts` (numerals, dates, times, ranges) and `components/ui/menu.test.tsx`.
+- Playwright (4): adds `phase2-school.spec.ts`, which covers:
+  - profile validation and focus on the first invalid field;
+  - logo upload and SVG rejection;
+  - a stale edit between two pages (Arabic conflict message and reload);
+  - creating a year and a term, the dashboard checklist and the lock screen;
+  - axe on the dashboard, profile and years screens, and dashboard screenshots at 375/768/1024/1440 px.
+
 ## Later-phase acceptance suites
 - Phase 4 infeasibility test must construct a conflict involving two teachers, a shared lab, and a blocked period; the diagnostic must identify the conflict groups and actionable correction, not merely report infeasible.
 - Large solver-risk comparison uses the same independently verified feasible 40-section/54-teacher workload and records status, first-solution/total time, objective/bound, memory method, and independently checked hard constraints for baseline, two-stage, decomposition, and hints.
