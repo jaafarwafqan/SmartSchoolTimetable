@@ -36,3 +36,14 @@ The 40-section / 20-teacher case is infeasible by the hard workload limits: 40 s
 An exploratory 40-section / 54-teacher run (the aggregate weekly-cap lower bound) reached the 30-second limit without a feasible incumbent (`UNKNOWN`). It is not included as a successful performance result; the current fixed teacher/subject workload allocation and soft objective need more work for the large case.
 
 Benchmark runs stop after the first feasible solution, so their timings measure feasibility search and their objective scores are incumbent values, not optimality claims. Working-set deltas are process working-set observations, not peak native-memory profiles. Multi-worker objective values differ; only single-worker mode is intended for reproducibility.
+
+## Open risk and Phase 4 investigation gate
+
+The required 40-section / 54-teacher scale case did not produce a feasible incumbent within 30 seconds in the exploratory spike. This remains an open performance risk; the 40/20 run is infeasible by capacity and is not a substitute for the 40/54 scale test.
+
+Before Phase 4 acceptance, first construct a 40-section / 54-teacher workload/availability instance whose feasibility is independently established; 54 is only the aggregate workload lower bound, not proof that a given staffing/availability profile is feasible. Then investigate and compare:
+- two-stage solving (feasibility construction followed by soft-objective optimization);
+- decomposition (for example, partitioning by compatible resource/teacher groups while preserving global conflict guarantees);
+- CP-SAT hints derived from a validated prior solution or a first-stage solution.
+
+Measure each approach against the same repeatable feasible 40-section / 54-teacher input and a baseline, with fixed input/profile/solver version/seed. Report status, time to first feasible solution, total time, objective/bound where available, peak or clearly qualified memory measurements, and hard-constraint validation. No approach is selected or considered successful until results demonstrate correct assignments and measured improvement; never relax hard constraints to hit a time target.

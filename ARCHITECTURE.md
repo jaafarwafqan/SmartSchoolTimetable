@@ -6,7 +6,7 @@ This is a single-user, local school timetable application. One installation stor
 ## Layering
 - Domain: entities, value objects, invariants, and domain events; no infrastructure dependencies.
 - Application: use cases, validation, interfaces, and DTOs.
-- Infrastructure: EF Core with local SQLite, local file storage, local audit history, and the Google.OrTools adapter.
+- Infrastructure: EF Core with local SQLite in WAL mode, local file storage, local audit history, and the Google.OrTools adapter.
 - Api: composition root and thin local endpoints. Endpoints dispatch through IMediator.
 
 ## Local process flow
@@ -33,6 +33,7 @@ The CP-SAT adapter uses Google.OrTools for .NET in Infrastructure. Solver types 
 ## Deployment
 - One local ASP.NET Core host and web UI
 - Local SQLite database and local files
+- Repository/unit-of-work abstraction isolates Application and Domain from the SQLite provider; PostgreSQL remains a possible future provider subject to ADR and compatibility work
 - Local background generation service
 - No Docker, cloud services, remote database, Redis, public listener, or inbound LAN access required
 - Optional WebView2 shell may be evaluated later; browser login remains the baseline

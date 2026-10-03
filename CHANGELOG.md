@@ -1,6 +1,14 @@
 # Changelog
 
 ## [Unreleased]
+### Phase 0.4 - storage, acceptance, and risk criteria
+- Added the SQLite WAL/safe-backup/provider-abstraction ADR and detailed its backup integrity requirements.
+- Reworked the delivery plan into eight implementation phases with acceptance criteria for every phase.
+- Recorded the 40-section / 54-teacher 30-second no-solution risk and required measured investigation of two-stage solving, decomposition, and solver hints.
+- Added a multi-constraint infeasibility-diagnostic acceptance case and a QuestPDF licensing gate before Phase 6.
+- Clarified that .NET 9 and Node are the only required build toolchains; Docker, PostgreSQL, and Redis are not required. .NET 9 is installed but currently not on PATH.
+- Documentation only; Phase 1 has not started.
+
 ### Phase 0.3 - owner scope clarification
 - Replaced the multi-tenant/multi-user deployment assumptions with a single-user, local-only application architecture.
 - Documented one-time owner setup/recovery, password/session/lockout requirements, loopback and localhost-attack protections, and local audit history.

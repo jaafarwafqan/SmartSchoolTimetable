@@ -20,6 +20,14 @@
 ## Phase 8 acceptance tests
 Run the complete setup/login/recovery/auto-lock, listener-binding, and localhost-attack suites again against the packaged final application. Include offline operation without internet access, local backup/restore, and browser-based login. Optional WebView2 and SQLCipher features are separately gated and are not assumed to exist.
 
+## Phase 4 solver diagnostic tests
+Include an explicitly constructed infeasible case where two teachers/assignments contend for one shared lab in the same period and one of the assignments is additionally blocked in its only remaining period. Verify that the assumption/relaxation diagnostic names both teachers, the affected section/subject, the shared lab, the blocked-period rule, and an actionable correction. Assert the expected conflict groups rather than accepting a generic infeasible status.
+
+For large-instance performance investigations, first construct and independently establish a feasible 40-section / 54-teacher workload/availability input (54 teachers is only an aggregate lower bound). Compare the two-stage, decomposition, and solver-hint approaches against that same input. Record solver status, first-solution and total timings, objective/bound, memory measurement method, and hard-constraint validation for each approach and baseline.
+
+## SQLite backup tests
+In WAL mode, verify online backup produces a self-contained single-file database that opens and passes integrity checks. Verify the quiesce/checkpoint/close/copy alternative. Ensure a direct copy of the active main database is not treated as a supported backup.
+
 ## Quality expectations
 - Domain + scheduling logic: 90%+ coverage.
 - Critical product flows: account setup, login, password change, recovery, timetable generation/edit/versioning, publish/rollback, print/export, backup/restore, and imports.
