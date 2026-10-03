@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.Json.Serialization;
 using FluentValidation;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
@@ -36,6 +37,7 @@ if (resetRequested)
 }
 
 builder.Services.AddProblemDetails();
+builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(System.Text.Json.JsonNamingPolicy.CamelCase)));
 builder.Services.AddOpenApi();
 builder.Services.AddValidatorsFromAssemblyContaining<SetupRequestValidator>();
 builder.Services.AddSingleton(localOptions);
@@ -54,6 +56,7 @@ builder.Services.AddScoped<RequireOwnerSessionFilter>();
 builder.Services.AddScoped<SchoolProfileService>();
 builder.Services.AddScoped<SchoolContextService>();
 builder.Services.AddScoped<AcademicYearService>();
+builder.Services.AddScoped<TimetableStructureService>();
 builder.Services.AddScoped<IYearStructure, YearStructureService>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddLocalInfrastructure(
@@ -74,6 +77,7 @@ app.UseStaticFiles();
 app.MapLocalAuthEndpoints();
 app.MapSchoolSetupEndpoints();
 app.MapAcademicYearEndpoints();
+app.MapTimetableStructureEndpoints();
 app.MapFallback(async (HttpContext context) =>
 {
     if (context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))

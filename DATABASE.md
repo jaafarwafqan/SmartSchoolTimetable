@@ -41,6 +41,13 @@ Migration `20261003183255_Phase2ASchoolProfileAndAcademicYears` was generated wi
 - `Terms` (owned by a year, cascade delete): `AcademicYearId`, `Name`, `NormalizedName` (unique per year), `StartDate`, `EndDate`.
 - Changing the current year clears the old flag and sets the new one in two saves inside one transaction, so the partial unique index is never violated mid-statement.
 
+Migration `20261003200446_Phase2BTimetableStructure` (local `dotnet-ef`, with Designer file) adds:
+- `WorkingWeek` singleton (`Id` = 1): weekday bit mask, week start day, concurrency version. Startup seeds Sunday–Thursday and Sunday week start.
+- `BellSettings` singleton (`Id` = 1): built-in tone name, break bell flag, concurrency version. Startup seeds the Classic tone.
+- `Shifts`: academic year FK (cascade), display name and normalized name, order and version; unique normalized name and display order per year.
+- `LessonPeriods` owned by a shift: row position, lesson/break kind, start/end time, per-period start/end bell flags. Position is unique within a shift.
+- Period generator output is transient and editable until saved. No calendar days are copied with year structure.
+
 Image files are not stored in the database. Logo and stamp bytes live in `<database folder>/assets/` under generated names matching `^(logo|stamp)-[0-9a-f]{32}\.(png|jpg|webp)$` ([ADR 0016](./adr/0016-school-asset-storage.md)). Backups must copy this folder together with the database.
 
 ## Application data

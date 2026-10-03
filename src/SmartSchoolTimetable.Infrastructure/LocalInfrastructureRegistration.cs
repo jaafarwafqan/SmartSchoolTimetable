@@ -64,8 +64,16 @@ public static class LocalInfrastructureRegistration
 
         // The single school profile row exists from the first start, so every edit carries a version.
         if (!await db.Set<SchoolProfile>().AnyAsync(cancellationToken))
-        {
             db.Add(SchoolProfile.CreateDefault(DateTimeOffset.UtcNow));
+        await db.SaveChangesAsync(cancellationToken);
+        if (!await db.Set<WorkingWeek>().AnyAsync(cancellationToken))
+        {
+            db.Add(WorkingWeek.CreateDefault());
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        if (!await db.Set<BellSettings>().AnyAsync(cancellationToken))
+        {
+            db.Add(BellSettings.CreateDefault());
             await db.SaveChangesAsync(cancellationToken);
         }
     }

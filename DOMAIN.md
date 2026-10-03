@@ -43,7 +43,7 @@
 ## Non-goals in Phase 0
 No implementation of domain logic; only specification and validation strategy.
 
-## Implemented in Phase 2 (checkpoint 2A)
+## Implemented in Phase 2 (checkpoints 2A–2B)
 - **`Domain/Common`:** `VersionedEntity` (`Id`, `Version`, `Touch()`), plus the `DomainErrorCode` enum, the `DomainErrors` collector and `DomainValidationException`. The Domain holds no API code strings; `Application/Common/DomainErrorMapping` maps each `DomainErrorCode` to an `ErrorCodes` constant.
 - **`Domain/Text/ArabicText`:** `Normalize` builds the uniqueness and search key; `Clean` trims and collapses spaces in display values.
 - **`Domain/SchoolSetup/SchoolProfile`:** a singleton (`Id` = 1).
@@ -58,7 +58,8 @@ No implementation of domain logic; only specification and validation strategy.
   - terms lie inside the year, do not overlap and have unique names;
   - only one year is current (also enforced by a database index);
   - the current term belongs to the year, and removing it clears the current term.
-- **Planned for 2B–2E** (recorded in `docs/DECISIONS_PENDING.md`):
-  - Shifts, lesson periods, stages and sections belong to an academic year; subjects and teachers are global.
-  - Weekdays use ISO numbering (1 = Monday … 7 = Sunday); the default working days are Sunday–Thursday.
-
+- **`Domain/SchoolSetup/Shift`:** year-scoped, unique normalized name and display order per year; copies its lesson/break periods into a new year. Period rows must be ordered, nonoverlapping, same-day and end after they start; each shift has 1–12 lessons and up to 20 rows.
+- **`LessonPeriod` and `PeriodGenerator`:** lessons get their own 1-based numbering (breaks excluded); helper output remains editable before saving. Each lesson stores independent start/end bell flags.
+- **`WorkingWeek`:** ISO weekdays (1 = Monday … 7 = Sunday), nonempty days, configurable week start, Sunday–Thursday default.
+- **`BellSettings`:** one row with a built-in tone and break bell option; browser synthesizes preview tones through Web Audio. Live ringing remains Phase 7.
+- **Planned for 2C–2E:** stages and sections belong to an academic year; subjects and teachers are global.

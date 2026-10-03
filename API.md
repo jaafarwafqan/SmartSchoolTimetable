@@ -1,4 +1,4 @@
-# Local API Design
+﻿# Local API Design
 
 ## Boundary
 - The API is a private implementation detail of the local application, bound only to `127.0.0.1`.
@@ -60,7 +60,7 @@ Global rules apply to every route: the exact Host is required (400 `INVALID_HOST
 | PUT | `/settings/inactivity-timeout` | Yes | `{ inactivityTimeout: "5" \| "15" \| "30" \| "60" \| "never" }` | 200 `{ inactivityTimeoutMinutes }` + session cookie with the new lifetime; applies immediately | 401 `UNAUTHENTICATED`, 422 `VALIDATION_FAILED` (field `InactivityTimeout`: `REQUIRED` or `INVALID_INACTIVITY_TIMEOUT`) |
 | GET | `/private/status` | Yes | — | 200 `{ status: "authenticated" }` | 401 `UNAUTHENTICATED` |
 
-### School setup (Phase 2, checkpoint 2A)
+### School setup (Phase 2, checkpoints 2A–2B)
 Every route below requires the owner session (401 `UNAUTHENTICATED`). Editable records carry an integer `version`. Updates, deletes and state changes must send the version that was read; a stale one returns 409 `CONFLICT`, and the UI shows an Arabic reload message. Validation failures are 422 `VALIDATION_FAILED` with per-field codes. Enum values travel as camelCase strings (for example `preparatory`, `arabicIndic`). Dates are `yyyy-MM-dd`.
 
 | Method | Route | Request | Success | Endpoint-specific errors |
@@ -82,6 +82,15 @@ Every route below requires the owner session (401 `UNAUTHENTICATED`). Editable r
 | PUT | `/academic-years/{id}/terms/{termId}` | same | 200 year | 404, 409, 422 |
 | DELETE | `/academic-years/{id}/terms/{termId}?version=` | — | 200 year | 404, 409 |
 | POST | `/academic-years/{id}/terms/{termId}/make-current` | `{ version }` | 200 year | 404, 409 |
+| GET | `/working-days` | — | 200 `{ days, weekStartDay, version }` (ISO weekdays 1=Monday … 7=Sunday) | 401 |
+| PUT | `/working-days` | `{ days, weekStartDay, version }` | 200 working week | 401, 409 `CONFLICT`, 422 `NO_WORKING_DAYS`, `INVALID_OPTION` |
+| GET | `/academic-years/{yearId}/shifts?search=&sort=&page=&pageSize=` | sort: `name`, `-name`, `order`, `-order` | 200 paged shifts with periods | 401, 404 |
+| POST | `/academic-years/{yearId}/shifts` | `{ name, displayOrder, version: 0 }` | 201 shift | 401, 404, 409, 422 |
+| PUT | `/academic-years/{yearId}/shifts/{id}` | `{ name, displayOrder, version }` | 200 shift | 401, 404, 409, 422 |
+| PUT | `/academic-years/{yearId}/shifts/{id}/periods` | `{ periods: [{ kind, startTime, endTime, startBell, endBell }], version }` | 200 shift | 401, 404, 409, 422 (`NO_LESSON_PERIODS`, `TOO_MANY_PERIODS`, `PERIODS_OVERLAP`, `PERIODS_NOT_ASCENDING`, `INVALID_TIME_RANGE`) |
+| POST | `/academic-years/{yearId}/shifts/generate-periods` | `{ firstStartTime, lessonMinutes, lessonCount, breakMinutes, breakAfterLesson }` | 200 editable period drafts; does not save | 401, 422 |
+| GET | `/bell-settings` | — | 200 `{ tone, breakBell, version }` | 401 |
+| PUT | `/bell-settings` | `{ tone, breakBell, version }` | 200 bell settings | 401, 409, 422 |
 
 Audit events: `SchoolProfileUpdated`, `SchoolAssetUploaded`, `SchoolAssetRemoved`, `AcademicYearCreated`, `AcademicYearUpdated`, `AcademicYearDeleted`, `AcademicYearMadeCurrent`, `TermCreated`, `TermUpdated`, `TermDeleted`, `TermMadeCurrent`.
 

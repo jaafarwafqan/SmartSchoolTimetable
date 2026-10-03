@@ -1,6 +1,12 @@
 # Changelog
 
 ## [Unreleased]
+### Phase 2B - الدوام والحصص والجرس (tag `phase-2b`, branch `phase-2`)
+- Added ISO weekday configuration with Sunday–Thursday defaults, version checks and audit entries.
+- Added year-scoped shifts and editable lesson/break periods, validated and copied when a new year copies its structure.
+- Added period generation preview and per-period start/end bell flags, plus built-in Web Audio tone previews.
+- Added authenticated REST routes, the Arabic schedule setup screen, local EF migration, and domain/API tests.
+
 ### Phase 2A - shell, school profile, academic years (tag `phase-2a`, branch `phase-2`)
 - **App shell:**
   - A right-hand sidebar (collapsible; a drawer below 768 px) and a top bar showing the school name and the current year and term.

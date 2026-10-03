@@ -163,8 +163,8 @@ public sealed class SchoolSetupServiceTests
         var context = await new SchoolContextService(store).GetAsync(default);
         Assert.Null(context.CurrentYear);
         Assert.Equal("arabicIndic", context.NumeralSystem);
-        Assert.False(await new YearStructureService().HasStructureAsync(1, default));
-        await new YearStructureService().CopyAsync(1, 2, default);
+        Assert.False(await new YearStructureService(store).HasStructureAsync(1, default));
+        await new YearStructureService(store).CopyAsync(1, 2, default);
     }
 
     [Fact]

@@ -65,4 +65,5 @@ public static class ErrorCodes
     public const string AssetTooLarge = "ASSET_TOO_LARGE";
     public const string AssetTypeNotAllowed = "ASSET_TYPE_NOT_ALLOWED";
     public const string AssetTypeMismatch = "ASSET_TYPE_MISMATCH";
+    public const string YearStructureInUse = "YEAR_STRUCTURE_IN_USE";
 }

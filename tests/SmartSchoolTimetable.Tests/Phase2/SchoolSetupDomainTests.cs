@@ -12,6 +12,51 @@ public sealed class SchoolSetupDomainTests
     private static readonly DateTimeOffset Now = new(2026, 10, 3, 9, 0, 0, TimeSpan.Zero);
     private static readonly DateOnly YearStart = new(2026, 9, 1);
     private static readonly DateOnly YearEnd = new(2027, 6, 30);
+    private static readonly PeriodDraft[] OverlappingPeriods = [
+        new(PeriodKind.Lesson, new TimeOnly(8, 0), new TimeOnly(9, 0)),
+        new(PeriodKind.Break, new TimeOnly(8, 30), new TimeOnly(8, 45))];
+    private static readonly PeriodDraft[] DescendingPeriods = [
+        new(PeriodKind.Lesson, new TimeOnly(9, 0), new TimeOnly(10, 0)),
+        new(PeriodKind.Lesson, new TimeOnly(8, 0), new TimeOnly(8, 45))];
+    private static readonly int[] InvalidDays = [8];
+
+    [Fact]
+    public void PeriodGeneratorCreatesEditableRowsWithBreakAndClockBounds()
+    {
+        var rows = PeriodGenerator.Generate(new PeriodPlan(new TimeOnly(8, 0), 45, 7, 15, 4));
+        Assert.Equal(8, rows.Count);
+        Assert.Equal(1, rows[0].StartTime.Hour == 8 ? 1 : 0);
+        Assert.Equal(PeriodKind.Break, rows[4].Kind);
+        Assert.False(rows[4].StartBell);
+        Assert.Equal(new TimeOnly(13, 30), rows[^1].EndTime);
+    }
+
+    [Fact]
+    public void ShiftRequiresOrderedNonOverlappingPeriodsAndAtLeastOneLesson()
+    {
+        Assert.Throws<DomainValidationException>(() => Shift.Create(1, "صباحي", 1).ReplacePeriods([]));
+        var shift = Shift.Create(1, "صباحي", 1);
+        Assert.Throws<DomainValidationException>(() => shift.ReplacePeriods(OverlappingPeriods));
+        Assert.Throws<DomainValidationException>(() => shift.ReplacePeriods(DescendingPeriods));
+    }
+
+    [Fact]
+    public void WorkingWeekUsesIsoWeekdaysAndRejectsEmptyOrInvalidSets()
+    {
+        var week = WorkingWeek.CreateDefault();
+        Assert.Equal(WorkingWeek.DefaultDays, week.Days);
+        Assert.Throws<DomainValidationException>(() => week.Update([], Weekday.Sunday));
+        Assert.Throws<DomainValidationException>(() => week.Update(InvalidDays, Weekday.Sunday));
+    }
+
+    [Fact]
+    public void BellSettingsAcceptOnlyBuiltInTones()
+    {
+        var settings = BellSettings.CreateDefault();
+        settings.Update(BellTone.Chime, false);
+        Assert.Equal(BellTone.Chime, settings.Tone);
+        Assert.False(settings.BreakBell);
+    }
 
     [Theory]
     [InlineData("  الأول   المتوسط ", "الاول المتوسط")]

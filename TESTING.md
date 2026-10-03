@@ -66,6 +66,12 @@ Checkpoint 2A:
   - creating a year and a term, the dashboard checklist and the lock screen;
   - axe on the dashboard, profile and years screens, and dashboard screenshots at 375/768/1024/1440 px.
 
+Checkpoint 2B:
+- .NET (85): adds domain rule coverage for ISO working days, period generation, ascending/nonoverlapping lesson and break rows, and bell options; API coverage for unauthenticated access, working-week validation, conflict versions, bell settings, shift periods, generated drafts and year structure copying.
+- Vitest (41): adds Web Audio tone-preview cleanup and synthesized oscillator checks.
+- Playwright (4): all Phase 1/2A end-to-end tests pass; no Phase 2B browser setup journey or axe screen coverage has been added yet.
+- `dotnet ef migrations has-pending-model-changes` reports no pending changes after `20261003200446_Phase2BTimetableStructure`.
+
 ## Later-phase acceptance suites
 - Phase 4 infeasibility test must construct a conflict involving two teachers, a shared lab, and a blocked period; the diagnostic must identify the conflict groups and actionable correction, not merely report infeasible.
 - Large solver-risk comparison uses the same independently verified feasible 40-section/54-teacher workload and records status, first-solution/total time, objective/bound, memory method, and independently checked hard constraints for baseline, two-stage, decomposition, and hints.

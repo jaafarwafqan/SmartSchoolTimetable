@@ -62,6 +62,7 @@ public static class ApiErrorCodes
             [ErrorCodes.AssetTooLarge] = StatusCodes.Status422UnprocessableEntity,
             [ErrorCodes.AssetTypeNotAllowed] = StatusCodes.Status422UnprocessableEntity,
             [ErrorCodes.AssetTypeMismatch] = StatusCodes.Status422UnprocessableEntity,
+            [ErrorCodes.YearStructureInUse] = StatusCodes.Status409Conflict,
 
             [ErrorCodes.RecordInUse] = StatusCodes.Status409Conflict,
             [ErrorCodes.CurrentYearRequired] = StatusCodes.Status409Conflict,

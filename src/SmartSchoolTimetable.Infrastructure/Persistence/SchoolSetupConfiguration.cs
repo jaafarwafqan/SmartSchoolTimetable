@@ -33,6 +33,51 @@ internal sealed class SchoolProfileConfiguration : IEntityTypeConfiguration<Scho
     }
 }
 
+internal sealed class ShiftConfiguration : IEntityTypeConfiguration<Shift>
+{
+    public void Configure(EntityTypeBuilder<Shift> builder)
+    {
+        builder.ToTable("Shifts");
+        builder.HasKey(shift => shift.Id);
+        builder.Property(shift => shift.Name).HasMaxLength(Shift.NameMaxLength).IsRequired();
+        builder.Property(shift => shift.NormalizedName).HasMaxLength(Shift.NameMaxLength).IsRequired();
+        builder.HasIndex(shift => new { shift.AcademicYearId, shift.NormalizedName }).IsUnique();
+        builder.HasIndex(shift => new { shift.AcademicYearId, shift.DisplayOrder }).IsUnique();
+        builder.HasOne<AcademicYear>().WithMany().HasForeignKey(shift => shift.AcademicYearId).OnDelete(DeleteBehavior.Cascade);
+        builder.OwnsMany(shift => shift.Periods, period =>
+        {
+            period.ToTable("LessonPeriods");
+            period.WithOwner().HasForeignKey("ShiftId");
+            period.HasKey(value => value.Id);
+            period.Property(value => value.Id).ValueGeneratedOnAdd();
+            period.Property(value => value.Kind).HasConversion<string>().HasMaxLength(16);
+            period.HasIndex("ShiftId", nameof(LessonPeriod.Position)).IsUnique();
+        });
+        builder.Navigation(shift => shift.Periods).UsePropertyAccessMode(PropertyAccessMode.Field);
+    }
+}
+
+internal sealed class WorkingWeekConfiguration : IEntityTypeConfiguration<WorkingWeek>
+{
+    public void Configure(EntityTypeBuilder<WorkingWeek> builder)
+    {
+        builder.ToTable("WorkingWeek");
+        builder.HasKey(week => week.Id);
+        builder.Property(week => week.Id).ValueGeneratedNever();
+    }
+}
+
+internal sealed class BellSettingsConfiguration : IEntityTypeConfiguration<BellSettings>
+{
+    public void Configure(EntityTypeBuilder<BellSettings> builder)
+    {
+        builder.ToTable("BellSettings");
+        builder.HasKey(settings => settings.Id);
+        builder.Property(settings => settings.Id).ValueGeneratedNever();
+        builder.Property(settings => settings.Tone).HasConversion<string>().HasMaxLength(16);
+    }
+}
+
 internal sealed class AcademicYearConfiguration : IEntityTypeConfiguration<AcademicYear>
 {
     public void Configure(EntityTypeBuilder<AcademicYear> builder)

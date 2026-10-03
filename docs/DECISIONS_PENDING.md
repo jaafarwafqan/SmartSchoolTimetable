@@ -1,4 +1,4 @@
-# Decisions pending owner confirmation (Phase 2)
+﻿# Decisions pending owner confirmation (Phase 2)
 
 Each entry was taken autonomously while the owner was away (Phase 2 autonomy protocol 0.5). Each one is the safest option that keeps the approved architecture. Each says how to change it.
 
@@ -12,3 +12,4 @@ Each entry was taken autonomously while the owner was away (Phase 2 autonomy pro
 | 6 | 2026-10-03 | **Dashboard "capacity gaps" = sections whose computed weekly capacity is 0** (their shift has no lessons, or there are no working days). | Workload vs capacity | Workload is Phase 3. Only real, computable data is shown (no fake statistics). | Redefine when Phase 3 workload exists. |
 | 7 | 2026-10-03 | **Time zones are chosen from a fixed list of IANA zones** (Asia/Baghdad default; Gulf, Levant, Egypt, Iran, Turkey and UTC). | Free text | Prevents invalid IDs; works offline with .NET ICU time zone data. | Extend the list in `SchoolProfileRules.SupportedTimeZones`. |
 | 8 | 2026-10-03 | **Until Phase 2 data exists, numerals default to Arabic-Indic and the calendar display to Gregorian** (the defaults of a new school profile). | Western digits | Matches the Arabic-first UI. The school setting overrides it immediately. | Change the defaults in `SchoolProfile.CreateDefault`. |
+| 9 | 2026-10-03 | **Bell tones are synthesized with Web Audio and play only on explicit preview.** | Bundled sound files; scheduled ringing in Phase 2 | Avoid audio assets and licensing; live ringing is Phase 7. | Replace tone preview implementation and revise ADR 0018. |

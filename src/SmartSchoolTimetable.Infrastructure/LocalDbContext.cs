@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SmartSchoolTimetable.Domain;
 using SmartSchoolTimetable.Domain.Common;
+using SmartSchoolTimetable.Domain.SchoolSetup;
 
 namespace SmartSchoolTimetable.Infrastructure;
 
@@ -8,6 +9,9 @@ public sealed class LocalDbContext(DbContextOptions<LocalDbContext> options) : D
 {
     public DbSet<OwnerAccount> Owners => Set<OwnerAccount>();
     public DbSet<LocalAuditEntry> AuditEntries => Set<LocalAuditEntry>();
+    public DbSet<Shift> Shifts => Set<Shift>();
+    public DbSet<WorkingWeek> WorkingWeeks => Set<WorkingWeek>();
+    public DbSet<BellSettings> BellSettings => Set<BellSettings>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

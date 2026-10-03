@@ -92,8 +92,8 @@ public sealed class AcademicYearService(IDataStore store, TimeProvider clock, IY
             return OperationResult.Failure<bool>(ErrorCodes.NotFound);
         if (!year.IsVersion(version))
             return OperationResult.Failure<bool>(ErrorCodes.Conflict);
-        if (await structure.HasStructureAsync(id, cancellationToken))
-            return OperationResult.Failure<bool>(ErrorCodes.RecordInUse);
+        if (await structure.DeletionBlockAsync(id, cancellationToken) is { } blocker)
+            return OperationResult.Failure<bool>(blocker);
         // Deleting the current year while other years exist would leave the school without a current year.
         if (year.IsCurrent && await store.AnyAsync(store.Query<AcademicYear>().Where(other => other.Id != id), cancellationToken))
             return OperationResult.Failure<bool>(ErrorCodes.CurrentYearRequired);
@@ -286,6 +286,9 @@ public sealed class AcademicYearService(IDataStore store, TimeProvider clock, IY
 public interface IYearStructure
 {
     Task<bool> HasStructureAsync(long yearId, CancellationToken cancellationToken);
+
+    async Task<string?> DeletionBlockAsync(long yearId, CancellationToken cancellationToken) =>
+        await HasStructureAsync(yearId, cancellationToken) ? ErrorCodes.RecordInUse : null;
 
     /// <summary>Copies the structure of one year into another (never calendar days). Saved by the caller.</summary>
     Task CopyAsync(long sourceYearId, long targetYearId, CancellationToken cancellationToken);
