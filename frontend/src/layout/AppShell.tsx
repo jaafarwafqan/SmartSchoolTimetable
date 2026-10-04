@@ -7,6 +7,7 @@ import { SchoolProfilePage } from "../features/school-profile/SchoolProfilePage"
 import { SettingsScreen } from "../features/settings/SettingsScreen";
 import { ScheduleStructurePage } from "../features/timetable-structure/ScheduleStructurePage";
 import { StagesSectionsPage } from "../features/stages-sections/StagesSectionsPage";
+import { SubjectsPage } from "../features/subjects/SubjectsPage";
 import type { Bootstrap } from "../lib/bootstrapQuery";
 import { useFormFeedback } from "../lib/useFormFeedback";
 import { useUiStore } from "../state/session";
@@ -37,6 +38,7 @@ export function AppShell({ bootstrap }: { bootstrap: Bootstrap }) {
             <Route path="/academic-years" element={<AcademicYearsPage />} />
             <Route path="/schedule-structure" element={<ScheduleStructurePage />} />
             <Route path="/stages-sections" element={<StagesSectionsPage />} />
+            <Route path="/subjects" element={<SubjectsPage />} />
             <Route path="/settings" element={<SettingsScreen bootstrap={bootstrap} />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>

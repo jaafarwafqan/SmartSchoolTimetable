@@ -10,6 +10,7 @@ using SmartSchoolTimetable.Application;
 using SmartSchoolTimetable.Application.Dashboard;
 using SmartSchoolTimetable.Application.SchoolSetup;
 using SmartSchoolTimetable.Application.Stages;
+using SmartSchoolTimetable.Application.Subjects;
 using SmartSchoolTimetable.Infrastructure;
 
 const string resetArgument = "--reset-local-database";
@@ -59,6 +60,7 @@ builder.Services.AddScoped<SchoolContextService>();
 builder.Services.AddScoped<AcademicYearService>();
 builder.Services.AddScoped<TimetableStructureService>();
 builder.Services.AddScoped<StagesSectionsService>();
+builder.Services.AddScoped<SubjectsService>();
 builder.Services.AddScoped<IYearStructure, YearStructureService>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddLocalInfrastructure(
@@ -81,6 +83,7 @@ app.MapSchoolSetupEndpoints();
 app.MapAcademicYearEndpoints();
 app.MapTimetableStructureEndpoints();
 app.MapStagesSectionsEndpoints();
+app.MapSubjectsEndpoints();
 app.MapFallback(async (HttpContext context) =>
 {
     if (context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))

@@ -1,10 +1,10 @@
 import { Archive, CircleCheck, Pencil, RotateCcw, Trash2 } from "lucide-react";
-import { Badge } from "../../components/ui/badge";
-import { IconButton } from "../../components/ui/icon-button";
-import { isolate } from "../../i18n/isolate";
-import { messages } from "../../i18n/messages";
+import { Badge } from "./ui/badge";
+import { IconButton } from "./ui/icon-button";
+import { isolate } from "../i18n/isolate";
+import { messages } from "../i18n/messages";
 
-const text = messages.school.stagesSections;
+const text = messages.school.common;
 
 /** Active/archived status with icon and text (never colour alone). */
 export function ArchiveBadge({ archived }: { archived: boolean }) {

@@ -67,4 +67,12 @@ export const guideMessages = {
   uploadLabel: "رفع صورة",
   emptyMessage: "لا توجد مواد بعد.",
   addSubject: "إضافة مادة",
+  constraints: "حقول القيود",
+  sampleNotes: "ملاحظات المادة",
+  colorLegend: "لون المادة",
+  colorSwatch: (index: string) => `اللون ${index}`,
+  gridLabel: "الحصص المحجوبة",
+  gridLesson: (lesson: string) => `ح${lesson}`,
+  gridCell: (day: string, lesson: string, blocked: boolean) => `${day}، الحصة ${lesson}: ${blocked ? "محجوبة" : "متاحة"}`,
+  gridDays: ["الأحد", "الاثنين", "الثلاثاء"],
 } as const;

@@ -78,6 +78,17 @@ Checkpoint 2C (after the owner-change review):
 - Vitest (46): adds `periodRows.test.ts` (row-level API errors, lesson numbering, new rows), tone names matching the API, and `styles/customProperties.test.ts`, which fails when CSS uses an undefined `var(--x)`.
 - Playwright (4): `phase2-school.spec.ts` now also creates a shift, checks generator validation, shows a row-level overlap error, saves generated periods, adds a stage and a section (capacity 30 = 5 days × 6 lessons), runs axe on both screens, and records period screenshots at 375/768/1024/1440.
 
+Checkpoint 2D:
+- .NET (99): adds `Phase2/SubjectsTests.cs`:
+  - the grid membership rule and the subject field rules;
+  - service duplicates, versions, archive and delete;
+  - dashboard counts;
+  - routes on real SQLite, including replacing the owned blocked-period rows and the 422 before periods exist.
+- Coverage: Domain 98.0% and Application 94.5% of lines.
+- Vitest (48): adds `components/ui/blocked-periods-grid.test.tsx` (a single tab stop, arrow/Home/End navigation, toggling, the empty state).
+- Playwright (4): the phase 2 flow adds a subject (palette swatch, priority, a blocked cell toggled with the keyboard) and runs axe on the subject dialog and list.
+- All screenshot baselines were regenerated. `maxDiffPixelRatio` is now 0.002, because 0.01 let stale baselines pass despite new tiles and new sidebar items.
+
 ## Later-phase acceptance suites
 - Phase 4 infeasibility test must construct a conflict involving two teachers, a shared lab, and a blocked period; the diagnostic must identify the conflict groups and actionable correction, not merely report infeasible.
 - Large solver-risk comparison uses the same independently verified feasible 40-section/54-teacher workload and records status, first-solution/total time, objective/bound, memory method, and independently checked hard constraints for baseline, two-stage, decomposition, and hints.

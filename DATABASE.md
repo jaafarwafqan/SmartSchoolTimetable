@@ -55,6 +55,12 @@ Migration `20261003205228_Phase2CStagesSections` adds:
 
 Image files are not stored in the database. Logo and stamp bytes live in `<database folder>/assets/` under generated names matching `^(logo|stamp)-[0-9a-f]{32}\.(png|jpg|webp)$` ([ADR 0016](./adr/0016-school-asset-storage.md)). Backups must copy this folder together with the database.
 
+Migration `Phase2DSubjects` adds:
+- `Subjects`:
+  - Columns: `Name`, `NormalizedName` (unique), `ColorIndex` (check 1–10), `Priority` (check 1–5), `DistributionEnabled`, `SpreadAcrossDays`, `Heavy`, `RequiresDoublePeriod`, `Notes` (≤ 500), `IsArchived` (indexed), `ArchivedAt`, `Version`.
+  - Subjects are global, not year-scoped.
+- `SubjectBlockedPeriods` (owned by a subject, cascade delete): `SubjectId`, `Day` (ISO weekday), `LessonNumber`, unique per subject.
+
 ## Application data
 - School profile; teachers, subjects, resources, stages, sections, workload, shifts, bell times, calendar
 - Timetable versions and lessons

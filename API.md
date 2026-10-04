@@ -108,6 +108,18 @@ Creating a section in an archived stage, or restoring a section of an archived s
 
 Audit events: `SchoolProfileUpdated`, `SchoolAssetUploaded`, `SchoolAssetRemoved`, `AcademicYearCreated`, `AcademicYearUpdated`, `AcademicYearDeleted`, `AcademicYearMadeCurrent`, `TermCreated`, `TermUpdated`, `TermDeleted`, `TermMadeCurrent`.
 
+### Subjects and the schedule grid (Phase 2, checkpoint 2D)
+| Method | Route | Request | Success | Endpoint-specific errors |
+|---|---|---|---|---|
+| GET | `/schedule-grid` | — | 200 `{ days, lessonsPerDay }`: working days in display order and the most lessons per day of any shift in the current year (0 until periods exist) | 401 |
+| GET | `/subjects?search=&sort=&page=&pageSize=&includeArchived=` | sort: `name`, `-name`, `priority`, `-priority` | 200 paged subjects | 401 |
+| POST | `/subjects` | `{ name, colorIndex (1–10), priority (1–5), distributionEnabled, spreadAcrossDays, heavy, requiresDoublePeriod, blockedPeriods: [{ day, lessonNumber }], notes?, version: 0 }` | 201 subject | 401, 422 (`DUPLICATE_NAME`, `VALUE_OUT_OF_RANGE` on `ColorIndex`/`Priority`, `VALUE_TOO_LONG`, `BLOCKED_PERIOD_INVALID` when a slot is outside the schedule grid) |
+| PUT | `/subjects/{id}` | same, with the read `version` | 200 subject | 401, 404, 409 `CONFLICT`, 422 |
+| POST | `/subjects/{id}/archive` or `/restore` | `{ version }` | 200 subject | 401, 404, 409 |
+| DELETE | `/subjects/{id}?version=` | — | 204 (nothing references subjects before Phase 3) | 401, 404, 409 |
+
+Audit events: `SubjectCreated`, `SubjectUpdated`, `SubjectArchived`, `SubjectRestored`, `SubjectDeleted`. The dashboard adds the counts `subjects` and `capacityGaps` and the checklist step `subjects`.
+
 Passwords are 8–1024 characters and usernames are 3–64 characters (`CredentialRules`). Unknown `/api` paths return 404 `NOT_FOUND`, wrong methods return 405 `METHOD_NOT_ALLOWED`, wrong content types return 415 `UNSUPPORTED_MEDIA_TYPE`, and unhandled exceptions return 500 `INTERNAL_ERROR`. The OpenAPI document is served only in the Development environment, and the frontend client is hand-written (ADR 0013).
 
 There is no user/tenant attribution in request logs. Avoid logging credentials, recovery codes, cookies, launch tokens, or timetable personal data.

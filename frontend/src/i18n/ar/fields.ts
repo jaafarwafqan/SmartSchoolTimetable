@@ -33,4 +33,8 @@ export const fields = {
   Tone: "نغمة الجرس",
   ShiftId: "الوردية",
   StudentCount: "عدد الطلبة",
+  ColorIndex: "لون المادة",
+  Priority: "الأولوية",
+  Notes: "الملاحظات",
+  BlockedPeriods: "الحصص المحجوبة",
 } as const;

@@ -11,7 +11,7 @@ import { messages } from "../../i18n/messages";
 import { useFormatter } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
 import { useShifts } from "../timetable-structure/scheduleApi";
-import { ArchiveBadge, RecordActions } from "./RecordActions";
+import { ArchiveBadge, RecordActions } from "../../components/RecordActions";
 import { SectionDialog } from "./SectionDialog";
 import { useSectionAction, useSections, type Section, type Stage } from "./stagesApi";
 

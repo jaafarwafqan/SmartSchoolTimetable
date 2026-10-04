@@ -12,7 +12,7 @@ import { DataTable, type TableColumn } from "../../components/ui/table";
 import { messages } from "../../i18n/messages";
 import { useFormatter } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
-import { ArchiveBadge, RecordActions } from "./RecordActions";
+import { ArchiveBadge, RecordActions } from "../../components/RecordActions";
 import { StageDialog } from "./StageDialog";
 import { useStageAction, useStages, type Stage } from "./stagesApi";
 

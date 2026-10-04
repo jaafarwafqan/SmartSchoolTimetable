@@ -1,6 +1,24 @@
 # Changelog
 
 ## [Unreleased]
+### Phase 2D - subjects (tag `phase-2d`, branch `phase-2`)
+- **Subjects** (المواد):
+  - Name, a colour from the ten palette tokens only, and priority 1–5.
+  - Flags: distribution enabled, spread across days, heavy, requires double period.
+  - Notes, and blocked periods.
+  - Search, archive filter and paging; archive and restore; confirmed delete.
+- **Blocked periods:**
+  - `GET /schedule-grid` exposes working days × the most lessons per day of the current year.
+  - The server rejects slots outside it (`BLOCKED_PERIOD_INVALID`, DECISIONS_PENDING #12).
+- **New primitives, shown on `/design`:**
+  - `Textarea` and `SubjectColorPicker` (a native radio group with a check icon).
+  - `BlockedPeriodsGrid`: hatch pattern and Ban icon, one tab stop, arrow keys mirrored for RTL, Space/Enter to toggle.
+- **Dashboard:** new counts for subjects and capacity gaps; new checklist step "إضافة المواد".
+- **Shared UI:** `RecordActions` and `ArchiveBadge` moved to `components/`; archive and status strings moved to `common`.
+- **Tests:**
+  - Screenshot baselines regenerated; the tolerance is tightened to 0.002.
+  - Totals: .NET 99, Vitest 48, Playwright 4. Line coverage: Domain 98.0%, Application 94.5%.
+
 ### Phase 2C - stages and sections, owner-change review, quality gate (tag `phase-2c`, branch `phase-2`)
 - **Owner changes kept and corrected** (details in `docs/OWNER_CHANGES_REVIEW.md`):
   - Year-scoped stages and sections with soft archive, as the owner designed them.

@@ -15,6 +15,7 @@ const server = new ApiServer();
 const school = messages.school;
 const structure = school.scheduleStructure;
 const stages = school.stagesSections;
+const subjects = school.subjects;
 const password = "Phase2-Owner-1";
 const schoolName = "إعدادية النور للبنات";
 
@@ -28,7 +29,7 @@ test.afterAll(async () => {
   await server.stop();
 });
 
-test("profile, years, structure, stages and sections complete the checklist; stale edits are caught", async ({ page, context }) => {
+test("profile, years, structure, stages, sections and subjects complete the checklist; stale edits are caught", async ({ page, context }) => {
   await setupOwner(page, server.baseUrl, "owner", password);
   await expect(page.locator(".checklist-label", { hasText: school.dashboard.steps.schoolProfile })).toBeVisible();
   await expect(page.getByRole("link", { name: new RegExp(school.dashboard.openStep) }).first()).toBeVisible();
@@ -130,10 +131,29 @@ test("profile, years, structure, stages and sections complete the checklist; sta
   await expect(page.getByRole("cell", { name: "30", exact: true })).toBeVisible();
   await expectNoSeriousA11yViolations(page, "stages and sections");
 
+  // Subjects (2D): palette colour, priority, a blocked period toggled with the keyboard.
+  await goToSection(page, school.nav.subjects);
+  await page.getByRole("button", { name: subjects.add }).first().click();
+  const subjectDialog = page.getByRole("dialog", { name: subjects.add });
+  await subjectDialog.getByLabel(subjects.name).fill("الرياضيات");
+  await subjectDialog.getByLabel(subjects.colorSwatch("5")).check();
+  await subjectDialog.getByLabel(subjects.priority).selectOption("5");
+  await subjectDialog.getByText(subjects.heavy).click();
+  const firstCell = subjectDialog.getByRole("button", { name: school.blockedGrid.cell("الأحد", "1", false) });
+  await firstCell.focus();
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Space");
+  await expect(subjectDialog.getByRole("button", { name: school.blockedGrid.cell("الاثنين", "1", true) })).toHaveAttribute("aria-pressed", "true");
+  await expectNoSeriousA11yViolations(page, "subject dialog");
+  await subjectDialog.getByRole("button", { name: subjects.save }).click();
+  await expect(page.getByRole("status").filter({ hasText: subjects.saved })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "الرياضيات", exact: true })).toBeVisible();
+  await expectNoSeriousA11yViolations(page, "subjects");
+
   // Dashboard reflects the completed steps and real counts.
   await goToSection(page, school.nav.dashboard);
   await expect(page.getByText(school.dashboard.checklistDone)).toBeVisible();
-  await expect(page.locator(".count-item")).toHaveText([/1/, /1/, /1/]); // years, stages, sections
+  await expect(page.locator(".count-item")).toHaveText([/1/, /1/, /1/, /1/, /0/]); // years, stages, sections, subjects, capacity gaps
   await expectNoSeriousA11yViolations(page, "dashboard (complete)");
   await expectBreakpointScreenshots(page, "dashboard");
 

@@ -2,6 +2,7 @@
 // user-entered values are bidi-isolated.
 import { isolate } from "../isolate";
 import { scheduleStructure, stagesSections } from "./structure";
+import { blockedGrid, subjects } from "./subjects";
 
 export const school = {
   nav: {
@@ -10,6 +11,7 @@ export const school = {
     academicYears: "السنة الدراسية والفصول",
     scheduleStructure: "الدوام والحصص والجرس",
     stagesSections: "المراحل والشعب",
+    subjects: "المواد",
     settings: "الإعدادات",
     sidebarLabel: "القائمة الجانبية",
     collapse: "طي القائمة",
@@ -40,12 +42,15 @@ export const school = {
       academicYears: "السنوات الدراسية",
       stages: "المراحل",
       sections: "الشعب",
+      subjects: "المواد",
+      capacityGaps: "شعب بلا سعة أسبوعية",
     },
     steps: {
       schoolProfile: "إدخال بيانات المدرسة",
       academicYear: "تحديد السنة الدراسية والفصل الحالي",
       timetableStructure: "إعداد أيام الدوام والحصص",
       stagesSections: "إضافة المراحل والشعب",
+      subjects: "إضافة المواد",
     },
   },
   profile: {
@@ -166,7 +171,17 @@ export const school = {
     loading: "جارٍ التحميل...",
     loadFailed: "تعذر تحميل البيانات.",
     saveChanges: "حفظ التغييرات",
+    archive: "أرشفة",
+    restore: "استعادة",
+    archived: "مؤرشف",
+    active: "نشط",
+    status: "الحالة",
+    actions: "إجراءات",
+    includeArchived: "إظهار المؤرشف",
+    rowActions: (name: string) => `إجراءات ${isolate(name)}`,
   },
   scheduleStructure,
   stagesSections,
+  subjects,
+  blockedGrid,
 } as const;

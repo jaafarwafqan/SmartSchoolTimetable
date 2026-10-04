@@ -63,3 +63,18 @@ No implementation of domain logic; only specification and validation strategy.
 - **`WorkingWeek`:** ISO weekdays (1 = Monday … 7 = Sunday), nonempty days, configurable week start, Sunday–Thursday default.
 - **`BellSettings`:** one row with a built-in tone and break bell option; browser synthesizes preview tones through Web Audio. Live ringing remains Phase 7.
 - **Planned for 2C–2E:** stages and sections belong to an academic year; subjects and teachers are global.
+
+## Implemented in checkpoints 2B–2D
+- **Timetable structure:**
+  - `WorkingWeek` (singleton; ISO days; week start).
+  - `Shift` (per year) with owned `LessonPeriod` rows. Rules: ascending, no overlaps, end after start, at least one lesson, at most 12 lessons and 20 rows.
+  - `PeriodGenerator` produces an editable proposal.
+  - `BellSettings` (tone and break bell).
+- **Stages and sections:**
+  - `Stage` (per year) and `Section` (stage and shift), both with soft archive.
+  - `Section.WeeklyCapacity(week, shift)` = working days × lessons per day of the shift (breaks excluded).
+- **`ScheduleGrid`:** working days × the most lessons per day in the current year. `BlockedPeriod(Day, LessonNumber)` must lie inside it (DECISIONS_PENDING #12); teachers reuse this in 2E.
+- **`Subject`** (global):
+  - Name unique after normalization; colour index 1–10 (palette tokens only); priority 1–5.
+  - Flags: distribution enabled, spread across days, heavy, requires double period. Notes ≤ 500.
+  - Blocked periods (deduplicated and sorted); soft archive.

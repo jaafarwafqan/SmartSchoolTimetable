@@ -3,9 +3,9 @@
 Updated after every commit. A new session should read this file first.
 
 - **Branch:** `phase-2` (never commit to `master`).
-- **Last green tag:** `phase-2c`.
-- **Checkpoint in progress:** 2D (subjects).
-- **Spec:** `docs/PHASE_2_SPEC.md`. Owner review: `docs/OWNER_CHANGES_REVIEW.md`. Decisions: `docs/DECISIONS_PENDING.md` (#1–#11).
+- **Last green tag:** `phase-2d`.
+- **Checkpoint in progress:** 2E (teachers).
+- **Spec:** `docs/PHASE_2_SPEC.md`. Owner review: `docs/OWNER_CHANGES_REVIEW.md`. Decisions: `docs/DECISIONS_PENDING.md` (#1–#12).
 
 ## Baseline at resume (2026-10-04, before any change)
 - Build: 0 warnings. `dotnet test`: 88/88.
@@ -19,23 +19,25 @@ Updated after every commit. A new session should read this file first.
 | 2B | `phase-2b` (`1634eb4`) | Working days, shifts, periods, bells |
 | Owner snapshot | none (`e1e67ec`) | The owner's 2C work as received |
 | Review fixes | none (`96ba605`) | Backend fixes for 2C and the 2B services |
-| 2C + quality gate | `phase-2c` | Rebuilt 2B/2C screens, CSS variable test, E2E through stages and sections |
+| 2C + quality gate | `phase-2c` (`e593d8e`) | Rebuilt 2B/2C screens, CSS variable test, E2E through stages and sections |
+| 2D | `phase-2d` | Subjects, schedule grid, blocked-periods grid, colour picker, textarea |
 
 Last verified state:
-- .NET: 95 tests passed.
-- Vitest: 46 passed.
+- .NET: 99 tests passed.
+- Vitest: 48 passed.
 - Playwright: 4 passed.
 - ESLint and Stylelint: clean.
 - Build: 0 warnings.
-- Line coverage: Domain 97.7%, Application 94.1%.
+- Line coverage: Domain 98.0%, Application 94.5%.
 
 ## Next
-1. 2D, subjects:
-   - Domain entity in `Domain/SchoolSetup` or `Domain/Subjects`, plus `Application/Subjects`.
-   - Colour is subject-1..10 only; priority 1–5; flags (spread across days, heavy, requires double period, distribution enabled); notes.
-   - Blocked periods: a set of (ISO day, lesson number), validated against the working days and the largest shift (DECISIONS_PENDING #4 and #5).
-   - Soft archive plus hard delete when unreferenced; a keyboard-operable blocked-periods grid (to be reused by 2E).
-2. 2E: teachers, including bulk add with a preview.
+1. 2E, teachers (`Domain/Teachers`, `Application/Teachers`):
+   - Full name; short name unique after normalization; soft archive (DECISIONS_PENDING #2).
+   - Off days (ISO weekdays) and blocked periods: reuse `ScheduleGrid`, `BlockedPeriodsEditor` and `BlockedPeriodsGrid`.
+   - Full release: a flag, an optional reason and an optional date range.
+   - Limits: max per day ≤ `grid.LessonsPerDay`, max per week ≤ `grid.WeeklyCapacity` (DECISIONS_PENDING #5); notes.
+   - Bulk add: paste names one per line, preview, then save, with duplicate detection.
+   - Playwright screenshots of the teachers screen at four widths.
 3. 2F: calendar, `--seed-demo-data`, owner test script, `docs/PHASE2_REPORT.md`, tags `phase-2f` and `phase-2`.
 
 ## Patterns to reuse

@@ -107,6 +107,9 @@ public sealed class TimetableStructureService(IDataStore store, TimeProvider clo
         catch (DomainValidationException error) { return OperationResult.FromDomain<GeneratedPeriodsDto>(error); }
     }
 
+    /// <summary>The day × lesson grid used by blocked-period editors (working days and current lessons per day).</summary>
+    public async Task<ScheduleGridDto> GetGridAsync(CancellationToken token) => ScheduleGrids.ToDto(await ScheduleGrids.LoadAsync(store, token));
+
     public async Task<WorkingWeekDto> GetWorkingWeekAsync(CancellationToken token) => ToDto(await LoadWeekAsync(token));
 
     public async Task<OperationResult<WorkingWeekDto>> UpdateWorkingWeekAsync(UpdateWorkingWeekCommand command, CancellationToken token)

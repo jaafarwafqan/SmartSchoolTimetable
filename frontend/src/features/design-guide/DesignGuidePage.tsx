@@ -1,5 +1,6 @@
 import { ButtonsSection } from "./ButtonsSection";
 import { ColorTokensSection } from "./ColorTokensSection";
+import { ConstraintsSection } from "./ConstraintsSection";
 import { DialogSection } from "./DialogSection";
 import { FeedbackSection } from "./FeedbackSection";
 import { FieldsSection } from "./FieldsSection";
@@ -25,6 +26,7 @@ export default function DesignGuidePage() {
         <TypographySection />
         <ButtonsSection />
         <FieldsSection />
+        <ConstraintsSection />
         <FeedbackSection />
         <TableSection />
         <DialogSection />

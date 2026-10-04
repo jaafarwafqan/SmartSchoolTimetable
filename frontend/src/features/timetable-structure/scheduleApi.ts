@@ -11,9 +11,12 @@ export type Shift = { id: number; academicYearId: number; name: string; displayO
 export type WorkingWeek = { days: number[]; weekStartDay: number; version: number };
 export type BellSettings = { tone: BellTone; breakBell: boolean; version: number };
 export type ShiftInput = { name: string; displayOrder: number; version: number };
+export type ScheduleGrid = { days: number[]; lessonsPerDay: number };
+export type BlockedSlot = { day: number; lessonNumber: number };
 export type GenerateInput = { firstStartTime: string; lessonMinutes: number; lessonCount: number; breakMinutes: number; breakAfterLesson: number | null };
 
 export const shiftsKey = ["shifts"] as const;
+const gridKey = ["schedule-grid"] as const;
 const weekKey = ["working-week"] as const;
 const bellKey = ["bell-settings"] as const;
 const shiftsPath = (yearId: number) => `/api/v1/academic-years/${yearId}/shifts`;
@@ -24,6 +27,11 @@ export function useShifts(yearId: number | null) {
     enabled: yearId !== null,
     queryFn: () => apiRequest<Paged<Shift>>(`${shiftsPath(yearId ?? 0)}/?pageSize=100`),
   });
+}
+
+/** Working days × most lessons per day in the current year: the grid for blocked periods (2D, 2E). */
+export function useScheduleGrid() {
+  return useQuery({ queryKey: gridKey, queryFn: () => apiRequest<ScheduleGrid>("/api/v1/schedule-grid/") });
 }
 
 export function useWorkingWeek() {
@@ -41,7 +49,7 @@ function useStructureMutation<TInput, TResult>(request: (input: TInput) => Promi
   return useMutation({
     mutationFn: request,
     onSuccess: async () => {
-      await Promise.all([queryClient.invalidateQueries({ queryKey: key }), refreshSchoolData()]);
+      await Promise.all([queryClient.invalidateQueries({ queryKey: key }), queryClient.invalidateQueries({ queryKey: gridKey }), refreshSchoolData()]);
     },
   });
 }
