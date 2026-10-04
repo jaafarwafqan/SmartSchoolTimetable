@@ -37,4 +37,13 @@ export const fields = {
   Priority: "الأولوية",
   Notes: "الملاحظات",
   BlockedPeriods: "الحصص المحجوبة",
+  FullName: "الاسم الكامل",
+  ShortName: "الاسم المختصر",
+  OffDays: "أيام الإجازة",
+  ReleaseReason: "سبب التفرغ",
+  ReleaseFrom: "بداية التفرغ",
+  ReleaseTo: "نهاية التفرغ",
+  MaxLessonsPerDay: "الحد اليومي للحصص",
+  MaxLessonsPerWeek: "الحد الأسبوعي للحصص",
+  Names: "الأسماء",
 } as const;

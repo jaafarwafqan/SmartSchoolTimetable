@@ -1,4 +1,4 @@
-import { BookOpen, CalendarRange, Clock3, Layers3, LayoutDashboard, School, Settings, type LucideIcon } from "lucide-react";
+import { BookOpen, CalendarRange, Clock3, Layers3, LayoutDashboard, School, Settings, UsersRound, type LucideIcon } from "lucide-react";
 import { messages } from "../i18n/messages";
 
 export type NavItem = {
@@ -17,5 +17,6 @@ export const navItems: readonly NavItem[] = [
   { to: "/schedule-structure", label: messages.school.nav.scheduleStructure, icon: Clock3 },
   { to: "/stages-sections", label: messages.school.nav.stagesSections, icon: Layers3 },
   { to: "/subjects", label: messages.school.nav.subjects, icon: BookOpen },
+  { to: "/teachers", label: messages.school.nav.teachers, icon: UsersRound },
   { to: "/settings", label: messages.school.nav.settings, icon: Settings },
 ];

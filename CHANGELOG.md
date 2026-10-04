@@ -1,6 +1,18 @@
 # Changelog
 
 ## [Unreleased]
+### Phase 2E - teachers (tag `phase-2e`, branch `phase-2`)
+- **Teachers** (المعلمون):
+  - Full and short names; the short name is unique after Arabic normalization.
+  - Off days, chosen with day toggles.
+  - Blocked periods on the shared keyboard grid.
+  - Full release, with a reason and dates.
+  - Maximum lessons per day and per week, validated against the schedule grid; notes.
+- **List:** search by full or short name, a "released only" filter, an archive filter and paging. Archive, restore and confirmed delete.
+- **Bulk add:** paste names one per line; the preview shows each line's status and proposed short name; only ready lines are saved, in one batch (DECISIONS_PENDING #13).
+- **Dashboard:** a teachers count and the step "إضافة المعلمين".
+- **Tests:** .NET 104, Vitest 48, Playwright 4 (with teachers screenshots). Line coverage: Domain 98.3%, Application 94.9%.
+
 ### Phase 2D - subjects (tag `phase-2d`, branch `phase-2`)
 - **Subjects** (المواد):
   - Name, a colour from the ten palette tokens only, and priority 1–5.

@@ -61,6 +61,13 @@ Migration `Phase2DSubjects` adds:
   - Subjects are global, not year-scoped.
 - `SubjectBlockedPeriods` (owned by a subject, cascade delete): `SubjectId`, `Day` (ISO weekday), `LessonNumber`, unique per subject.
 
+Migration `Phase2ETeachers` adds:
+- `Teachers`:
+  - Names: `FullName`, `NormalizedFullName` (indexed), `ShortName`, `NormalizedShortName` (unique).
+  - Constraints: `OffDaysMask` (bit day-1), `FullyReleased`, `ReleaseReason`, `ReleaseFrom`, `ReleaseTo`, `MaxLessonsPerDay`, `MaxLessonsPerWeek` (nullable).
+  - Also `Notes`, `IsArchived` (indexed), `ArchivedAt`, `Version`.
+- `TeacherBlockedPeriods` (owned by a teacher, cascade delete): `TeacherId`, `Day`, `LessonNumber`, unique per teacher.
+
 ## Application data
 - School profile; teachers, subjects, resources, stages, sections, workload, shifts, bell times, calendar
 - Timetable versions and lessons

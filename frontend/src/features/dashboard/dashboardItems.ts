@@ -7,10 +7,12 @@ export const checklistSteps: Record<string, { label: string; to: string }> = {
   timetableStructure: { label: messages.school.dashboard.steps.timetableStructure, to: "/schedule-structure" },
   stagesSections: { label: messages.school.dashboard.steps.stagesSections, to: "/stages-sections" },
   subjects: { label: messages.school.dashboard.steps.subjects, to: "/subjects" },
+  teachers: { label: messages.school.dashboard.steps.teachers, to: "/teachers" },
 };
 
 /** Maps server count keys to their Arabic label and the screen that lists them. */
 export const countItems: Record<string, { label: string; to: string }> = {
+  teachers: { label: messages.school.dashboard.counts.teachers, to: "/teachers" },
   academicYears: { label: messages.school.dashboard.counts.academicYears, to: "/academic-years" },
   stages: { label: messages.school.dashboard.counts.stages, to: "/stages-sections" },
   sections: { label: messages.school.dashboard.counts.sections, to: "/stages-sections" },

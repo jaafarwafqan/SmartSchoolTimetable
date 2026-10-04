@@ -16,6 +16,7 @@ const school = messages.school;
 const structure = school.scheduleStructure;
 const stages = school.stagesSections;
 const subjects = school.subjects;
+const teachers = school.teachers;
 const password = "Phase2-Owner-1";
 const schoolName = "إعدادية النور للبنات";
 
@@ -29,7 +30,7 @@ test.afterAll(async () => {
   await server.stop();
 });
 
-test("profile, years, structure, stages, sections and subjects complete the checklist; stale edits are caught", async ({ page, context }) => {
+test("the whole setup checklist completes end to end; stale edits are caught", async ({ page, context }) => {
   await setupOwner(page, server.baseUrl, "owner", password);
   await expect(page.locator(".checklist-label", { hasText: school.dashboard.steps.schoolProfile })).toBeVisible();
   await expect(page.getByRole("link", { name: new RegExp(school.dashboard.openStep) }).first()).toBeVisible();
@@ -150,10 +151,41 @@ test("profile, years, structure, stages, sections and subjects complete the chec
   await expect(page.getByRole("cell", { name: "الرياضيات", exact: true })).toBeVisible();
   await expectNoSeriousA11yViolations(page, "subjects");
 
+  // Teachers (2E): limits are checked against 6 lessons per day; bulk add previews before saving.
+  await goToSection(page, school.nav.teachers);
+  await page.getByRole("button", { name: teachers.add }).first().click();
+  const teacherDialog = page.getByRole("dialog", { name: teachers.add });
+  await teacherDialog.getByLabel(teachers.fullName).fill("زينب كاظم جواد");
+  await teacherDialog.getByLabel(teachers.shortName).fill("زينب كاظم");
+  await teacherDialog.getByRole("group", { name: teachers.offDays }).getByText(school.scheduleStructure.days.thursday).click();
+  await teacherDialog.getByLabel(`${teachers.limits} ${teachers.maxPerDay}`).fill("7");
+  await teacherDialog.getByRole("button", { name: teachers.save }).click();
+  await expect(teacherDialog.getByText(messages.errors.MAX_PER_DAY_EXCEEDS_PERIODS)).toBeVisible();
+  await expect(teacherDialog.getByLabel(`${teachers.limits} ${teachers.maxPerDay}`)).toBeFocused();
+  await teacherDialog.getByLabel(`${teachers.limits} ${teachers.maxPerDay}`).fill("5");
+  await teacherDialog.getByText(teachers.fullyReleased).click();
+  await expect(teacherDialog.getByLabel(teachers.releaseReason)).toBeVisible();
+  await teacherDialog.getByText(teachers.fullyReleased).click();
+  await expectNoSeriousA11yViolations(page, "teacher dialog");
+  await teacherDialog.getByRole("button", { name: teachers.save }).click();
+  await expect(page.getByRole("status").filter({ hasText: teachers.saved })).toBeVisible();
+
+  await page.getByRole("button", { name: teachers.bulkAdd }).click();
+  const bulkDialog = page.getByRole("dialog", { name: teachers.bulkTitle });
+  await bulkDialog.getByLabel(teachers.bulkNames).fill("حسن علي مهدي\nزينب كاظم جواد\n\nمريم عباس");
+  await bulkDialog.getByRole("button", { name: teachers.bulkPreview }).click();
+  await expect(bulkDialog.getByText(teachers.bulkStatuses.exists)).toBeVisible();
+  await expectNoSeriousA11yViolations(page, "bulk add preview");
+  await bulkDialog.getByRole("button", { name: teachers.bulkSave("2") }).click();
+  await expect(page.getByRole("status").filter({ hasText: teachers.bulkSaved("2") })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "حسن علي", exact: true })).toBeVisible();
+  await expectNoSeriousA11yViolations(page, "teachers");
+  await expectBreakpointScreenshots(page, "teachers");
+
   // Dashboard reflects the completed steps and real counts.
   await goToSection(page, school.nav.dashboard);
   await expect(page.getByText(school.dashboard.checklistDone)).toBeVisible();
-  await expect(page.locator(".count-item")).toHaveText([/1/, /1/, /1/, /1/, /0/]); // years, stages, sections, subjects, capacity gaps
+  await expect(page.locator(".count-item")).toHaveText([/3/, /1/, /1/, /1/, /1/, /0/]); // teachers, years, stages, sections, subjects, capacity gaps
   await expectNoSeriousA11yViolations(page, "dashboard (complete)");
   await expectBreakpointScreenshots(page, "dashboard");
 

@@ -3,6 +3,7 @@
 import { isolate } from "../isolate";
 import { scheduleStructure, stagesSections } from "./structure";
 import { blockedGrid, subjects } from "./subjects";
+import { teachers } from "./teachers";
 
 export const school = {
   nav: {
@@ -12,6 +13,7 @@ export const school = {
     scheduleStructure: "الدوام والحصص والجرس",
     stagesSections: "المراحل والشعب",
     subjects: "المواد",
+    teachers: "المعلمون",
     settings: "الإعدادات",
     sidebarLabel: "القائمة الجانبية",
     collapse: "طي القائمة",
@@ -39,6 +41,7 @@ export const school = {
     stepPending: "غير مكتملة",
     openStep: "فتح الشاشة",
     counts: {
+      teachers: "المعلمون",
       academicYears: "السنوات الدراسية",
       stages: "المراحل",
       sections: "الشعب",
@@ -51,6 +54,7 @@ export const school = {
       timetableStructure: "إعداد أيام الدوام والحصص",
       stagesSections: "إضافة المراحل والشعب",
       subjects: "إضافة المواد",
+      teachers: "إضافة المعلمين",
     },
   },
   profile: {
@@ -184,4 +188,5 @@ export const school = {
   stagesSections,
   subjects,
   blockedGrid,
+  teachers,
 } as const;

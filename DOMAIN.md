@@ -78,3 +78,11 @@ No implementation of domain logic; only specification and validation strategy.
   - Name unique after normalization; colour index 1–10 (palette tokens only); priority 1–5.
   - Flags: distribution enabled, spread across days, heavy, requires double period. Notes ≤ 500.
   - Blocked periods (deduplicated and sorted); soft archive.
+- **`Teacher`** (global):
+  - Names: full name ≤ 150; short name ≤ 40, unique after normalization.
+  - Off days must be working days.
+  - Blocked periods lie inside the `ScheduleGrid`.
+  - Full release: a flag, an optional reason (≤ 200) and an optional date range (from ≤ to).
+  - Limits: optional; max per day ≤ lessons per day and max per week ≤ the grid's weekly capacity once periods exist (DECISIONS_PENDING #5); max per day ≤ max per week.
+  - Notes; soft archive.
+- **`TeacherNames.ProposeShortName`:** proposes the first two words, then the first three, then the full name, using the first that is free (DECISIONS_PENDING #13).

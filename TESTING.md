@@ -89,6 +89,16 @@ Checkpoint 2D:
 - Playwright (4): the phase 2 flow adds a subject (palette swatch, priority, a blocked cell toggled with the keyboard) and runs axe on the subject dialog and list.
 - All screenshot baselines were regenerated. `maxDiffPixelRatio` is now 0.002, because 0.01 let stale baselines pass despite new tiles and new sidebar items.
 
+Checkpoint 2E:
+- .NET (104): adds `Phase2/TeachersTests.cs`:
+  - every teacher rule, including limits before and after periods exist;
+  - short-name proposals;
+  - service CRUD, the release-date parsing, filters and sorting;
+  - bulk preview statuses and refusal of a whole batch;
+  - routes for the limit codes, release dates, bulk add, the `released` filter and the missing-token check.
+- Coverage: Domain 98.3% and Application 94.9% of lines.
+- Playwright (4): the phase 2 flow adds a teacher (an off day, a limit error with focus moved to the field, the release toggle) and a bulk add with a preview (one line flagged "already exists"). It runs axe on the teacher dialog, the bulk preview and the list, and records teachers screenshots at 375/768/1024/1440.
+
 ## Later-phase acceptance suites
 - Phase 4 infeasibility test must construct a conflict involving two teachers, a shared lab, and a blocked period; the diagnostic must identify the conflict groups and actionable correction, not merely report infeasible.
 - Large solver-risk comparison uses the same independently verified feasible 40-section/54-teacher workload and records status, first-solution/total time, objective/bound, memory method, and independently checked hard constraints for baseline, two-stage, decomposition, and hints.

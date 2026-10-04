@@ -2,6 +2,7 @@ using SmartSchoolTimetable.Application.Common;
 using SmartSchoolTimetable.Application.SchoolSetup;
 using SmartSchoolTimetable.Domain.SchoolSetup;
 using SmartSchoolTimetable.Domain.Subjects;
+using SmartSchoolTimetable.Domain.Teachers;
 
 namespace SmartSchoolTimetable.Application.Dashboard;
 
@@ -25,6 +26,7 @@ public sealed class DashboardService(IDataStore store)
         var years = await store.CountAsync(store.Query<AcademicYear>(), cancellationToken);
         var week = await store.FirstOrDefaultAsync(store.Query<WorkingWeek>(), cancellationToken);
         var subjects = await store.CountAsync(store.Query<Subject>().Where(row => !row.IsArchived), cancellationToken);
+        var teachers = await store.CountAsync(store.Query<Teacher>().Where(row => !row.IsArchived), cancellationToken);
 
         var yearId = currentYear?.Id ?? 0;
         var shifts = await store.ListAsync(store.Query<Shift>().Where(row => row.AcademicYearId == yearId), cancellationToken);
@@ -37,6 +39,7 @@ public sealed class DashboardService(IDataStore store)
 
         var counts = new List<DashboardCountDto>
         {
+            new("teachers", teachers),
             new("academicYears", years),
             new("stages", stageIds.Count),
             new("sections", sections.Count),
@@ -50,6 +53,7 @@ public sealed class DashboardService(IDataStore store)
             new("timetableStructure", shifts.Count > 0 && shifts.All(shift => shift.LessonCount > 0) && week?.DayCount > 0),
             new("stagesSections", stageIds.Count > 0 && sections.Count > 0),
             new("subjects", subjects > 0),
+            new("teachers", teachers > 0),
         };
         return new DashboardSummaryDto(counts, checklist);
     }

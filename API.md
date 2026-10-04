@@ -120,6 +120,19 @@ Audit events: `SchoolProfileUpdated`, `SchoolAssetUploaded`, `SchoolAssetRemoved
 
 Audit events: `SubjectCreated`, `SubjectUpdated`, `SubjectArchived`, `SubjectRestored`, `SubjectDeleted`. The dashboard adds the counts `subjects` and `capacityGaps` and the checklist step `subjects`.
 
+### Teachers (Phase 2, checkpoint 2E)
+| Method | Route | Request | Success | Endpoint-specific errors |
+|---|---|---|---|---|
+| GET | `/teachers?search=&sort=&page=&pageSize=&includeArchived=&released=` | search matches the full or short name (normalized); sort: `name`, `-name`, `shortName`, `-shortName`; `released=true` lists fully released teachers only | 200 paged teachers | 401 |
+| POST | `/teachers` | `{ fullName, shortName, offDays: [ISO day], blockedPeriods: [{ day, lessonNumber }], fullyReleased, releaseReason?, releaseFrom?, releaseTo?, maxLessonsPerDay?, maxLessonsPerWeek?, notes?, version: 0 }` | 201 teacher | 401, 422 (`DUPLICATE_NAME` on `ShortName`, `INVALID_OPTION` on `OffDays` for a non-working day, `BLOCKED_PERIOD_INVALID`, `MAX_PER_DAY_EXCEEDS_PERIODS`, `MAX_PER_WEEK_EXCEEDS_CAPACITY`, `VALUE_OUT_OF_RANGE`, `INVALID_DATE`, `INVALID_DATE_RANGE`) |
+| PUT | `/teachers/{id}` | same, with the read `version` | 200 teacher | 401, 404, 409 `CONFLICT`, 422 |
+| POST | `/teachers/{id}/archive` or `/restore` | `{ version }` | 200 teacher | 401, 404, 409 |
+| DELETE | `/teachers/{id}?version=` | — | 204 (nothing references teachers before Phase 3) | 401, 404, 409 |
+| POST | `/teachers/bulk/preview` | `{ names: [string] }` (≤ 200 lines; blank lines ignored) | 200 `{ lines: [{ line, fullName, shortName?, status }], readyCount }`; status is `ready`, `tooLong`, `duplicateInList`, `exists` or `noShortName` | 401, 422 `REQUIRED` / `VALUE_OUT_OF_RANGE` on `Names` |
+| POST | `/teachers/bulk` | `{ names: [string] }` | 200 `{ created }`: every line is re-classified and the whole batch is refused if any line is not ready | 401, 422 (`Names[i]`: `DUPLICATE_NAME` or `VALUE_TOO_LONG`) |
+
+Release reason and dates are kept only while `fullyReleased` is true. Limits are optional (no value means no limit). Audit events: `TeacherCreated`, `TeacherUpdated`, `TeacherArchived`, `TeacherRestored`, `TeacherDeleted`, `TeachersBulkCreated`. The dashboard adds the count `teachers` and the checklist step `teachers`.
+
 Passwords are 8–1024 characters and usernames are 3–64 characters (`CredentialRules`). Unknown `/api` paths return 404 `NOT_FOUND`, wrong methods return 405 `METHOD_NOT_ALLOWED`, wrong content types return 415 `UNSUPPORTED_MEDIA_TYPE`, and unhandled exceptions return 500 `INTERNAL_ERROR`. The OpenAPI document is served only in the Development environment, and the frontend client is hand-written (ADR 0013).
 
 There is no user/tenant attribution in request logs. Avoid logging credentials, recovery codes, cookies, launch tokens, or timetable personal data.
