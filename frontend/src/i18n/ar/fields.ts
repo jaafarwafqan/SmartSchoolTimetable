@@ -50,4 +50,9 @@ export const fields = {
   Kind: "النوع",
   From: "من تاريخ",
   To: "إلى تاريخ",
+  WeeklyLessons: "الحصص الأسبوعية",
+  SubjectId: "المادة",
+  Count: "عدد الشعب",
+  LabelStyle: "تسمية الشعب",
+  Breaks: "الاستراحات",
 } as const;

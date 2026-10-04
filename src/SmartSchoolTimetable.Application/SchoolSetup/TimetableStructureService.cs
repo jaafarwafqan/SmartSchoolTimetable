@@ -121,7 +121,9 @@ public sealed class TimetableStructureService(IDataStore store, TimeProvider clo
         if (errors.Any) return OperationResult.Invalid<GeneratedPeriodsDto>(errors.Errors);
         try
         {
-            var drafts = PeriodGenerator.Generate(new PeriodPlan(start, command.LessonMinutes, command.LessonCount, command.BreakMinutes, command.BreakAfterLesson));
+            var drafts = PeriodGenerator.Generate(command.Breaks is { } breaks
+                ? new PeriodPlan(start, command.LessonMinutes, command.LessonCount, breaks.Select(slot => new BreakSlot(slot.AfterLesson, slot.Minutes)).ToArray())
+                : new PeriodPlan(start, command.LessonMinutes, command.LessonCount, command.BreakMinutes, command.BreakAfterLesson));
             return OperationResult.Success(new GeneratedPeriodsDto(drafts.Select((period, index) => ToDto(new LessonPeriod(index + 1, period))).ToArray()));
         }
         catch (DomainValidationException error) { return OperationResult.FromDomain<GeneratedPeriodsDto>(error); }

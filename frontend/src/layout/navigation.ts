@@ -32,6 +32,7 @@ export const navGroups: readonly NavGroup[] = [
     tabs: [
       { to: "/classes/stages", label: nav.stagesSections },
       { to: "/classes/subjects", label: nav.subjects },
+      { to: "/classes/curriculum", label: nav.curriculum },
     ],
   },
 ];

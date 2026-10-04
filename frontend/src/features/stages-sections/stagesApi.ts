@@ -3,7 +3,7 @@ import { apiRequest } from "../../api";
 import { useRefreshSchoolData } from "../../lib/schoolContext";
 import type { Paged } from "../academic-years/yearsApi";
 
-export type Stage = { id: number; academicYearId: number; name: string; displayOrder: number; isArchived: boolean; archivedAt: string | null; version: number };
+export type Stage = { id: number; academicYearId: number; name: string; displayOrder: number; templateKey: string | null; isArchived: boolean; archivedAt: string | null; version: number };
 export type Section = {
   id: number;
   stageId: number;

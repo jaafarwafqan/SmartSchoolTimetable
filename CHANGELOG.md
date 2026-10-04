@@ -1,6 +1,23 @@
 # Changelog
 
 ## [Unreleased]
+### Phase 2.5C - templates, stage cards, curriculum (tag `phase-2-5c`)
+- **Curriculum table** (المنهج الدراسي, a new tab under الصفوف والمنهج; ADR 0021):
+  - Weekly lessons per subject and stage, edited in place with arrow-key navigation (`EditGrid`).
+  - A subject may repeat in a stage with a label («إضافة تكرار لهذه المادة»).
+  - Live totals per stage and shift against capacity, marked ناقص / مطابق / زائد with an icon and text.
+- **Typing savers** with preview: copy a stage's curriculum to other stages; set the same lessons for one subject across stages (ADR 0022).
+- **Stage cards:** a section stepper per stage. New sections get the next label (Arabic letters, numbers or Latin letters); removing the last one is confirmed.
+- **Templates** (JSON, marked «مقترحة، يمكن تعديلها»):
+  - Iraqi stages by school type, with branches for the preparatory grades.
+  - Suggested subject names, with no invented lesson counts.
+  - Period presets in the generator, including several breaks.
+  - Applying is previewed first, runs in one transaction, and is idempotent.
+- **Year copy** also copies the active curriculum lines.
+- **New error code:** `CURRICULUM_IN_USE` (a stage or subject is still in the curriculum).
+- **Migration:** `Phase25CCurriculumTemplates`.
+- **Tests:** .NET 126, Vitest 62, Playwright 4; line coverage Domain 98.7%, Application 95.4%.
+
 ### Phase 2.5B - per-day lessons, shift mode, setup progress (tag `phase-2-5b`)
 - **Per-day lesson counts** (ADR 0020): each shift teaches the first N lessons on each working day.
   - Capacity, the schedule grid, blocked-period checks and teacher limits use the per-day counts.

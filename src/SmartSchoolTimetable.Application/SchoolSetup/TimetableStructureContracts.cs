@@ -20,7 +20,10 @@ public sealed record SetDayLessonsCommand(IReadOnlyList<DayLessonsDto>? DayLesso
 public sealed record SaveShiftCommand(string? Name, int DisplayOrder, int Version);
 public sealed record PeriodInput(string? Kind, string? StartTime, string? EndTime, bool StartBell = true, bool EndBell = true);
 public sealed record ReplacePeriodsCommand(IReadOnlyList<PeriodInput>? Periods, int Version);
-public sealed record GeneratePeriodsCommand(string? FirstStartTime, int LessonMinutes, int LessonCount, int BreakMinutes, int? BreakAfterLesson);
+public sealed record BreakSlotDto(int AfterLesson, int Minutes);
+
+/// <param name="Breaks">Several breaks (presets); when null, the single <paramref name="BreakAfterLesson"/> form applies.</param>
+public sealed record GeneratePeriodsCommand(string? FirstStartTime, int LessonMinutes, int LessonCount, int BreakMinutes, int? BreakAfterLesson, IReadOnlyList<BreakSlotDto>? Breaks = null);
 public sealed record GeneratedPeriodsDto(IReadOnlyList<LessonPeriodDto> Periods);
 public sealed record WorkingWeekDto(IReadOnlyList<int> Days, int WeekStartDay, int Version);
 public sealed record UpdateWorkingWeekCommand(IReadOnlyList<int>? Days, int WeekStartDay, int Version);

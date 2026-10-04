@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { Alert } from "../components/ui/alert";
 import { AcademicYearsPage } from "../features/academic-years/AcademicYearsPage";
 import { CalendarPage } from "../features/calendar/CalendarPage";
+import { CurriculumPage } from "../features/curriculum/CurriculumPage";
 import { DashboardPage } from "../features/dashboard/DashboardPage";
 import { SchoolProfilePage } from "../features/school-profile/SchoolProfilePage";
 import { SettingsScreen } from "../features/settings/SettingsScreen";
@@ -48,6 +49,7 @@ export function AppShell({ bootstrap }: { bootstrap: Bootstrap }) {
             <Route path="/school/calendar" element={<CalendarPage />} />
             <Route path="/classes/stages" element={<StagesSectionsPage />} />
             <Route path="/classes/subjects" element={<SubjectsPage />} />
+            <Route path="/classes/curriculum" element={<CurriculumPage />} />
             <Route path="/teachers" element={<TeachersPage />} />
             <Route path="/settings" element={<SettingsScreen bootstrap={bootstrap} />} />
             {Object.entries(legacyRedirects).map(([from, to]) => <Route key={from} path={from} element={<Navigate to={to} replace />} />)}

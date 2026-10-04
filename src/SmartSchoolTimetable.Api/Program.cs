@@ -1,3 +1,5 @@
+using SmartSchoolTimetable.Application.Setup;
+using SmartSchoolTimetable.Application.Curriculum;
 using System.Net;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -82,6 +84,10 @@ builder.Services.AddScoped<TeachersService>();
 builder.Services.AddScoped<CalendarService>();
 builder.Services.AddScoped<ShiftModeService>();
 builder.Services.AddScoped<SetupProgressService>();
+builder.Services.AddScoped<StageCardsService>();
+builder.Services.AddScoped<CurriculumService>();
+builder.Services.AddScoped<CurriculumHelpersService>();
+builder.Services.AddScoped<SetupTemplatesService>();
 builder.Services.AddScoped<IYearStructure, YearStructureService>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddLocalInfrastructure(
@@ -108,6 +114,7 @@ app.MapSubjectsEndpoints();
 app.MapTeachersEndpoints();
 app.MapCalendarEndpoints();
 app.MapSetupEndpoints();
+app.MapCurriculumEndpoints();
 app.MapFallback(async (HttpContext context) =>
 {
     if (context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))

@@ -1,4 +1,5 @@
 using SmartSchoolTimetable.Application.Common;
+using SmartSchoolTimetable.Domain.Curriculum;
 using SmartSchoolTimetable.Domain.SchoolSetup;
 using SmartSchoolTimetable.Domain.Text;
 
@@ -57,7 +58,7 @@ public sealed class StagesSectionsService(IDataStore store, TimeProvider clock)
         if (!await store.AnyAsync(store.Query<AcademicYear>().Where(row => row.Id == yearId), token))
             return OperationResult.Failure<StageDto>(ErrorCodes.NotFound);
         Stage? stage = null;
-        if (StoreSaving.TryDomain<StageDto>(() => stage = Stage.Create(yearId, command.Name, command.DisplayOrder)) is { } invalid)
+        if (StoreSaving.TryDomain<StageDto>(() => stage = Stage.Create(yearId, command.Name, command.DisplayOrder, command.TemplateKey)) is { } invalid)
             return invalid;
         if (await StageNameTakenAsync(yearId, null, command.Name, token))
             return OperationResult.Invalid<StageDto>(nameof(command.Name), ErrorCodes.DuplicateName);
@@ -90,6 +91,8 @@ public sealed class StagesSectionsService(IDataStore store, TimeProvider clock)
             return OperationResult.Failure<StageDto>(ErrorCodes.Conflict);
         if (archived && await store.AnyAsync(store.Query<Section>().Where(row => row.StageId == id && !row.IsArchived), token))
             return OperationResult.Failure<StageDto>(ErrorCodes.RecordInUse);
+        if (archived && await store.AnyAsync(store.Query<CurriculumEntry>().Where(entry => entry.StageId == id && !entry.IsArchived), token))
+            return OperationResult.Failure<StageDto>(ErrorCodes.CurriculumInUse);
         if (archived)
             stage.Archive(clock.GetUtcNow());
         else
@@ -107,6 +110,8 @@ public sealed class StagesSectionsService(IDataStore store, TimeProvider clock)
             return OperationResult.Failure<bool>(ErrorCodes.Conflict);
         if (await store.AnyAsync(store.Query<Section>().Where(row => row.StageId == id), token))
             return OperationResult.Failure<bool>(ErrorCodes.RecordInUse);
+        if (await store.AnyAsync(store.Query<CurriculumEntry>().Where(entry => entry.StageId == id), token))
+            return OperationResult.Failure<bool>(ErrorCodes.CurriculumInUse);
         store.Remove(stage);
         AuditTrail.Record(store, clock, "StageDeleted", $"stage:{id}", "Stage deleted.");
         return await store.SaveAsync(() => true, "Name", token);
@@ -205,29 +210,6 @@ public sealed class StagesSectionsService(IDataStore store, TimeProvider clock)
     private async Task<Section?> FindSectionAsync(long yearId, long stageId, long id, CancellationToken token) =>
         await FindStageAsync(yearId, stageId, token) is null ? null : await FindSectionInStageAsync(stageId, id, token);
 
-    private static StageDto ToDto(Stage row) =>
-        new(row.Id, row.AcademicYearId, row.Name, row.DisplayOrder, row.IsArchived, row.ArchivedAt, row.Version);
-
-    /// <summary>Loads the working week and the referenced shifts once per page (no per-row queries).</summary>
-    private sealed class SectionMapper(WorkingWeek? week, IReadOnlyDictionary<long, Shift> shifts)
-    {
-        public static async Task<SectionMapper> LoadAsync(IDataStore store, IReadOnlyCollection<Section> sections, CancellationToken token)
-        {
-            var week = await store.FirstOrDefaultAsync(store.Query<WorkingWeek>(), token);
-            var shiftIds = sections.Select(section => section.ShiftId).Distinct().ToArray();
-            var shifts = await store.ListAsync(store.Query<Shift>().Where(shift => shiftIds.Contains(shift.Id)), token);
-            return new SectionMapper(week, shifts.ToDictionary(shift => shift.Id));
-        }
-
-        public SectionDto ToDto(Section row) => new(
-            row.Id,
-            row.StageId,
-            row.Label,
-            row.ShiftId,
-            row.StudentCount,
-            Section.WeeklyCapacity(week, shifts.GetValueOrDefault(row.ShiftId)),
-            row.IsArchived,
-            row.ArchivedAt,
-            row.Version);
-    }
+    internal static StageDto ToDto(Stage row) =>
+        new(row.Id, row.AcademicYearId, row.Name, row.DisplayOrder, row.TemplateKey, row.IsArchived, row.ArchivedAt, row.Version);
 }

@@ -119,6 +119,27 @@ Audit events: `SchoolProfileUpdated`, `SchoolAssetUploaded`, `SchoolAssetRemoved
 
 `/schedule-grid` now also returns `lessonsByDay: [{ day, lessons }]` and `maxWeeklyLessons`. Audit events: `ShiftDayLessonsUpdated`, `ShiftModeChanged`, `SetupProgressSaved`, `SetupFinished`.
 
+### Phase 2.5C: stage cards, curriculum, templates
+Every `…/preview` route returns the plan without saving; its twin without `/preview` applies it (ADR 0022). Plan line actions: `create`, `update`, `exists`, `unchanged`, `ambiguous`, `notApplicable`.
+
+| Method | Route | Request | Success | Errors |
+|---|---|---|---|---|
+| GET | `/academic-years/{yearId}/stage-cards?includeArchived=` | — | 200 `[{ stage, sections }]`; stages now carry `templateKey` | 401 |
+| PUT | `/academic-years/{yearId}/stage-cards/{stageId}/section-count` | `{ count (0–30), shiftId, labelStyle: arabic\|numbers\|latin }` | 200 card; adds the next labels or removes the last sections | 401, 404, 409 `STAGE_ARCHIVED`, 422 `Count`, `LabelStyle`, `ShiftId` (`SHIFT_NOT_IN_YEAR`) |
+| GET | `/academic-years/{yearId}/curriculum` | — | 200 `{ stages: [{ id, name, plannedLessons, totals: [{ shiftId, shiftName, sections, weeklyCapacity, status, difference }] }], rows: [{ subjectId, subjectName, colorIndex, label, cells: [{ stageId, entryId, weeklyLessons, version, duplicates }] }] }`; status is `under`, `equal` or `over` | 401 |
+| PUT | `/academic-years/{yearId}/curriculum/cell` | `{ stageId, subjectId, label, weeklyLessons (1–15, or null to clear), entryId, version }` | 200 table | 401, 404, 409 `CONFLICT`, 409 `STAGE_ARCHIVED`, 422 `SubjectId`, `WeeklyLessons`, `Label` |
+| POST | `/academic-years/{yearId}/curriculum/copy[/preview]` | `{ fromStageId, toStageIds }` | 200 plan; creates only missing lines | 401, 404 |
+| POST | `/academic-years/{yearId}/curriculum/set-across[/preview]` | `{ subjectId, label, weeklyLessons, stageIds }` | 200 plan | 401, 422 `SubjectId`, `WeeklyLessons` |
+| PUT | `/curriculum-entries/{id}` | `{ weeklyLessons, label, needsDoublePeriod, notes, version }` | 200 entry | 401, 404, 409 `CONFLICT`, 422 |
+| POST | `/curriculum-entries/{id}/archive`, `/restore` | `{ version }` | 200 entry | 401, 404, 409 `CONFLICT` |
+| DELETE | `/curriculum-entries/{id}?version=` | — | 204 | 401, 404, 409 `CONFLICT` |
+| GET | `/templates` | — | 200 `{ branches, grades: [{ key, name, branchStem, schoolTypes }], periodPresets, workingDayPresets }` | 401 |
+| POST | `/academic-years/{yearId}/templates/stages[/preview]` | `{ schoolType, grades: [{ gradeKey, branches, sections, shiftId, labelStyle }] }` | 200 `{ lines: [{ key, name, action, existingSections, sectionsToAdd }], changes }`; one transaction | 401, 404, 422 `SchoolType`, and any error of the services it calls (everything rolled back) |
+| GET | `/academic-years/{yearId}/templates/suggested-subjects` | — | 200 subject names | 401 |
+| POST | `/templates/subjects[/preview]` | `{ names }` | 200 `{ lines: [{ name, action }], changes }` | 401, 422 |
+
+`POST …/shifts/generate-periods` also accepts `breaks: [{ afterLesson, minutes }]` (period presets with several breaks). Stage and subject archive/delete can now return 409 `CURRICULUM_IN_USE`. Audit events: `SectionsAdded`, `SectionsRemoved`, `CurriculumEntryCreated`, `CurriculumEntryUpdated`, `CurriculumEntryDeleted`, `CurriculumEntryArchived`, `CurriculumEntryRestored`, `CurriculumCopied`, `CurriculumLessonsSet`.
+
 ### Subjects and the schedule grid (Phase 2, checkpoint 2D)
 | Method | Route | Request | Success | Endpoint-specific errors |
 |---|---|---|---|---|

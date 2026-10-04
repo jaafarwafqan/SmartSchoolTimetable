@@ -37,6 +37,7 @@ const tabGroups: Readonly<Record<string, string>> = {
   [nav.calendar]: nav.school,
   [nav.stagesSections]: nav.classes,
   [nav.subjects]: nav.classes,
+  [nav.curriculum]: nav.classes,
 };
 
 /** Opens a screen through the sidebar, and through its group's tab when the screen is a tab. */

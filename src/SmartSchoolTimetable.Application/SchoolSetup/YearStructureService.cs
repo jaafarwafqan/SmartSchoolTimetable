@@ -1,4 +1,5 @@
 using SmartSchoolTimetable.Application.Common;
+using SmartSchoolTimetable.Domain.Curriculum;
 using SmartSchoolTimetable.Domain.SchoolSetup;
 
 namespace SmartSchoolTimetable.Application.SchoolSetup;
@@ -32,6 +33,10 @@ public sealed class YearStructureService(IDataStore store) : IYearStructure
         var sourceSections = await store.ListAsync(store.Query<Section>().Where(section => stageIds.Contains(section.StageId)), cancellationToken);
         foreach (var section in sourceSections)
             store.Add(section.CopyTo(stageCopies[section.StageId].Id, shiftCopies[section.ShiftId].Id));
+        // The curriculum is part of the structure (spec 2.5 §3.3): each stage copy keeps its lines (archived ones stay behind).
+        var sourceEntries = await store.ListAsync(store.Query<CurriculumEntry>().Where(entry => stageIds.Contains(entry.StageId) && !entry.IsArchived), cancellationToken);
+        foreach (var entry in sourceEntries)
+            store.Add(entry.CopyTo(stageCopies[entry.StageId].Id));
     }
 
     public async Task<string?> DeletionBlockAsync(long yearId, CancellationToken cancellationToken) =>

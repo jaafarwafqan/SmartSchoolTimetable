@@ -123,6 +123,7 @@ internal sealed class StageConfiguration : IEntityTypeConfiguration<Stage>
         builder.HasKey(stage => stage.Id);
         builder.Property(stage => stage.Name).HasMaxLength(Stage.NameMaxLength).IsRequired();
         builder.Property(stage => stage.NormalizedName).HasMaxLength(Stage.NameMaxLength).IsRequired();
+        builder.Property(stage => stage.TemplateKey).HasMaxLength(Stage.TemplateKeyMaxLength);
         builder.HasIndex(stage => new { stage.AcademicYearId, stage.NormalizedName }).IsUnique();
         builder.HasIndex(stage => new { stage.AcademicYearId, stage.DisplayOrder });
         builder.HasOne<AcademicYear>().WithMany().HasForeignKey(stage => stage.AcademicYearId).OnDelete(DeleteBehavior.Cascade);

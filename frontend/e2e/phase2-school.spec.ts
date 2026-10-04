@@ -257,6 +257,57 @@ test("the whole setup checklist completes end to end; stale edits are caught", a
   await expect(page.getByRole("cell", { name: "الأول المتوسط", exact: true })).toBeVisible();
   await expect(page.getByRole("cell", { name: "29", exact: true })).toBeVisible();
 
+  // Stage template, section stepper and curriculum (spec 2.5 §3.3, §3.4, §4) on the copied year.
+  const templates = school.templates;
+  const cards = school.stageCards;
+  const curriculum = school.curriculum;
+  await page.getByText(templates.stagesTitle).click();
+  await page.getByLabel(templates.schoolType).selectOption("preparatory");
+  await page.getByRole("checkbox", { name: "الخامس الإعدادي" }).uncheck();
+  await page.getByRole("checkbox", { name: "السادس الإعدادي" }).uncheck();
+  await page.getByRole("button", { name: templates.preview }).click();
+  const plan = page.locator(".plan-preview");
+  await expect(plan.locator(".plan-line")).toHaveCount(2);
+  await expect(plan.getByText("الرابع العلمي")).toBeVisible();
+  await expectNoSeriousA11yViolations(page, "stage template preview");
+  await page.getByRole("button", { name: templates.apply }).click();
+  await expect(page.getByRole("status").filter({ hasText: templates.applied("2") })).toBeVisible();
+  await page.getByRole("button", { name: templates.preview }).click();
+  await expect(page.getByText(templates.noChanges)).toBeVisible(); // applying again would change nothing
+
+  await page.getByRole("button", { name: cards.increase("الأول المتوسط") }).click();
+  await expect(page.getByRole("status").filter({ hasText: cards.updated("الأول المتوسط", "2") })).toBeVisible();
+  await expect(page.getByRole("list", { name: cards.sectionsList("الأول المتوسط") }).getByRole("listitem")).toHaveText(["أ", "ب"]);
+  await page.getByRole("button", { name: cards.decrease("الأول المتوسط") }).click();
+  const removeDialog = page.getByRole("dialog", { name: cards.removeTitle });
+  await expectCenteredDialog(page, removeDialog, "remove section dialog");
+  await removeDialog.getByRole("button", { name: cards.remove }).click();
+  await expect(page.getByRole("status").filter({ hasText: cards.updated("الأول المتوسط", "1") })).toBeVisible();
+  await expectNoSeriousA11yViolations(page, "stage cards");
+  await expectNoLatinText(page, "stage cards", ["owner"]);
+
+  await goToSection(page, school.nav.curriculum);
+  await page.getByLabel(structure.year).selectOption({ index: 0 });
+  const mathsCell = page.getByRole("textbox", { name: curriculum.cell("الرياضيات", "الأول المتوسط") });
+  await mathsCell.fill("6");
+  await mathsCell.press("Enter");
+  await expect(page.getByRole("status").filter({ hasText: curriculum.saved })).toBeVisible();
+  await expect(page.locator(".curriculum-total").first()).toContainText(curriculum.status.under("23"));
+  await mathsCell.fill("16");
+  await mathsCell.press("Escape");
+  await expect(mathsCell).toHaveValue("6");
+  const repeat = page.getByRole("form", { name: curriculum.addRepeatTitle });
+  await repeat.getByLabel(curriculum.repeatSubject).selectOption({ label: "الرياضيات" });
+  await repeat.getByLabel(curriculum.repeatLabel).fill("هندسة");
+  await repeat.getByLabel(curriculum.repeatStage).selectOption({ label: "الأول المتوسط" });
+  await repeat.getByLabel(curriculum.repeatLessons).fill("2");
+  await repeat.getByRole("button", { name: curriculum.addRepeat }).click();
+  await expect(page.getByRole("status").filter({ hasText: curriculum.repeatAdded })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: curriculum.cell("الرياضيات - هندسة", "الأول المتوسط") })).toHaveValue("2");
+  await expect(page.locator(".curriculum-total").first()).toContainText(curriculum.status.under("21"));
+  await expectNoSeriousA11yViolations(page, "curriculum");
+  await expectNoLatinText(page, "curriculum", ["owner"]);
+
   // No drawers (spec 2.5 §2.4): on a phone the menu opens in the page flow, never as a dialog or fixed panel.
   await page.setViewportSize({ width: 375, height: 800 });
   const menuButton = page.getByRole("button", { name: school.nav.openMenu });

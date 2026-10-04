@@ -1,0 +1,21 @@
+{
+  "comment": "Iraqi school structure (spec 2.5 section 1). Names only; editable by the owner after applying.",
+  "branches": [
+    { "key": "scientific", "name": "العلمي" },
+    { "key": "literary", "name": "الأدبي" }
+  ],
+  "grades": [
+    { "key": "primary-1", "name": "الأول الابتدائي", "schoolTypes": ["primary"] },
+    { "key": "primary-2", "name": "الثاني الابتدائي", "schoolTypes": ["primary"] },
+    { "key": "primary-3", "name": "الثالث الابتدائي", "schoolTypes": ["primary"] },
+    { "key": "primary-4", "name": "الرابع الابتدائي", "schoolTypes": ["primary"] },
+    { "key": "primary-5", "name": "الخامس الابتدائي", "schoolTypes": ["primary"] },
+    { "key": "primary-6", "name": "السادس الابتدائي", "schoolTypes": ["primary"] },
+    { "key": "intermediate-1", "name": "الأول المتوسط", "schoolTypes": ["intermediate", "secondary"] },
+    { "key": "intermediate-2", "name": "الثاني المتوسط", "schoolTypes": ["intermediate", "secondary"] },
+    { "key": "intermediate-3", "name": "الثالث المتوسط", "schoolTypes": ["intermediate", "secondary"] },
+    { "key": "preparatory-4", "name": "الرابع الإعدادي", "branchStem": "الرابع", "schoolTypes": ["preparatory", "secondary"] },
+    { "key": "preparatory-5", "name": "الخامس الإعدادي", "branchStem": "الخامس", "schoolTypes": ["preparatory", "secondary"] },
+    { "key": "preparatory-6", "name": "السادس الإعدادي", "branchStem": "السادس", "schoolTypes": ["preparatory", "secondary"] }
+  ]
+}

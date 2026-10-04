@@ -7,18 +7,23 @@ namespace SmartSchoolTimetable.Domain.SchoolSetup;
 public sealed class Stage : VersionedEntity
 {
     public const int NameMaxLength = 80;
+    public const int TemplateKeyMaxLength = 40;
     private Stage() { }
     public long AcademicYearId { get; private set; }
     public string Name { get; private set; } = string.Empty;
     public string NormalizedName { get; private set; } = string.Empty;
     public int DisplayOrder { get; private set; }
+
+    /// <summary>Template grade (and branch) this stage was created from, e.g. "preparatory-4-scientific"; null when typed.</summary>
+    public string? TemplateKey { get; private set; }
     public bool IsArchived { get; private set; }
     public DateTimeOffset? ArchivedAt { get; private set; }
 
-    public static Stage Create(long academicYearId, string? name, int displayOrder)
+    public static Stage Create(long academicYearId, string? name, int displayOrder, string? templateKey = null)
     {
         Validate(name, displayOrder);
-        var stage = new Stage { AcademicYearId = academicYearId };
+        new DomainErrors().Text(templateKey, nameof(TemplateKey), TemplateKeyMaxLength, required: false).ThrowIfAny();
+        var stage = new Stage { AcademicYearId = academicYearId, TemplateKey = string.IsNullOrWhiteSpace(templateKey) ? null : templateKey.Trim() };
         stage.Apply(name!, displayOrder);
         return stage;
     }
@@ -48,7 +53,7 @@ public sealed class Stage : VersionedEntity
 
     public Stage CopyTo(long academicYearId)
     {
-        var copy = Create(academicYearId, Name, DisplayOrder);
+        var copy = Create(academicYearId, Name, DisplayOrder, TemplateKey);
         if (IsArchived) copy.Archive(ArchivedAt ?? DateTimeOffset.UtcNow);
         return copy;
     }

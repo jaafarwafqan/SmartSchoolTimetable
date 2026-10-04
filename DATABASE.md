@@ -78,6 +78,10 @@ Migration `Phase25BDayLessonsShiftModeSetup` (2.5B) adds:
 - `ShiftDayLessons`: `ShiftId`, `Day`, `Lessons`, unique per shift and day. Only days that differ from the shift's lesson count are stored (ADR 0020).
 - `SetupProgress`: one row (`Id` = 1, seeded at startup) with `CurrentStep`, `CompletedMask`, `SkippedMask`, `IsFinished`, `UpdatedAt`, `Version`.
 
+Migration `Phase25CCurriculumTemplates` (2.5C) adds:
+- `Stages.TemplateKey` (≤ 40, nullable): the template grade and branch a stage came from.
+- `CurriculumEntries`: `StageId`, `SubjectId` (both `Restrict`), `WeeklyLessons` (check 1–15), `Label`, `NormalizedLabel`, `NeedsDoublePeriod`, `Notes`, `IsArchived`, `ArchivedAt`, `Version`. Indexed on (StageId, SubjectId) and SubjectId; deliberately **not unique** (ADR 0021).
+
 ## Application data
 - School profile; teachers, subjects, resources, stages, sections, workload, shifts, bell times, calendar
 - Timetable versions and lessons

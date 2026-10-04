@@ -97,3 +97,10 @@ No implementation of domain logic; only specification and validation strategy.
 - **`ScheduleGrid.From(days, shifts)`:** lessons per day = the most any shift teaches that day; the weekly bound = the largest shift's total.
 - **Shift mode = `SchoolProfile.StudyType`** (`SetStudyType`); `SetSchoolType` serves wizard step 1.
 - **`SetupProgress`:** steps 1–7, completed and skipped sets (a completed step is never "skipped"), the current step, finished.
+
+## Phase 2.5C
+- **`CurriculumEntry`** (ADR 0021): a subject taught in a stage for 1–15 lessons a week, with an optional label. `SameLineAs(subject, label)` compares normalized labels. (stage, subject) may repeat.
+- **`CurriculumTotals.For(planned, capacities)`:** one result per shift used by the stage's sections: `Under`, `Equal` or `Over`, with `Difference` = capacity − planned.
+- **`SectionLabels`:** أ، ب، ج، د، هـ، و، ز، ح، ط، ي … then أ1، ب1 …; or numbers; or Latin A–Z then A1. `Next` skips labels already used.
+- **`Stage.TemplateKey`:** the template grade (and branch) a stage came from, used to match it again.
+- **`PeriodPlan`** takes a list of `BreakSlot(AfterLesson, Minutes)`; the single-break constructor is kept.

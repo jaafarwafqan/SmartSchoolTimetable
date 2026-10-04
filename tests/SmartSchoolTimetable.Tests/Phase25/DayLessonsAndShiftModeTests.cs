@@ -12,7 +12,7 @@ namespace SmartSchoolTimetable.Tests.Phase25;
 /// <summary>Per-day lesson counts, the grid built from them, shift mode and setup progress (spec 2.5 §3).</summary>
 public sealed class DayLessonsAndShiftModeTests
 {
-    private static readonly int[] SundayToThursday = [7, 1, 2, 3, 4];
+    internal static readonly int[] SundayToThursday = [7, 1, 2, 3, 4];
     private static readonly int[] FirstTwoSteps = [1, 2];
 
     internal static Shift ShiftWithLessons(long yearId, int lessons, string name = "صباحي", ShiftKind kind = ShiftKind.Other)

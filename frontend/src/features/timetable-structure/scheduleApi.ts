@@ -27,7 +27,15 @@ export type BellSettings = { tone: BellTone; breakBell: boolean; version: number
 export type ShiftInput = { name: string; displayOrder: number; version: number };
 export type ScheduleGrid = { days: number[]; lessonsPerDay: number; lessonsByDay: DayLessons[]; maxWeeklyLessons: number };
 export type BlockedSlot = { day: number; lessonNumber: number };
-export type GenerateInput = { firstStartTime: string; lessonMinutes: number; lessonCount: number; breakMinutes: number; breakAfterLesson: number | null };
+export type GenerateInput = {
+  firstStartTime: string;
+  lessonMinutes: number;
+  lessonCount: number;
+  breakMinutes: number;
+  breakAfterLesson: number | null;
+  /** Several breaks (period presets); when set, the single break fields are ignored by the server. */
+  breaks?: { afterLesson: number; minutes: number }[];
+};
 
 export const shiftsKey = ["shifts"] as const;
 const gridKey = ["schedule-grid"] as const;

@@ -136,6 +136,22 @@ Checkpoint 2.5B:
 - Vitest (60): adds `components/ui/stepper.test.tsx` (buttons, keys and bounds; grid cells for lessons that do not exist on a day are aria-disabled and never toggle).
 - Playwright: the flow lowers Thursday to 5 lessons with the stepper, and section capacity becomes 29 (also in the copied year).
 
+Checkpoint 2.5C:
+- .NET (126): adds `Phase25/CurriculumDomainTests.cs` and `Phase25/CurriculumServiceTests.cs`:
+  - section labels, curriculum entry validation and labels, totals under/equal/over per shift;
+  - the template JSON files (keys, school types, branch stages, presets generate, no lesson counts);
+  - the stepper (next labels, removing the last, errors); repeated subjects and totals in the table, conflicts, clearing, archive, delete;
+  - copy and set-across previews, idempotence, `ambiguous`, never overwriting; protections (`CURRICULUM_IN_USE`);
+  - templates create only what is missing and never lower sections; the year copy carries curriculum lines;
+  - routes, including a failing stage template rolled back on the real SQLite database, and multi-break generation.
+- Vitest (62): `components/ui/edit-grid.test.tsx` (arrow keys, RTL direction, edges) and `features/curriculum/curriculumGrid.test.ts` (cell parsing, Arabic-Indic digits).
+- Playwright, on the copied year:
+  - applies the preparatory stage template (preview, apply, then preview again shows no change);
+  - raises and lowers sections with the stepper (removal confirmed);
+  - fills a curriculum cell (under by 23) and cancels an invalid value with Escape;
+  - adds a repeated line «هندسة» (under by 21);
+  - runs axe and the Latin-text check.
+
 ## Later-phase acceptance suites
 - Phase 4 infeasibility test must construct a conflict involving two teachers, a shared lab, and a blocked period; the diagnostic must identify the conflict groups and actionable correction, not merely report infeasible.
 - Large solver-risk comparison uses the same independently verified feasible 40-section/54-teacher workload and records status, first-solution/total time, objective/bound, memory method, and independently checked hard constraints for baseline, two-stage, decomposition, and hints.

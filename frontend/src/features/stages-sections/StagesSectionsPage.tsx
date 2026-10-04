@@ -4,6 +4,8 @@ import { messages } from "../../i18n/messages";
 import { PageHeader } from "../../layout/PageHeader";
 import { useYearChoice, YearPicker } from "../academic-years/YearPicker";
 import { SectionsPanel } from "./SectionsPanel";
+import { StageCardsPanel } from "./StageCardsPanel";
+import { StageTemplatePanel } from "./StageTemplatePanel";
 import { StagesPanel } from "./StagesPanel";
 
 const text = messages.school.stagesSections;
@@ -20,6 +22,8 @@ export function StagesSectionsPage() {
       <Card className="page-card">
         <YearPicker id="stages-year" choice={choice} />
       </Card>
+      {yearId !== null && <StageTemplatePanel key={`template-${yearId}`} yearId={yearId} />}
+      {yearId !== null && <StageCardsPanel key={`cards-${yearId}`} yearId={yearId} />}
       {yearId !== null && (
         <StagesPanel
           key={`year-${yearId}`}

@@ -5,6 +5,7 @@ import { scheduleStructure, shiftMode, stagesSections } from "./structure";
 import { blockedGrid, subjects } from "./subjects";
 import { teachers } from "./teachers";
 import { calendar } from "./calendar";
+import { curriculum, stageCards, templates } from "./curriculum";
 
 export const school = {
   nav: {
@@ -16,6 +17,7 @@ export const school = {
     scheduleStructure: "الدوام والحصص والجرس",
     stagesSections: "المراحل والشعب",
     subjects: "المواد",
+    curriculum: "المنهج الدراسي",
     teachers: "المعلمون",
     calendar: "التقويم الدراسي",
     settings: "الإعدادات",
@@ -199,4 +201,7 @@ export const school = {
   blockedGrid,
   teachers,
   calendar,
+  curriculum,
+  stageCards,
+  templates,
 } as const;
