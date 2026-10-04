@@ -68,6 +68,11 @@ Migration `Phase2ETeachers` adds:
   - Also `Notes`, `IsArchived` (indexed), `ArchivedAt`, `Version`.
 - `TeacherBlockedPeriods` (owned by a teacher, cascade delete): `TeacherId`, `Day`, `LessonNumber`, unique per teacher.
 
+Migration `Phase2FCalendar` adds `CalendarDays`:
+- `Title`, `NormalizedTitle`, `StartDate`, `EndDate` (check `EndDate >= StartDate`, indexed together), `Kind` (enum string), `AffectsSchedule`, `Version`.
+
+Demo databases created with `--seed-demo-data` use exactly this schema (migrated on creation) in a separate file.
+
 ## Application data
 - School profile; teachers, subjects, resources, stages, sections, workload, shifts, bell times, calendar
 - Timetable versions and lessons

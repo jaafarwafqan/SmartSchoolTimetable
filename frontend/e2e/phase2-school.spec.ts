@@ -17,6 +17,7 @@ const structure = school.scheduleStructure;
 const stages = school.stagesSections;
 const subjects = school.subjects;
 const teachers = school.teachers;
+const calendar = school.calendar;
 const password = "Phase2-Owner-1";
 const schoolName = "إعدادية النور للبنات";
 
@@ -182,12 +183,49 @@ test("the whole setup checklist completes end to end; stale edits are caught", a
   await expectNoSeriousA11yViolations(page, "teachers");
   await expectBreakpointScreenshots(page, "teachers");
 
+  // Academic calendar (2F): an entry outside the current year is saved with a warning; the month view shows it.
+  await goToSection(page, school.nav.calendar);
+  await page.getByRole("button", { name: calendar.add }).first().click();
+  const dayDialog = page.getByRole("dialog", { name: calendar.add });
+  await dayDialog.getByLabel(calendar.titleField).fill("عطلة صيفية");
+  await dayDialog.getByLabel(calendar.startDate).fill("2027-07-10");
+  await dayDialog.getByRole("button", { name: calendar.save }).click();
+  await expect(page.getByText(calendar.savedOutside)).toBeVisible();
+  await page.getByRole("button", { name: calendar.add }).first().click();
+  const secondDialog = page.getByRole("dialog", { name: calendar.add });
+  await secondDialog.getByLabel(calendar.titleField).fill("يوم المعلم");
+  await secondDialog.getByLabel(calendar.startDate).fill("2027-03-01");
+  await secondDialog.getByLabel(calendar.kind).selectOption("specialDay");
+  await secondDialog.getByRole("button", { name: calendar.save }).click();
+  await expect(page.getByRole("status").filter({ hasText: calendar.saved })).toBeVisible();
+  await expect(page.getByText(calendar.outsideYear)).toBeVisible();
+  await expectNoSeriousA11yViolations(page, "calendar list");
+  await page.getByRole("button", { name: calendar.monthView }).click();
+  for (let step = 0; step < 5; step++) await page.getByRole("button", { name: calendar.nextMonth }).click();
+  await expect(page.getByRole("button", { name: "يوم المعلم" })).toBeVisible();
+  await expectNoSeriousA11yViolations(page, "calendar month");
+
   // Dashboard reflects the completed steps and real counts.
   await goToSection(page, school.nav.dashboard);
   await expect(page.getByText(school.dashboard.checklistDone)).toBeVisible();
   await expect(page.locator(".count-item")).toHaveText([/3/, /1/, /1/, /1/, /1/, /0/]); // teachers, years, stages, sections, subjects, capacity gaps
   await expectNoSeriousA11yViolations(page, "dashboard (complete)");
   await expectBreakpointScreenshots(page, "dashboard");
+
+  // A new year copies the structure of the previous one (shifts, periods, stages, sections), never calendar days.
+  await goToSection(page, school.nav.academicYears);
+  await page.getByRole("button", { name: school.years.add }).first().click();
+  const nextYear = page.getByRole("dialog", { name: school.years.add });
+  await nextYear.getByLabel(school.years.label).fill("2027-2028");
+  await nextYear.getByLabel(school.years.startDate).fill("2027-09-01");
+  await nextYear.getByLabel(school.years.endDate).fill("2028-06-30");
+  await nextYear.getByLabel(school.years.copyFrom).selectOption({ label: "2026-2027" });
+  await nextYear.getByRole("button", { name: school.years.save }).click();
+  await expect(page.getByRole("status").filter({ hasText: school.years.saved })).toBeVisible();
+  await goToSection(page, school.nav.stagesSections);
+  await page.getByLabel(stages.year).selectOption({ label: "2027-2028" });
+  await expect(page.getByRole("cell", { name: "الأول المتوسط", exact: true })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "30", exact: true })).toBeVisible();
 
   // Lock screen keeps the username and asks only for the password.
   await openUserMenuItem(page, school.shell.lock);

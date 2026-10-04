@@ -4,6 +4,7 @@ import { isolate } from "../isolate";
 import { scheduleStructure, stagesSections } from "./structure";
 import { blockedGrid, subjects } from "./subjects";
 import { teachers } from "./teachers";
+import { calendar } from "./calendar";
 
 export const school = {
   nav: {
@@ -14,6 +15,7 @@ export const school = {
     stagesSections: "المراحل والشعب",
     subjects: "المواد",
     teachers: "المعلمون",
+    calendar: "التقويم الدراسي",
     settings: "الإعدادات",
     sidebarLabel: "القائمة الجانبية",
     collapse: "طي القائمة",
@@ -123,6 +125,9 @@ export const school = {
     imageAlt: (label: string) => `معاينة ${isolate(label)}`,
   },
   years: {
+    copyFrom: "نسخ الهيكل من سنة (اختياري)",
+    noCopy: "بدون نسخ",
+    copyHint: "تُنسخ الورديات وحصصها والمراحل والشعب، ولا تُنسخ أيام التقويم.",
     description: "السنوات الدراسية وفصولها. تحدد السنة الحالية والفصل الحالي ما يظهر في بقية الشاشات.",
     add: "إضافة سنة دراسية",
     edit: "تعديل السنة الدراسية",
@@ -189,4 +194,5 @@ export const school = {
   subjects,
   blockedGrid,
   teachers,
+  calendar,
 } as const;

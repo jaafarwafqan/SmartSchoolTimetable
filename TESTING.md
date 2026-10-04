@@ -99,6 +99,16 @@ Checkpoint 2E:
 - Coverage: Domain 98.3% and Application 94.9% of lines.
 - Playwright (4): the phase 2 flow adds a teacher (an off day, a limit error with focus moved to the field, the release toggle) and a bulk add with a preview (one line flagged "already exists"). It runs axe on the teacher dialog, the bulk preview and the list, and records teachers screenshots at 375/768/1024/1440.
 
+Checkpoint 2F:
+- .NET (108): adds `Phase2/CalendarAndDemoDataTests.cs`:
+  - calendar rules;
+  - routes: the outside-year warning, the month window, invalid filters, conflict and delete;
+  - the demo target check: a missing path, a protected path (compared without touching the file), an existing file;
+  - a complete dual-shift demo database in a temporary folder: 20 teachers including 2 released, 10 subjects, 4 stages, 12 sections, 2 shifts of 7 lessons plus a break, 8 calendar days, every checklist step done, no capacity gaps.
+- Vitest (50): adds `features/calendar/monthGrid.test.ts` (ISO weekdays, month bounds, weeks starting on the school's week start day).
+- Playwright (4): the phase 2 flow ends with the calendar (an out-of-year warning, kind selection, the month view, axe on both views). Baselines were regenerated with `maxDiffPixelRatio` 0.0002, so a new sidebar item or tile fails the comparison; two consecutive runs were stable.
+- Manual check: `--seed-demo-data` was run against a scratch path. It created the file, then refused the same path on a second run, and printed an Arabic message when the path was missing.
+
 ## Later-phase acceptance suites
 - Phase 4 infeasibility test must construct a conflict involving two teachers, a shared lab, and a blocked period; the diagnostic must identify the conflict groups and actionable correction, not merely report infeasible.
 - Large solver-risk comparison uses the same independently verified feasible 40-section/54-teacher workload and records status, first-solution/total time, objective/bound, memory method, and independently checked hard constraints for baseline, two-stage, decomposition, and hints.

@@ -1,6 +1,22 @@
 # Changelog
 
 ## [Unreleased]
+### Phase 2F - academic calendar, demo data, final docs (tags `phase-2f`, `phase-2`)
+- **Academic calendar** (التقويم الدراسي):
+  - One day or a date range, a title, a kind and an "affects schedule" flag.
+  - A list view and a month view (weeks start on the school's week start day).
+  - Entries outside the current year are saved with a warning.
+- **Demo data:**
+  - `--seed-demo-data <new-db-path> [--dual-shift]` creates a separate database with a fictional school.
+  - It refuses an existing file, the default database and the configured database.
+  - Every record goes through the Application services, so all rules and audit events apply.
+- **New year from the previous one:** the new-year dialog has an optional "copy structure from" choice (shifts, periods, stages and sections; never calendar days), covered by E2E.
+- **Messages:** `RECORD_IN_USE` now reads correctly for both delete and archive.
+- **ADR 0019** (soft archive and hard delete).
+- **Docs:** `docs/OWNER_TEST_SCRIPT_PHASE2.md` (Arabic manual script) and `docs/PHASE2_REPORT.md`.
+- **Screenshots:** the comparison tolerance is tightened to 0.0002, and all baselines were regenerated.
+- **Tests:** .NET 108, Vitest 50, Playwright 4.
+
 ### Phase 2E - teachers (tag `phase-2e`, branch `phase-2`)
 - **Teachers** (المعلمون):
   - Full and short names; the short name is unique after Arabic normalization.

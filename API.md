@@ -133,6 +133,16 @@ Audit events: `SubjectCreated`, `SubjectUpdated`, `SubjectArchived`, `SubjectRes
 
 Release reason and dates are kept only while `fullyReleased` is true. Limits are optional (no value means no limit). Audit events: `TeacherCreated`, `TeacherUpdated`, `TeacherArchived`, `TeacherRestored`, `TeacherDeleted`, `TeachersBulkCreated`. The dashboard adds the count `teachers` and the checklist step `teachers`.
 
+### Academic calendar (Phase 2, checkpoint 2F)
+| Method | Route | Request | Success | Endpoint-specific errors |
+|---|---|---|---|---|
+| GET | `/calendar-days?search=&sort=&page=&pageSize=&from=&to=` | sort: `startDate` (default), `-startDate`, `title`, `-title`; `from`/`to` (yyyy-MM-dd) return entries overlapping the window (month view) | 200 paged `{ id, title, startDate, endDate, kind, affectsSchedule, outsideCurrentYear, version }` | 401, 422 `INVALID_DATE` on `From`/`To` |
+| POST | `/calendar-days` | `{ title, startDate, endDate?, kind, affectsSchedule, version: 0 }`; kind is `officialHoliday`, `schoolHoliday`, `exam` or `specialDay`; no `endDate` means one day | 201 calendar day | 401, 422 (`REQUIRED`, `VALUE_TOO_LONG`, `INVALID_DATE`, `INVALID_DATE_RANGE`, `VALUE_OUT_OF_RANGE` above 366 days, `INVALID_OPTION`) |
+| PUT | `/calendar-days/{id}` | same, with the read `version` | 200 calendar day | 401, 404, 409 `CONFLICT`, 422 |
+| DELETE | `/calendar-days/{id}?version=` | — | 204 | 401, 404, 409 |
+
+Entries outside the current academic year are saved; `outsideCurrentYear: true` is a warning, not an error (spec 2.11). Calendar days are never copied to a new year. Audit events: `CalendarDayCreated`, `CalendarDayUpdated`, `CalendarDayDeleted`.
+
 Passwords are 8–1024 characters and usernames are 3–64 characters (`CredentialRules`). Unknown `/api` paths return 404 `NOT_FOUND`, wrong methods return 405 `METHOD_NOT_ALLOWED`, wrong content types return 415 `UNSUPPORTED_MEDIA_TYPE`, and unhandled exceptions return 500 `INTERNAL_ERROR`. The OpenAPI document is served only in the Development environment, and the frontend client is hand-written (ADR 0013).
 
 There is no user/tenant attribution in request logs. Avoid logging credentials, recovery codes, cookies, launch tokens, or timetable personal data.

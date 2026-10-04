@@ -46,4 +46,8 @@ export const fields = {
   MaxLessonsPerDay: "الحد اليومي للحصص",
   MaxLessonsPerWeek: "الحد الأسبوعي للحصص",
   Names: "الأسماء",
+  Title: "العنوان",
+  Kind: "النوع",
+  From: "من تاريخ",
+  To: "إلى تاريخ",
 } as const;

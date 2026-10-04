@@ -45,6 +45,30 @@ The command **refuses to run while the app is running**: it checks for the app p
 - From Phase 2, the school logo and stamp are stored in the `assets` folder next to the database. Copy that folder as well, if it exists: `Copy-Item "$env:LOCALAPPDATA\SmartSchoolTimetable\assets" $dest -Recurse`.
 - Never copy the database while the app is running. The Phase 6 online backup (SQLite Online Backup API, integrity-checked) will replace this procedure.
 
+### Demo data (separate database)
+Create a fictional sample school in a NEW file. The command refuses an existing file, the default `%LOCALAPPDATA%` database and the configured `Database:Path`:
+
+```powershell
+dotnet run --project .\src\SmartSchoolTimetable.Api\SmartSchoolTimetable.Api.csproj --configuration Release --no-build -- --seed-demo-data "$env:TEMP\sst-demo\demo.db"
+# optional: add --dual-shift for a morning and an evening shift
+```
+
+Then run the app against it. The first start asks you to create the owner account for the demo database:
+
+```powershell
+dotnet run --project .\src\SmartSchoolTimetable.Api\SmartSchoolTimetable.Api.csproj --configuration Release --no-build -- --Database:Path="$env:TEMP\sst-demo\demo.db"
+```
+
+The sample contains:
+- 20 teachers with varied constraints (2 fully released);
+- 10 subjects that exercise every flag;
+- 4 stages with 12 sections;
+- one shift of 7 lessons plus a break (two shifts with `--dual-shift`);
+- the 2026-2027 year with two terms;
+- 8 calendar days.
+
+Teacher workload is Phase 3. A manual test script in Arabic is in [docs/OWNER_TEST_SCRIPT_PHASE2.md](./docs/OWNER_TEST_SCRIPT_PHASE2.md).
+
 ### Style guide (`/design`, development only)
 ```powershell
 npm.cmd --prefix .\frontend run dev

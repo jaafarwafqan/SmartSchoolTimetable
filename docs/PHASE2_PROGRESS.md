@@ -3,9 +3,9 @@
 Updated after every commit. A new session should read this file first.
 
 - **Branch:** `phase-2` (never commit to `master`).
-- **Last green tag:** `phase-2e`.
-- **Checkpoint in progress:** 2F (calendar, demo data, docs, owner test script, final report).
-- **Spec:** `docs/PHASE_2_SPEC.md`. Owner review: `docs/OWNER_CHANGES_REVIEW.md`. Decisions: `docs/DECISIONS_PENDING.md` (#1–#13).
+- **Last green tag:** `phase-2` (also `phase-2f`).
+- **Checkpoint in progress:** none. Phase 2 is complete and awaits owner acceptance. Do not start Phase 3.
+- **Spec:** `docs/PHASE_2_SPEC.md`. Owner review: `docs/OWNER_CHANGES_REVIEW.md`. Decisions: `docs/DECISIONS_PENDING.md` (#1–#15).
 
 ## Baseline at resume (2026-10-04, before any change)
 - Build: 0 warnings. `dotnet test`: 88/88.
@@ -21,27 +21,19 @@ Updated after every commit. A new session should read this file first.
 | Review fixes | none (`96ba605`) | Backend fixes for 2C and the 2B services |
 | 2C + quality gate | `phase-2c` (`e593d8e`) | Rebuilt 2B/2C screens, CSS variable test, E2E through stages and sections |
 | 2D | `phase-2d` (`9c76bd6`) | Subjects, schedule grid, blocked-periods grid, colour picker, textarea |
-| 2E | `phase-2e` | Teachers with constraints, bulk add with preview |
+| 2E | `phase-2e` (`e21769f`) | Teachers with constraints, bulk add with preview |
+| 2F | `phase-2f`, `phase-2` | Calendar, demo data, year copy in UI, ADR 0019, owner test script, report |
 
 Last verified state:
-- .NET: 104 tests passed.
-- Vitest: 48 passed.
+- .NET: 108 tests passed.
+- Vitest: 50 passed.
 - Playwright: 4 passed.
 - ESLint and Stylelint: clean.
 - Build: 0 warnings.
-- Line coverage: Domain 98.3%, Application 94.9%.
+- Line coverage: Domain 98.3%, Application 94.8%.
 
 ## Next
-2F:
-1. `CalendarDay`:
-   - A date or a date range, title, kind (official holiday, school holiday, exam, special day), and an "affects schedule" flag.
-   - Must lie inside the current year: warn, do not block.
-   - A list and a month view.
-2. `--seed-demo-data <path>`:
-   - Creates a separate database; refuses an existing file and the default real path.
-   - Sample: 20 teachers, 12 sections across 3–4 stages, 10 subjects, 7 periods plus breaks, 1 shift (with a dual-shift variant flag), the current year and terms, and 8 calendar days.
-3. Docs: README (run against the demo data), `docs/OWNER_TEST_SCRIPT_PHASE2.md` (Arabic, about 25 steps), `docs/PHASE2_REPORT.md`.
-4. Tags `phase-2f`, then `phase-2`.
+- Owner review and acceptance (`docs/PHASE2_REPORT.md`, `docs/OWNER_TEST_SCRIPT_PHASE2.md`, `docs/DECISIONS_PENDING.md`). The owner merges `phase-2` into `master`.
 
 ## Patterns to reuse
 - **Services:**

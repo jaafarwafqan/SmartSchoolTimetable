@@ -9,6 +9,7 @@ import { ScheduleStructurePage } from "../features/timetable-structure/ScheduleS
 import { StagesSectionsPage } from "../features/stages-sections/StagesSectionsPage";
 import { SubjectsPage } from "../features/subjects/SubjectsPage";
 import { TeachersPage } from "../features/teachers/TeachersPage";
+import { CalendarPage } from "../features/calendar/CalendarPage";
 import type { Bootstrap } from "../lib/bootstrapQuery";
 import { useFormFeedback } from "../lib/useFormFeedback";
 import { useUiStore } from "../state/session";
@@ -41,6 +42,7 @@ export function AppShell({ bootstrap }: { bootstrap: Bootstrap }) {
             <Route path="/stages-sections" element={<StagesSectionsPage />} />
             <Route path="/subjects" element={<SubjectsPage />} />
             <Route path="/teachers" element={<TeachersPage />} />
+            <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/settings" element={<SettingsScreen bootstrap={bootstrap} />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>

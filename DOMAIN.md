@@ -86,3 +86,7 @@ No implementation of domain logic; only specification and validation strategy.
   - Limits: optional; max per day ≤ lessons per day and max per week ≤ the grid's weekly capacity once periods exist (DECISIONS_PENDING #5); max per day ≤ max per week.
   - Notes; soft archive.
 - **`TeacherNames.ProposeShortName`:** proposes the first two words, then the first three, then the full name, using the first that is free (DECISIONS_PENDING #13).
+- **`CalendarDay`** (global, not copied with a year's structure):
+  - Title ≤ 120; one day or a range of up to 366 days.
+  - Kind: official holiday, school holiday, exam or special day; plus an "affects schedule" flag.
+  - `IsOutside(yearStart, yearEnd)` drives the "outside the current year" warning; such entries are never blocked.

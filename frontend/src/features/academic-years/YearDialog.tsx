@@ -1,13 +1,14 @@
 import { Save, X } from "lucide-react";
 import { useId, type FormEvent } from "react";
 import { ConflictAlert } from "../../components/ConflictAlert";
+import { SelectField } from "../../components/SelectField";
 import { TextField } from "../../components/TextField";
 import { Alert } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import { Dialog } from "../../components/ui/dialog";
 import { messages } from "../../i18n/messages";
 import { useFormFeedback } from "../../lib/useFormFeedback";
-import { useSaveYear, type AcademicYear } from "./yearsApi";
+import { useAcademicYears, useSaveYear, type AcademicYear } from "./yearsApi";
 
 const text = messages.school.years;
 
@@ -24,6 +25,8 @@ export function YearDialog({ open, year, onClose, onSaved, onReload }: YearDialo
   const formId = useId();
   const feedback = useFormFeedback();
   const save = useSaveYear();
+  const years = useAcademicYears({ search: "", page: 1, pageSize: 100 });
+  const copyOptions = [{ value: "", label: text.noCopy }, ...(years.data?.items ?? []).map((item) => ({ value: String(item.id), label: item.label }))];
 
   function close() {
     feedback.reset();
@@ -41,6 +44,7 @@ export function YearDialog({ open, year, onClose, onSaved, onReload }: YearDialo
         startDate: String(form.get("yearStart") ?? ""),
         endDate: String(form.get("yearEnd") ?? ""),
         version: year?.version ?? 0,
+        copyStructureFromYearId: year ? null : Number(form.get("yearCopyFrom")) || null,
       },
     }, {
       onSuccess: (saved) => {
@@ -73,6 +77,9 @@ export function YearDialog({ open, year, onClose, onSaved, onReload }: YearDialo
           <TextField id="yearStart" type="date" label={text.startDate} defaultValue={year?.startDate ?? ""} required field="StartDate" errors={feedback.fieldErrors} />
           <TextField id="yearEnd" type="date" label={text.endDate} defaultValue={year?.endDate ?? ""} required field="EndDate" errors={feedback.fieldErrors} />
         </div>
+        {!year && copyOptions.length > 1 && (
+          <SelectField id="yearCopyFrom" label={text.copyFrom} hint={text.copyHint} options={copyOptions} defaultValue="" field="CopyStructureFromYearId" errors={feedback.fieldErrors} />
+        )}
       </form>
     </Dialog>
   );
