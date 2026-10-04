@@ -140,6 +140,18 @@ Every `…/preview` route returns the plan without saving; its twin without `/pr
 
 `POST …/shifts/generate-periods` also accepts `breaks: [{ afterLesson, minutes }]` (period presets with several breaks). Stage and subject archive/delete can now return 409 `CURRICULUM_IN_USE`. Audit events: `SectionsAdded`, `SectionsRemoved`, `CurriculumEntryCreated`, `CurriculumEntryUpdated`, `CurriculumEntryDeleted`, `CurriculumEntryArchived`, `CurriculumEntryRestored`, `CurriculumCopied`, `CurriculumLessonsSet`.
 
+### Phase 2.5D: setup wizard
+Each step is one transaction through the normal services, and records the step in the setup progress (ADR 0023). All return 200 with the setup progress.
+
+| Method | Route | Request | Errors |
+|---|---|---|---|
+| PUT | `/setup-wizard/school` | `{ name, schoolType, shiftMode, principalName }`; with a current year, the shifts follow the mode | 401, 403, 409 `CONFLICT`, 409 `SHIFT_MODE_IN_USE`, 422 (`Name`, `SchoolType`, `StudyType`) |
+| PUT | `/setup-wizard/year` | `{ label, startDate, endDate, terms: [{ name, startDate, endDate }] }`; reuses a year with the same label, makes it current, adds or updates terms by name, sets a current term | 401, 409, 422 (year and term validation codes) |
+| PUT | `/setup-wizard/timing` | `{ days, weekStartDay, shifts: [{ kind, firstStartTime, lessonMinutes, lessonCount, breaks, dayLessons }] }`; working days, the mode's shifts, generated periods and per-day counts | 401, 409 `NO_CURRENT_YEAR`, 409 `CONFLICT`, 422 (`Shifts` `INVALID_OPTION`, generator and period codes) |
+| GET | `/setup-wizard/review` | — ; 200 `{ schoolName, yearLabel, shifts, stages, sections, subjects, curriculumLines, teachers, warnings: [{ code: noSections\|emptyCurriculum\|under\|over, stageName, shiftName, value }] }` | 401 |
+
+`/dashboard-summary` now also returns `curriculum` (the stages with planned lessons and per-shift totals, as in `/curriculum`) and `setupFinished`.
+
 ### Subjects and the schedule grid (Phase 2, checkpoint 2D)
 | Method | Route | Request | Success | Endpoint-specific errors |
 |---|---|---|---|---|

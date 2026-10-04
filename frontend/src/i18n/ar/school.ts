@@ -6,6 +6,7 @@ import { blockedGrid, subjects } from "./subjects";
 import { teachers } from "./teachers";
 import { calendar } from "./calendar";
 import { curriculum, stageCards, templates } from "./curriculum";
+import { wizard } from "./wizard";
 
 export const school = {
   nav: {
@@ -21,6 +22,7 @@ export const school = {
     teachers: "المعلمون",
     calendar: "التقويم الدراسي",
     settings: "الإعدادات",
+    setupWizard: "معالج الإعداد",
     sidebarLabel: "القائمة الجانبية",
     collapse: "طي القائمة",
     expand: "توسيع القائمة",
@@ -204,4 +206,5 @@ export const school = {
   curriculum,
   stageCards,
   templates,
+  wizard,
 } as const;

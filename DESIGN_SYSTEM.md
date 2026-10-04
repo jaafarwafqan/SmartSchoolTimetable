@@ -229,3 +229,10 @@ Records are added by choosing and by quick add, not by long forms. Each pattern 
 - **No native date or time inputs:** native `<input type="date|time">` are forbidden (`design-system/no-native-date-time`), because they show browser-locale formats (mm/dd/yyyy, AM/PM).
 - **`LtrText`** (and the `ltrRuns()` string helper for options and ARIA labels): years, times, dates, codes, file names and usernames keep their logical order in RTL. "2026 - 2027" must never be shown as "2027 - 2026". A Vitest unit test and an E2E position check enforce this.
 - **Fixed UI text is Arabic only.** The dictionary test (`i18n/noLatinText.test.ts`) and the E2E check `expectNoLatinText` fail on Latin letters. Allowed exceptions: data (usernames) and the image format codes PNG, JPEG, WebP.
+
+## 16. Wizard pattern (Phase 2.5D)
+- **Layout:** a step list (`nav` named «خطوات الإعداد», the current step marked with `aria-current="step"`, done steps with a check icon and hidden text) beside one card for the current step. The list sits above the card under 1024px.
+- **Footer:** «السابق»، «حفظ والمتابعة» (saves the step)، optional «تخطي هذه الخطوة»، and the «إكمال لاحقاً» link back to the dashboard. Errors appear in the footer next to the step's buttons.
+- **Focus:** moving to a step focuses its title (`tabIndex=-1`).
+- **Choose, don't type:** choice cards, selects, steppers and previews. Proposed values carry the hint «قيمة مقترحة، يمكنك تعديلها».
+- **Reuse:** steps reuse the screens' components (template panels, stage cards, the curriculum table, bulk add), shown open in place. Never a drawer.

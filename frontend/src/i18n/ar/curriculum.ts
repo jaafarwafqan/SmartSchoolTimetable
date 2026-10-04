@@ -28,6 +28,7 @@ export const templates = {
   schoolType: "نوع المدرسة",
   grades: "الصفوف",
   branches: (grade: string) => `فروع ${isolate(grade)}`,
+  gradeShift: (grade: string) => `كل شعب ${isolate(grade)} في`,
   sectionsPerStage: "عدد الشعب لكل مرحلة",
   sectionsDecrease: "إنقاص عدد الشعب",
   sectionsIncrease: "زيادة عدد الشعب",

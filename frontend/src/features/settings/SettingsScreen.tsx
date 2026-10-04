@@ -4,6 +4,7 @@ import type { Bootstrap } from "../../lib/bootstrapQuery";
 import { InactivitySection } from "./InactivitySection";
 import { PasswordSection } from "./PasswordSection";
 import { RecoveryCodeSection } from "./RecoveryCodeSection";
+import { SetupWizardSection } from "./SetupWizardSection";
 
 export function SettingsScreen({ bootstrap }: { bootstrap: Bootstrap }) {
   return (
@@ -13,6 +14,7 @@ export function SettingsScreen({ bootstrap }: { bootstrap: Bootstrap }) {
         <InactivitySection bootstrap={bootstrap} />
         <RecoveryCodeSection />
         <PasswordSection />
+        <SetupWizardSection />
       </div>
     </div>
   );

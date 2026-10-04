@@ -15,10 +15,11 @@ import { useCreateBulk, usePreviewBulk, type BulkPreview } from "./teachersApi";
 const text = messages.school.teachers;
 type PreviewLine = BulkPreview["lines"][number];
 
-type BulkAddPanelProps = { onClose: () => void; onSaved: (count: number) => void };
+/** `closable` false (setup wizard): no cancel button; the panel clears itself after saving for the next batch. */
+type BulkAddPanelProps = { onClose: () => void; onSaved: (count: number) => void; closable?: boolean };
 
 /** Bulk pattern (DESIGN_SYSTEM.md 14): a panel inside the page; paste names, preview each line, save the ready ones. */
-export function BulkAddPanel({ onClose, onSaved }: BulkAddPanelProps) {
+export function BulkAddPanel({ onClose, onSaved, closable = true }: BulkAddPanelProps) {
   const fieldId = useId();
   const format = useFormatter();
   const feedback = useFormFeedback();
@@ -41,7 +42,7 @@ export function BulkAddPanel({ onClose, onSaved }: BulkAddPanelProps) {
   function saveReady() {
     feedback.reset();
     createBulk.mutate(ready.map((line) => line.fullName), {
-      onSuccess: (result) => { feedback.reset(); onSaved(result.created); },
+      onSuccess: (result) => { feedback.reset(); setNames(""); setPreview(null); onSaved(result.created); },
       onError: (reason) => { setPreview(null); feedback.showError(reason); },
     });
   }
@@ -77,7 +78,7 @@ export function BulkAddPanel({ onClose, onSaved }: BulkAddPanelProps) {
           {text.bulkSave(format.number(ready.length))}
         </Button>
         <Button variant="secondary" icon={<Eye aria-hidden="true" size={20} />} loading={previewBulk.isPending} onClick={runPreview}>{text.bulkPreview}</Button>
-        <Button variant="secondary" icon={<X aria-hidden="true" size={20} />} onClick={close}>{messages.app.cancel}</Button>
+        {closable && <Button variant="secondary" icon={<X aria-hidden="true" size={20} />} onClick={close}>{messages.app.cancel}</Button>}
       </div>
     </Card>
   );

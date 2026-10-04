@@ -4,7 +4,7 @@ import { messages } from "../../src/i18n/messages";
 
 export const breakpoints = [375, 768, 1024, 1440] as const;
 
-/** First-run setup through the real UI, acknowledging the recovery code; ends on the dashboard. */
+/** First-run setup through the real UI, acknowledging the recovery code and postponing the wizard; ends on the dashboard. */
 export async function setupOwner(page: Page, baseUrl: string, username: string, password: string): Promise<void> {
   await page.goto(baseUrl);
   await expect(page.getByRole("heading", { name: messages.app.setupTitle })).toBeVisible();
@@ -14,6 +14,9 @@ export async function setupOwner(page: Page, baseUrl: string, username: string, 
   await page.getByRole("button", { name: messages.app.createAccount }).click();
   await page.getByLabel(messages.app.confirmCodeSaved).check();
   await page.getByRole("button", { name: messages.app.continue }).click();
+  // A fresh account opens the setup wizard once (spec 2.5 §5); these flows leave it for later.
+  await expect(page.getByRole("heading", { name: messages.school.wizard.title, level: 1 })).toBeVisible();
+  await page.getByRole("link", { name: messages.school.wizard.later }).click();
   await expect(page.getByRole("heading", { name: messages.school.nav.dashboard, level: 1 })).toBeVisible();
 }
 

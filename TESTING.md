@@ -152,6 +152,20 @@ Checkpoint 2.5C:
   - adds a repeated line «هندسة» (under by 21);
   - runs axe and the Latin-text check.
 
+Checkpoint 2.5D:
+- .NET (127): `Phase25/SetupWizardTests.cs` on the real SQLite database:
+  - steps 1–3 save through the services and can run again without changes (one year, two terms, two shifts);
+  - a failing timing step rolls back the working week too;
+  - duplicate shift kinds, an invalid school type, no current year;
+  - step 1 refused with `SHIFT_MODE_IN_USE` and rolled back;
+  - the review counts and warnings; the dashboard curriculum status and `setupFinished`.
+- Vitest (66): `features/setup-wizard/wizardLogic.test.ts` (the proposed year from today, term dates, weekly lessons with per-day exceptions, reading a saved shift back for resume).
+- Playwright (5): `phase25-wizard.spec.ts`, scenario (a):
+  - a fresh owner lands in the wizard and sets up a morning-only intermediate school through all seven steps;
+  - covers a required-name error, a per-day exception (34 a week), leaving and resuming at step 4 from the dashboard, the template re-applied without changes, a curriculum cell, the optional step skipped, the review, finishing, the dashboard status and the Settings entry;
+  - axe and the Latin-text check on the steps.
+  - `setupOwner` now postpones the wizard; dashboard and settings baselines were regenerated (new cards).
+
 ## Later-phase acceptance suites
 - Phase 4 infeasibility test must construct a conflict involving two teachers, a shared lab, and a blocked period; the diagnostic must identify the conflict groups and actionable correction, not merely report infeasible.
 - Large solver-risk comparison uses the same independently verified feasible 40-section/54-teacher workload and records status, first-solution/total time, objective/bound, memory method, and independently checked hard constraints for baseline, two-stage, decomposition, and hints.

@@ -1,6 +1,16 @@
 # Changelog
 
 ## [Unreleased]
+### Phase 2.5D - setup wizard (tag `phase-2-5d`)
+- **Setup wizard** at `/setup` (ADR 0023), seven steps: المدرسة، السنة الدراسية، الدوام، الصفوف والشعب، المواد والمنهج، المعلمون، المراجعة.
+  - Choice cards, proposed year and terms, working-day and period presets with a live preview, per-day counts.
+  - Template and curriculum steps reuse the screens' components.
+  - Optional teachers step; review with real counts and warnings.
+- **Each server step is one transaction** through the normal services. Nested service transactions now join the step's transaction.
+- **Resumable:** opens once after a new account's recovery code; then from the dashboard («استكمال الإعداد») or Settings.
+- **Dashboard:** curriculum status per stage and shift.
+- **Tests:** .NET 127, Vitest 66, Playwright 5; line coverage Domain 98.7%, Application 95.6%.
+
 ### Phase 2.5C - templates, stage cards, curriculum (tag `phase-2-5c`)
 - **Curriculum table** (المنهج الدراسي, a new tab under الصفوف والمنهج; ADR 0021):
   - Weekly lessons per subject and stage, edited in place with arrow-key navigation (`EditGrid`).

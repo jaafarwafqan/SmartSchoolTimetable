@@ -88,6 +88,7 @@ builder.Services.AddScoped<StageCardsService>();
 builder.Services.AddScoped<CurriculumService>();
 builder.Services.AddScoped<CurriculumHelpersService>();
 builder.Services.AddScoped<SetupTemplatesService>();
+builder.Services.AddScoped<SetupWizardService>();
 builder.Services.AddScoped<IYearStructure, YearStructureService>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddLocalInfrastructure(

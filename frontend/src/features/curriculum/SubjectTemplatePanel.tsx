@@ -12,7 +12,7 @@ import { PlanList } from "./PlanList";
 const text = messages.school.templates;
 
 /** Suggested subject NAMES for the school's stages (spec 2.5 §4.1); existing subjects are skipped, never renamed. */
-export function SubjectTemplatePanel({ yearId, format }: { yearId: number; format: (value: number) => string }) {
+export function SubjectTemplatePanel({ yearId, format, open = false }: { yearId: number; format: (value: number) => string; open?: boolean }) {
   const feedback = useFormFeedback();
   const suggested = useSuggestedSubjects(yearId);
   const template = useSubjectTemplate();
@@ -31,7 +31,7 @@ export function SubjectTemplatePanel({ yearId, format }: { yearId: number; forma
   }
 
   return (
-    <details className="advanced-options tool-panel">
+    <details className="advanced-options tool-panel" open={open || undefined}>
       <summary>
         <BookPlus aria-hidden="true" size={20} />
         <span>{text.subjectsTitle}</span>

@@ -1,5 +1,5 @@
-import { useCallback, useRef, useState } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import { Alert } from "../components/ui/alert";
 import { AcademicYearsPage } from "../features/academic-years/AcademicYearsPage";
 import { CalendarPage } from "../features/calendar/CalendarPage";
@@ -7,6 +7,7 @@ import { CurriculumPage } from "../features/curriculum/CurriculumPage";
 import { DashboardPage } from "../features/dashboard/DashboardPage";
 import { SchoolProfilePage } from "../features/school-profile/SchoolProfilePage";
 import { SettingsScreen } from "../features/settings/SettingsScreen";
+import { SetupWizardPage } from "../features/setup-wizard/SetupWizardPage";
 import { StagesSectionsPage } from "../features/stages-sections/StagesSectionsPage";
 import { SubjectsPage } from "../features/subjects/SubjectsPage";
 import { TeachersPage } from "../features/teachers/TeachersPage";
@@ -31,6 +32,16 @@ export function AppShell({ bootstrap }: { bootstrap: Bootstrap }) {
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   const menuButtonElement = useCallback(() => menuButton.current, []);
   useInactivityLock(bootstrap.inactivityTimeoutMinutes);
+  const navigate = useNavigate();
+  const startSetupWizard = useUiStore((state) => state.startSetupWizard);
+  const setStartSetupWizard = useUiStore((state) => state.setStartSetupWizard);
+
+  // A freshly created account goes to the setup wizard once, right after the recovery code (spec 2.5 §5).
+  useEffect(() => {
+    if (!startSetupWizard) return;
+    setStartSetupWizard(false);
+    navigate("/setup", { replace: true });
+  }, [navigate, setStartSetupWizard, startSetupWizard]);
 
   return (
     <div className={`app-shell${collapsed ? " is-sidebar-collapsed" : ""}`}>
@@ -51,6 +62,7 @@ export function AppShell({ bootstrap }: { bootstrap: Bootstrap }) {
             <Route path="/classes/subjects" element={<SubjectsPage />} />
             <Route path="/classes/curriculum" element={<CurriculumPage />} />
             <Route path="/teachers" element={<TeachersPage />} />
+            <Route path="/setup" element={<SetupWizardPage />} />
             <Route path="/settings" element={<SettingsScreen bootstrap={bootstrap} />} />
             {Object.entries(legacyRedirects).map(([from, to]) => <Route key={from} path={from} element={<Navigate to={to} replace />} />)}
             <Route path="*" element={<NotFoundPage />} />

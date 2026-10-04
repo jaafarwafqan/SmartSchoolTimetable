@@ -26,7 +26,7 @@ const isTemplateType = (value: string | undefined): value is TemplateSchoolType 
  * Stage template (spec 2.5 §4.1): pick grades (and branches for the preparatory grades) and a section count,
  * preview what would be created, then apply. Applying twice changes nothing (ADR 0022).
  */
-export function StageTemplatePanel({ yearId }: { yearId: number }) {
+export function StageTemplatePanel({ yearId, open = false }: { yearId: number; open?: boolean }) {
   const format = useFormatter();
   const feedback = useFormFeedback();
   const catalog = useTemplateCatalog();
@@ -38,6 +38,8 @@ export function StageTemplatePanel({ yearId }: { yearId: number }) {
   const [sections, setSections] = useState(2);
   const [shiftChoice, setShiftChoice] = useState<number | null>(null);
   const [style, setStyle] = useState<LabelStyle>("arabic");
+  /** Dual shift: the shift of each grade's new sections (spec 2.5 §5 step 4). */
+  const [gradeShifts, setGradeShifts] = useState<Readonly<Record<string, number>>>({});
   const profileType = profile.data?.schoolType;
   const schoolType = typeChoice ?? (isTemplateType(profileType) ? profileType : "intermediate");
   const shiftList = shifts.data?.items ?? [];
@@ -62,7 +64,7 @@ export function StageTemplatePanel({ yearId }: { yearId: number }) {
       gradeKey: grade.key,
       branches: grade.branchStem ? branches.map((branch) => branch.key).filter((key) => !skipped.has(`${grade.key}-${key}`)) : [],
       sections,
-      shiftId,
+      shiftId: shiftList.find((shift) => shift.id === gradeShifts[grade.key])?.id ?? shiftId,
       labelStyle: style,
     })),
   };
@@ -70,7 +72,7 @@ export function StageTemplatePanel({ yearId }: { yearId: number }) {
 
   return (
     <Card className="page-card">
-      <details className="advanced-options tool-panel">
+      <details className="advanced-options tool-panel" open={open || undefined}>
         <summary>
           <LayoutTemplate aria-hidden="true" size={20} />
           <span>{text.stagesTitle}</span>
@@ -88,6 +90,13 @@ export function StageTemplatePanel({ yearId }: { yearId: number }) {
             {grades.map((grade) => (
               <div key={`grade-${grade.key}`} className="choice-group-item">
                 <Checkbox checked={!skipped.has(grade.key)} onChange={() => toggle(grade.key)}>{grade.name}</Checkbox>
+                {shiftList.length > 1 && !skipped.has(grade.key) && (
+                  <Field id={`grade-shift-${grade.key}`} label={text.gradeShift(grade.name)}>
+                    <Select id={`grade-shift-${grade.key}`} value={String(gradeShifts[grade.key] ?? shiftId ?? "")}
+                      onChange={(event) => edit((id: number) => setGradeShifts((current) => ({ ...current, [grade.key]: id })))(Number(event.target.value))}
+                      options={shiftList.map((shift) => ({ value: String(shift.id), label: shift.name }))} />
+                  </Field>
+                )}
                 {grade.branchStem && !skipped.has(grade.key) && (
                   <fieldset className="choice-group choice-group-nested">
                     <legend>{text.branches(grade.name)}</legend>
