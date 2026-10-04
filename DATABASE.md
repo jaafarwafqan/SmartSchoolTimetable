@@ -73,6 +73,11 @@ Migration `Phase2FCalendar` adds `CalendarDays`:
 
 Demo databases created with `--seed-demo-data` use exactly this schema (migrated on creation) in a separate file.
 
+Migration `Phase25BDayLessonsShiftModeSetup` (2.5B) adds:
+- `Shifts.Kind` (`Morning`, `Evening` or `Other`; existing rows get `Other`).
+- `ShiftDayLessons`: `ShiftId`, `Day`, `Lessons`, unique per shift and day. Only days that differ from the shift's lesson count are stored (ADR 0020).
+- `SetupProgress`: one row (`Id` = 1, seeded at startup) with `CurrentStep`, `CompletedMask`, `SkippedMask`, `IsFinished`, `UpdatedAt`, `Version`.
+
 ## Application data
 - School profile; teachers, subjects, resources, stages, sections, workload, shifts, bell times, calendar
 - Timetable versions and lessons

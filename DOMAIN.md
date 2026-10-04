@@ -90,3 +90,10 @@ No implementation of domain logic; only specification and validation strategy.
   - Title ≤ 120; one day or a range of up to 366 days.
   - Kind: official holiday, school holiday, exam or special day; plus an "affects schedule" flag.
   - `IsOutside(yearStart, yearEnd)` drives the "outside the current year" warning; such entries are never blocked.
+
+## Phase 2.5B
+- **`Shift.Kind`** (morning, evening, other) and **per-day lesson counts** (`SetDayLessons`, `LessonsOn`, `WeeklyLessons`). A day teaches the first N lessons (ADR 0020).
+- **`Section.WeeklyCapacity`** sums the per-day counts.
+- **`ScheduleGrid.From(days, shifts)`:** lessons per day = the most any shift teaches that day; the weekly bound = the largest shift's total.
+- **Shift mode = `SchoolProfile.StudyType`** (`SetStudyType`); `SetSchoolType` serves wizard step 1.
+- **`SetupProgress`:** steps 1–7, completed and skipped sets (a completed step is never "skipped"), the current step, finished.

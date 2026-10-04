@@ -1,6 +1,20 @@
 # Changelog
 
 ## [Unreleased]
+### Phase 2.5B - per-day lessons, shift mode, setup progress (tag `phase-2-5b`)
+- **Per-day lesson counts** (ADR 0020): each shift teaches the first N lessons on each working day.
+  - Capacity, the schedule grid, blocked-period checks and teacher limits use the per-day counts.
+  - A stepper row on the periods tab edits them.
+  - Grid cells for lessons that do not exist on a day are hatched and disabled.
+- **Shift mode** (صباحي فقط، مسائي فقط، مزدوج) on the timing tab, as choice cards.
+  - A preview shows what will be created or removed, and which sections block the change (`SHIFT_MODE_IN_USE`).
+  - The evening generator proposes the morning end + 30 minutes.
+- **Setup progress record** for the resumable wizard (2.5D).
+- **New error codes:** `NO_CURRENT_YEAR`, `SHIFT_MODE_IN_USE`.
+- **Migration:** `Phase25BDayLessonsShiftModeSetup`.
+- **New primitives:** `Stepper`, `ChoiceCards`.
+- **Tests:** .NET 115, Vitest 60, Playwright 4.
+
 ### Phase 2.5A - foundation fixes (tag `phase-2-5a`, branch `phase-2-5`)
 - **Side panel cause fixed:** the CSS reset removed the dialog's `margin: auto`, so dialogs stuck to a screen edge. Dialogs are now centred, and an E2E check covers it.
 - **Navigation:**

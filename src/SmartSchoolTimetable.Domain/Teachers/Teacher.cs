@@ -105,7 +105,7 @@ public sealed class Teacher : VersionedEntity
         if (grid.LessonsPerDay > 0)
         {
             errors.When(details.MaxLessonsPerDay > grid.LessonsPerDay, nameof(MaxLessonsPerDay), DomainErrorCode.MaxPerDayExceedsPeriods);
-            errors.When(details.MaxLessonsPerWeek > grid.WeeklyCapacity, nameof(MaxLessonsPerWeek), DomainErrorCode.MaxPerWeekExceedsCapacity);
+            errors.When(details.MaxLessonsPerWeek > grid.MaxWeeklyLessons, nameof(MaxLessonsPerWeek), DomainErrorCode.MaxPerWeekExceedsCapacity);
         }
         grid.ValidateBlocked(details.BlockedPeriods, nameof(BlockedPeriods), errors).ThrowIfAny();
 

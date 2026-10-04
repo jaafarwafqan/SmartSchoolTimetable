@@ -99,3 +99,155 @@
 .user-menu-name {
   color: var(--color-ink-muted);
 }
+
+/* ---------- Stepper (choose, don't type) ---------- */
+.ui-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.ui-stepper-button {
+  display: inline-grid;
+  place-items: center;
+  inline-size: var(--control-height-md);
+  block-size: var(--control-height-md);
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+.ui-stepper-button:hover:not(:disabled) {
+  background: var(--color-surface-muted);
+}
+
+.ui-stepper-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ui-stepper-value {
+  min-inline-size: 2.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+@media (pointer: coarse) {
+  .ui-stepper-button {
+    inline-size: var(--touch-target-min);
+    block-size: var(--touch-target-min);
+  }
+}
+
+/* ---------- Choice cards ---------- */
+.ui-choice-cards {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ui-choice-cards legend {
+  margin-block-end: 0.5rem;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.ui-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.75rem;
+}
+
+.ui-choice-card {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.875rem;
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+.ui-choice-card input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.ui-choice-card:hover {
+  background: var(--color-surface-muted);
+}
+
+.ui-choice-card.is-checked {
+  border-color: var(--color-primary);
+  box-shadow: inset 0 0 0 1px var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.ui-choice-card:has(input:focus-visible) {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.ui-choice-icon {
+  color: var(--color-primary-ink);
+}
+
+.ui-choice-text {
+  display: grid;
+  gap: 0.125rem;
+}
+
+.ui-choice-text span {
+  font-size: var(--text-xs);
+  color: var(--color-ink-muted);
+}
+
+/* ---------- Per-day lessons and shift mode ---------- */
+.day-lessons {
+  display: grid;
+  gap: 0.75rem;
+  padding-block-start: 1rem;
+  border-block-start: 1px solid var(--color-line);
+}
+
+.day-lessons-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.day-lessons-row li {
+  display: grid;
+  justify-items: center;
+  gap: 0.25rem;
+}
+
+.day-lessons-day,
+.day-lessons-total {
+  font-weight: 600;
+}
+
+.day-lessons-total {
+  margin: 0;
+}
+
+.shift-mode-impact {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.shift-mode-impact p,
+.affected-list {
+  margin: 0;
+}

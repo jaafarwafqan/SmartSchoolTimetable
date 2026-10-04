@@ -13,7 +13,7 @@ namespace SmartSchoolTimetable.Tests.Phase2;
 
 public sealed class TeachersTests
 {
-    private static readonly ScheduleGrid Grid = new([7, 1, 2, 3, 4], 6);
+    private static readonly ScheduleGrid Grid = ScheduleGrid.Uniform([7, 1, 2, 3, 4], 6);
     private static readonly string[] OneName = ["x"];
     private static readonly int[] Monday = [1];
     private static readonly string[] PreviewNames = ["حسن جواد", "أحمد علي"];
@@ -47,7 +47,7 @@ public sealed class TeachersTests
             error => error is { Field: "MaxLessonsPerWeek", Code: DomainErrorCode.OutOfRange });
 
         // Before periods exist, limits are accepted (DECISIONS_PENDING #5) but blocked periods are not.
-        Assert.Equal(50, Teacher.Create(Details(perDay: 10, perWeek: 50), new ScheduleGrid([7], 0)).MaxLessonsPerWeek);
+        Assert.Equal(50, Teacher.Create(Details(perDay: 10, perWeek: 50), ScheduleGrid.Uniform([7], 0)).MaxLessonsPerWeek);
 
         var teacher = Teacher.Create(Details(offDays: [2, 7], blocked: [new BlockedPeriod(1, 2), new BlockedPeriod(1, 2)], perDay: 6, perWeek: 30), Grid);
         Assert.Equal([2, 7], teacher.OffDays);

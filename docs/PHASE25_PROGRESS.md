@@ -3,8 +3,8 @@
 Updated after every commit. A new session reads this file first, then `docs/PHASE_25_SPEC.md`.
 
 - **Branch:** `phase-2-5`, created from `master` at `0c1824a` ("Merge Phase 2"). Never commit to `master`.
-- **Last green tag:** `phase-2-5a`.
-- **In progress:** 2.5B (per-day lesson counts, shift mode, setup progress).
+- **Last green tag:** `phase-2-5b`.
+- **In progress:** 2.5C (templates, stage/section generator, curriculum).
 
 ## Baseline (2026-10-04, before any change)
 - Build: 0 warnings.
@@ -16,10 +16,11 @@ Updated after every commit. A new session reads this file first, then `docs/PHAS
 ## Done
 | Checkpoint | Tag | Results |
 |---|---|---|
-| 2.5A | `phase-2-5a` | Build 0 warnings; .NET 110; Vitest 58; Playwright 4; lint clean; line coverage Domain 98.3%, Application 94.8% |
+| 2.5A | `phase-2-5a` (`2c0dc5a`) | Build 0 warnings; .NET 110; Vitest 58; Playwright 4; lint clean; line coverage Domain 98.3%, Application 94.8% |
+| 2.5B | `phase-2-5b` | .NET 115; Vitest 60; Playwright 4 |
 
 ## Next
-2.5B, then 2.5C, 2.5D and 2.5E (spec section 8). ADR numbers reserved: 0020 per-day lessons, 0021 curriculum repetition, 0022 idempotent templates, 0023 wizard (0024 = no drawers, done).
+2.5C, then 2.5D and 2.5E (spec section 8). ADR numbers reserved: 0020 per-day lessons, 0021 curriculum repetition, 0022 idempotent templates, 0023 wizard (0024 = no drawers, done).
 
 ## Patterns (2.5A)
 - Quick add: `InlineAddForm`. Details in place: `ExpandableRow` + a `*Editor` form. Never key an editor by `version` (mutation callbacks are dropped on remount).

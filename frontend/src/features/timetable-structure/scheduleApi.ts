@@ -7,11 +7,25 @@ export type PeriodKind = "lesson" | "break";
 export type BellTone = "classic" | "chime" | "beeps" | "soft";
 export type Period = { position: number; kind: PeriodKind; startTime: string; endTime: string; startBell: boolean; endBell: boolean };
 export type PeriodInput = Omit<Period, "position">;
-export type Shift = { id: number; academicYearId: number; name: string; displayOrder: number; lessonCount: number; periods: Period[]; version: number };
+export type ShiftKind = "morning" | "evening" | "other";
+export type DayLessons = { day: number; lessons: number };
+export type Shift = {
+  id: number;
+  academicYearId: number;
+  name: string;
+  displayOrder: number;
+  kind: ShiftKind;
+  lessonCount: number;
+  periods: Period[];
+  /** Lessons taught on each working day (per-day counts). */
+  dayLessons: DayLessons[];
+  weeklyLessons: number;
+  version: number;
+};
 export type WorkingWeek = { days: number[]; weekStartDay: number; version: number };
 export type BellSettings = { tone: BellTone; breakBell: boolean; version: number };
 export type ShiftInput = { name: string; displayOrder: number; version: number };
-export type ScheduleGrid = { days: number[]; lessonsPerDay: number };
+export type ScheduleGrid = { days: number[]; lessonsPerDay: number; lessonsByDay: DayLessons[]; maxWeeklyLessons: number };
 export type BlockedSlot = { day: number; lessonNumber: number };
 export type GenerateInput = { firstStartTime: string; lessonMinutes: number; lessonCount: number; breakMinutes: number; breakAfterLesson: number | null };
 
@@ -69,6 +83,11 @@ export function useDeleteShift(yearId: number) {
 export function useSavePeriods(yearId: number) {
   return useStructureMutation(({ shiftId, periods, version }: { shiftId: number; periods: PeriodInput[]; version: number }) =>
     apiRequest<Shift>(`${shiftsPath(yearId)}/${shiftId}/periods`, "PUT", { periods, version }), shiftsKey);
+}
+
+export function useSaveDayLessons(yearId: number) {
+  return useStructureMutation(({ shiftId, dayLessons, version }: { shiftId: number; dayLessons: DayLessons[]; version: number }) =>
+    apiRequest<Shift>(`${shiftsPath(yearId)}/${shiftId}/day-lessons`, "PUT", { dayLessons, version }), shiftsKey);
 }
 
 export function useGeneratePeriods(yearId: number) {

@@ -35,7 +35,7 @@ Every failure returns `{ "code": string, "correlationId": string, "errors": [{ "
 | 403 | `INVALID_ORIGIN`, `INVALID_LAUNCH_TOKEN`, `REQUEST_FORBIDDEN`, `SETUP_REQUIRED` |
 | 404 | `NOT_FOUND` |
 | 405 | `METHOD_NOT_ALLOWED` |
-| 409 | `SETUP_ALREADY_COMPLETE`, `RECOVERY_MISSING`, `CONFLICT` (stale `version`), `RECORD_IN_USE`, `CURRENT_YEAR_REQUIRED`, `YEAR_STRUCTURE_IN_USE`, `STAGE_ARCHIVED` |
+| 409 | `SETUP_ALREADY_COMPLETE`, `RECOVERY_MISSING`, `CONFLICT` (stale `version`), `RECORD_IN_USE`, `CURRENT_YEAR_REQUIRED`, `YEAR_STRUCTURE_IN_USE`, `STAGE_ARCHIVED`, `NO_CURRENT_YEAR`, `SHIFT_MODE_IN_USE` |
 | 413 | `PAYLOAD_TOO_LARGE` (request body over the endpoint limit) |
 | 415 | `UNSUPPORTED_MEDIA_TYPE` |
 | 422 | `VALIDATION_FAILED` (with field codes `REQUIRED`, `USERNAME_TOO_SHORT`, `USERNAME_TOO_LONG`, `PASSWORD_TOO_SHORT`, `PASSWORD_TOO_LONG`, `PASSWORD_MISMATCH`, `INVALID_INACTIVITY_TIMEOUT`; Phase 2: `VALUE_TOO_LONG`, `VALUE_OUT_OF_RANGE`, `INVALID_OPTION`, `INVALID_DATE`, `INVALID_TIME`, `INVALID_DATE_RANGE`, `DUPLICATE_NAME`, `TERM_OUTSIDE_YEAR`, `TERMS_OVERLAP`, `INVALID_TIME_RANGE`, `PERIODS_OVERLAP`, `PERIODS_NOT_ASCENDING`, `NO_LESSON_PERIODS`, `TOO_MANY_PERIODS`, `NO_WORKING_DAYS`, `BLOCKED_PERIOD_INVALID`, `MAX_PER_DAY_EXCEEDS_PERIODS`, `MAX_PER_WEEK_EXCEEDS_CAPACITY`, `SHIFT_NOT_IN_YEAR`, `ASSET_TOO_LARGE`, `ASSET_TYPE_NOT_ALLOWED`, `ASSET_TYPE_MISMATCH`), `INVALID_USERNAME`, `INVALID_PASSWORD` |
@@ -107,6 +107,17 @@ Every route below requires the owner session (401 `UNAUTHENTICATED`). Editable r
 Creating a section in an archived stage, or restoring a section of an archived stage, returns 409 `STAGE_ARCHIVED`. Display order is a sort key; equal orders are allowed and sort by name. Duplicate names (after Arabic normalization) return 422 `DUPLICATE_NAME` on the name/label field. Audit events: `ShiftCreated/Updated/Deleted`, `ShiftPeriodsUpdated`, `WorkingWeekUpdated`, `BellSettingsUpdated`, `StageCreated/Updated/Archived/Restored/Deleted`, `SectionCreated/Updated/Archived/Restored/Deleted`.
 
 Audit events: `SchoolProfileUpdated`, `SchoolAssetUploaded`, `SchoolAssetRemoved`, `AcademicYearCreated`, `AcademicYearUpdated`, `AcademicYearDeleted`, `AcademicYearMadeCurrent`, `TermCreated`, `TermUpdated`, `TermDeleted`, `TermMadeCurrent`.
+
+### Phase 2.5B: per-day lessons, shift mode, setup progress
+| Method | Route | Request | Success | Errors |
+|---|---|---|---|---|
+| PUT | `/academic-years/{yearId}/shifts/{id}/day-lessons` | `{ dayLessons: [{ day, lessons }], version }`: 0..lesson count per working day | 200 shift; shifts now also carry `kind` (`morning`, `evening` or `other`), `dayLessons` for every working day, and `weeklyLessons` | 401, 404, 409 `CONFLICT`, 422 `DayLessons`: `INVALID_OPTION` (not a working day), `DUPLICATE_NAME` (day repeated), `VALUE_OUT_OF_RANGE` |
+| GET | `/shift-mode/impact?mode=morning\|evening\|dual` | — | 200 `{ mode, allowed, shiftsToCreate, shiftsToRemove, affectedSections: [{ sectionId, stageName, label, shiftName, isArchived }] }` | 401, 409 `NO_CURRENT_YEAR`, 422 `Mode` |
+| PUT | `/shift-mode` | `{ mode, version }` (school-profile version) | 200 `{ mode, shifts, profileVersion }`; creates or adopts morning/evening shifts of the current year, removes unneeded unused ones | 401, 409 `CONFLICT`, 409 `NO_CURRENT_YEAR`, 409 `SHIFT_MODE_IN_USE`, 422 |
+| GET | `/setup-progress` | — | 200 `{ currentStep, completedSteps, skippedSteps, isFinished, schoolType, shiftMode, version }` | 401 |
+| PUT | `/setup-progress` | `{ currentStep (1–7), completedSteps, skippedSteps, isFinished, version }` | 200 progress | 401, 409 `CONFLICT`, 422 (`VALUE_OUT_OF_RANGE`) |
+
+`/schedule-grid` now also returns `lessonsByDay: [{ day, lessons }]` and `maxWeeklyLessons`. Audit events: `ShiftDayLessonsUpdated`, `ShiftModeChanged`, `SetupProgressSaved`, `SetupFinished`.
 
 ### Subjects and the schedule grid (Phase 2, checkpoint 2D)
 | Method | Route | Request | Success | Endpoint-specific errors |

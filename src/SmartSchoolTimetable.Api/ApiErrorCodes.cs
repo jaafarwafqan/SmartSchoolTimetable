@@ -64,6 +64,8 @@ public static class ApiErrorCodes
             [ErrorCodes.AssetTypeMismatch] = StatusCodes.Status422UnprocessableEntity,
             [ErrorCodes.YearStructureInUse] = StatusCodes.Status409Conflict,
             [ErrorCodes.StageArchived] = StatusCodes.Status409Conflict,
+            [ErrorCodes.NoCurrentYear] = StatusCodes.Status409Conflict,
+            [ErrorCodes.ShiftModeInUse] = StatusCodes.Status409Conflict,
 
             [ErrorCodes.RecordInUse] = StatusCodes.Status409Conflict,
             [ErrorCodes.CurrentYearRequired] = StatusCodes.Status409Conflict,

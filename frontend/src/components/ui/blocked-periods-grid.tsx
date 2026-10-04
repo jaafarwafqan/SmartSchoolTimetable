@@ -14,6 +14,9 @@ type BlockedPeriodsGridProps = {
   cellLabel: (dayName: string, lesson: number, blocked: boolean) => string;
   value: readonly GridSlot[];
   onChange: (value: GridSlot[]) => void;
+  /** Per-day lesson counts: a lesson that does not exist on that day is shown hatched and cannot be toggled. */
+  isAvailable?: (slot: GridSlot) => boolean;
+  unavailableLabel?: (dayName: string, lesson: number) => string;
 };
 
 const isSame = (a: GridSlot, b: GridSlot) => a.day === b.day && a.lessonNumber === b.lessonNumber;
@@ -23,12 +26,13 @@ const isSame = (a: GridSlot, b: GridSlot) => a.day === b.day && a.lessonNumber =
  * Keyboard: one tab stop; arrow keys move between cells (mirrored for RTL), Home/End go to the row ends, and
  * Space or Enter toggles the focused cell.
  */
-export function BlockedPeriodsGrid({ label, days, lessons, lessonLabel, cellLabel, value, onChange }: BlockedPeriodsGridProps) {
+export function BlockedPeriodsGrid({ label, days, lessons, lessonLabel, cellLabel, value, onChange, isAvailable = () => true, unavailableLabel }: BlockedPeriodsGridProps) {
   const [focus, setFocus] = useState({ row: 0, column: 0 });
   const cells = useRef(new Map<string, HTMLButtonElement>());
   const lessonNumbers = Array.from({ length: lessons }, (_, index) => index + 1);
 
   function toggle(slot: GridSlot) {
+    if (!isAvailable(slot)) return;
     onChange(value.some((item) => isSame(item, slot)) ? value.filter((item) => !isSame(item, slot)) : [...value, slot]);
   }
 
@@ -67,21 +71,24 @@ export function BlockedPeriodsGrid({ label, days, lessons, lessonLabel, cellLabe
           </tr>
         </thead>
         <tbody>
-          {days.map(({ day, name }, row) => (
+          {days.map(({ day, name: dayName }, row) => (
             <tr key={day}>
-              <th scope="row">{name}</th>
+              <th scope="row">{dayName}</th>
               {lessonNumbers.map((lesson, column) => {
                 const slot = { day, lessonNumber: lesson };
-                const blocked = value.some((item) => isSame(item, slot));
+                const available = isAvailable(slot);
+                const blocked = available && value.some((item) => isSame(item, slot));
+                const cellName = available || !unavailableLabel ? cellLabel(dayName, lesson, blocked) : unavailableLabel(dayName, lesson);
                 return (
                   <td key={lesson}>
                     <button
                       type="button"
                       ref={(element) => { if (element) cells.current.set(`${row}:${column}`, element); else cells.current.delete(`${row}:${column}`); }}
-                      className={`ui-blocked-cell${blocked ? " is-blocked" : ""}`}
-                      aria-pressed={blocked}
-                      aria-label={cellLabel(name, lesson, blocked)}
-                      title={cellLabel(name, lesson, blocked)}
+                      className={`ui-blocked-cell${blocked ? " is-blocked" : ""}${available ? "" : " is-unavailable"}`}
+                      aria-pressed={available ? blocked : undefined}
+                      aria-disabled={available ? undefined : true}
+                      aria-label={cellName}
+                      title={cellName}
                       tabIndex={focus.row === row && focus.column === column ? 0 : -1}
                       onFocus={() => setFocus({ row, column })}
                       onKeyDown={(event) => onKeyDown(event, row, column)}

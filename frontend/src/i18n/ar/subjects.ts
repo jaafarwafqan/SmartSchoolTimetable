@@ -7,6 +7,7 @@ export const blockedGrid = {
   noGrid: "عرّف أيام الدوام وحصص الوردية في السنة الحالية أولاً لتحديد الحصص المحجوبة.",
   outsideGrid: "بعض الحصص المحجوبة المحفوظة خارج أيام الدوام أو الحصص الحالية، وستُحذف عند الحفظ.",
   lesson: (number: string) => `ح${number}`,
+  unavailable: (day: string, lesson: string) => `${day}، الحصة ${lesson}: غير موجودة في هذا اليوم`,
   cell: (day: string, lesson: string, blocked: boolean) => `${day}، الحصة ${lesson}: ${blocked ? "محجوبة" : "متاحة"}`,
 } as const;
 

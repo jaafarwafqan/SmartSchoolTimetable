@@ -67,6 +67,35 @@ export const scheduleStructure = {
   lessonNumber: (number: string) => `الحصة ${number}`,
   removeRow: (row: string) => `حذف الصف ${row}`,
   rowActions: (name: string) => `إجراءات ${isolate(name)}`,
+  dayLessonsTitle: "عدد الحصص لكل يوم",
+  dayLessonsHint: "يُدرَّس في كل يوم أول عدد من حصص الوردية. السعة الأسبوعية للشعبة = مجموع حصص أيام الدوام.",
+  dayLessonsFor: (day: string) => `عدد حصص يوم ${day}`,
+  decreaseFor: (day: string) => `إنقاص حصص يوم ${day}`,
+  increaseFor: (day: string) => `زيادة حصص يوم ${day}`,
+  weeklyTotal: (count: string) => `المجموع الأسبوعي: ${count} حصة`,
+  saveDayLessons: "حفظ عدد الحصص لكل يوم",
+  dayLessonsSaved: "تم حفظ عدد الحصص لكل يوم.",
+} as const;
+
+export const shiftMode = {
+  title: "نمط الدوام",
+  description: "اختر نمط الدوام؛ تُنشأ الورديات المطلوبة للسنة الحالية تلقائياً.",
+  legend: "نمط الدوام",
+  morning: "صباحي فقط",
+  morningHint: "وردية صباحية واحدة.",
+  evening: "مسائي فقط",
+  eveningHint: "وردية مسائية واحدة.",
+  dual: "مزدوج",
+  dualHint: "وردية صباحية ووردية مسائية.",
+  morningShift: "الدوام الصباحي",
+  eveningShift: "الدوام المسائي",
+  willCreate: (name: string) => `ستُنشأ وردية: ${name}.`,
+  willRemove: (name: string) => `ستُحذف وردية: ${isolate(name)}.`,
+  blocked: "لا يمكن تطبيق هذا النمط الآن لأن هذه الشعب مسندة إلى وردية ستُحذف:",
+  affected: (stage: string, label: string, shift: string, archived: boolean) =>
+    `${isolate(stage)} - ${isolate(label)} (${isolate(shift)})${archived ? "، مؤرشفة" : ""}`,
+  apply: "تطبيق نمط الدوام",
+  applied: "تم تطبيق نمط الدوام.",
 } as const;
 
 export const stagesSections = {

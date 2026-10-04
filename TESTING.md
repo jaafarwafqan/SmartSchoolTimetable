@@ -126,6 +126,16 @@ Checkpoint 2.5A:
   - The phone menu is checked to open in the page flow (no dialog, `position: static`) and to return focus on Esc.
   - All screenshot baselines were regenerated.
 
+Checkpoint 2.5B:
+- .NET (115): adds `Phase25/DayLessonsAndShiftModeTests.cs`:
+  - per-day storage and its validation, capping after periods shrink, capacity sums;
+  - the grid per day and its weekly bound, teacher limits against it;
+  - setup progress masks;
+  - shift mode: no current year, adopt by name, create, remove, blocked by sections with the impact list, stale version;
+  - routes for day lessons, the grid, shift mode and setup progress.
+- Vitest (60): adds `components/ui/stepper.test.tsx` (buttons, keys and bounds; grid cells for lessons that do not exist on a day are aria-disabled and never toggle).
+- Playwright: the flow lowers Thursday to 5 lessons with the stepper, and section capacity becomes 29 (also in the copied year).
+
 ## Later-phase acceptance suites
 - Phase 4 infeasibility test must construct a conflict involving two teachers, a shared lab, and a blocked period; the diagnostic must identify the conflict groups and actionable correction, not merely report infeasible.
 - Large solver-risk comparison uses the same independently verified feasible 40-section/54-teacher workload and records status, first-solution/total time, objective/bound, memory method, and independently checked hard constraints for baseline, two-stage, decomposition, and hints.

@@ -80,6 +80,8 @@ builder.Services.AddScoped<StagesSectionsService>();
 builder.Services.AddScoped<SubjectsService>();
 builder.Services.AddScoped<TeachersService>();
 builder.Services.AddScoped<CalendarService>();
+builder.Services.AddScoped<ShiftModeService>();
+builder.Services.AddScoped<SetupProgressService>();
 builder.Services.AddScoped<IYearStructure, YearStructureService>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddLocalInfrastructure(
@@ -105,6 +107,7 @@ app.MapStagesSectionsEndpoints();
 app.MapSubjectsEndpoints();
 app.MapTeachersEndpoints();
 app.MapCalendarEndpoints();
+app.MapSetupEndpoints();
 app.MapFallback(async (HttpContext context) =>
 {
     if (context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))

@@ -126,11 +126,16 @@ test("the whole setup checklist completes end to end; stale edits are caught", a
   await fillTime(page, secondStart, "08:45");
   await page.getByRole("button", { name: structure.savePeriods }).click();
   await expect(page.getByRole("status").filter({ hasText: structure.periodsSaved })).toBeVisible();
+  // Per-day lesson counts (spec 2.5 §3.1): Thursday has one lesson less, so a section's capacity is 6×4 + 5 = 29.
+  await page.getByRole("button", { name: structure.decreaseFor(school.scheduleStructure.days.thursday) }).click();
+  await expect(page.getByText(structure.weeklyTotal("29"))).toBeVisible();
+  await page.getByRole("button", { name: structure.saveDayLessons }).click();
+  await expect(page.getByRole("status").filter({ hasText: structure.dayLessonsSaved })).toBeVisible();
   await expectNoSeriousA11yViolations(page, "timetable structure");
   await expectNoLatinText(page, "timetable structure", ["owner"]);
   await expectBreakpointScreenshots(page, "periods");
 
-  // Stages and sections (2C): weekly capacity = 5 working days × 6 lessons.
+  // Stages and sections (2C): weekly capacity = per-day lessons summed over the working days (29).
   await goToSection(page, school.nav.stagesSections);
   await page.getByRole("button", { name: stages.addStage }).first().click();
   const stageDialog = page.getByRole("dialog", { name: stages.addStage });
@@ -142,7 +147,7 @@ test("the whole setup checklist completes end to end; stale edits are caught", a
   await sectionDialog.getByLabel(stages.label).fill("أ");
   await sectionDialog.getByRole("button", { name: stages.saveSection }).click();
   await expect(page.getByRole("status").filter({ hasText: stages.sectionSaved })).toBeVisible();
-  await expect(page.getByRole("cell", { name: "30", exact: true })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "29", exact: true })).toBeVisible();
   await expectNoSeriousA11yViolations(page, "stages and sections");
 
   // Subjects: quick add by name (Enter), then details edited in place on the expanded row.
@@ -250,7 +255,7 @@ test("the whole setup checklist completes end to end; stale edits are caught", a
   await goToSection(page, school.nav.stagesSections);
   await page.getByLabel(stages.year).selectOption({ index: 0 }); // newest year first
   await expect(page.getByRole("cell", { name: "الأول المتوسط", exact: true })).toBeVisible();
-  await expect(page.getByRole("cell", { name: "30", exact: true })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "29", exact: true })).toBeVisible();
 
   // No drawers (spec 2.5 §2.4): on a phone the menu opens in the page flow, never as a dialog or fixed panel.
   await page.setViewportSize({ width: 375, height: 800 });

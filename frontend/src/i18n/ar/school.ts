@@ -1,7 +1,7 @@
 // Phase 2 strings: app shell, dashboard, school profile, academic years. Numbers are passed in pre-formatted;
 // user-entered values are bidi-isolated.
 import { isolate } from "../isolate";
-import { scheduleStructure, stagesSections } from "./structure";
+import { scheduleStructure, shiftMode, stagesSections } from "./structure";
 import { blockedGrid, subjects } from "./subjects";
 import { teachers } from "./teachers";
 import { calendar } from "./calendar";
@@ -193,6 +193,7 @@ export const school = {
     rowActions: (name: string) => `إجراءات ${isolate(name)}`,
   },
   scheduleStructure,
+  shiftMode,
   stagesSections,
   subjects,
   blockedGrid,

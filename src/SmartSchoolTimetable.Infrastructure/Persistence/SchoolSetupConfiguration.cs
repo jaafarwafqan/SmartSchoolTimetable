@@ -54,6 +54,17 @@ internal sealed class ShiftConfiguration : IEntityTypeConfiguration<Shift>
             period.HasIndex("ShiftId", nameof(LessonPeriod.Position)).IsUnique();
         });
         builder.Navigation(shift => shift.Periods).UsePropertyAccessMode(PropertyAccessMode.Field);
+        builder.Property(shift => shift.Kind).HasConversion<string>().HasMaxLength(16);
+        // Per-day lesson counts (ADR 0020): only days that differ from the shift's lesson count are stored.
+        builder.OwnsMany(shift => shift.DayLessonOverrides, day =>
+        {
+            day.ToTable("ShiftDayLessons");
+            day.WithOwner().HasForeignKey("ShiftId");
+            day.Property<long>("Id").ValueGeneratedOnAdd();
+            day.HasKey("Id");
+            day.HasIndex("ShiftId", nameof(DayLessons.Day)).IsUnique();
+        });
+        builder.Navigation(shift => shift.DayLessonOverrides).UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }
 
@@ -129,5 +140,17 @@ internal sealed class SectionConfiguration : IEntityTypeConfiguration<Section>
         builder.HasIndex(section => new { section.StageId, section.NormalizedLabel }).IsUnique();
         builder.HasOne<Stage>().WithMany().HasForeignKey(section => section.StageId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Shift>().WithMany().HasForeignKey(section => section.ShiftId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+internal sealed class SetupProgressConfiguration : IEntityTypeConfiguration<SetupProgress>
+{
+    public void Configure(EntityTypeBuilder<SetupProgress> builder)
+    {
+        builder.ToTable("SetupProgress");
+        builder.HasKey(progress => progress.Id);
+        builder.Property(progress => progress.Id).ValueGeneratedNever();
+        builder.Ignore(progress => progress.CompletedSteps);
+        builder.Ignore(progress => progress.SkippedSteps);
     }
 }

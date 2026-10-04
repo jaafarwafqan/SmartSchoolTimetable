@@ -19,7 +19,8 @@ public sealed class TimetableStructureService(IDataStore store, TimeProvider clo
             ("order", true) => shifts.OrderByDescending(item => item.DisplayOrder).ThenBy(item => item.NormalizedName),
             _ => shifts.OrderBy(item => item.DisplayOrder).ThenBy(item => item.NormalizedName),
         };
-        return await store.ToPageAsync(shifts, query, ToDto, token);
+        var days = await WorkingDaysAsync(token);
+        return await store.ToPageAsync(shifts, query, shift => ToDto(shift, days), token);
     }
 
     public async Task<OperationResult<ShiftDto>> CreateShiftAsync(long yearId, SaveShiftCommand command, CancellationToken token)
@@ -34,7 +35,8 @@ public sealed class TimetableStructureService(IDataStore store, TimeProvider clo
             return OperationResult.Invalid<ShiftDto>(nameof(command.Name), ErrorCodes.DuplicateName);
         store.Add(shift!);
         AuditTrail.Record(store, clock, "ShiftCreated", $"academic-year:{yearId}", "Shift created.");
-        return await store.SaveAsync(() => ToDto(shift!), nameof(command.Name), token);
+        var createdDays = await WorkingDaysAsync(token);
+        return await store.SaveAsync(() => ToDto(shift!, createdDays), nameof(command.Name), token);
     }
 
     public async Task<OperationResult<ShiftDto>> UpdateShiftAsync(long yearId, long id, SaveShiftCommand command, CancellationToken token)
@@ -49,7 +51,8 @@ public sealed class TimetableStructureService(IDataStore store, TimeProvider clo
         if (StoreSaving.TryDomain<ShiftDto>(() => shift.Update(command.Name, command.DisplayOrder)) is { } invalid)
             return invalid;
         AuditTrail.Record(store, clock, "ShiftUpdated", $"shift:{id}", "Shift updated.");
-        return await store.SaveAsync(() => ToDto(shift), nameof(command.Name), token);
+        var days = await WorkingDaysAsync(token);
+        return await store.SaveAsync(() => ToDto(shift, days), nameof(command.Name), token);
     }
 
     /// <summary>Hard delete, refused while any section (archived included) uses the shift.</summary>
@@ -64,6 +67,22 @@ public sealed class TimetableStructureService(IDataStore store, TimeProvider clo
         store.Remove(shift);
         AuditTrail.Record(store, clock, "ShiftDeleted", $"shift:{id}", "Shift deleted.");
         return await store.SaveAsync(() => true, "Name", token);
+    }
+
+    /// <summary>Per-day lesson counts of a shift (spec 2.5 §3.1); each count is 0..lesson count, days are working days.</summary>
+    public async Task<OperationResult<ShiftDto>> SetDayLessonsAsync(long yearId, long id, SetDayLessonsCommand command, CancellationToken token)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        if (await FindShiftAsync(yearId, id, token) is not { } shift)
+            return OperationResult.Failure<ShiftDto>(ErrorCodes.NotFound);
+        if (!shift.IsVersion(command.Version))
+            return OperationResult.Failure<ShiftDto>(ErrorCodes.Conflict);
+        var days = await WorkingDaysAsync(token);
+        var counts = (command.DayLessons ?? []).Select(entry => new DayLessons(entry.Day, entry.Lessons)).ToArray();
+        if (StoreSaving.TryDomain<ShiftDto>(() => shift.SetDayLessons(counts, days)) is { } invalid)
+            return invalid;
+        AuditTrail.Record(store, clock, "ShiftDayLessonsUpdated", $"shift:{id}", "Lessons per day updated.");
+        return await store.SaveAsync(() => ToDto(shift, days), "DayLessons", token);
     }
 
     public async Task<OperationResult<ShiftDto>> ReplacePeriodsAsync(long yearId, long id, ReplacePeriodsCommand command, CancellationToken token)
@@ -90,7 +109,8 @@ public sealed class TimetableStructureService(IDataStore store, TimeProvider clo
         if (StoreSaving.TryDomain<ShiftDto>(() => shift.ReplacePeriods(drafts)) is { } invalid)
             return invalid;
         AuditTrail.Record(store, clock, "ShiftPeriodsUpdated", $"shift:{id}", "Shift periods updated.");
-        return await store.SaveAsync(() => ToDto(shift), nameof(command.Periods), token);
+        var days = await WorkingDaysAsync(token);
+        return await store.SaveAsync(() => ToDto(shift, days), nameof(command.Periods), token);
     }
 
     public static OperationResult<GeneratedPeriodsDto> Generate(GeneratePeriodsCommand command)
@@ -149,6 +169,9 @@ public sealed class TimetableStructureService(IDataStore store, TimeProvider clo
         return await store.SaveAsync(() => ToDto(settings), nameof(command.Tone), token);
     }
 
+    private async Task<IReadOnlyList<int>> WorkingDaysAsync(CancellationToken token) =>
+        (await store.FirstOrDefaultAsync(store.Query<WorkingWeek>(), token) ?? WorkingWeek.CreateDefault()).Days;
+
     private Task<Shift?> FindShiftAsync(long yearId, long id, CancellationToken token) =>
         store.FirstOrDefaultAsync(store.Query<Shift>().Where(item => item.Id == id && item.AcademicYearId == yearId), token);
 
@@ -162,7 +185,17 @@ public sealed class TimetableStructureService(IDataStore store, TimeProvider clo
 
     private async Task<WorkingWeek> LoadWeekAsync(CancellationToken token) => await store.FirstOrDefaultAsync(store.Query<WorkingWeek>().Where(item => item.Id == WorkingWeek.SingletonId), token) ?? WorkingWeek.CreateDefault();
     private async Task<BellSettings> LoadBellAsync(CancellationToken token) => await store.FirstOrDefaultAsync(store.Query<BellSettings>().Where(item => item.Id == BellSettings.SingletonId), token) ?? BellSettings.CreateDefault();
-    private static ShiftDto ToDto(Shift value) => new(value.Id, value.AcademicYearId, value.Name, value.DisplayOrder, value.LessonCount, value.Periods.Select(ToDto).ToArray(), value.Version);
+    internal static ShiftDto ToDto(Shift value, IReadOnlyList<int> workingDays) => new(
+        value.Id,
+        value.AcademicYearId,
+        value.Name,
+        value.DisplayOrder,
+        ApiText.ToValue(value.Kind),
+        value.LessonCount,
+        value.Periods.Select(ToDto).ToArray(),
+        workingDays.Select(day => new DayLessonsDto(day, value.LessonsOn(day))).ToArray(),
+        value.WeeklyLessons(workingDays),
+        value.Version);
     private static LessonPeriodDto ToDto(LessonPeriod value) => new(value.Position, ApiText.ToValue(value.Kind), InputParsing.Format(value.StartTime), InputParsing.Format(value.EndTime), value.StartBell, value.EndBell);
     private static WorkingWeekDto ToDto(WorkingWeek value) => new(value.Days, value.WeekStartDay, value.Version);
     private static BellSettingsDto ToDto(BellSettings value) => new(ApiText.ToValue(value.Tone), value.BreakBell, value.Version);

@@ -14,12 +14,14 @@ const text = messages.school.scheduleStructure;
 type GeneratePeriodsDialogProps = {
   open: boolean;
   yearId: number;
+  /** First lesson start proposed in the form (editable). */
+  defaultStart: string;
   onClose: () => void;
   onGenerated: (periods: Period[]) => void;
 };
 
 /** "Generate periods" helper (spec 2.5): the server builds an editable list; nothing is saved here. */
-export function GeneratePeriodsDialog({ open, yearId, onClose, onGenerated }: GeneratePeriodsDialogProps) {
+export function GeneratePeriodsDialog({ open, yearId, defaultStart, onClose, onGenerated }: GeneratePeriodsDialogProps) {
   const formId = useId();
   const feedback = useFormFeedback();
   const generate = useGeneratePeriods(yearId);
@@ -63,7 +65,7 @@ export function GeneratePeriodsDialog({ open, yearId, onClose, onGenerated }: Ge
       <form id={formId} ref={feedback.formRef} className="form-stack dialog-form" noValidate onSubmit={submit} onInput={feedback.clearFieldFromEvent}>
         <Alert tone="error" message={feedback.error} />
         <div className="form-grid">
-          <TimeField id="firstStartTime" label={text.firstStart} defaultValue="08:00" required field="FirstStartTime" errors={feedback.fieldErrors} />
+          <TimeField id="firstStartTime" label={text.firstStart} defaultValue={defaultStart} required field="FirstStartTime" errors={feedback.fieldErrors} />
           <TextField id="lessonCount" type="number" min={1} max={12} label={text.lessonCount} defaultValue="7" required field="LessonCount" errors={feedback.fieldErrors} />
           <TextField id="lessonMinutes" type="number" min={10} max={120} label={text.lessonDuration} defaultValue="45" required field="LessonMinutes" errors={feedback.fieldErrors} />
           <TextField id="breakAfterLesson" type="number" min={1} max={11} label={text.breakAfter} defaultValue="4" field="BreakAfterLesson" errors={feedback.fieldErrors} />

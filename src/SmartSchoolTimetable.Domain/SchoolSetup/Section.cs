@@ -51,10 +51,12 @@ public sealed class Section : VersionedEntity
     }
 
     /// <summary>
-    /// Weekly capacity of a section = working days × lessons per day of its shift (breaks excluded, spec 2.8).
-    /// Zero when there is no shift or no lesson yet; Phase 3 compares it with the planned workload.
+    /// Weekly capacity of a section = the sum over the working days of the lessons its shift teaches that day
+    /// (per-day counts, breaks excluded; spec 2.5 §3.1). Zero without a shift or lessons; Phase 3 compares it
+    /// with the planned workload.
     /// </summary>
-    public static int WeeklyCapacity(WorkingWeek? week, Shift? shift) => (week?.DayCount ?? 0) * (shift?.LessonCount ?? 0);
+    public static int WeeklyCapacity(WorkingWeek? week, Shift? shift) =>
+        week is null || shift is null ? 0 : shift.WeeklyLessons(week.Days);
 
     public Section CopyTo(long stageId, long shiftId)
     {
