@@ -63,6 +63,7 @@ public static class ApiErrorCodes
             [ErrorCodes.AssetTypeNotAllowed] = StatusCodes.Status422UnprocessableEntity,
             [ErrorCodes.AssetTypeMismatch] = StatusCodes.Status422UnprocessableEntity,
             [ErrorCodes.YearStructureInUse] = StatusCodes.Status409Conflict,
+            [ErrorCodes.StageArchived] = StatusCodes.Status409Conflict,
 
             [ErrorCodes.RecordInUse] = StatusCodes.Status409Conflict,
             [ErrorCodes.CurrentYearRequired] = StatusCodes.Status409Conflict,

@@ -2,6 +2,7 @@ using SmartSchoolTimetable.Application;
 using SmartSchoolTimetable.Application.Common;
 using SmartSchoolTimetable.Application.Dashboard;
 using SmartSchoolTimetable.Application.SchoolSetup;
+using SmartSchoolTimetable.Application.Stages;
 using SmartSchoolTimetable.Domain.Common;
 using SmartSchoolTimetable.Domain.SchoolSetup;
 

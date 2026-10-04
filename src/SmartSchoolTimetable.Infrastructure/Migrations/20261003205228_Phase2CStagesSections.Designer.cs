@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SmartSchoolTimetable.Infrastructure;
 
@@ -10,9 +11,11 @@ using SmartSchoolTimetable.Infrastructure;
 namespace SmartSchoolTimetable.Infrastructure.Migrations
 {
     [DbContext(typeof(LocalDbContext))]
-    partial class LocalDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261003205228_Phase2CStagesSections")]
+    partial class Phase2CStagesSections
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.20");
@@ -308,7 +311,8 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AcademicYearId", "DisplayOrder");
+                    b.HasIndex("AcademicYearId", "DisplayOrder")
+                        .IsUnique();
 
                     b.HasIndex("AcademicYearId", "NormalizedName")
                         .IsUnique();
@@ -350,7 +354,8 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AcademicYearId", "DisplayOrder");
+                    b.HasIndex("AcademicYearId", "DisplayOrder")
+                        .IsUnique();
 
                     b.HasIndex("AcademicYearId", "NormalizedName")
                         .IsUnique();

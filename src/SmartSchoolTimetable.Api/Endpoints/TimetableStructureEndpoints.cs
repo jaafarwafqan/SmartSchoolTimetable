@@ -1,4 +1,4 @@
-﻿using SmartSchoolTimetable.Application.Common;
+using SmartSchoolTimetable.Application.Common;
 using SmartSchoolTimetable.Application.SchoolSetup;
 
 namespace SmartSchoolTimetable.Api.Endpoints;
@@ -12,6 +12,7 @@ public static class TimetableStructureEndpoints
         shifts.MapGet("/", async (long yearId, [AsParameters] ListQuery query, TimetableStructureService service, CancellationToken token) => Results.Ok(await service.ListShiftsAsync(yearId, query, token)));
         shifts.MapPost("/", async (long yearId, SaveShiftCommand command, HttpContext context, TimetableStructureService service, CancellationToken token) => ApiResults.From(context, await service.CreateShiftAsync(yearId, command, token), value => Results.Created($"/api/v1/academic-years/{yearId}/shifts/{value.Id}", value)));
         shifts.MapPut("/{id:long}", async (long yearId, long id, SaveShiftCommand command, HttpContext context, TimetableStructureService service, CancellationToken token) => ApiResults.Ok(context, await service.UpdateShiftAsync(yearId, id, command, token)));
+        shifts.MapDelete("/{id:long}", async (long yearId, long id, int version, HttpContext context, TimetableStructureService service, CancellationToken token) => ApiResults.NoContent(context, await service.DeleteShiftAsync(yearId, id, version, token)));
         shifts.MapPut("/{id:long}/periods", async (long yearId, long id, ReplacePeriodsCommand command, HttpContext context, TimetableStructureService service, CancellationToken token) => ApiResults.Ok(context, await service.ReplacePeriodsAsync(yearId, id, command, token)));
 
         var workingWeek = endpoints.MapOwnerGroup("/working-days");

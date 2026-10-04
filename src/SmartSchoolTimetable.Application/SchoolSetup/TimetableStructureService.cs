@@ -1,4 +1,4 @@
-﻿using SmartSchoolTimetable.Application.Common;
+using SmartSchoolTimetable.Application.Common;
 using SmartSchoolTimetable.Domain.Common;
 using SmartSchoolTimetable.Domain.SchoolSetup;
 using SmartSchoolTimetable.Domain.Text;
@@ -16,81 +16,81 @@ public sealed class TimetableStructureService(IDataStore store, TimeProvider clo
         {
             ("name", false) => shifts.OrderBy(item => item.NormalizedName),
             ("name", true) => shifts.OrderByDescending(item => item.NormalizedName),
-            ("order", true) => shifts.OrderByDescending(item => item.DisplayOrder),
-            _ => shifts.OrderBy(item => item.DisplayOrder)
+            ("order", true) => shifts.OrderByDescending(item => item.DisplayOrder).ThenBy(item => item.NormalizedName),
+            _ => shifts.OrderBy(item => item.DisplayOrder).ThenBy(item => item.NormalizedName),
         };
         return await store.ToPageAsync(shifts, query, ToDto, token);
     }
 
     public async Task<OperationResult<ShiftDto>> CreateShiftAsync(long yearId, SaveShiftCommand command, CancellationToken token)
     {
+        ArgumentNullException.ThrowIfNull(command);
         if (!await store.AnyAsync(store.Query<AcademicYear>().Where(year => year.Id == yearId), token))
             return OperationResult.Failure<ShiftDto>(ErrorCodes.NotFound);
-        var validation = new InputErrors();
-        ValidateName(command.Name, validation);
-        if (command.DisplayOrder is < 1 or > Shift.MaxDisplayOrder)
-            validation.Add(nameof(command.DisplayOrder), ErrorCodes.ValueOutOfRange);
-        if (validation.Any) return OperationResult.Invalid<ShiftDto>(validation.Errors);
-        var normalized = ArabicText.Normalize(command.Name);
-        var duplicate = await store.AnyAsync(store.Query<Shift>().Where(item => item.AcademicYearId == yearId && item.NormalizedName == normalized), token)
-            || await store.AnyAsync(store.Query<Shift>().Where(item => item.AcademicYearId == yearId && item.DisplayOrder == command.DisplayOrder), token);
-        if (duplicate) return OperationResult.Invalid<ShiftDto>(nameof(command.Name), ErrorCodes.DuplicateName);
-        var shift = Shift.Create(yearId, command.Name, command.DisplayOrder);
-        store.Add(shift);
-        AuditTrail.Record(store, clock, "ShiftCreated", "shift", "Shift created.");
-        return await SaveShiftResultAsync(shift, token);
+        Shift? shift = null;
+        if (StoreSaving.TryDomain<ShiftDto>(() => shift = Shift.Create(yearId, command.Name, command.DisplayOrder)) is { } invalid)
+            return invalid;
+        if (await ShiftNameTakenAsync(yearId, null, command.Name, token))
+            return OperationResult.Invalid<ShiftDto>(nameof(command.Name), ErrorCodes.DuplicateName);
+        store.Add(shift!);
+        AuditTrail.Record(store, clock, "ShiftCreated", $"academic-year:{yearId}", "Shift created.");
+        return await store.SaveAsync(() => ToDto(shift!), nameof(command.Name), token);
     }
 
     public async Task<OperationResult<ShiftDto>> UpdateShiftAsync(long yearId, long id, SaveShiftCommand command, CancellationToken token)
     {
-        var shift = await FindShiftAsync(yearId, id, token);
-        if (shift is null) return OperationResult.Failure<ShiftDto>(ErrorCodes.NotFound);
-        if (shift.Version != command.Version) return OperationResult.Failure<ShiftDto>(ErrorCodes.Conflict);
-        var validation = new InputErrors();
-        ValidateName(command.Name, validation);
-        if (command.DisplayOrder is < 1 or > Shift.MaxDisplayOrder) validation.Add(nameof(command.DisplayOrder), ErrorCodes.ValueOutOfRange);
-        if (validation.Any) return OperationResult.Invalid<ShiftDto>(validation.Errors);
-        var normalized = ArabicText.Normalize(command.Name);
-        if (await store.AnyAsync(store.Query<Shift>().Where(item => item.AcademicYearId == yearId && item.Id != id && (item.NormalizedName == normalized || item.DisplayOrder == command.DisplayOrder)), token))
+        ArgumentNullException.ThrowIfNull(command);
+        if (await FindShiftAsync(yearId, id, token) is not { } shift)
+            return OperationResult.Failure<ShiftDto>(ErrorCodes.NotFound);
+        if (!shift.IsVersion(command.Version))
+            return OperationResult.Failure<ShiftDto>(ErrorCodes.Conflict);
+        if (await ShiftNameTakenAsync(yearId, id, command.Name, token))
             return OperationResult.Invalid<ShiftDto>(nameof(command.Name), ErrorCodes.DuplicateName);
-        try { shift.Update(command.Name, command.DisplayOrder); }
-        catch (DomainValidationException error) { return OperationResult.FromDomain<ShiftDto>(error); }
-        AuditTrail.Record(store, clock, "ShiftUpdated", "shift", "Shift updated.");
-        return await SaveShiftResultAsync(shift, token);
+        if (StoreSaving.TryDomain<ShiftDto>(() => shift.Update(command.Name, command.DisplayOrder)) is { } invalid)
+            return invalid;
+        AuditTrail.Record(store, clock, "ShiftUpdated", $"shift:{id}", "Shift updated.");
+        return await store.SaveAsync(() => ToDto(shift), nameof(command.Name), token);
+    }
+
+    /// <summary>Hard delete, refused while any section (archived included) uses the shift.</summary>
+    public async Task<OperationResult<bool>> DeleteShiftAsync(long yearId, long id, int version, CancellationToken token)
+    {
+        if (await FindShiftAsync(yearId, id, token) is not { } shift)
+            return OperationResult.Failure<bool>(ErrorCodes.NotFound);
+        if (!shift.IsVersion(version))
+            return OperationResult.Failure<bool>(ErrorCodes.Conflict);
+        if (await store.AnyAsync(store.Query<Section>().Where(section => section.ShiftId == id), token))
+            return OperationResult.Failure<bool>(ErrorCodes.RecordInUse);
+        store.Remove(shift);
+        AuditTrail.Record(store, clock, "ShiftDeleted", $"shift:{id}", "Shift deleted.");
+        return await store.SaveAsync(() => true, "Name", token);
     }
 
     public async Task<OperationResult<ShiftDto>> ReplacePeriodsAsync(long yearId, long id, ReplacePeriodsCommand command, CancellationToken token)
     {
-        var shift = await FindShiftAsync(yearId, id, token);
-        if (shift is null) return OperationResult.Failure<ShiftDto>(ErrorCodes.NotFound);
-        if (shift.Version != command.Version) return OperationResult.Failure<ShiftDto>(ErrorCodes.Conflict);
+        ArgumentNullException.ThrowIfNull(command);
+        if (await FindShiftAsync(yearId, id, token) is not { } shift)
+            return OperationResult.Failure<ShiftDto>(ErrorCodes.NotFound);
+        if (!shift.IsVersion(command.Version))
+            return OperationResult.Failure<ShiftDto>(ErrorCodes.Conflict);
         var input = new InputErrors();
         var drafts = new List<PeriodDraft>();
-        if (command.Periods is null) input.Add(nameof(command.Periods), ErrorCodes.Required);
-        else for (var index = 0; index < command.Periods.Count; index++)
+        if (command.Periods is null)
+            input.Add(nameof(command.Periods), ErrorCodes.Required);
+        for (var index = 0; index < (command.Periods?.Count ?? 0); index++)
         {
-            var item = command.Periods[index];
-            var kindText = item.Kind switch
-            {
-                "lesson" => nameof(PeriodKind.Lesson),
-                "break" => nameof(PeriodKind.Break),
-                _ => item.Kind
-            };
-            var kind = kindText switch
-            {
-                nameof(PeriodKind.Lesson) => PeriodKind.Lesson,
-                nameof(PeriodKind.Break) => PeriodKind.Break,
-                _ => InvalidKind(input, index)
-            };
+            var item = command.Periods![index];
+            var kind = input.Option<PeriodKind>(item.Kind, $"Periods[{index}].Kind");
             var start = input.Time(item.StartTime, $"Periods[{index}].StartTime");
             var end = input.Time(item.EndTime, $"Periods[{index}].EndTime");
             drafts.Add(new PeriodDraft(kind, start, end, item.StartBell, item.EndBell));
         }
-        if (input.Any) return OperationResult.Invalid<ShiftDto>(input.Errors);
-        try { shift.ReplacePeriods(drafts); }
-        catch (DomainValidationException error) { return OperationResult.FromDomain<ShiftDto>(error); }
-        AuditTrail.Record(store, clock, "ShiftPeriodsUpdated", "shift", "Shift periods updated.");
-        return await SaveShiftResultAsync(shift, token);
+        if (input.Any)
+            return input.ToResult<ShiftDto>();
+        if (StoreSaving.TryDomain<ShiftDto>(() => shift.ReplacePeriods(drafts)) is { } invalid)
+            return invalid;
+        AuditTrail.Record(store, clock, "ShiftPeriodsUpdated", $"shift:{id}", "Shift periods updated.");
+        return await store.SaveAsync(() => ToDto(shift), nameof(command.Periods), token);
     }
 
     public static OperationResult<GeneratedPeriodsDto> Generate(GeneratePeriodsCommand command)
@@ -119,11 +119,10 @@ public sealed class TimetableStructureService(IDataStore store, TimeProvider clo
             store.Add(week);
         }
         if (week.Version != command.Version) return OperationResult.Failure<WorkingWeekDto>(ErrorCodes.Conflict);
-        try { week.Update(command.Days, command.WeekStartDay); }
-        catch (DomainValidationException error) { return OperationResult.FromDomain<WorkingWeekDto>(error); }
+        if (StoreSaving.TryDomain<WorkingWeekDto>(() => week.Update(command.Days, command.WeekStartDay)) is { } invalid)
+            return invalid;
         AuditTrail.Record(store, clock, "WorkingWeekUpdated", "working-week", "Working week updated.");
-        try { await store.SaveChangesAsync(token); return OperationResult.Success(ToDto(week)); }
-        catch (ConcurrencyConflictException) { return OperationResult.Failure<WorkingWeekDto>(ErrorCodes.Conflict); }
+        return await store.SaveAsync(() => ToDto(week), "Days", token);
     }
 
     public async Task<BellSettingsDto> GetBellSettingsAsync(CancellationToken token) => ToDto(await LoadBellAsync(token));
@@ -139,47 +138,25 @@ public sealed class TimetableStructureService(IDataStore store, TimeProvider clo
         }
         if (settings.Version != command.Version) return OperationResult.Failure<BellSettingsDto>(ErrorCodes.Conflict);
         var input = new InputErrors();
-        var tone = (command.Tone ?? string.Empty).ToLowerInvariant() switch
-        {
-            "classic" => BellTone.Classic,
-            "chime" => BellTone.Chime,
-            "beeps" => BellTone.Beeps,
-            "soft" => BellTone.Soft,
-            _ => InvalidTone(input)
-        };
+        var tone = input.Option<BellTone>(command.Tone, nameof(command.Tone));
         if (input.Any) return OperationResult.Invalid<BellSettingsDto>(input.Errors);
-        try { settings.Update(tone, command.BreakBell); }
-        catch (DomainValidationException error) { return OperationResult.FromDomain<BellSettingsDto>(error); }
+        if (StoreSaving.TryDomain<BellSettingsDto>(() => settings.Update(tone, command.BreakBell)) is { } invalid)
+            return invalid;
         AuditTrail.Record(store, clock, "BellSettingsUpdated", "bell-settings", "Bell settings updated.");
-        try { await store.SaveChangesAsync(token); return OperationResult.Success(ToDto(settings)); }
-        catch (ConcurrencyConflictException) { return OperationResult.Failure<BellSettingsDto>(ErrorCodes.Conflict); }
+        return await store.SaveAsync(() => ToDto(settings), nameof(command.Tone), token);
     }
 
-    private async Task<OperationResult<ShiftDto>> SaveShiftResultAsync(Shift shift, CancellationToken token)
+    private Task<Shift?> FindShiftAsync(long yearId, long id, CancellationToken token) =>
+        store.FirstOrDefaultAsync(store.Query<Shift>().Where(item => item.Id == id && item.AcademicYearId == yearId), token);
+
+    private async Task<bool> ShiftNameTakenAsync(long yearId, long? exceptId, string? name, CancellationToken token)
     {
-        try { await store.SaveChangesAsync(token); return OperationResult.Success(ToDto(shift)); }
-        catch (ConcurrencyConflictException) { return OperationResult.Failure<ShiftDto>(ErrorCodes.Conflict); }
-        catch (DataConflictException) { return OperationResult.Failure<ShiftDto>(ErrorCodes.Conflict); }
+        var normalized = ArabicText.Normalize(name);
+        return normalized.Length > 0 && await store.AnyAsync(
+            store.Query<Shift>().Where(item => item.AcademicYearId == yearId && item.Id != exceptId && item.NormalizedName == normalized),
+            token);
     }
 
-    private Task<Shift?> FindShiftAsync(long yearId, long id, CancellationToken token) => store.FirstOrDefaultAsync(store.Query<Shift>().Where(item => item.Id == id && item.AcademicYearId == yearId), token);
-    private static PeriodKind InvalidKind(InputErrors errors, int index)
-    {
-        errors.Add($"Periods[{index}].Kind", ErrorCodes.InvalidOption);
-        return default;
-    }
-
-    private static BellTone InvalidTone(InputErrors errors)
-    {
-        errors.Add(nameof(BellSettings.Tone), ErrorCodes.InvalidOption);
-        return default;
-    }
-
-    private static void ValidateName(string? name, InputErrors errors)
-    {
-        if (string.IsNullOrWhiteSpace(name)) errors.Add(nameof(Shift.Name), ErrorCodes.Required);
-        else if (name.Trim().Length > Shift.NameMaxLength) errors.Add(nameof(Shift.Name), ErrorCodes.ValueTooLong);
-    }
     private async Task<WorkingWeek> LoadWeekAsync(CancellationToken token) => await store.FirstOrDefaultAsync(store.Query<WorkingWeek>().Where(item => item.Id == WorkingWeek.SingletonId), token) ?? WorkingWeek.CreateDefault();
     private async Task<BellSettings> LoadBellAsync(CancellationToken token) => await store.FirstOrDefaultAsync(store.Query<BellSettings>().Where(item => item.Id == BellSettings.SingletonId), token) ?? BellSettings.CreateDefault();
     private static ShiftDto ToDto(Shift value) => new(value.Id, value.AcademicYearId, value.Name, value.DisplayOrder, value.LessonCount, value.Periods.Select(ToDto).ToArray(), value.Version);

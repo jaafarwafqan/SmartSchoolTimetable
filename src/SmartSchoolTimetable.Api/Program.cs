@@ -9,6 +9,7 @@ using SmartSchoolTimetable.Api.Endpoints;
 using SmartSchoolTimetable.Application;
 using SmartSchoolTimetable.Application.Dashboard;
 using SmartSchoolTimetable.Application.SchoolSetup;
+using SmartSchoolTimetable.Application.Stages;
 using SmartSchoolTimetable.Infrastructure;
 
 const string resetArgument = "--reset-local-database";

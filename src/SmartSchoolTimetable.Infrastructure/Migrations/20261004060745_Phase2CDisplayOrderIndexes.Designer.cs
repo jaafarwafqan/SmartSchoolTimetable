@@ -8,11 +8,11 @@ using SmartSchoolTimetable.Infrastructure;
 
 #nullable disable
 
-namespace SmartSchoolTimetable.Infrastructure.Persistence.Migrations
+namespace SmartSchoolTimetable.Infrastructure.Migrations
 {
     [DbContext(typeof(LocalDbContext))]
-    [Migration("20261003205228_Phase2CStagesSections")]
-    partial class Phase2CStagesSections
+    [Migration("20261004060745_Phase2CDisplayOrderIndexes")]
+    partial class Phase2CDisplayOrderIndexes
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -311,8 +311,7 @@ namespace SmartSchoolTimetable.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AcademicYearId", "DisplayOrder")
-                        .IsUnique();
+                    b.HasIndex("AcademicYearId", "DisplayOrder");
 
                     b.HasIndex("AcademicYearId", "NormalizedName")
                         .IsUnique();
@@ -354,8 +353,7 @@ namespace SmartSchoolTimetable.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AcademicYearId", "DisplayOrder")
-                        .IsUnique();
+                    b.HasIndex("AcademicYearId", "DisplayOrder");
 
                     b.HasIndex("AcademicYearId", "NormalizedName")
                         .IsUnique();

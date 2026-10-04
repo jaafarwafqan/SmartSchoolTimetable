@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using SmartSchoolTimetable.Application.Common;
 using SmartSchoolTimetable.Application.SchoolSetup;
+using SmartSchoolTimetable.Application.Stages;
 using static SmartSchoolTimetable.Tests.ApiTestHelpers;
 
 namespace SmartSchoolTimetable.Tests.Phase2;

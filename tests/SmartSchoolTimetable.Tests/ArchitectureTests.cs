@@ -65,7 +65,8 @@ public sealed class ArchitectureTests
     /// <summary>
     /// Feature folders depend inward only: a Domain feature may use the shared Common/Text/SchoolSetup structure;
     /// an Application feature may use Application.Common and the shared SchoolSetup context, never another
-    /// feature. Dashboard is the documented exception: it is a read model over every feature.
+    /// feature (for example Stages may use SchoolSetup, never the reverse). Dashboard is the documented exception:
+    /// it is a read model over every feature.
     /// </summary>
     [Fact]
     public void FeatureFoldersRespectDependencyDirection()

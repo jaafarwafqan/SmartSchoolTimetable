@@ -42,7 +42,7 @@ internal sealed class ShiftConfiguration : IEntityTypeConfiguration<Shift>
         builder.Property(shift => shift.Name).HasMaxLength(Shift.NameMaxLength).IsRequired();
         builder.Property(shift => shift.NormalizedName).HasMaxLength(Shift.NameMaxLength).IsRequired();
         builder.HasIndex(shift => new { shift.AcademicYearId, shift.NormalizedName }).IsUnique();
-        builder.HasIndex(shift => new { shift.AcademicYearId, shift.DisplayOrder }).IsUnique();
+        builder.HasIndex(shift => new { shift.AcademicYearId, shift.DisplayOrder });
         builder.HasOne<AcademicYear>().WithMany().HasForeignKey(shift => shift.AcademicYearId).OnDelete(DeleteBehavior.Cascade);
         builder.OwnsMany(shift => shift.Periods, period =>
         {
@@ -112,9 +112,8 @@ internal sealed class StageConfiguration : IEntityTypeConfiguration<Stage>
         builder.HasKey(stage => stage.Id);
         builder.Property(stage => stage.Name).HasMaxLength(Stage.NameMaxLength).IsRequired();
         builder.Property(stage => stage.NormalizedName).HasMaxLength(Stage.NameMaxLength).IsRequired();
-        builder.Property(stage => stage.Version).IsConcurrencyToken();
         builder.HasIndex(stage => new { stage.AcademicYearId, stage.NormalizedName }).IsUnique();
-        builder.HasIndex(stage => new { stage.AcademicYearId, stage.DisplayOrder }).IsUnique();
+        builder.HasIndex(stage => new { stage.AcademicYearId, stage.DisplayOrder });
         builder.HasOne<AcademicYear>().WithMany().HasForeignKey(stage => stage.AcademicYearId).OnDelete(DeleteBehavior.Cascade);
     }
 }
@@ -127,7 +126,6 @@ internal sealed class SectionConfiguration : IEntityTypeConfiguration<Section>
         builder.HasKey(section => section.Id);
         builder.Property(section => section.Label).HasMaxLength(Section.LabelMaxLength).IsRequired();
         builder.Property(section => section.NormalizedLabel).HasMaxLength(Section.LabelMaxLength).IsRequired();
-        builder.Property(section => section.Version).IsConcurrencyToken();
         builder.HasIndex(section => new { section.StageId, section.NormalizedLabel }).IsUnique();
         builder.HasOne<Stage>().WithMany().HasForeignKey(section => section.StageId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Shift>().WithMany().HasForeignKey(section => section.ShiftId).OnDelete(DeleteBehavior.Restrict);

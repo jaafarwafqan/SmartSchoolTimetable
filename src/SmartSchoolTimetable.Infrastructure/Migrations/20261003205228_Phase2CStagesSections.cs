@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace SmartSchoolTimetable.Infrastructure.Persistence.Migrations
+namespace SmartSchoolTimetable.Infrastructure.Migrations
 {
     /// <inheritdoc />
     public partial class Phase2CStagesSections : Migration
