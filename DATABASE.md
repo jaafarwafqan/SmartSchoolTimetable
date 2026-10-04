@@ -48,6 +48,11 @@ Migration `20261003200446_Phase2BTimetableStructure` (local `dotnet-ef`, with De
 - `LessonPeriods` owned by a shift: row position, lesson/break kind, start/end time, per-period start/end bell flags. Position is unique within a shift.
 - Period generator output is transient and editable until saved. No calendar days are copied with year structure.
 
+Migration `20261003205228_Phase2CStagesSections` adds:
+- `Stages`: academic-year FK (cascade), display and normalized name, display order, archive timestamp and version; normalized name and display order are each unique within a year.
+- `Sections`: stage FK and shift FK (both restrictive), display and normalized label, optional student count, archive timestamp and version; normalized label is unique within its stage.
+- A section's weekly capacity is computed from the singleton working-week day count and its shift's lesson count, excluding breaks. It is not persisted, so changes in either source appear immediately.
+
 Image files are not stored in the database. Logo and stamp bytes live in `<database folder>/assets/` under generated names matching `^(logo|stamp)-[0-9a-f]{32}\.(png|jpg|webp)$` ([ADR 0016](./adr/0016-school-asset-storage.md)). Backups must copy this folder together with the database.
 
 ## Application data

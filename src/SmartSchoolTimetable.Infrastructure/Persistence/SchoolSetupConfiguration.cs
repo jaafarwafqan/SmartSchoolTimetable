@@ -103,3 +103,33 @@ internal sealed class AcademicYearConfiguration : IEntityTypeConfiguration<Acade
         builder.Navigation(year => year.Terms).UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }
+
+internal sealed class StageConfiguration : IEntityTypeConfiguration<Stage>
+{
+    public void Configure(EntityTypeBuilder<Stage> builder)
+    {
+        builder.ToTable("Stages");
+        builder.HasKey(stage => stage.Id);
+        builder.Property(stage => stage.Name).HasMaxLength(Stage.NameMaxLength).IsRequired();
+        builder.Property(stage => stage.NormalizedName).HasMaxLength(Stage.NameMaxLength).IsRequired();
+        builder.Property(stage => stage.Version).IsConcurrencyToken();
+        builder.HasIndex(stage => new { stage.AcademicYearId, stage.NormalizedName }).IsUnique();
+        builder.HasIndex(stage => new { stage.AcademicYearId, stage.DisplayOrder }).IsUnique();
+        builder.HasOne<AcademicYear>().WithMany().HasForeignKey(stage => stage.AcademicYearId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+internal sealed class SectionConfiguration : IEntityTypeConfiguration<Section>
+{
+    public void Configure(EntityTypeBuilder<Section> builder)
+    {
+        builder.ToTable("Sections");
+        builder.HasKey(section => section.Id);
+        builder.Property(section => section.Label).HasMaxLength(Section.LabelMaxLength).IsRequired();
+        builder.Property(section => section.NormalizedLabel).HasMaxLength(Section.LabelMaxLength).IsRequired();
+        builder.Property(section => section.Version).IsConcurrencyToken();
+        builder.HasIndex(section => new { section.StageId, section.NormalizedLabel }).IsUnique();
+        builder.HasOne<Stage>().WithMany().HasForeignKey(section => section.StageId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Shift>().WithMany().HasForeignKey(section => section.ShiftId).OnDelete(DeleteBehavior.Restrict);
+    }
+}

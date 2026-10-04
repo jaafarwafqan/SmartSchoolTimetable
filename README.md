@@ -1,6 +1,6 @@
 # SmartSchoolTimetable
 
-Single-user, offline-first school timetable application for one local school and one owner account. The browser UI is served by the ASP.NET Core app, which binds only to `127.0.0.1`. Phase 1.4 (design system adoption, tag `phase-1.4`) is complete. Phase 2 checkpoints 2A and 2B are implemented on `phase-2`; checkpoints 2C–2F remain (see [DELIVERY_PLAN.md](./DELIVERY_PLAN.md)). The owner merges after acceptance.
+Single-user, offline-first school timetable application for one local school and one owner account. The browser UI is served by the ASP.NET Core app, which binds only to `127.0.0.1`. Phase 1.4 (design system adoption, tag `phase-1.4`) is complete. Phase 2 checkpoints 2A–2C are implemented on `phase-2`; checkpoints 2D–2F remain (see [DELIVERY_PLAN.md](./DELIVERY_PLAN.md)). The owner merges after acceptance.
 
 ## Stack and environment
 - .NET SDK 9.0.318 and Node.js v24.18.0 are available in the current development environment. Node/npm are required for the React build and frontend tests.

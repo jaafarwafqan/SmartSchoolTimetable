@@ -35,6 +35,31 @@ public sealed class SchoolSetupServiceTests
         new(label, "2026-09-01", "2027-06-30", version, copyFrom);
 
     [Fact]
+    public async Task StagesSectionsUseNormalizedUniquenessArchiveRulesAndWeeklyCapacity()
+    {
+        var store = new FakeDataStore();
+        var year = AcademicYear.Create("2026-2027", new DateOnly(2026, 9, 1), new DateOnly(2027, 6, 30));
+        store.Add(year);
+        var shift = Shift.Create(1, "صباحي", 1);
+        shift.ReplacePeriods([new PeriodDraft(PeriodKind.Lesson, new TimeOnly(8, 0), new TimeOnly(8, 45))]);
+        store.Add(shift);
+        store.Add(WorkingWeek.CreateDefault());
+        await store.SaveChangesAsync(default);
+        var service = new StagesSectionsService(store, TimeProvider.System);
+        var stage = (await service.CreateStageAsync(year.Id, new SaveStageCommand("الأول المتوسط", 1, 0), default)).Value!;
+        var duplicate = await service.CreateStageAsync(year.Id, new SaveStageCommand("الاول المتوسط", 2, 0), default);
+        Assert.Contains(duplicate.FieldErrors, error => error.Code == ErrorCodes.DuplicateName);
+        var section = (await service.CreateSectionAsync(year.Id, stage.Id, new SaveSectionCommand("أ", shift.Id, 31, 0), default)).Value!;
+        Assert.Equal(5, section.WeeklyCapacity);
+        Assert.Equal(ErrorCodes.RecordInUse, (await service.SetStageArchivedAsync(year.Id, stage.Id, new ArchiveCommand(stage.Version), true, default)).ErrorCode);
+        var archived = (await service.SetSectionArchivedAsync(year.Id, stage.Id, section.Id, new ArchiveCommand(section.Version), true, default)).Value!;
+        var archivedStage = await service.SetStageArchivedAsync(year.Id, stage.Id, new ArchiveCommand(stage.Version), true, default);
+        Assert.True(archived.IsArchived);
+        Assert.True(archivedStage.Value!.IsArchived);
+        Assert.Equal(ErrorCodes.Conflict, (await service.SetSectionArchivedAsync(year.Id, stage.Id, section.Id, new ArchiveCommand(section.Version), false, default)).ErrorCode);
+    }
+
+    [Fact]
     public async Task YearOperationsReportNotFoundStaleVersionsAndInUseRecords()
     {
         var (service, store, _) = Years(hasStructure: true);

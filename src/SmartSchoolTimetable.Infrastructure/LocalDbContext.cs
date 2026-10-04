@@ -12,6 +12,8 @@ public sealed class LocalDbContext(DbContextOptions<LocalDbContext> options) : D
     public DbSet<Shift> Shifts => Set<Shift>();
     public DbSet<WorkingWeek> WorkingWeeks => Set<WorkingWeek>();
     public DbSet<BellSettings> BellSettings => Set<BellSettings>();
+    public DbSet<Stage> Stages => Set<Stage>();
+    public DbSet<Section> Sections => Set<Section>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

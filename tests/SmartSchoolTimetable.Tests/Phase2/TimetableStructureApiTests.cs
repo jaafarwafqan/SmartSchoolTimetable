@@ -13,6 +13,30 @@ public sealed class TimetableStructureApiTests
     private static readonly int[] DefaultDays = [7, 1, 2, 3, 4];
 
     [Fact]
+    public async Task StagesAndSectionsAreSecuredVersionedAndExposeWeeklyCapacity()
+    {
+        await using var host = new TestHost();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await host.Client.GetAsync("/api/v1/academic-years/1/stages/")).StatusCode);
+        var (token, _) = await SetupOwnerAsync(host);
+        var year = await AcademicYearApiTests.CreateYearAsync(host, token, "2026-2027", "2026-09-01", "2027-06-30");
+        var shift = await ReadAsync<ShiftDto>(await host.PostAsync($"/api/v1/academic-years/{year.Id}/shifts/", new { name = "صباحي", displayOrder = 1, version = 0 }, token));
+        var periods = await host.PutAsync($"/api/v1/academic-years/{year.Id}/shifts/{shift.Id}/periods", new { periods = new[] { new { kind = "lesson", startTime = "08:00", endTime = "08:45", startBell = true, endBell = true } }, version = shift.Version }, token);
+        Assert.Equal(HttpStatusCode.OK, periods.StatusCode);
+        var stage = await ReadAsync<StageDto>(await host.PostAsync($"/api/v1/academic-years/{year.Id}/stages/", new { name = "الأول المتوسط", displayOrder = 1, version = 0 }, token));
+        var duplicate = await host.PostAsync($"/api/v1/academic-years/{year.Id}/stages/", new { name = "الاول المتوسط", displayOrder = 2, version = 0 }, token);
+        Assert.Contains((await AssertApiErrorAsync(duplicate, "VALIDATION_FAILED")).Errors, error => error.Code == "DUPLICATE_NAME");
+        var section = await ReadAsync<SectionDto>(await host.PostAsync($"/api/v1/academic-years/{year.Id}/stages/{stage.Id}/sections", new { label = "أ", shiftId = shift.Id, studentCount = 28, version = 0 }, token));
+        Assert.Equal(5, section.WeeklyCapacity);
+        Assert.Equal(HttpStatusCode.Conflict, (await host.PostAsync($"/api/v1/academic-years/{year.Id}/stages/{stage.Id}/archive", new { version = stage.Version }, token)).StatusCode);
+        var archived = await ReadAsync<SectionDto>(await host.PostAsync($"/api/v1/academic-years/{year.Id}/stages/{stage.Id}/sections/{section.Id}/archive", new { version = section.Version }, token));
+        Assert.True(archived.IsArchived);
+        var hidden = await ReadAsync<PagedResult<SectionDto>>(await host.Client.GetAsync($"/api/v1/academic-years/{year.Id}/stages/{stage.Id}/sections"));
+        Assert.Empty(hidden.Items);
+        var included = await ReadAsync<PagedResult<SectionDto>>(await host.Client.GetAsync($"/api/v1/academic-years/{year.Id}/stages/{stage.Id}/sections?includeArchived=true"));
+        Assert.Single(included.Items);
+    }
+
+    [Fact]
     public async Task WorkingDaysAndBellSettingsRequireSessionAndPersistVersionedChanges()
     {
         await using var host = new TestHost();

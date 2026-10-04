@@ -40,6 +40,37 @@
   margin-block: 1rem;
 }
 
+.schedule-stage-row,
+.section-capacity-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-block: var(--space-2);
+  border-block-end: 1px solid var(--color-border);
+}
+
+.section-capacity-list {
+  margin-block-start: var(--space-4);
+}
+
+.section-capacity-row > :first-child {
+  min-inline-size: 8rem;
+  font-weight: 600;
+}
+
+.section-capacity-row small {
+  display: block;
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+@media (max-width: 767px) {
+  .section-capacity-row {
+    flex-wrap: wrap;
+  }
+}
+
 .schedule-shift-list button {
   display: flex;
   gap: 0.75rem;

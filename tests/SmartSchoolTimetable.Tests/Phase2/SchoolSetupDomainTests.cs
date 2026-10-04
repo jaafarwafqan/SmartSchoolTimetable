@@ -58,6 +58,21 @@ public sealed class SchoolSetupDomainTests
         Assert.False(settings.BreakBell);
     }
 
+    [Fact]
+    public void StagesAndSectionsValidateValuesAndKeepArchiveHistory()
+    {
+        var stage = Stage.Create(1, "  الأول   المتوسط ", 1);
+        Assert.Equal("الأول المتوسط", stage.Name);
+        Assert.Throws<DomainValidationException>(() => Section.Create(stage.Id, 1, "", 20));
+        var section = Section.Create(1, 2, "أ", 30);
+        section.Archive(Now);
+        Assert.True(section.IsArchived);
+        Assert.NotNull(section.ArchivedAt);
+        section.Restore();
+        Assert.False(section.IsArchived);
+        Assert.Null(section.ArchivedAt);
+    }
+
     [Theory]
     [InlineData("  الأول   المتوسط ", "الاول المتوسط")]
     [InlineData("إعدادية", "اعدادية")]

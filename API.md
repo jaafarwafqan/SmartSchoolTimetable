@@ -60,7 +60,7 @@ Global rules apply to every route: the exact Host is required (400 `INVALID_HOST
 | PUT | `/settings/inactivity-timeout` | Yes | `{ inactivityTimeout: "5" \| "15" \| "30" \| "60" \| "never" }` | 200 `{ inactivityTimeoutMinutes }` + session cookie with the new lifetime; applies immediately | 401 `UNAUTHENTICATED`, 422 `VALIDATION_FAILED` (field `InactivityTimeout`: `REQUIRED` or `INVALID_INACTIVITY_TIMEOUT`) |
 | GET | `/private/status` | Yes | — | 200 `{ status: "authenticated" }` | 401 `UNAUTHENTICATED` |
 
-### School setup (Phase 2, checkpoints 2A–2B)
+### School setup (Phase 2, checkpoints 2A–2C)
 Every route below requires the owner session (401 `UNAUTHENTICATED`). Editable records carry an integer `version`. Updates, deletes and state changes must send the version that was read; a stale one returns 409 `CONFLICT`, and the UI shows an Arabic reload message. Validation failures are 422 `VALIDATION_FAILED` with per-field codes. Enum values travel as camelCase strings (for example `preparatory`, `arabicIndic`). Dates are `yyyy-MM-dd`.
 
 | Method | Route | Request | Success | Endpoint-specific errors |
@@ -91,6 +91,15 @@ Every route below requires the owner session (401 `UNAUTHENTICATED`). Editable r
 | POST | `/academic-years/{yearId}/shifts/generate-periods` | `{ firstStartTime, lessonMinutes, lessonCount, breakMinutes, breakAfterLesson }` | 200 editable period drafts; does not save | 401, 422 |
 | GET | `/bell-settings` | — | 200 `{ tone, breakBell, version }` | 401 |
 | PUT | `/bell-settings` | `{ tone, breakBell, version }` | 200 bell settings | 401, 409, 422 |
+| GET | `/academic-years/{yearId}/stages?search=&sort=&page=&pageSize=&includeArchived=` | paged stage list; default excludes archived rows | 200 `{ items, total, page, pageSize }` | 401 |
+| POST | `/academic-years/{yearId}/stages` | `{ name, displayOrder, version: 0 }` | 201 stage | 401, 404, 409, 422 `DUPLICATE_NAME` |
+| PUT | `/academic-years/{yearId}/stages/{id}` | `{ name, displayOrder, version }` | 200 stage | 401, 404, 409, 422 |
+| POST | `/academic-years/{yearId}/stages/{id}/archive` | `{ version }` | 200 archived stage | 401, 404, 409 `RECORD_IN_USE` if active sections exist |
+| POST | `/academic-years/{yearId}/stages/{id}/restore` | `{ version }` | 200 restored stage | 401, 404, 409 |
+| GET | `/academic-years/{yearId}/stages/{stageId}/sections?search=&sort=&page=&pageSize=&includeArchived=` | paged sections with computed `weeklyCapacity` | 200 | 401, 404 |
+| POST | `/academic-years/{yearId}/stages/{stageId}/sections` | `{ label, shiftId, studentCount?, version: 0 }` | 201 section | 401, 404, 422 (`DUPLICATE_NAME`, `SHIFT_NOT_IN_YEAR`) |
+| PUT | `/academic-years/{yearId}/stages/{stageId}/sections/{id}` | `{ label, shiftId, studentCount?, version }` | 200 section | 401, 404, 409, 422 |
+| POST | `/academic-years/{yearId}/stages/{stageId}/sections/{id}/archive` or `/restore` | `{ version }` | 200 section | 401, 404, 409 |
 
 Audit events: `SchoolProfileUpdated`, `SchoolAssetUploaded`, `SchoolAssetRemoved`, `AcademicYearCreated`, `AcademicYearUpdated`, `AcademicYearDeleted`, `AcademicYearMadeCurrent`, `TermCreated`, `TermUpdated`, `TermDeleted`, `TermMadeCurrent`.
 

@@ -57,6 +57,7 @@ builder.Services.AddScoped<SchoolProfileService>();
 builder.Services.AddScoped<SchoolContextService>();
 builder.Services.AddScoped<AcademicYearService>();
 builder.Services.AddScoped<TimetableStructureService>();
+builder.Services.AddScoped<StagesSectionsService>();
 builder.Services.AddScoped<IYearStructure, YearStructureService>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddLocalInfrastructure(
@@ -78,6 +79,7 @@ app.MapLocalAuthEndpoints();
 app.MapSchoolSetupEndpoints();
 app.MapAcademicYearEndpoints();
 app.MapTimetableStructureEndpoints();
+app.MapStagesSectionsEndpoints();
 app.MapFallback(async (HttpContext context) =>
 {
     if (context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))
