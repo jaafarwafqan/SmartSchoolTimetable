@@ -29,6 +29,12 @@ public sealed class UnifiedApiErrorMiddleware(
             {
                 await next(context);
             }
+            catch (BadHttpRequestException exception)
+            {
+                // Framework request errors (oversized body, malformed input) keep their status, e.g. 413.
+                context.Items[ErrorCodeItem] = ApiErrorCodes.CodeForStatus(exception.StatusCode);
+                context.Response.StatusCode = exception.StatusCode;
+            }
             catch (Exception) when (!context.RequestAborted.IsCancellationRequested)
             {
                 context.Items[ErrorCodeItem] = ErrorCodes.InternalError;

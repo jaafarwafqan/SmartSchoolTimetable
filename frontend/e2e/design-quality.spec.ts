@@ -1,11 +1,10 @@
-import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { messages } from "../src/i18n/messages";
 import { ApiServer } from "./support/apiServer";
+import { expectBreakpointScreenshots, expectNoSeriousA11yViolations, goToSection, logout } from "./support/flows";
 
 // DESIGN_SYSTEM.md 12.5: axe on key screens and screenshots at the four reference widths.
 const server = new ApiServer();
-const breakpoints = [375, 768, 1024, 1440] as const;
 const password = "Design-Check-1";
 
 test.describe.configure({ mode: "serial" });
@@ -17,30 +16,6 @@ test.beforeAll(async ({ browser }) => {
 test.afterAll(async () => {
   await server.stop();
 });
-
-async function expectNoSeriousA11yViolations(page: Page, screen: string): Promise<void> {
-  const results = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-    .analyze();
-  const blocking = results.violations
-    .filter((violation) => violation.impact === "serious" || violation.impact === "critical")
-    .map((violation) => `${violation.id} (${violation.impact}): ${violation.nodes.map((node) => node.target.join(" ")).join(" | ")}`);
-  expect(blocking, `axe violations on ${screen}`).toEqual([]);
-}
-
-async function expectBreakpointScreenshots(page: Page, name: string): Promise<void> {
-  for (const width of breakpoints) {
-    await page.setViewportSize({ width, height: 900 });
-    await page.evaluate(async () => {
-      await document.fonts.ready;
-      window.scrollTo(0, 0);
-    });
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-    expect(overflow, `${name} scrolls horizontally at ${width}px`).toBeLessThanOrEqual(0);
-    await expect(page).toHaveScreenshot(`${name}-${width}.png`, { fullPage: true });
-  }
-  await page.setViewportSize({ width: 1280, height: 900 });
-}
 
 async function acknowledgeCode(page: Page): Promise<void> {
   await page.getByLabel(messages.app.confirmCodeSaved).check();
@@ -66,13 +41,11 @@ test("account screens pass axe and keep their layout at 375, 768, 1024 and 1440 
   await page.getByRole("button", { name: messages.app.generateCode }).click();
   await acknowledgeCode(page);
 
-  await page.getByRole("link", { name: messages.app.settings }).first().click();
-  await expect(page.getByRole("heading", { name: messages.app.settings, level: 1 })).toBeVisible();
+  await goToSection(page, messages.school.nav.settings);
   await expectNoSeriousA11yViolations(page, "settings");
   await expectBreakpointScreenshots(page, "settings");
 
-  await page.getByRole("button", { name: messages.app.logout }).click();
-  await expect(page.getByRole("heading", { name: messages.app.loginTitle })).toBeVisible();
+  await logout(page);
   await expectNoSeriousA11yViolations(page, "login");
   await expectBreakpointScreenshots(page, "login");
 

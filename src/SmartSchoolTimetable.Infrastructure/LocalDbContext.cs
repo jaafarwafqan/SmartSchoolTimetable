@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SmartSchoolTimetable.Domain;
+using SmartSchoolTimetable.Domain.Common;
+using SmartSchoolTimetable.Domain.SchoolSetup;
 
 namespace SmartSchoolTimetable.Infrastructure;
 
@@ -7,6 +9,11 @@ public sealed class LocalDbContext(DbContextOptions<LocalDbContext> options) : D
 {
     public DbSet<OwnerAccount> Owners => Set<OwnerAccount>();
     public DbSet<LocalAuditEntry> AuditEntries => Set<LocalAuditEntry>();
+    public DbSet<Shift> Shifts => Set<Shift>();
+    public DbSet<WorkingWeek> WorkingWeeks => Set<WorkingWeek>();
+    public DbSet<BellSettings> BellSettings => Set<BellSettings>();
+    public DbSet<Stage> Stages => Set<Stage>();
+    public DbSet<Section> Sections => Set<Section>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -34,5 +41,15 @@ public sealed class LocalDbContext(DbContextOptions<LocalDbContext> options) : D
             entity.Property(entry => entry.Summary).HasMaxLength(512).IsRequired();
             entity.HasIndex(entry => entry.OccurredAt);
         });
+
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(LocalDbContext).Assembly);
+
+        // Optimistic concurrency: every editable aggregate carries an integer Version that the Domain
+        // increments on each change; EF adds "WHERE Version = <loaded>" to updates and deletes.
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes()
+                     .Where(type => typeof(VersionedEntity).IsAssignableFrom(type.ClrType) && !type.IsOwned()))
+        {
+            modelBuilder.Entity(entityType.ClrType).Property(nameof(VersionedEntity.Version)).IsConcurrencyToken();
+        }
     }
 }

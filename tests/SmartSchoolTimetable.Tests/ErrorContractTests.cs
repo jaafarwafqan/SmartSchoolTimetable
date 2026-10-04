@@ -24,7 +24,7 @@ public sealed partial class ErrorContractTests
             ConstantCodes.Order(StringComparer.Ordinal),
             ApiErrorCodes.All.Order(StringComparer.Ordinal));
 
-        var dictionary = File.ReadAllText(TestPaths.FrontendFile("src", "i18n", "messages.ts"));
+        var dictionary = File.ReadAllText(TestPaths.FrontendFile("src", "i18n", "ar", "errors.ts"));
         foreach (var code in ConstantCodes)
         {
             var status = ApiErrorCodes.StatusFor(code);
@@ -32,7 +32,7 @@ public sealed partial class ErrorContractTests
 
             var match = Regex.Match(
                 dictionary,
-                $@"^\s{{4}}{Regex.Escape(code)}:\s*""([^""]+)""",
+                $@"^\s{{2}}{Regex.Escape(code)}:\s*""([^""]+)""",
                 RegexOptions.Multiline);
             Assert.True(match.Success, $"Arabic error dictionary is missing {code}.");
             Assert.Matches(@"\p{IsArabic}", match.Groups[1].Value);

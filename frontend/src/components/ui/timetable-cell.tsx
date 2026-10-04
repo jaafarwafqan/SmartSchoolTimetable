@@ -4,7 +4,7 @@ export type TimetableCellState = "normal" | "selected" | "conflict" | "blocked" 
 export type SubjectColorIndex = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
 // Literal class names so Tailwind generates them from the subject palette tokens.
-const subjectClasses: Record<SubjectColorIndex, string> = {
+export const subjectColorClasses: Record<SubjectColorIndex, string> = {
   1: "bg-subject-1",
   2: "bg-subject-2",
   3: "bg-subject-3",
@@ -35,7 +35,7 @@ export function TimetableCell({ subject, teacher, color, state = "normal", descr
   const filled = state !== "blocked" && subject;
   // Empty cells get the surface background from CSS; filled cells get the subject utility class
   // (unlayered CSS would override Tailwind utilities, so the base class sets no background).
-  const colorClass = filled && color ? subjectClasses[color] : state === "blocked" ? "" : "is-empty";
+  const colorClass = filled && color ? subjectColorClasses[color] : state === "blocked" ? "" : "is-empty";
   const classes = ["ui-tt-cell", `is-${state}`, colorClass].filter(Boolean).join(" ");
   return (
     <div className={classes} tabIndex={0} aria-label={description} title={description}>

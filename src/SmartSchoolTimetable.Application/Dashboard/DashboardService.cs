@@ -1,0 +1,60 @@
+using SmartSchoolTimetable.Application.Common;
+using SmartSchoolTimetable.Application.SchoolSetup;
+using SmartSchoolTimetable.Domain.SchoolSetup;
+using SmartSchoolTimetable.Domain.Subjects;
+using SmartSchoolTimetable.Domain.Teachers;
+
+namespace SmartSchoolTimetable.Application.Dashboard;
+
+public sealed record DashboardCountDto(string Key, int Value);
+
+/// <param name="Key">Stable step id the UI maps to a label and a screen.</param>
+public sealed record ChecklistItemDto(string Key, bool Done);
+
+public sealed record DashboardSummaryDto(IReadOnlyList<DashboardCountDto> Counts, IReadOnlyList<ChecklistItemDto> Checklist);
+
+/// <summary>
+/// Real counts from the database and a computed setup checklist; nothing is estimated or invented. Year-scoped
+/// counts use the current year. "Capacity gaps" = active sections whose weekly capacity is 0 (DECISIONS_PENDING #6).
+/// </summary>
+public sealed class DashboardService(IDataStore store)
+{
+    public async Task<DashboardSummaryDto> GetSummaryAsync(CancellationToken cancellationToken)
+    {
+        var profile = await store.FirstOrDefaultAsync(store.Query<SchoolProfile>(), cancellationToken);
+        var currentYear = await SchoolContextService.CurrentYearAsync(store, cancellationToken);
+        var years = await store.CountAsync(store.Query<AcademicYear>(), cancellationToken);
+        var week = await store.FirstOrDefaultAsync(store.Query<WorkingWeek>(), cancellationToken);
+        var subjects = await store.CountAsync(store.Query<Subject>().Where(row => !row.IsArchived), cancellationToken);
+        var teachers = await store.CountAsync(store.Query<Teacher>().Where(row => !row.IsArchived), cancellationToken);
+
+        var yearId = currentYear?.Id ?? 0;
+        var shifts = await store.ListAsync(store.Query<Shift>().Where(row => row.AcademicYearId == yearId), cancellationToken);
+        var stageIds = await store.ListAsync(
+            store.Query<Stage>().Where(row => row.AcademicYearId == yearId && !row.IsArchived).Select(row => row.Id), cancellationToken);
+        var sections = await store.ListAsync(
+            store.Query<Section>().Where(row => !row.IsArchived && stageIds.Contains(row.StageId)), cancellationToken);
+        var shiftById = shifts.ToDictionary(shift => shift.Id);
+        var capacityGaps = sections.Count(section => Section.WeeklyCapacity(week, shiftById.GetValueOrDefault(section.ShiftId)) == 0);
+
+        var counts = new List<DashboardCountDto>
+        {
+            new("teachers", teachers),
+            new("academicYears", years),
+            new("stages", stageIds.Count),
+            new("sections", sections.Count),
+            new("subjects", subjects),
+            new("capacityGaps", capacityGaps),
+        };
+        var checklist = new List<ChecklistItemDto>
+        {
+            new("schoolProfile", profile?.IsFilled == true),
+            new("academicYear", currentYear is not null && currentYear.CurrentTermId is not null),
+            new("timetableStructure", shifts.Count > 0 && shifts.All(shift => shift.LessonCount > 0) && week?.DayCount > 0),
+            new("stagesSections", stageIds.Count > 0 && sections.Count > 0),
+            new("subjects", subjects > 0),
+            new("teachers", teachers > 0),
+        };
+        return new DashboardSummaryDto(counts, checklist);
+    }
+}

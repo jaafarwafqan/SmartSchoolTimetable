@@ -1,0 +1,76 @@
+using SmartSchoolTimetable.Domain.Common;
+using SmartSchoolTimetable.Domain.Text;
+
+namespace SmartSchoolTimetable.Domain.SchoolSetup;
+
+/// <summary>A section belongs to a stage and a shift in the same academic year.</summary>
+public sealed class Section : VersionedEntity
+{
+    public const int LabelMaxLength = 40;
+    private Section() { }
+    public long StageId { get; private set; }
+    public long ShiftId { get; private set; }
+    public string Label { get; private set; } = string.Empty;
+    public string NormalizedLabel { get; private set; } = string.Empty;
+    public int? StudentCount { get; private set; }
+    public bool IsArchived { get; private set; }
+    public DateTimeOffset? ArchivedAt { get; private set; }
+
+    public static Section Create(long stageId, long shiftId, string? label, int? studentCount)
+    {
+        Validate(label, studentCount);
+        var section = new Section { StageId = stageId, ShiftId = shiftId };
+        section.Apply(label!);
+        section.StudentCount = studentCount;
+        return section;
+    }
+
+    public void Update(long shiftId, string? label, int? studentCount)
+    {
+        Validate(label, studentCount);
+        ShiftId = shiftId;
+        Apply(label!);
+        StudentCount = studentCount;
+        Touch();
+    }
+
+    public void Archive(DateTimeOffset now)
+    {
+        if (IsArchived) return;
+        IsArchived = true;
+        ArchivedAt = now;
+        Touch();
+    }
+
+    public void Restore()
+    {
+        if (!IsArchived) return;
+        IsArchived = false;
+        ArchivedAt = null;
+        Touch();
+    }
+
+    /// <summary>
+    /// Weekly capacity of a section = working days × lessons per day of its shift (breaks excluded, spec 2.8).
+    /// Zero when there is no shift or no lesson yet; Phase 3 compares it with the planned workload.
+    /// </summary>
+    public static int WeeklyCapacity(WorkingWeek? week, Shift? shift) => (week?.DayCount ?? 0) * (shift?.LessonCount ?? 0);
+
+    public Section CopyTo(long stageId, long shiftId)
+    {
+        var copy = Create(stageId, shiftId, Label, StudentCount);
+        if (IsArchived) copy.Archive(ArchivedAt ?? DateTimeOffset.UtcNow);
+        return copy;
+    }
+
+    private void Apply(string label)
+    {
+        Label = ArabicText.Clean(label);
+        NormalizedLabel = ArabicText.Normalize(label);
+    }
+
+    private static void Validate(string? label, int? students) => new DomainErrors()
+        .Text(label, nameof(Label), LabelMaxLength)
+        .When(students is < 0 or > 200, nameof(StudentCount), DomainErrorCode.OutOfRange)
+        .ThrowIfAny();
+}

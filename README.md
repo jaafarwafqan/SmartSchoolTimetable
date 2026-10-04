@@ -1,6 +1,6 @@
 # SmartSchoolTimetable
 
-Single-user, offline-first school timetable application for one local school and one owner account. The browser UI is served by the ASP.NET Core app, which binds only to `127.0.0.1`. Phase 1.4 (design system adoption, tag `phase-1.4`) is complete; Phase 2 work happens on the `phase-2` branch until the owner accepts it.
+Single-user, offline-first school timetable application for one local school and one owner account. The browser UI is served by the ASP.NET Core app, which binds only to `127.0.0.1`. Phase 1.4 (design system adoption, tag `phase-1.4`) is complete. Phase 2 checkpoints 2A–2C are implemented on `phase-2`; checkpoints 2D–2F remain (see [DELIVERY_PLAN.md](./DELIVERY_PLAN.md)). The owner merges after acceptance.
 
 ## Stack and environment
 - .NET SDK 9.0.318 and Node.js v24.18.0 are available in the current development environment. Node/npm are required for the React build and frontend tests.
@@ -42,7 +42,32 @@ if (Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'SmartSchoolTimet
 The command **refuses to run while the app is running**: it checks for the app process, because the app does not keep the database file locked between requests, so a file-lock check cannot detect it. Once the app is stopped it copies `timetable.db` together with `timetable.db-wal` and `timetable.db-shm` (present after an unclean shutdown) into a timestamped folder, and lists what was copied. Both cases were verified in Phase 1.4. Paste the command into PowerShell directly; script files may be blocked by the execution policy.
 - Restore: stop the app and copy all files from a backup folder back into `%LOCALAPPDATA%\SmartSchoolTimetable\`.
 - If `Database:Path` is configured, use that path instead.
+- From Phase 2, the school logo and stamp are stored in the `assets` folder next to the database. Copy that folder as well, if it exists: `Copy-Item "$env:LOCALAPPDATA\SmartSchoolTimetable\assets" $dest -Recurse`.
 - Never copy the database while the app is running. The Phase 6 online backup (SQLite Online Backup API, integrity-checked) will replace this procedure.
+
+### Demo data (separate database)
+Create a fictional sample school in a NEW file. The command refuses an existing file, the default `%LOCALAPPDATA%` database and the configured `Database:Path`:
+
+```powershell
+dotnet run --project .\src\SmartSchoolTimetable.Api\SmartSchoolTimetable.Api.csproj --configuration Release --no-build -- --seed-demo-data "$env:TEMP\sst-demo\demo.db"
+# optional: add --dual-shift for a morning and an evening shift
+```
+
+Then run the app against it. The first start asks you to create the owner account for the demo database:
+
+```powershell
+dotnet run --project .\src\SmartSchoolTimetable.Api\SmartSchoolTimetable.Api.csproj --configuration Release --no-build -- --Database:Path="$env:TEMP\sst-demo\demo.db"
+```
+
+The sample contains:
+- 20 teachers with varied constraints (2 fully released);
+- 10 subjects that exercise every flag;
+- 4 stages with 12 sections;
+- one shift of 7 lessons plus a break (two shifts with `--dual-shift`);
+- the 2026-2027 year with two terms;
+- 8 calendar days.
+
+Teacher workload is Phase 3. A manual test script in Arabic is in [docs/OWNER_TEST_SCRIPT_PHASE2.md](./docs/OWNER_TEST_SCRIPT_PHASE2.md).
 
 ### Style guide (`/design`, development only)
 ```powershell

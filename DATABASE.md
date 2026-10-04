@@ -26,6 +26,53 @@ The failed-login/lockout columns from the initial migration were removed by `202
 
 First-run setup is permitted only while the account table is empty. It atomically creates the owner and stores only the recovery-code hash. There is no refresh-token table.
 
+## School setup tables (Phase 2)
+Every editable table carries `Version` (INTEGER). It starts at 1 and the domain increments it on each change. EF Core treats it as a concurrency token by convention for every `VersionedEntity`. A stale write raises `DbUpdateConcurrencyException`, which `EfDataStore` turns into the 409 `CONFLICT` path. A SQLite constraint violation (error 19) becomes `DataConflictException` (duplicate name or record in use).
+
+Names used for uniqueness and search are stored twice: as typed, and as a `Normalized…` column produced by `ArabicText.Normalize`. Normalization trims and collapses spaces, removes tatweel and diacritics, unifies alef and yaa forms, converts to Western digits and lower-cases.
+
+Migration `20261003183255_Phase2ASchoolProfileAndAcademicYears` was generated with the local `dotnet-ef` tool and includes its Designer file:
+- `SchoolProfile`: exactly one row (`Id` = 1, seeded at startup).
+  - `Name`, `SchoolType` and `StudyType` (enum strings), `PrincipalName`, `ScheduleOfficerName`.
+  - `TimeZoneId` (default `Asia/Baghdad`), `NumeralSystem` (default `ArabicIndic`), `CalendarDisplay` (default `Gregorian`).
+  - `UpdatedAt`, `Version`.
+  - Nullable owned columns `LogoStoredFileName`, `LogoContentType`, `StampStoredFileName`, `StampContentType`.
+- `AcademicYears`: `Label`, `NormalizedLabel` (unique), `StartDate`, `EndDate`, `IsCurrent`, `CurrentTermId`, `Version`. A partial unique index on `"IsCurrent" = 1` allows at most one current year.
+- `Terms` (owned by a year, cascade delete): `AcademicYearId`, `Name`, `NormalizedName` (unique per year), `StartDate`, `EndDate`.
+- Changing the current year clears the old flag and sets the new one in two saves inside one transaction, so the partial unique index is never violated mid-statement.
+
+Migration `20261003200446_Phase2BTimetableStructure` (local `dotnet-ef`, with Designer file) adds:
+- `WorkingWeek` singleton (`Id` = 1): weekday bit mask, week start day, concurrency version. Startup seeds Sunday–Thursday and Sunday week start.
+- `BellSettings` singleton (`Id` = 1): built-in tone name, break bell flag, concurrency version. Startup seeds the Classic tone.
+- `Shifts`: academic year FK (cascade), display name and normalized name, order and version; unique normalized name per year; display order is indexed but not unique (migration `Phase2CDisplayOrderIndexes`).
+- `LessonPeriods` owned by a shift: row position, lesson/break kind, start/end time, per-period start/end bell flags. Position is unique within a shift.
+- Period generator output is transient and editable until saved. No calendar days are copied with year structure.
+
+Migration `20261003205228_Phase2CStagesSections` adds:
+- `Stages`: academic-year FK (cascade), display and normalized name, display order, archive timestamp and version; normalized name is unique per year; display order is indexed but not unique since `20261004060745_Phase2CDisplayOrderIndexes` (DECISIONS_PENDING #10).
+- `Sections`: stage FK and shift FK (both restrictive), display and normalized label, optional student count, archive timestamp and version; normalized label is unique within its stage.
+- A section's weekly capacity is computed from the singleton working-week day count and its shift's lesson count, excluding breaks. It is not persisted, so changes in either source appear immediately.
+
+Image files are not stored in the database. Logo and stamp bytes live in `<database folder>/assets/` under generated names matching `^(logo|stamp)-[0-9a-f]{32}\.(png|jpg|webp)$` ([ADR 0016](./adr/0016-school-asset-storage.md)). Backups must copy this folder together with the database.
+
+Migration `Phase2DSubjects` adds:
+- `Subjects`:
+  - Columns: `Name`, `NormalizedName` (unique), `ColorIndex` (check 1–10), `Priority` (check 1–5), `DistributionEnabled`, `SpreadAcrossDays`, `Heavy`, `RequiresDoublePeriod`, `Notes` (≤ 500), `IsArchived` (indexed), `ArchivedAt`, `Version`.
+  - Subjects are global, not year-scoped.
+- `SubjectBlockedPeriods` (owned by a subject, cascade delete): `SubjectId`, `Day` (ISO weekday), `LessonNumber`, unique per subject.
+
+Migration `Phase2ETeachers` adds:
+- `Teachers`:
+  - Names: `FullName`, `NormalizedFullName` (indexed), `ShortName`, `NormalizedShortName` (unique).
+  - Constraints: `OffDaysMask` (bit day-1), `FullyReleased`, `ReleaseReason`, `ReleaseFrom`, `ReleaseTo`, `MaxLessonsPerDay`, `MaxLessonsPerWeek` (nullable).
+  - Also `Notes`, `IsArchived` (indexed), `ArchivedAt`, `Version`.
+- `TeacherBlockedPeriods` (owned by a teacher, cascade delete): `TeacherId`, `Day`, `LessonNumber`, unique per teacher.
+
+Migration `Phase2FCalendar` adds `CalendarDays`:
+- `Title`, `NormalizedTitle`, `StartDate`, `EndDate` (check `EndDate >= StartDate`, indexed together), `Kind` (enum string), `AffectsSchedule`, `Version`.
+
+Demo databases created with `--seed-demo-data` use exactly this schema (migrated on creation) in a separate file.
+
 ## Application data
 - School profile; teachers, subjects, resources, stages, sections, workload, shifts, bell times, calendar
 - Timetable versions and lessons

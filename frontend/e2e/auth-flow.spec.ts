@@ -2,6 +2,7 @@ import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { messages } from "../src/i18n/messages";
 import { formatInactivityTimeout } from "../src/lib/format";
 import { ApiServer } from "./support/apiServer";
+import { logout } from "./support/flows";
 
 const server = new ApiServer();
 let baseUrl = "";
@@ -19,7 +20,7 @@ test.afterAll(async () => {
 const initialPassword = "Owner-88"; // exactly the 8-character minimum
 const recoveredPassword = "A-New-Strong-Passphrase-802";
 const recoveryCodePattern = /^[A-F0-9]{8}(-[A-F0-9]{8}){3}$/;
-const homeHeading = messages.app.greeting("owner");
+const homeHeading = messages.school.nav.dashboard;
 
 async function expectArabicAlert(page: Page, expected: string): Promise<void> {
   const alert = page.getByRole("alert");
@@ -76,8 +77,7 @@ test("setup, blocked reload until a new code is confirmed, logout, login, and pa
   await page.reload();
   await expect(page.getByLabel(messages.app.inactivityLabel)).toHaveValue("15");
 
-  await page.getByRole("button", { name: messages.app.logout }).click();
-  await expect(page.getByRole("heading", { name: messages.app.loginTitle })).toBeVisible();
+  await logout(page);
   await page.getByLabel(messages.app.username).fill("owner");
   await page.getByLabel(messages.app.password, { exact: true }).fill("Wrong-Password-Not-Valid");
   await page.getByRole("button", { name: messages.app.loginAction }).click();
@@ -86,7 +86,7 @@ test("setup, blocked reload until a new code is confirmed, logout, login, and pa
   await page.getByLabel(messages.app.password, { exact: true }).fill(initialPassword);
   await page.getByRole("button", { name: messages.app.loginAction }).click();
   await expect(page.getByRole("heading", { name: homeHeading })).toBeVisible();
-  await page.getByRole("button", { name: messages.app.logout }).click();
+  await logout(page);
 
   await page.getByRole("button", { name: messages.app.recoveryLink }).click();
   await page.getByLabel(messages.app.recoveryCode).fill(recoveryCode);
@@ -97,8 +97,7 @@ test("setup, blocked reload until a new code is confirmed, logout, login, and pa
   await expect(page.getByRole("heading", { name: homeHeading })).toBeVisible();
 
   // After a completed recovery, logging out returns to the login screen rather than the recovery form.
-  await page.getByRole("button", { name: messages.app.logout }).click();
-  await expect(page.getByRole("heading", { name: messages.app.loginTitle })).toBeVisible();
+  await logout(page);
 });
 
 test("real validation and not-found responses, mocked 500, and a stopped server stay Arabic", async ({ browser }) => {
@@ -143,8 +142,7 @@ test("real validation and not-found responses, mocked 500, and a stopped server 
   await page.goto(`${baseUrl}/no-such-page`);
   await expectArabicAlert(page, messages.app.notFoundPage);
   await expect(page.getByRole("alert")).toHaveCount(1);
-  await page.getByRole("button", { name: messages.app.logout }).click();
-  await expect(page.getByRole("heading", { name: messages.app.loginTitle })).toBeVisible();
+  await logout(page);
 
   // An unexpected 500 cannot be produced on demand by the real server, so this path stays mocked.
   await page.route("**/api/v1/bootstrap", async (route) => {

@@ -1,27 +1,50 @@
 using System.Net;
 using System.Text;
+using System.Text.Json.Serialization;
 using FluentValidation;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using SmartSchoolTimetable.Api;
+using SmartSchoolTimetable.Api.Endpoints;
 using SmartSchoolTimetable.Application;
+using SmartSchoolTimetable.Application.Dashboard;
+using SmartSchoolTimetable.Application.SchoolSetup;
+using SmartSchoolTimetable.Application.Stages;
+using SmartSchoolTimetable.Application.Subjects;
+using SmartSchoolTimetable.Application.Teachers;
+using SmartSchoolTimetable.Application.Calendar;
 using SmartSchoolTimetable.Infrastructure;
+using SmartSchoolTimetable.Infrastructure.DemoData;
 
 const string resetArgument = "--reset-local-database";
+const string seedArgument = "--seed-demo-data";
+const string dualShiftArgument = "--dual-shift";
 var resetRequested = args.Contains(resetArgument, StringComparer.Ordinal);
-var builderArguments = args.Where(argument =>
-    !string.Equals(argument, resetArgument, StringComparison.Ordinal)).ToArray();
+var seedIndex = Array.IndexOf(args, seedArgument);
+var seedTarget = seedIndex >= 0 && seedIndex + 1 < args.Length ? args[seedIndex + 1] : null;
+var commandArguments = new HashSet<string>(StringComparer.Ordinal) { resetArgument, seedArgument, dualShiftArgument };
+var builderArguments = args.Where((argument, index) =>
+    !commandArguments.Contains(argument) && !(seedIndex >= 0 && index == seedIndex + 1)).ToArray();
 var builder = WebApplication.CreateBuilder(builderArguments);
 var localOptions = LocalApplicationOptions.FromConfiguration(builder.Configuration);
 LocalListenerGuard.ValidateConfiguredEndpoint(IPAddress.Loopback, localOptions.Port);
 builder.WebHost.ConfigureKestrel(options =>
     options.Listen(IPAddress.Loopback, localOptions.Port));
 
-var databasePath = builder.Configuration["Database:Path"] ??
-    Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "SmartSchoolTimetable",
-        "timetable.db");
+var defaultDatabasePath = Path.Combine(
+    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+    "SmartSchoolTimetable",
+    "timetable.db");
+var databasePath = builder.Configuration["Database:Path"] ?? defaultDatabasePath;
+
+if (seedIndex >= 0)
+{
+    // A separate demo database; the default and configured databases are refused (DemoDataSeeder).
+    Console.OutputEncoding = Encoding.UTF8;
+    var created = await DemoDataSeeder.SeedAsync(seedTarget, [defaultDatabasePath, databasePath], args.Contains(dualShiftArgument, StringComparer.Ordinal), Console.Out);
+    Environment.ExitCode = created ? 0 : 1;
+    return;
+}
 
 if (resetRequested)
 {
@@ -33,6 +56,7 @@ if (resetRequested)
 }
 
 builder.Services.AddProblemDetails();
+builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(System.Text.Json.JsonNamingPolicy.CamelCase)));
 builder.Services.AddOpenApi();
 builder.Services.AddValidatorsFromAssemblyContaining<SetupRequestValidator>();
 builder.Services.AddSingleton(localOptions);
@@ -47,6 +71,17 @@ builder.Services.AddScoped<ILocalAuthService>(services => new LocalAuthService(
     services.GetRequiredService<TimeProvider>(),
     localOptions.InactivityTimeout, // configured default; an owner preference overrides it at runtime
     services.GetRequiredService<SemaphoreSlim>()));
+builder.Services.AddScoped<RequireOwnerSessionFilter>();
+builder.Services.AddScoped<SchoolProfileService>();
+builder.Services.AddScoped<SchoolContextService>();
+builder.Services.AddScoped<AcademicYearService>();
+builder.Services.AddScoped<TimetableStructureService>();
+builder.Services.AddScoped<StagesSectionsService>();
+builder.Services.AddScoped<SubjectsService>();
+builder.Services.AddScoped<TeachersService>();
+builder.Services.AddScoped<CalendarService>();
+builder.Services.AddScoped<IYearStructure, YearStructureService>();
+builder.Services.AddScoped<DashboardService>();
 builder.Services.AddLocalInfrastructure(
     databasePath,
     builder.Environment.IsEnvironment("Testing"));
@@ -63,6 +98,13 @@ if (app.Environment.IsDevelopment())
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.MapLocalAuthEndpoints();
+app.MapSchoolSetupEndpoints();
+app.MapAcademicYearEndpoints();
+app.MapTimetableStructureEndpoints();
+app.MapStagesSectionsEndpoints();
+app.MapSubjectsEndpoints();
+app.MapTeachersEndpoints();
+app.MapCalendarEndpoints();
 app.MapFallback(async (HttpContext context) =>
 {
     if (context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))

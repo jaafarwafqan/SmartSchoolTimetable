@@ -46,18 +46,23 @@ export function Dialog({ open, title, description, onClose, footer, children }: 
         onClose();
       }}
     >
-      <header className="ui-dialog-header">
-        <h2 id={titleId}>{title}</h2>
-        <IconButton
-          aria-label={messages.app.close}
-          title={messages.app.close}
-          icon={<X aria-hidden="true" size={20} />}
-          onClick={onClose}
-        />
-      </header>
-      {description && <p id={descriptionId} className="ui-dialog-description">{description}</p>}
-      {children}
-      <footer className="ui-dialog-footer">{footer}</footer>
+      {/* Content renders only while open: closed dialogs keep no stale form state or hidden inputs. */}
+      {open && (
+        <>
+          <header className="ui-dialog-header">
+            <h2 id={titleId}>{title}</h2>
+            <IconButton
+              aria-label={messages.app.close}
+              title={messages.app.close}
+              icon={<X aria-hidden="true" size={20} />}
+              onClick={onClose}
+            />
+          </header>
+          {description && <p id={descriptionId} className="ui-dialog-description">{description}</p>}
+          {children}
+          <footer className="ui-dialog-footer">{footer}</footer>
+        </>
+      )}
     </dialog>
   );
 }

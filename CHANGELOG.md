@@ -1,6 +1,104 @@
 # Changelog
 
 ## [Unreleased]
+### Phase 2F - academic calendar, demo data, final docs (tags `phase-2f`, `phase-2-final`)
+- **Academic calendar** (التقويم الدراسي):
+  - One day or a date range, a title, a kind and an "affects schedule" flag.
+  - A list view and a month view (weeks start on the school's week start day).
+  - Entries outside the current year are saved with a warning.
+- **Demo data:**
+  - `--seed-demo-data <new-db-path> [--dual-shift]` creates a separate database with a fictional school.
+  - It refuses an existing file, the default database and the configured database.
+  - Every record goes through the Application services, so all rules and audit events apply.
+- **New year from the previous one:** the new-year dialog has an optional "copy structure from" choice (shifts, periods, stages and sections; never calendar days), covered by E2E.
+- **Messages:** `RECORD_IN_USE` now reads correctly for both delete and archive.
+- **ADR 0019** (soft archive and hard delete).
+- **Docs:** `docs/OWNER_TEST_SCRIPT_PHASE2.md` (Arabic manual script) and `docs/PHASE2_REPORT.md`.
+- **Screenshots:** the comparison tolerance is tightened to 0.0002, and all baselines were regenerated.
+- **Tests:** .NET 108, Vitest 50, Playwright 4.
+
+### Phase 2E - teachers (tag `phase-2e`, branch `phase-2`)
+- **Teachers** (المعلمون):
+  - Full and short names; the short name is unique after Arabic normalization.
+  - Off days, chosen with day toggles.
+  - Blocked periods on the shared keyboard grid.
+  - Full release, with a reason and dates.
+  - Maximum lessons per day and per week, validated against the schedule grid; notes.
+- **List:** search by full or short name, a "released only" filter, an archive filter and paging. Archive, restore and confirmed delete.
+- **Bulk add:** paste names one per line; the preview shows each line's status and proposed short name; only ready lines are saved, in one batch (DECISIONS_PENDING #13).
+- **Dashboard:** a teachers count and the step "إضافة المعلمين".
+- **Tests:** .NET 104, Vitest 48, Playwright 4 (with teachers screenshots). Line coverage: Domain 98.3%, Application 94.9%.
+
+### Phase 2D - subjects (tag `phase-2d`, branch `phase-2`)
+- **Subjects** (المواد):
+  - Name, a colour from the ten palette tokens only, and priority 1–5.
+  - Flags: distribution enabled, spread across days, heavy, requires double period.
+  - Notes, and blocked periods.
+  - Search, archive filter and paging; archive and restore; confirmed delete.
+- **Blocked periods:**
+  - `GET /schedule-grid` exposes working days × the most lessons per day of the current year.
+  - The server rejects slots outside it (`BLOCKED_PERIOD_INVALID`, DECISIONS_PENDING #12).
+- **New primitives, shown on `/design`:**
+  - `Textarea` and `SubjectColorPicker` (a native radio group with a check icon).
+  - `BlockedPeriodsGrid`: hatch pattern and Ban icon, one tab stop, arrow keys mirrored for RTL, Space/Enter to toggle.
+- **Dashboard:** new counts for subjects and capacity gaps; new checklist step "إضافة المواد".
+- **Shared UI:** `RecordActions` and `ArchiveBadge` moved to `components/`; archive and status strings moved to `common`.
+- **Tests:**
+  - Screenshot baselines regenerated; the tolerance is tightened to 0.002.
+  - Totals: .NET 99, Vitest 48, Playwright 4. Line coverage: Domain 98.0%, Application 94.5%.
+
+### Phase 2C - stages and sections, owner-change review, quality gate (tag `phase-2c`, branch `phase-2`)
+- **Owner changes kept and corrected** (details in `docs/OWNER_CHANGES_REVIEW.md`):
+  - Year-scoped stages and sections with soft archive, as the owner designed them.
+  - Validation now lives only in the Domain; duplicate-name races return `DUPLICATE_NAME`.
+  - Weekly capacity is computed by `Section.WeeklyCapacity`, with no N+1 queries.
+  - Hard delete is allowed for unreferenced stages, sections and shifts.
+  - New error code `STAGE_ARCHIVED`.
+  - The year copy links sections to the copies of their own stage and shift.
+- **Screens rebuilt on the design system:**
+  - الدوام والحصص والجرس: working days with a week-start setting, a shifts table with edit and delete, a period editor (add, remove and re-kind rows, errors shown on each row), a generator dialog, and bell settings with a test sound.
+  - المراحل والشعب: stage and section tables, add/edit dialogs, archive and restore, confirmed delete, and the computed capacity.
+- **Fixes:**
+  - Bell tones used `Classic` in the UI while the API sends `classic`, so the select and the test sound failed.
+  - Undefined CSS variables; a new test now blocks them.
+  - Duplicate React keys made the shifts card render twice.
+  - "Saved" messages were lost when components remounted.
+- **Data:**
+  - The 2C migration moved into `Migrations/`, with its ID unchanged.
+  - Display-order indexes are no longer unique (`Phase2CDisplayOrderIndexes`).
+- **Tests:** .NET 95, Vitest 46, Playwright 4. Line coverage: Domain 97.7%, Application 94.1%.
+
+### Phase 2B - الدوام والحصص والجرس (tag `phase-2b`, branch `phase-2`)
+- Added ISO weekday configuration with Sunday–Thursday defaults, version checks and audit entries.
+- Added year-scoped shifts and editable lesson/break periods, validated and copied when a new year copies its structure.
+- Added period generation preview and per-period start/end bell flags, plus built-in Web Audio tone previews.
+- Added authenticated REST routes, the Arabic schedule setup screen, local EF migration, and domain/API tests.
+
+### Phase 2A - shell, school profile, academic years (tag `phase-2a`, branch `phase-2`)
+- **App shell:**
+  - A right-hand sidebar (collapsible; a drawer below 768 px) and a top bar showing the school name and the current year and term.
+  - A user menu (settings, lock, log out), breadcrumbs and an Arabic 404 page.
+  - Routes: dashboard, school profile, academic years, settings.
+- **School profile:** name, school and study type, principal and schedule officer, time zone (default Asia/Baghdad), numeral system and calendar display.
+  - Logo and stamp upload: PNG, JPEG or WebP up to 2 MB, checked by magic bytes; no SVG.
+  - Files are stored under generated names in the app data `assets` folder and served only to the owner, with `nosniff` and a sandbox CSP (ADR 0016).
+- **Academic years and terms:**
+  - A list with search, sort and paging.
+  - Create, edit and make current. Delete is refused while the year is in use, or while it is the current year and other years exist.
+  - Terms must fall inside the year without overlapping; one term can be marked current.
+  - A partial unique index enforces a single current year.
+- **Dashboard:** real counts and a setup checklist computed from stored data, with a link to each step.
+- **Formatter:** `createFormatter`/`useFormatter` in `lib/format.ts` follow the school's numeral system, calendar and time zone (ADR 0017). User values inside Arabic sentences are bidi-isolated.
+- **Foundations:**
+  - An integer `Version` concurrency token on every editable entity; a stale edit returns 409 `CONFLICT` and the UI offers an Arabic reload prompt.
+  - Arabic normalization for uniqueness and search.
+  - Audit events for every change.
+  - The `IDataStore` port, `OperationResult`, list queries (search, sort, page, include archived) and domain-error mapping.
+- **Errors:** 25 new codes, each with a status and an Arabic message. The Arabic dictionary is split into `i18n/ar/*` files. Request-size failures now return 413 `PAYLOAD_TOO_LARGE` instead of 500.
+- **Tooling:** migration `20261003183255_Phase2ASchoolProfileAndAcademicYears`, generated with the local `dotnet-ef` tool (ADR 0015), and a feature-folder dependency test.
+- **Tests:** .NET 79, Vitest 40, Playwright 4. Line coverage: Domain 98.9%, Application 97.4%.
+- Decisions taken without the owner are listed in `docs/DECISIONS_PENDING.md`.
+
 ### Phase 1.4 - design system adoption and housekeeping (tag `phase-1.4`)
 No Phase 2 work.
 - **Design system:**

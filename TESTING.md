@@ -50,6 +50,65 @@
   - `design-quality.spec.ts` (1): axe (no serious or critical violations) on setup, recovery code, recovery pending, settings, login and the recovery form; screenshots of login and settings at 375/768/1024/1440 px with no horizontal scroll. Baselines are in `frontend/e2e/design-quality.spec.ts-snapshots/` (Windows/Chromium). Update them with `npx playwright test design-quality --update-snapshots` after an approved design change.
 - Lint: `npm run lint` runs ESLint (localization, icon + label, design-system rules) and Stylelint (`color-no-hex`, logical properties, no `font-family` outside `tokens.css`, no `px` font sizes).
 
+## Phase 2 test inventory (updated per checkpoint)
+Checkpoint 2A:
+- .NET (79): the Phase 1.4 suite plus:
+  - `Phase2/SchoolSetupDomainTests.cs`: Arabic normalization, profile and year/term invariants, image signatures, domain-error mapping and list queries.
+  - `Phase2/SchoolSetupServiceTests.cs`: Application services against an in-memory `FakeDataStore` (not found, stale versions, record in use, save conflicts, asset clean-up).
+  - `Phase2/SchoolProfileApiTests.cs` and `Phase2/AcademicYearApiTests.cs`: every endpoint over the real HTTP pipeline and a temporary SQLite database. They cover the session requirement, validation, 409 conflicts, and uploads including SVG, type mismatch and 413.
+  - `ArchitectureTests.FeatureFoldersRespectDependencyDirection`: a feature folder may depend only on shared folders.
+- Coverage (Cobertura, `dotnet test --collect:"XPlat Code Coverage"`): Domain 98.9% and Application 97.4% of lines (target ≥ 90%).
+- Vitest (40): adds `lib/format.test.ts` (numerals, dates, times, ranges) and `components/ui/menu.test.tsx`.
+- Playwright (4): adds `phase2-school.spec.ts`, which covers:
+  - profile validation and focus on the first invalid field;
+  - logo upload and SVG rejection;
+  - a stale edit between two pages (Arabic conflict message and reload);
+  - creating a year and a term, the dashboard checklist and the lock screen;
+  - axe on the dashboard, profile and years screens, and dashboard screenshots at 375/768/1024/1440 px.
+
+Checkpoint 2B:
+- .NET (85): adds domain rule coverage for ISO working days, period generation, ascending/nonoverlapping lesson and break rows, and bell options; API coverage for unauthenticated access, working-week validation, conflict versions, bell settings, shift periods, generated drafts and year structure copying.
+- Vitest (41): adds Web Audio tone-preview cleanup and synthesized oscillator checks.
+- Playwright (4): all Phase 1/2A end-to-end tests pass; no Phase 2B browser setup journey or axe screen coverage has been added yet.
+- `dotnet ef migrations has-pending-model-changes` reports no pending changes after `20261003200446_Phase2BTimetableStructure`.
+
+Checkpoint 2C (after the owner-change review):
+- .NET (95): adds `Phase2/StagesSectionsTests.cs` (weekly capacity rule, archive/restore/copy, service rules for duplicates, archive, delete, `STAGE_ARCHIVED`, save-failure mapping, paging and search, year copy linking sections to their copied stage and shift, shift delete in use, protected routes without session, Origin or launch token).
+- Coverage: Domain 97.7% and Application 94.1% of lines.
+- Vitest (46): adds `periodRows.test.ts` (row-level API errors, lesson numbering, new rows), tone names matching the API, and `styles/customProperties.test.ts`, which fails when CSS uses an undefined `var(--x)`.
+- Playwright (4): `phase2-school.spec.ts` now also creates a shift, checks generator validation, shows a row-level overlap error, saves generated periods, adds a stage and a section (capacity 30 = 5 days × 6 lessons), runs axe on both screens, and records period screenshots at 375/768/1024/1440.
+
+Checkpoint 2D:
+- .NET (99): adds `Phase2/SubjectsTests.cs`:
+  - the grid membership rule and the subject field rules;
+  - service duplicates, versions, archive and delete;
+  - dashboard counts;
+  - routes on real SQLite, including replacing the owned blocked-period rows and the 422 before periods exist.
+- Coverage: Domain 98.0% and Application 94.5% of lines.
+- Vitest (48): adds `components/ui/blocked-periods-grid.test.tsx` (a single tab stop, arrow/Home/End navigation, toggling, the empty state).
+- Playwright (4): the phase 2 flow adds a subject (palette swatch, priority, a blocked cell toggled with the keyboard) and runs axe on the subject dialog and list.
+- All screenshot baselines were regenerated. `maxDiffPixelRatio` is now 0.002, because 0.01 let stale baselines pass despite new tiles and new sidebar items.
+
+Checkpoint 2E:
+- .NET (104): adds `Phase2/TeachersTests.cs`:
+  - every teacher rule, including limits before and after periods exist;
+  - short-name proposals;
+  - service CRUD, the release-date parsing, filters and sorting;
+  - bulk preview statuses and refusal of a whole batch;
+  - routes for the limit codes, release dates, bulk add, the `released` filter and the missing-token check.
+- Coverage: Domain 98.3% and Application 94.9% of lines.
+- Playwright (4): the phase 2 flow adds a teacher (an off day, a limit error with focus moved to the field, the release toggle) and a bulk add with a preview (one line flagged "already exists"). It runs axe on the teacher dialog, the bulk preview and the list, and records teachers screenshots at 375/768/1024/1440.
+
+Checkpoint 2F:
+- .NET (108): adds `Phase2/CalendarAndDemoDataTests.cs`:
+  - calendar rules;
+  - routes: the outside-year warning, the month window, invalid filters, conflict and delete;
+  - the demo target check: a missing path, a protected path (compared without touching the file), an existing file;
+  - a complete dual-shift demo database in a temporary folder: 20 teachers including 2 released, 10 subjects, 4 stages, 12 sections, 2 shifts of 7 lessons plus a break, 8 calendar days, every checklist step done, no capacity gaps.
+- Vitest (50): adds `features/calendar/monthGrid.test.ts` (ISO weekdays, month bounds, weeks starting on the school's week start day).
+- Playwright (4): the phase 2 flow ends with the calendar (an out-of-year warning, kind selection, the month view, axe on both views). Baselines were regenerated with `maxDiffPixelRatio` 0.0002, so a new sidebar item or tile fails the comparison; two consecutive runs were stable.
+- Manual check: `--seed-demo-data` was run against a scratch path. It created the file, then refused the same path on a second run, and printed an Arabic message when the path was missing.
+
 ## Later-phase acceptance suites
 - Phase 4 infeasibility test must construct a conflict involving two teachers, a shared lab, and a blocked period; the diagnostic must identify the conflict groups and actionable correction, not merely report infeasible.
 - Large solver-risk comparison uses the same independently verified feasible 40-section/54-teacher workload and records status, first-solution/total time, objective/bound, memory method, and independently checked hard constraints for baseline, two-stage, decomposition, and hints.
