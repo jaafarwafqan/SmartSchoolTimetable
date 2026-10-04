@@ -3,7 +3,7 @@ import { useId, useState } from "react";
 import { Alert } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import { Dialog } from "../../components/ui/dialog";
+import { Card } from "../../components/ui/card";
 import { Field } from "../../components/ui/field";
 import { DataTable, type TableColumn } from "../../components/ui/table";
 import { Textarea } from "../../components/ui/textarea";
@@ -15,10 +15,10 @@ import { useCreateBulk, usePreviewBulk, type BulkPreview } from "./teachersApi";
 const text = messages.school.teachers;
 type PreviewLine = BulkPreview["lines"][number];
 
-type BulkAddDialogProps = { open: boolean; onClose: () => void; onSaved: (count: number) => void };
+type BulkAddPanelProps = { onClose: () => void; onSaved: (count: number) => void };
 
-/** Paste names one per line, preview how each line will be saved, then create the ready ones (spec 2.10). */
-export function BulkAddDialog({ open, onClose, onSaved }: BulkAddDialogProps) {
+/** Bulk pattern (DESIGN_SYSTEM.md 14): a panel inside the page; paste names, preview each line, save the ready ones. */
+export function BulkAddPanel({ onClose, onSaved }: BulkAddPanelProps) {
   const fieldId = useId();
   const format = useFormatter();
   const feedback = useFormFeedback();
@@ -60,32 +60,25 @@ export function BulkAddDialog({ open, onClose, onSaved }: BulkAddDialogProps) {
   ];
 
   return (
-    <Dialog
-      open={open}
-      title={text.bulkTitle}
-      description={text.bulkHint}
-      onClose={close}
-      footer={(
-        <>
-          <Button icon={<Save aria-hidden="true" size={20} />} loading={createBulk.isPending} disabled={ready.length === 0} onClick={saveReady}>
-            {text.bulkSave(format.number(ready.length))}
-          </Button>
-          <Button variant="secondary" icon={<Eye aria-hidden="true" size={20} />} loading={previewBulk.isPending} onClick={runPreview}>{text.bulkPreview}</Button>
-          <Button variant="secondary" icon={<X aria-hidden="true" size={20} />} onClick={close}>{messages.app.cancel}</Button>
-        </>
-      )}
-    >
-      <div className="form-stack dialog-form">
-        <Alert tone="error" message={feedback.error} />
-        <Field id={fieldId} label={text.bulkNames} error={feedback.fieldErrors.Names}>
-          <Textarea id={fieldId} rows={8} value={names} aria-invalid={feedback.fieldErrors.Names ? true : undefined}
-            onChange={(event) => { setNames(event.target.value); setPreview(null); }} />
-        </Field>
-        {preview && preview.readyCount === 0 && <Alert tone="warning" message={text.bulkNothingReady} />}
-        {preview && (
-          <DataTable caption={text.bulkPreview} columns={columns} rows={preview.lines} rowKey={(line) => String(line.line)} />
-        )}
+    <Card className="page-card bulk-panel" aria-labelledby="bulk-title">
+      <div className="card-header-row">
+        <h2 id="bulk-title">{text.bulkTitle}</h2>
       </div>
-    </Dialog>
+      <p className="ui-field-hint">{text.bulkHint}</p>
+      <Alert tone="error" message={feedback.error} />
+      <Field id={fieldId} label={text.bulkNames} error={feedback.fieldErrors.Names}>
+        <Textarea id={fieldId} rows={8} value={names} aria-invalid={feedback.fieldErrors.Names ? true : undefined}
+          onChange={(event) => { setNames(event.target.value); setPreview(null); }} />
+      </Field>
+      {preview && preview.readyCount === 0 && <Alert tone="warning" message={text.bulkNothingReady} />}
+      {preview && <DataTable caption={text.bulkPreview} columns={columns} rows={preview.lines} rowKey={(line) => String(line.line)} />}
+      <div className="form-actions">
+        <Button icon={<Save aria-hidden="true" size={20} />} loading={createBulk.isPending} disabled={ready.length === 0} onClick={saveReady}>
+          {text.bulkSave(format.number(ready.length))}
+        </Button>
+        <Button variant="secondary" icon={<Eye aria-hidden="true" size={20} />} loading={previewBulk.isPending} onClick={runPreview}>{text.bulkPreview}</Button>
+        <Button variant="secondary" icon={<X aria-hidden="true" size={20} />} onClick={close}>{messages.app.cancel}</Button>
+      </div>
+    </Card>
   );
 }

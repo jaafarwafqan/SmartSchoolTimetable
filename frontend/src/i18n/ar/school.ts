@@ -10,7 +10,9 @@ export const school = {
   nav: {
     dashboard: "لوحة التحكم",
     profile: "بيانات المدرسة",
-    academicYears: "السنة الدراسية والفصول",
+    school: "المدرسة",
+    classes: "الصفوف والمنهج",
+    academicYears: "السنة والفصول",
     scheduleStructure: "الدوام والحصص والجرس",
     stagesSections: "المراحل والشعب",
     subjects: "المواد",
@@ -31,6 +33,7 @@ export const school = {
     currentYear: (name: string) => `السنة الدراسية: ${isolate(name)}`,
     currentTerm: (name: string) => `الفصل: ${isolate(name)}`,
     userMenu: "قائمة المستخدم",
+    ownerRole: "المالك",
     lock: "قفل الشاشة",
     lockedNotice: "تم قفل الجلسة. أدخل كلمة المرور للمتابعة.",
   },

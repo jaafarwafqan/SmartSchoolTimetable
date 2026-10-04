@@ -1,6 +1,27 @@
 # Changelog
 
 ## [Unreleased]
+### Phase 2.5A - foundation fixes (tag `phase-2-5a`, branch `phase-2-5`)
+- **Side panel cause fixed:** the CSS reset removed the dialog's `margin: auto`, so dialogs stuck to a screen edge. Dialogs are now centred, and an E2E check covers it.
+- **Navigation:**
+  - Five sidebar items: لوحة التحكم، المدرسة، الصفوف والمنهج، المعلمون، الإعدادات.
+  - Group screens are tabs, and breadcrumbs show the group.
+  - Old URLs redirect.
+- **Phone navigation:** opens in the page flow; `MobileDrawer` was deleted (ADR 0024).
+- **Dates and times:** new `DateField` and `TimeField`: day/month/year and 24-hour HH:mm, the school's numerals, typing in either digit set, arrow keys, ISO values. All 11 native date and time inputs were replaced; native inputs are now forbidden by lint.
+- **Bidi:** `LtrText` and `ltrRuns()`. `isolate()` now also isolates numeric ranges, so "2026 - 2027" is no longer shown reversed.
+- **Arabic text:**
+  - The user menu shows «المالك» with the username as data.
+  - "Enter" was removed from the hints.
+  - A dictionary test and an E2E check reject Latin text.
+- **Add patterns** (DESIGN_SYSTEM.md 14 and 15, `/design`):
+  - Subjects and teachers: quick add by name (Enter), details edited in place.
+  - Teacher bulk add: a panel inside the page.
+  - Calendar: a quick-add row.
+  - The subject and teacher dialogs were removed.
+- **Server defaults for quick add:** the next free subject colour, priority 3, and a proposed teacher short name.
+- **Tests:** .NET 110, Vitest 58, Playwright 4.
+
 ### Phase 2F - academic calendar, demo data, final docs (tags `phase-2f`, `phase-2-final`)
 - **Academic calendar** (التقويم الدراسي):
   - One day or a date range, a title, a kind and an "affects schedule" flag.

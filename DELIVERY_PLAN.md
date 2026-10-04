@@ -93,6 +93,17 @@ Acceptance:
 
 Each checkpoint is one commit with a green build and tests, plus updated docs and CHANGELOG. Decisions taken without the owner are listed in `docs/DECISIONS_PENDING.md`.
 
+## Phase 2.5 - Simpler setup (branch `phase-2-5`)
+Fixes data-entry weight before Phase 3. The full specification is in `docs/PHASE_25_SPEC.md`.
+
+| Checkpoint | Scope | Tag |
+|---|---|---|
+| 2.5A | LtrText, DateField/TimeField, Arabic labels, no drawers, add patterns, regrouped navigation, quick add | `phase-2-5a` |
+| 2.5B | Per-day lesson counts, capacity and validation, shift mode, setup progress | `phase-2-5b` |
+| 2.5C | JSON templates, stage/section generator, curriculum entries with totals, copy helpers, auto colours | `phase-2-5c` |
+| 2.5D | Setup wizard (7 steps, resumable, idempotent) | `phase-2-5d` |
+| 2.5E | E2E scenarios, demo variants, docs, owner test script, report | `phase-2-5e`, then `phase-2-5-final` |
+
 ## Phase 3 - Workload and capacity
 - Workload, resources, scheduling profiles, capacity analysis, and deterministic validation.
 ### Acceptance criteria

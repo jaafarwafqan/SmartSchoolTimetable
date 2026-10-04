@@ -1,6 +1,9 @@
 import { CalendarDays, CalendarPlus, List, Pencil, Trash2, TriangleAlert } from "lucide-react";
 import { useState } from "react";
+import { DateField } from "../../components/DateField";
+import { InlineAddForm } from "../../components/InlineAddForm";
 import { SearchField } from "../../components/SearchField";
+import { TextField } from "../../components/TextField";
 import { Alert } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -15,7 +18,7 @@ import { PageHeader } from "../../layout/PageHeader";
 import { useFormatter } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
 import { CalendarDayDialog } from "./CalendarDayDialog";
-import { useCalendarDays, useDeleteCalendarDay, type CalendarDay } from "./calendarApi";
+import { useCalendarDays, useDeleteCalendarDay, useSaveCalendarDay, type CalendarDay } from "./calendarApi";
 import { monthStart } from "./monthGrid";
 import { MonthView } from "./MonthView";
 
@@ -34,6 +37,10 @@ export function CalendarPage() {
   const [warning, setWarning] = useState<string | null>(null);
   const days = useCalendarDays({ search });
   const remove = useDeleteCalendarDay();
+  const create = useSaveCalendarDay();
+  const addFeedback = useFormFeedback();
+  /** Remounts the date field after a successful add (form.reset() does not clear its segments). */
+  const [addKey, setAddKey] = useState(0);
   const rows = days.data?.items ?? [];
   const openDialog = (day: CalendarDay | null) => setDialog((current) => ({ open: true, day, key: current.key + 1 }));
   const closeDialog = () => setDialog((current) => ({ ...current, open: false }));
@@ -68,6 +75,29 @@ export function CalendarPage() {
     <div className="page">
       <PageHeader title={text.title} description={text.description}
         actions={<Button icon={<CalendarPlus aria-hidden="true" size={20} />} onClick={() => openDialog(null)}>{text.add}</Button>} />
+      <Card className="page-card">
+        <Alert tone="success" message={addFeedback.success} />
+        <Alert tone="error" message={addFeedback.error} />
+        <InlineAddForm label={text.add} buttonLabel={text.addButton} pending={create.isPending} onInput={addFeedback.clearFieldFromEvent}
+          onSubmit={(form, element) => {
+            addFeedback.reset();
+            create.mutate({
+              id: null,
+              input: { title: String(form.get("newDayTitle") ?? ""), startDate: String(form.get("newDayDate") ?? ""), endDate: null, kind: "officialHoliday", affectsSchedule: true, version: 0 },
+            }, {
+              onSuccess: (day) => {
+                element.reset();
+                setAddKey((key) => key + 1);
+                setWarning(day.outsideCurrentYear ? text.savedOutside : null);
+                addFeedback.showSuccess(text.quickAdded);
+              },
+              onError: addFeedback.showError,
+            });
+          }}>
+          <TextField id="newDayTitle" label={text.titleField} maxLength={120} required field="Title" errors={addFeedback.fieldErrors} />
+          <DateField key={`new-day-${addKey}`} id="newDayDate" label={text.quickDate} required field="StartDate" errors={addFeedback.fieldErrors} />
+        </InlineAddForm>
+      </Card>
       {days.isError && <Alert tone="error" message={common.loadFailed} />}
       <Alert tone="success" message={feedback.success} />
       <Alert tone="warning" message={warning} />

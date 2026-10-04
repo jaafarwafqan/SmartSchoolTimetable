@@ -1,6 +1,7 @@
 import { Save, X } from "lucide-react";
 import { useId, type FormEvent } from "react";
 import { ConflictAlert } from "../../components/ConflictAlert";
+import { DateField } from "../../components/DateField";
 import { TextField } from "../../components/TextField";
 import { Alert } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
@@ -73,8 +74,8 @@ export function TermDialog({ open, year, term, onClose, onSaved, onReload }: Ter
         <Alert tone="error" message={feedback.error} />
         <TextField id="termName" label={text.termName} hint={text.termNameHint} defaultValue={term?.name ?? ""} maxLength={100} required field="Name" errors={feedback.fieldErrors} />
         <div className="form-grid">
-          <TextField id="termStart" type="date" label={text.startDate} defaultValue={term?.startDate ?? year.startDate} min={year.startDate} max={year.endDate} required field="StartDate" errors={feedback.fieldErrors} />
-          <TextField id="termEnd" type="date" label={text.endDate} defaultValue={term?.endDate ?? ""} min={year.startDate} max={year.endDate} required field="EndDate" errors={feedback.fieldErrors} />
+          <DateField id="termStart" label={text.startDate} defaultValue={term?.startDate ?? year.startDate} required field="StartDate" errors={feedback.fieldErrors} />
+          <DateField id="termEnd" label={text.endDate} defaultValue={term?.endDate ?? ""} required field="EndDate" errors={feedback.fieldErrors} />
         </div>
       </form>
     </Dialog>

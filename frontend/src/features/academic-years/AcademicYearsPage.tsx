@@ -9,6 +9,7 @@ import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { EmptyState } from "../../components/ui/empty-state";
 import { IconButton } from "../../components/ui/icon-button";
+import { LtrText } from "../../components/ui/ltr-text";
 import { Pagination } from "../../components/ui/pagination";
 import { DataTable, type TableColumn } from "../../components/ui/table";
 import { isolate } from "../../i18n/isolate";
@@ -40,7 +41,7 @@ export function AcademicYearsPage() {
   const reload = () => { feedback.reset(); void years.refetch(); };
 
   const columns: readonly TableColumn<AcademicYear>[] = [
-    { key: "label", header: text.label, cell: (year) => year.label },
+    { key: "label", header: text.label, cell: (year) => <LtrText>{year.label}</LtrText> },
     { key: "period", header: text.period, cell: (year) => format.dateRange(year.startDate, year.endDate) },
     { key: "terms", header: text.terms, cell: (year) => format.number(year.terms.length), numeric: true },
     {

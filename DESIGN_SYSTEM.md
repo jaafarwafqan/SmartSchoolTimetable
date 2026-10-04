@@ -133,7 +133,8 @@ All UI is built from `frontend/src/components/ui/*`. Raw `<button>`, `<input>`, 
 
 ### 6.6 Navigation and layout
 - Right-hand sidebar (RTL) with icon + label; collapsible to icons with tooltips. Top bar holds the school name, current academic year/term, and user menu (settings, lock, logout).
-- On screens below 768px the sidebar becomes a drawer and the weekly grid becomes a day view.
+- On screens below 768px the navigation opens in the page flow under the top bar (no overlay, no side drawer: section 14 and ADR 0024), and the weekly grid becomes a day view.
+- Five sidebar items; screens of a group are tabs under the page title (route tabs, `aria-current="page"`). Breadcrumbs: dashboard › group › screen.
 - Breadcrumbs for nested screens. The current page is marked with `aria-current="page"`.
 
 ---
@@ -200,3 +201,31 @@ Test and design at 375, 768, 1024 and 1440 px. Layout may reflow but must never 
 - A new component type or a new color requires an entry in this document first.
 - Generated design recommendations (design skills, templates) are inputs for discussion, never authority. Nothing from them is adopted unless written here.
 - Dark theme and theme presets are deferred. When added, they override semantic tokens only and must pass the contrast test; components do not change.
+
+---
+
+## 14. Add and edit patterns
+
+Records are added by choosing and by quick add, not by long forms. Each pattern has one component.
+
+| Fields | Pattern | Component | Used for |
+|---|---|---|---|
+| 1–2 | **Inline row** in the list: type, then press Enter. The fields clear after a successful add, so the next item can be typed straight away. | `InlineAddForm` | quick add of subjects, teachers and calendar days; section count; curriculum cells |
+| 3–6 | **Centred dialog**: 32–40rem wide, focus trapped, Esc closes, no inner scrolling at 1280×720. Never anchored to a screen edge (`margin: auto`; checked by E2E). | `Dialog` | academic year, term, generate periods, calendar day, shift |
+| Long or optional details | **Quick add by name only**, then details edited **in place** on an expandable row. Advanced options are folded under «خيارات متقدمة». Never a long modal form. | `ExpandableRow` | teacher constraints, subject options |
+| Many at once | **Bulk panel** inside the page, with a preview before saving. | page `Card` | teachers from pasted names |
+
+- **No side drawers or sheets** anywhere. The ESLint rule `design-system/no-drawers` and the test `styles/noDrawers.test.ts` fail if one is introduced (ADR 0024).
+- `/design` shows every pattern (section «أنماط الإضافة والتعديل»).
+
+## 15. Dates, times and left-to-right runs
+
+- **`DateField`:** day / month / year segments, in that order.
+  - It shows the school's numerals.
+  - Typing accepts Arabic-Indic or Western digits; ArrowUp and ArrowDown change the focused segment.
+  - The full Arabic date (Hijri when chosen) appears as the hint.
+  - The value sent to the API is ISO `yyyy-MM-dd`.
+- **`TimeField`:** 24-hour `HH:mm` (hours, then minutes; minutes step by 5 with the arrow keys). The time is kept left-to-right and uses the school's numerals.
+- **No native date or time inputs:** native `<input type="date|time">` are forbidden (`design-system/no-native-date-time`), because they show browser-locale formats (mm/dd/yyyy, AM/PM).
+- **`LtrText`** (and the `ltrRuns()` string helper for options and ARIA labels): years, times, dates, codes, file names and usernames keep their logical order in RTL. "2026 - 2027" must never be shown as "2027 - 2026". A Vitest unit test and an E2E position check enforce this.
+- **Fixed UI text is Arabic only.** The dictionary test (`i18n/noLatinText.test.ts`) and the E2E check `expectNoLatinText` fail on Latin letters. Allowed exceptions: data (usernames) and the image format codes PNG, JPEG, WebP.

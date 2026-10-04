@@ -2,6 +2,8 @@ import { isolate } from "../isolate";
 
 // Shared application strings (authentication, shell, settings). Arabic only; no hard-coded digits.
 export const app = {
+  dateParts: { day: "اليوم", month: "الشهر", year: "السنة", separator: "/" },
+  timeParts: { hours: "الساعة", minutes: "الدقيقة", separator: ":" },
   brand: "الجدول الذكي",
   tagline: "نظام محلي لإدارة الجداول المدرسية",
   loading: "جارٍ فتح التطبيق...",

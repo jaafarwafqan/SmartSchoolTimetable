@@ -6,6 +6,7 @@ import { FeedbackSection } from "./FeedbackSection";
 import { FieldsSection } from "./FieldsSection";
 import { guideMessages } from "./guideMessages";
 import { NavigationSection } from "./NavigationSection";
+import { PatternsSection } from "./PatternsSection";
 import { TableSection } from "./TableSection";
 import { TimetableSection } from "./TimetableSection";
 import { TypographySection } from "./TypographySection";
@@ -27,6 +28,7 @@ export default function DesignGuidePage() {
         <ButtonsSection />
         <FieldsSection />
         <ConstraintsSection />
+        <PatternsSection />
         <FeedbackSection />
         <TableSection />
         <DialogSection />

@@ -1,5 +1,6 @@
 import { WandSparkles, X } from "lucide-react";
 import { useId, type FormEvent } from "react";
+import { TimeField } from "../../components/TimeField";
 import { TextField } from "../../components/TextField";
 import { Alert } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
@@ -62,7 +63,7 @@ export function GeneratePeriodsDialog({ open, yearId, onClose, onGenerated }: Ge
       <form id={formId} ref={feedback.formRef} className="form-stack dialog-form" noValidate onSubmit={submit} onInput={feedback.clearFieldFromEvent}>
         <Alert tone="error" message={feedback.error} />
         <div className="form-grid">
-          <TextField id="firstStartTime" type="time" label={text.firstStart} defaultValue="08:00" required field="FirstStartTime" errors={feedback.fieldErrors} />
+          <TimeField id="firstStartTime" label={text.firstStart} defaultValue="08:00" required field="FirstStartTime" errors={feedback.fieldErrors} />
           <TextField id="lessonCount" type="number" min={1} max={12} label={text.lessonCount} defaultValue="7" required field="LessonCount" errors={feedback.fieldErrors} />
           <TextField id="lessonMinutes" type="number" min={10} max={120} label={text.lessonDuration} defaultValue="45" required field="LessonMinutes" errors={feedback.fieldErrors} />
           <TextField id="breakAfterLesson" type="number" min={1} max={11} label={text.breakAfter} defaultValue="4" field="BreakAfterLesson" errors={feedback.fieldErrors} />

@@ -28,6 +28,7 @@ public sealed class Subject : VersionedEntity
     public const int ColorCount = 10;
     public const int MinPriority = 1;
     public const int MaxPriority = 5;
+    public const int DefaultPriority = 3;
 
     private readonly List<BlockedPeriod> _blockedPeriods = [];
 
@@ -38,7 +39,7 @@ public sealed class Subject : VersionedEntity
     public string Name { get; private set; } = string.Empty;
     public string NormalizedName { get; private set; } = string.Empty;
     public int ColorIndex { get; private set; } = 1;
-    public int Priority { get; private set; } = 3;
+    public int Priority { get; private set; } = DefaultPriority;
     public bool DistributionEnabled { get; private set; } = true;
     public bool SpreadAcrossDays { get; private set; }
     public bool Heavy { get; private set; }

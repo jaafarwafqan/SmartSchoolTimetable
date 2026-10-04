@@ -1,7 +1,7 @@
 import { CircleAlert, Trash2 } from "lucide-react";
 import { Checkbox } from "../../components/ui/checkbox";
 import { IconButton } from "../../components/ui/icon-button";
-import { Input } from "../../components/ui/input";
+import { TimeField } from "../../components/TimeField";
 import { Select } from "../../components/ui/select";
 import { messages } from "../../i18n/messages";
 import type { Formatter } from "../../lib/format";
@@ -41,10 +41,10 @@ export function PeriodRow({ index, row, lessonNumber, errors = {}, format, onCha
           onChange({ ...row, kind, startBell: kind === "lesson", endBell: kind === "lesson" });
         }}
       />
-      <Input type="time" aria-label={`${text.startTime} - ${label}`} value={row.startTime} aria-invalid={invalid("startTime")}
-        aria-describedby={messagesForRow.length > 0 ? errorId : undefined} onChange={(event) => onChange({ ...row, startTime: event.target.value })} />
-      <Input type="time" aria-label={`${text.endTime} - ${label}`} value={row.endTime} aria-invalid={invalid("endTime")}
-        aria-describedby={messagesForRow.length > 0 ? errorId : undefined} onChange={(event) => onChange({ ...row, endTime: event.target.value })} />
+      <TimeField compact id={`period-${index}-start`} label={`${text.startTime} - ${label}`} value={row.startTime}
+        invalid={Boolean(invalid("startTime"))} onChange={(startTime) => onChange({ ...row, startTime })} />
+      <TimeField compact id={`period-${index}-end`} label={`${text.endTime} - ${label}`} value={row.endTime}
+        invalid={Boolean(invalid("endTime"))} onChange={(endTime) => onChange({ ...row, endTime })} />
       <Checkbox checked={lesson && row.startBell} disabled={!lesson} onChange={(event) => onChange({ ...row, startBell: event.target.checked })}>{text.startBell}</Checkbox>
       <Checkbox checked={lesson && row.endBell} disabled={!lesson} onChange={(event) => onChange({ ...row, endBell: event.target.checked })}>{text.endBell}</Checkbox>
       <IconButton aria-label={text.removeRow(format.number(index + 1))} title={text.removeRow(format.number(index + 1))} icon={<Trash2 aria-hidden="true" size={16} />} onClick={onRemove} />

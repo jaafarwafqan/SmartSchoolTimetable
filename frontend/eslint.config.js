@@ -69,6 +69,8 @@ const arbitraryColorClass = /(?:^|\s|:)(?:bg|text|border|fill|stroke|ring|outlin
 const hexColor = /#[0-9a-f]{3,8}\b/i;
 const colorStyleKey = /color|background|fill|stroke|shadow|border|outline/i;
 const rawFormElements = new Set(["button", "input", "select", "textarea", "table"]);
+const nativeDateTimeTypes = new Set(["date", "time", "datetime-local", "month", "week"]);
+const drawerName = /drawer|sheet/i;
 const foreignIconPackage = /^(react-icons|@heroicons\/|@fortawesome\/|@mui\/icons-material|@tabler\/icons|@phosphor-icons\/|react-feather|@radix-ui\/react-icons|@iconify\/|lucide$)|icons?(\/|$)/;
 
 function classNameStrings(node) {
@@ -137,6 +139,46 @@ const designSystemPlugin = {
         };
       },
     },
+    "no-native-date-time": {
+      meta: {
+        type: "problem",
+        schema: [],
+        messages: { native: "Use DateField/TimeField (Arabic, 24-hour, school numerals) instead of a native {{kind}} input." },
+      },
+      create(context) {
+        return {
+          JSXAttribute(node) {
+            if (node.name?.name !== "type") return;
+            const value = node.value?.type === "Literal" ? String(node.value.value) : "";
+            if (nativeDateTimeTypes.has(value)) context.report({ node, messageId: "native", data: { kind: value } });
+          },
+        };
+      },
+    },
+    "no-drawers": {
+      meta: {
+        type: "problem",
+        schema: [],
+        messages: { drawer: "Side drawers and sheets are not allowed; use the add patterns in DESIGN_SYSTEM.md 14 ({{name}})." },
+      },
+      create(context) {
+        const report = (node, name) => {
+          if (drawerName.test(name)) context.report({ node, messageId: "drawer", data: { name } });
+        };
+        return {
+          ImportDeclaration(node) {
+            report(node, String(node.source.value));
+            for (const specifier of node.specifiers) report(specifier, specifier.local.name);
+          },
+          JSXOpeningElement(node) {
+            if (node.name.type === "JSXIdentifier") report(node, node.name.name);
+          },
+          JSXAttribute(node) {
+            if (node.name?.name === "className") for (const value of classNameStrings(node)) report(node, value);
+          },
+        };
+      },
+    },
     "lucide-icons-only": {
       meta: {
         type: "problem",
@@ -171,6 +213,8 @@ export default tseslint.config(
       "design-system/no-arbitrary-colors": "error",
       "design-system/no-raw-form-elements": "error",
       "design-system/lucide-icons-only": "error",
+      "design-system/no-native-date-time": "error",
+      "design-system/no-drawers": "error",
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "warn",
     },

@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { Alert } from "../../components/ui/alert";
 import { Field } from "../../components/ui/field";
 import { Select } from "../../components/ui/select";
+import { ltrRuns } from "../../i18n/isolate";
 import { messages } from "../../i18n/messages";
 import { useAcademicYears } from "./yearsApi";
 
@@ -30,7 +31,7 @@ export function YearPicker({ id, choice, onChange }: YearPickerProps) {
     return (
       <div className="year-picker-empty">
         <Alert tone="info" message={messages.school.scheduleStructure.noYear} />
-        <Link className="link-button" to="/academic-years">
+        <Link className="link-button" to="/school/year">
           <CalendarPlus aria-hidden="true" size={20} />
           <span>{messages.school.scheduleStructure.goToYears}</span>
         </Link>
@@ -42,7 +43,7 @@ export function YearPicker({ id, choice, onChange }: YearPickerProps) {
       <Select
         id={id}
         value={choice.yearId === null ? "" : String(choice.yearId)}
-        options={items.map((year) => ({ value: String(year.id), label: year.label }))}
+        options={items.map((year) => ({ value: String(year.id), label: ltrRuns(year.label) }))}
         onChange={(event) => { choice.setYearId(Number(event.target.value)); onChange?.(); }}
       />
     </Field>

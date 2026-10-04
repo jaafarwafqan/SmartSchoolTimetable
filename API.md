@@ -118,6 +118,8 @@ Audit events: `SchoolProfileUpdated`, `SchoolAssetUploaded`, `SchoolAssetRemoved
 | POST | `/subjects/{id}/archive` or `/restore` | `{ version }` | 200 subject | 401, 404, 409 |
 | DELETE | `/subjects/{id}?version=` | — | 204 (nothing references subjects before Phase 3) | 401, 404, 409 |
 
+Quick add: `colorIndex: 0` picks the next unused palette colour (cycling after ten), and `priority: 0` means the default 3. A teacher created with an empty `shortName` gets a proposed one; if none is free, `ShortName` returns `REQUIRED`.
+
 Audit events: `SubjectCreated`, `SubjectUpdated`, `SubjectArchived`, `SubjectRestored`, `SubjectDeleted`. The dashboard adds the counts `subjects` and `capacityGaps` and the checklist step `subjects`.
 
 ### Teachers (Phase 2, checkpoint 2E)

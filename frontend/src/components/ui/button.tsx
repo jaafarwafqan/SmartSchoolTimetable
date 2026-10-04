@@ -1,7 +1,8 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode, Ref } from "react";
 import { Spinner } from "./spinner";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  ref?: Ref<HTMLButtonElement>;
   children: ReactNode;
   icon: ReactNode;
   variant?: "primary" | "secondary" | "ghost" | "danger";

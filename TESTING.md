@@ -109,6 +109,23 @@ Checkpoint 2F:
 - Playwright (4): the phase 2 flow ends with the calendar (an out-of-year warning, kind selection, the month view, axe on both views). Baselines were regenerated with `maxDiffPixelRatio` 0.0002, so a new sidebar item or tile fails the comparison; two consecutive runs were stable.
 - Manual check: `--seed-demo-data` was run against a scratch path. It created the file, then refused the same path on a second run, and printed an Arabic message when the path was missing.
 
+## Phase 2.5 test inventory (updated per checkpoint)
+Checkpoint 2.5A:
+- .NET (110): adds `Phase25/QuickAddTests.cs` (automatic subject colours and cycling, default priority, proposed teacher short names and the fallback when none is free).
+- Vitest (58):
+  - `components/DateTimeFields.test.tsx`: ISO composition, day/month/year order, Arabic-Indic digits, typing either digit set, arrow keys, 24-hour wrap, minutes step 5, LTR time group.
+  - `LtrText`: year order and `ltrRuns`.
+  - `i18n/noLatinText.test.ts`: no Latin letters anywhere in the dictionary.
+  - `styles/noDrawers.test.ts`.
+- ESLint adds `design-system/no-native-date-time` and `design-system/no-drawers`. A probe file proved that both fire.
+- Playwright (4):
+  - The flow uses the new navigation (sidebar group, then tab), segmented date and time fields, and quick add with in-place details for subjects and teachers. The bulk panel replaces the bulk dialog, and the calendar has a quick-add row.
+  - Every 3–6 field dialog is checked to be centred, 32–40rem wide and without inner scrolling at 1280×720.
+  - Five screens are checked for Latin text.
+  - A spaced year label ("2027 - 2028") is checked for display order.
+  - The phone menu is checked to open in the page flow (no dialog, `position: static`) and to return focus on Esc.
+  - All screenshot baselines were regenerated.
+
 ## Later-phase acceptance suites
 - Phase 4 infeasibility test must construct a conflict involving two teachers, a shared lab, and a blocked period; the diagnostic must identify the conflict groups and actionable correction, not merely report infeasible.
 - Large solver-risk comparison uses the same independently verified feasible 40-section/54-teacher workload and records status, first-solution/total time, objective/bound, memory method, and independently checked hard constraints for baseline, two-stage, decomposition, and hints.

@@ -1,20 +1,27 @@
 import type { ReactNode } from "react";
+import { useLocation } from "react-router-dom";
 import { Breadcrumbs, type Crumb } from "../components/ui/breadcrumbs";
+import { TabNav } from "../components/ui/tab-nav";
 import { messages } from "../i18n/messages";
+import { groupFor } from "./navigation";
 
 type PageHeaderProps = {
   title: string;
   description?: string;
-  /** Trail before the current page; the dashboard is always the root. */
-  trail?: readonly Crumb[];
   actions?: ReactNode;
 };
 
-export function PageHeader({ title, description, trail = [], actions }: PageHeaderProps) {
-  const isDashboard = trail.length === 0 && title === messages.school.nav.dashboard;
+/**
+ * Breadcrumbs (dashboard → group → page), the page title and, for grouped screens, the group's tabs.
+ * The group is derived from the URL, so pages never repeat the navigation structure.
+ */
+export function PageHeader({ title, description, actions }: PageHeaderProps) {
+  const { pathname } = useLocation();
+  const group = groupFor(pathname);
+  const isDashboard = pathname === "/";
   const crumbs: Crumb[] = isDashboard
     ? [{ label: title }]
-    : [{ label: messages.school.nav.dashboard, to: "/" }, ...trail, { label: title }];
+    : [{ label: messages.school.nav.dashboard, to: "/" }, ...(group ? [{ label: group.label, to: group.tabs[0].to }] : []), { label: title }];
   return (
     <header className="page-header">
       <Breadcrumbs label={messages.school.nav.breadcrumbs} items={crumbs} />
@@ -25,6 +32,7 @@ export function PageHeader({ title, description, trail = [], actions }: PageHead
         </div>
         {actions && <div className="page-header-actions">{actions}</div>}
       </div>
+      {group && <TabNav label={group.label} tabs={group.tabs} />}
     </header>
   );
 }

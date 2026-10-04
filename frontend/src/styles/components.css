@@ -381,6 +381,9 @@
 
 /* ---------- Dialog ---------- */
 .ui-dialog {
+  /* The CSS reset sets margin: 0 on every element; a modal dialog is centred only with margin: auto.
+     Without it the dialog sticks to a screen edge like a side panel (spec 2.5 §2.5). */
+  margin: auto;
   inline-size: min(100% - 2rem, 36rem);
   max-block-size: calc(100vh - 2rem);
   padding: 1.5rem;

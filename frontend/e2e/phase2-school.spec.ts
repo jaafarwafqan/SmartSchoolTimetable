@@ -4,6 +4,11 @@ import { ApiServer } from "./support/apiServer";
 import {
   expectBreakpointScreenshots,
   expectNoSeriousA11yViolations,
+  expectCenteredDialog,
+  expectNoLatinText,
+  expectYearInOrder,
+  fillDate,
+  fillTime,
   goToSection,
   openUserMenuItem,
   setupOwner,
@@ -53,6 +58,7 @@ test("the whole setup checklist completes end to end; stale edits are caught", a
   await page.locator("#stamp-file").setInputFiles({ name: "stamp.svg", mimeType: "image/svg+xml", buffer: Buffer.from("<svg xmlns='http://www.w3.org/2000/svg'/>") });
   await expect(page.getByRole("alert")).toContainText(messages.errors.ASSET_TYPE_NOT_ALLOWED);
   await expectNoSeriousA11yViolations(page, "school profile");
+  await expectNoLatinText(page, "school profile", ["owner"]);
 
   // Two pages edit the same profile: the second save is rejected with an Arabic conflict message and reload.
   const other = await context.newPage();
@@ -75,47 +81,53 @@ test("the whole setup checklist completes end to end; stale edits are caught", a
   await page.getByRole("button", { name: school.years.add }).first().click();
   const yearDialog = page.getByRole("dialog", { name: school.years.add });
   await yearDialog.getByLabel(school.years.label).fill("2026-2027");
-  await yearDialog.getByLabel(school.years.startDate).fill("2026-09-01");
-  await yearDialog.getByLabel(school.years.endDate).fill("2026-08-01");
+  await expectCenteredDialog(page, yearDialog, "year dialog");
+  await fillDate(yearDialog, school.years.startDate, "2026-09-01");
+  await fillDate(yearDialog, school.years.endDate, "2026-08-01");
   await yearDialog.getByRole("button", { name: school.years.save }).click();
   await expect(yearDialog.getByText(messages.errors.INVALID_DATE_RANGE)).toBeVisible();
-  await yearDialog.getByLabel(school.years.endDate).fill("2027-06-30");
+  await fillDate(yearDialog, school.years.endDate, "2027-06-30");
   await yearDialog.getByRole("button", { name: school.years.save }).click();
   await expect(page.getByRole("status").filter({ hasText: school.years.saved })).toBeVisible();
 
   await page.getByRole("button", { name: school.years.addTerm }).click();
   const termDialog = page.getByRole("dialog", { name: school.years.addTerm });
   await termDialog.getByLabel(school.years.termName).fill("الفصل الأول");
-  await termDialog.getByLabel(school.years.endDate).fill("2027-01-15");
+  await expectCenteredDialog(page, termDialog, "term dialog");
+  await fillDate(termDialog, school.years.endDate, "2027-01-15");
   await termDialog.getByRole("button", { name: school.years.saveTerm }).click();
   await page.getByRole("button", { name: `${school.years.makeCurrentTerm}: ${"⁨"}الفصل الأول${"⁩"}` }).click();
   await expect(page.getByText(school.years.currentTerm, { exact: true })).toBeVisible();
   await expect(page.locator(".app-topbar")).toContainText("الفصل الأول");
   await expectNoSeriousA11yViolations(page, "academic years");
+  await expectNoLatinText(page, "academic years", ["owner"]);
 
   // Timetable structure (2B): a shift, generator validation, a row-level overlap error, then a valid save.
   await goToSection(page, school.nav.scheduleStructure);
   await page.getByRole("button", { name: structure.addShift }).first().click();
   const shiftDialog = page.getByRole("dialog", { name: structure.addShift });
+  await expectCenteredDialog(page, shiftDialog, "shift dialog");
   await shiftDialog.getByLabel(structure.shiftName).fill("صباحي");
   await shiftDialog.getByRole("button", { name: structure.saveShift }).click();
   await expect(page.getByRole("status").filter({ hasText: structure.shiftSaved })).toBeVisible();
   await page.getByRole("button", { name: structure.generate }).click();
   const generator = page.getByRole("dialog", { name: structure.generate });
+  await expectCenteredDialog(page, generator, "generate periods dialog");
   await generator.getByLabel(structure.lessonCount).fill("13");
   await generator.getByRole("button", { name: structure.createList }).click();
   await expect(generator.getByText(messages.errors.VALUE_OUT_OF_RANGE)).toBeVisible();
   await generator.getByLabel(structure.lessonCount).fill("6");
   await generator.getByRole("button", { name: structure.createList }).click();
   await expect(page.locator(".period-row")).toHaveCount(7);
-  const secondStart = page.getByLabel(`${structure.startTime} - ${structure.rowLabel("2")}`);
-  await secondStart.fill("08:10");
+  const secondStart = `${structure.startTime} - ${structure.rowLabel("2")}`;
+  await fillTime(page, secondStart, "08:10");
   await page.getByRole("button", { name: structure.savePeriods }).click();
   await expect(page.locator(".period-row-error")).toContainText(messages.errors.PERIODS_OVERLAP);
-  await secondStart.fill("08:45");
+  await fillTime(page, secondStart, "08:45");
   await page.getByRole("button", { name: structure.savePeriods }).click();
   await expect(page.getByRole("status").filter({ hasText: structure.periodsSaved })).toBeVisible();
   await expectNoSeriousA11yViolations(page, "timetable structure");
+  await expectNoLatinText(page, "timetable structure", ["owner"]);
   await expectBreakpointScreenshots(page, "periods");
 
   // Stages and sections (2C): weekly capacity = 5 working days × 6 lessons.
@@ -133,54 +145,60 @@ test("the whole setup checklist completes end to end; stale edits are caught", a
   await expect(page.getByRole("cell", { name: "30", exact: true })).toBeVisible();
   await expectNoSeriousA11yViolations(page, "stages and sections");
 
-  // Subjects (2D): palette colour, priority, a blocked period toggled with the keyboard.
+  // Subjects: quick add by name (Enter), then details edited in place on the expanded row.
   await goToSection(page, school.nav.subjects);
-  await page.getByRole("button", { name: subjects.add }).first().click();
-  const subjectDialog = page.getByRole("dialog", { name: subjects.add });
-  await subjectDialog.getByLabel(subjects.name).fill("الرياضيات");
-  await subjectDialog.getByLabel(subjects.colorSwatch("5")).check();
-  await subjectDialog.getByLabel(subjects.priority).selectOption("5");
-  await subjectDialog.getByText(subjects.heavy).click();
-  const firstCell = subjectDialog.getByRole("button", { name: school.blockedGrid.cell("الأحد", "1", false) });
+  await page.getByLabel(subjects.newName).fill("الرياضيات");
+  await page.getByLabel(subjects.newName).press("Enter");
+  await expect(page.getByRole("status").filter({ hasText: subjects.added("الرياضيات") })).toBeVisible();
+  await expect(page.getByLabel(subjects.newName)).toHaveValue("");
+  await page.locator(".ui-expandable-toggle", { hasText: "الرياضيات" }).click();
+  const subjectRow = page.locator(".ui-expandable.is-expanded");
+  await subjectRow.getByLabel(subjects.colorSwatch("5")).check();
+  await subjectRow.getByLabel(subjects.priority).selectOption("5");
+  await subjectRow.getByText(subjects.advanced).click();
+  await subjectRow.getByText(subjects.heavy).click();
+  const firstCell = subjectRow.getByRole("button", { name: school.blockedGrid.cell("الأحد", "1", false) });
   await firstCell.focus();
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("Space");
-  await expect(subjectDialog.getByRole("button", { name: school.blockedGrid.cell("الاثنين", "1", true) })).toHaveAttribute("aria-pressed", "true");
-  await expectNoSeriousA11yViolations(page, "subject dialog");
-  await subjectDialog.getByRole("button", { name: subjects.save }).click();
+  await expect(subjectRow.getByRole("button", { name: school.blockedGrid.cell("الاثنين", "1", true) })).toHaveAttribute("aria-pressed", "true");
+  await expectNoSeriousA11yViolations(page, "subject details in place");
+  await subjectRow.getByRole("button", { name: subjects.save }).click();
   await expect(page.getByRole("status").filter({ hasText: subjects.saved })).toBeVisible();
-  await expect(page.getByRole("cell", { name: "الرياضيات", exact: true })).toBeVisible();
   await expectNoSeriousA11yViolations(page, "subjects");
+  await expectNoLatinText(page, "subjects", ["owner"]);
 
-  // Teachers (2E): limits are checked against 6 lessons per day; bulk add previews before saving.
+  // Teachers: quick add by full name (short name proposed), constraints in place, bulk add panel.
   await goToSection(page, school.nav.teachers);
-  await page.getByRole("button", { name: teachers.add }).first().click();
-  const teacherDialog = page.getByRole("dialog", { name: teachers.add });
-  await teacherDialog.getByLabel(teachers.fullName).fill("زينب كاظم جواد");
-  await teacherDialog.getByLabel(teachers.shortName).fill("زينب كاظم");
-  await teacherDialog.getByRole("group", { name: teachers.offDays }).getByText(school.scheduleStructure.days.thursday).click();
-  await teacherDialog.getByLabel(`${teachers.limits} ${teachers.maxPerDay}`).fill("7");
-  await teacherDialog.getByRole("button", { name: teachers.save }).click();
-  await expect(teacherDialog.getByText(messages.errors.MAX_PER_DAY_EXCEEDS_PERIODS)).toBeVisible();
-  await expect(teacherDialog.getByLabel(`${teachers.limits} ${teachers.maxPerDay}`)).toBeFocused();
-  await teacherDialog.getByLabel(`${teachers.limits} ${teachers.maxPerDay}`).fill("5");
-  await teacherDialog.getByText(teachers.fullyReleased).click();
-  await expect(teacherDialog.getByLabel(teachers.releaseReason)).toBeVisible();
-  await teacherDialog.getByText(teachers.fullyReleased).click();
-  await expectNoSeriousA11yViolations(page, "teacher dialog");
-  await teacherDialog.getByRole("button", { name: teachers.save }).click();
+  await page.getByLabel(teachers.newName).fill("زينب كاظم جواد");
+  await page.getByLabel(teachers.newName).press("Enter");
+  await expect(page.getByRole("status").filter({ hasText: teachers.added("زينب كاظم جواد", "زينب كاظم") })).toBeVisible();
+  await page.locator(".ui-expandable-toggle", { hasText: "زينب كاظم جواد" }).click();
+  const teacherRow = page.locator(".ui-expandable.is-expanded");
+  await teacherRow.getByRole("group", { name: teachers.offDays }).getByText(school.scheduleStructure.days.thursday).click();
+  await teacherRow.getByLabel(`${teachers.limits} ${teachers.maxPerDay}`).fill("7");
+  await teacherRow.getByRole("button", { name: teachers.save }).click();
+  await expect(teacherRow.getByText(messages.errors.MAX_PER_DAY_EXCEEDS_PERIODS)).toBeVisible();
+  await expect(teacherRow.getByLabel(`${teachers.limits} ${teachers.maxPerDay}`)).toBeFocused();
+  await teacherRow.getByLabel(`${teachers.limits} ${teachers.maxPerDay}`).fill("5");
+  await teacherRow.getByText(teachers.fullyReleased).click();
+  await expect(teacherRow.getByLabel(teachers.releaseReason)).toBeVisible();
+  await teacherRow.getByText(teachers.fullyReleased).click();
+  await expectNoSeriousA11yViolations(page, "teacher details in place");
+  await teacherRow.getByRole("button", { name: teachers.save }).click();
   await expect(page.getByRole("status").filter({ hasText: teachers.saved })).toBeVisible();
 
   await page.getByRole("button", { name: teachers.bulkAdd }).click();
-  const bulkDialog = page.getByRole("dialog", { name: teachers.bulkTitle });
-  await bulkDialog.getByLabel(teachers.bulkNames).fill("حسن علي مهدي\nزينب كاظم جواد\n\nمريم عباس");
-  await bulkDialog.getByRole("button", { name: teachers.bulkPreview }).click();
-  await expect(bulkDialog.getByText(teachers.bulkStatuses.exists)).toBeVisible();
+  const bulkPanel = page.locator(".bulk-panel");
+  await bulkPanel.getByLabel(teachers.bulkNames).fill("حسن علي مهدي\nزينب كاظم جواد\n\nمريم عباس");
+  await bulkPanel.getByRole("button", { name: teachers.bulkPreview }).click();
+  await expect(bulkPanel.getByText(teachers.bulkStatuses.exists)).toBeVisible();
   await expectNoSeriousA11yViolations(page, "bulk add preview");
-  await bulkDialog.getByRole("button", { name: teachers.bulkSave("2") }).click();
+  await bulkPanel.getByRole("button", { name: teachers.bulkSave("2") }).click();
   await expect(page.getByRole("status").filter({ hasText: teachers.bulkSaved("2") })).toBeVisible();
-  await expect(page.getByRole("cell", { name: "حسن علي", exact: true })).toBeVisible();
+  await expect(page.locator(".ui-expandable-toggle", { hasText: "حسن علي مهدي" })).toBeVisible();
   await expectNoSeriousA11yViolations(page, "teachers");
+  await expectNoLatinText(page, "teachers", ["owner"]);
   await expectBreakpointScreenshots(page, "teachers");
 
   // Academic calendar (2F): an entry outside the current year is saved with a warning; the month view shows it.
@@ -188,18 +206,24 @@ test("the whole setup checklist completes end to end; stale edits are caught", a
   await page.getByRole("button", { name: calendar.add }).first().click();
   const dayDialog = page.getByRole("dialog", { name: calendar.add });
   await dayDialog.getByLabel(calendar.titleField).fill("عطلة صيفية");
-  await dayDialog.getByLabel(calendar.startDate).fill("2027-07-10");
+  await expectCenteredDialog(page, dayDialog, "calendar day dialog");
+  await fillDate(dayDialog, calendar.startDate, "2027-07-10");
   await dayDialog.getByRole("button", { name: calendar.save }).click();
   await expect(page.getByText(calendar.savedOutside)).toBeVisible();
   await page.getByRole("button", { name: calendar.add }).first().click();
   const secondDialog = page.getByRole("dialog", { name: calendar.add });
   await secondDialog.getByLabel(calendar.titleField).fill("يوم المعلم");
-  await secondDialog.getByLabel(calendar.startDate).fill("2027-03-01");
+  await fillDate(secondDialog, calendar.startDate, "2027-03-01");
   await secondDialog.getByLabel(calendar.kind).selectOption("specialDay");
   await secondDialog.getByRole("button", { name: calendar.save }).click();
   await expect(page.getByRole("status").filter({ hasText: calendar.saved })).toBeVisible();
   await expect(page.getByText(calendar.outsideYear)).toBeVisible();
+  await page.getByLabel(calendar.titleField, { exact: true }).fill("يوم الشهيد");
+  await fillDate(page, calendar.quickDate, "2026-12-01");
+  await page.getByRole("button", { name: calendar.addButton, exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: calendar.quickAdded })).toBeVisible();
   await expectNoSeriousA11yViolations(page, "calendar list");
+  await expectNoLatinText(page, "calendar", ["owner"]);
   await page.getByRole("button", { name: calendar.monthView }).click();
   for (let step = 0; step < 5; step++) await page.getByRole("button", { name: calendar.nextMonth }).click();
   await expect(page.getByRole("button", { name: "يوم المعلم" })).toBeVisible();
@@ -216,16 +240,31 @@ test("the whole setup checklist completes end to end; stale edits are caught", a
   await goToSection(page, school.nav.academicYears);
   await page.getByRole("button", { name: school.years.add }).first().click();
   const nextYear = page.getByRole("dialog", { name: school.years.add });
-  await nextYear.getByLabel(school.years.label).fill("2027-2028");
-  await nextYear.getByLabel(school.years.startDate).fill("2027-09-01");
-  await nextYear.getByLabel(school.years.endDate).fill("2028-06-30");
-  await nextYear.getByLabel(school.years.copyFrom).selectOption({ label: "2026-2027" });
+  await nextYear.getByLabel(school.years.label).fill("2027 - 2028");
+  await fillDate(nextYear, school.years.startDate, "2027-09-01");
+  await fillDate(nextYear, school.years.endDate, "2028-06-30");
+  await nextYear.getByLabel(school.years.copyFrom).selectOption({ index: 1 }); // the only existing year
   await nextYear.getByRole("button", { name: school.years.save }).click();
   await expect(page.getByRole("status").filter({ hasText: school.years.saved })).toBeVisible();
+  await expectYearInOrder(page.getByRole("table", { name: school.nav.academicYears }), "2027", "2028");
   await goToSection(page, school.nav.stagesSections);
-  await page.getByLabel(stages.year).selectOption({ label: "2027-2028" });
+  await page.getByLabel(stages.year).selectOption({ index: 0 }); // newest year first
   await expect(page.getByRole("cell", { name: "الأول المتوسط", exact: true })).toBeVisible();
   await expect(page.getByRole("cell", { name: "30", exact: true })).toBeVisible();
+
+  // No drawers (spec 2.5 §2.4): on a phone the menu opens in the page flow, never as a dialog or fixed panel.
+  await page.setViewportSize({ width: 375, height: 800 });
+  const menuButton = page.getByRole("button", { name: school.nav.openMenu });
+  await menuButton.click();
+  const mobileMenu = page.locator(".app-mobile-menu");
+  await expect(mobileMenu).toBeVisible();
+  expect(await mobileMenu.evaluate((element) => getComputedStyle(element).position)).toBe("static");
+  await expect(page.locator("dialog[open]")).toHaveCount(0);
+  await expectNoSeriousA11yViolations(page, "mobile menu");
+  await page.keyboard.press("Escape");
+  await expect(mobileMenu).toHaveCount(0);
+  await expect(menuButton).toBeFocused();
+  await page.setViewportSize({ width: 1280, height: 900 });
 
   // Lock screen keeps the username and asks only for the password.
   await openUserMenuItem(page, school.shell.lock);

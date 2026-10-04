@@ -2,6 +2,7 @@ import { Save, X } from "lucide-react";
 import { useId, useState, type FormEvent } from "react";
 import { ConflictAlert } from "../../components/ConflictAlert";
 import { SelectField } from "../../components/SelectField";
+import { DateField } from "../../components/DateField";
 import { TextField } from "../../components/TextField";
 import { Alert } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
@@ -72,8 +73,8 @@ export function CalendarDayDialog({ open, day, defaultDate, onClose, onSaved, on
         <Alert tone="error" message={feedback.error} />
         <TextField id="calendarTitle" label={text.titleField} defaultValue={day?.title ?? ""} maxLength={120} required field="Title" errors={feedback.fieldErrors} />
         <div className="form-grid">
-          <TextField id="calendarStart" type="date" label={text.startDate} defaultValue={day?.startDate ?? defaultDate ?? ""} required field="StartDate" errors={feedback.fieldErrors} />
-          <TextField id="calendarEnd" type="date" label={text.endDate} hint={text.endDateHint} defaultValue={day && day.endDate !== day.startDate ? day.endDate : ""} field="EndDate" errors={feedback.fieldErrors} />
+          <DateField id="calendarStart" label={text.startDate} defaultValue={day?.startDate ?? defaultDate ?? ""} required field="StartDate" errors={feedback.fieldErrors} />
+          <DateField id="calendarEnd" label={text.endDate} hint={text.endDateHint} defaultValue={day && day.endDate !== day.startDate ? day.endDate : ""} field="EndDate" errors={feedback.fieldErrors} />
         </div>
         <SelectField id="calendarKind" label={text.kind} options={kindOptions} defaultValue={day?.kind ?? "officialHoliday"} required field="Kind" errors={feedback.fieldErrors} />
         <Checkbox checked={affects} onChange={(event) => setAffects(event.target.checked)}>{text.affectsSchedule}</Checkbox>

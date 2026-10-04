@@ -40,7 +40,7 @@ describe("formatting helper", () => {
   });
 
   it("isolates user values embedded in Arabic sentences", () => {
-    expect(isolate("2026-2027")).toBe("⁨2026-2027⁩");
-    expect(messages.school.years.termsOf("2026-2027")).toContain("⁨2026-2027⁩");
+    expect(isolate("2026-2027")).toBe("⁨⁦2026-2027⁩⁩"); // first-strong isolate around an LTR range
+    expect(messages.school.years.termsOf("2026 - 2027")).toContain("⁦2026 - 2027⁩");
   });
 });

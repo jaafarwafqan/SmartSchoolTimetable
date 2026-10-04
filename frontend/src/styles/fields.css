@@ -1,0 +1,101 @@
+/* Phase 2.5 primitives: segmented date/time fields, route tabs, LTR runs. Tokens and logical properties only. */
+
+.ui-ltr {
+  unicode-bidi: isolate;
+  direction: ltr;
+}
+
+.ui-segmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-block-size: var(--control-height-md);
+  padding-inline: 0.5rem;
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.ui-segmented:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.ui-segmented:has([aria-invalid="true"]) {
+  border-color: var(--color-danger);
+}
+
+.ui-segment {
+  padding-block: 0.25rem;
+  padding-inline: 0.125rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-ink);
+  font-size: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.ui-segment:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+  background: var(--color-primary-soft);
+}
+
+.ui-segment-2 {
+  inline-size: 2.25rem;
+}
+
+.ui-segment-4 {
+  inline-size: 3.75rem;
+}
+
+.ui-segment-separator {
+  color: var(--color-ink-subtle);
+}
+
+@media (pointer: coarse) {
+  .ui-segmented {
+    min-block-size: var(--touch-target-min);
+  }
+}
+
+.ui-tabs ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  border-block-end: 1px solid var(--color-line);
+  list-style: none;
+}
+
+.ui-tab {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--control-height-md);
+  padding-inline: 0.875rem;
+  border-block-end: 3px solid transparent;
+  color: var(--color-ink-muted);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.ui-tab:hover {
+  color: var(--color-ink);
+  background: var(--color-surface-muted);
+}
+
+.ui-tab.is-active {
+  border-block-end-color: var(--color-primary);
+  color: var(--color-primary-ink);
+}
+
+.user-menu-role {
+  font-weight: 600;
+}
+
+.user-menu-name {
+  color: var(--color-ink-muted);
+}
