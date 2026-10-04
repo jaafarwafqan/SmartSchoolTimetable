@@ -89,7 +89,7 @@ Acceptance:
 | 2C | Stages and sections | `phase-2c` |
 | 2D | Subjects | `phase-2d` |
 | 2E | Teachers | `phase-2e` |
-| 2F | Calendar, demo seed, hardening, docs, full E2E, owner test script | `phase-2f`, then `phase-2` |
+| 2F | Calendar, demo seed, hardening, docs, full E2E, owner test script | `phase-2f`, then `phase-2-final` |
 
 Each checkpoint is one commit with a green build and tests, plus updated docs and CHANGELOG. Decisions taken without the owner are listed in `docs/DECISIONS_PENDING.md`.
 

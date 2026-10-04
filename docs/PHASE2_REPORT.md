@@ -56,7 +56,7 @@ The owner's edits were committed unchanged first, as `e1e67ec` "Owner manual cha
 | `phase-2c` | `e593d8e` | Stages and sections with weekly capacity and archive rules. Rebuilt 2B and 2C screens. A test for undefined CSS variables. E2E through 2C. |
 | `phase-2d` | `9c76bd6` | Subjects (palette colours only, priority, flags, notes). Schedule grid. A keyboard blocked-periods grid. Textarea and colour picker on `/design`. |
 | `phase-2e` | `e21769f` | Teachers: off days, blocked periods, full release, limits checked against the grid, bulk add with a preview, archive. |
-| `phase-2f` / `phase-2` | this commit | Academic calendar (list and month view, out-of-year warning). `--seed-demo-data`. Copy-structure option in the new-year dialog. ADR 0019. Owner test script. This report. |
+| `phase-2f` (`958a09c`) / `phase-2-final` | `958a09c` plus housekeeping | Academic calendar (list and month view, out-of-year warning). `--seed-demo-data`. Copy-structure option in the new-year dialog. ADR 0019. Owner test script. This report. |
 
 ## 4. Verification (final run)
 - **`dotnet build .\SmartSchoolTimetable.sln -c Release --no-incremental`:** 0 warnings, 0 errors (warnings are errors).
@@ -141,3 +141,10 @@ npm.cmd --prefix .\frontend run dev
 - `temp_check/`: a scratch folder.
 
 All three are excluded from every commit, as instructed.
+
+## 9. After the report (2026-10-04)
+- **Tag rename:** the final tag `phase-2` had the same name as the branch, so Git called the name "ambiguous". It is renamed to `phase-2-final`; `phase-2` now names only the branch.
+- **`.gitignore`:** now ignores `design-system/`, a folder third-party design skills regenerate (it reappeared after Phase 1.4 deleted it), and all `*.db`, `-wal`, `-shm` and `-journal` files.
+- **Zip archive:** `..\SmartSchoolTimetable-phase2.zip` was created from commit `958a09c` (448 files; no databases or ignored folders).
+- **Not merged:** waiting for the owner's acceptance.
+

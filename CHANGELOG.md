@@ -1,7 +1,7 @@
 # Changelog
 
 ## [Unreleased]
-### Phase 2F - academic calendar, demo data, final docs (tags `phase-2f`, `phase-2`)
+### Phase 2F - academic calendar, demo data, final docs (tags `phase-2f`, `phase-2-final`)
 - **Academic calendar** (التقويم الدراسي):
   - One day or a date range, a title, a kind and an "affects schedule" flag.
   - A list view and a month view (weeks start on the school's week start day).

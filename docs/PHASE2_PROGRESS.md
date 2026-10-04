@@ -3,7 +3,7 @@
 Updated after every commit. A new session should read this file first.
 
 - **Branch:** `phase-2` (never commit to `master`).
-- **Last green tag:** `phase-2` (also `phase-2f`).
+- **Last green tag:** `phase-2-final` (also `phase-2f`). The final tag was renamed from `phase-2`, which clashed with the branch name.
 - **Checkpoint in progress:** none. Phase 2 is complete and awaits owner acceptance. Do not start Phase 3.
 - **Spec:** `docs/PHASE_2_SPEC.md`. Owner review: `docs/OWNER_CHANGES_REVIEW.md`. Decisions: `docs/DECISIONS_PENDING.md` (#1–#15).
 
@@ -22,7 +22,7 @@ Updated after every commit. A new session should read this file first.
 | 2C + quality gate | `phase-2c` (`e593d8e`) | Rebuilt 2B/2C screens, CSS variable test, E2E through stages and sections |
 | 2D | `phase-2d` (`9c76bd6`) | Subjects, schedule grid, blocked-periods grid, colour picker, textarea |
 | 2E | `phase-2e` (`e21769f`) | Teachers with constraints, bulk add with preview |
-| 2F | `phase-2f`, `phase-2` | Calendar, demo data, year copy in UI, ADR 0019, owner test script, report |
+| 2F | `phase-2f`, `phase-2-final` | Calendar, demo data, year copy in UI, ADR 0019, owner test script, report |
 
 Last verified state:
 - .NET: 108 tests passed.
