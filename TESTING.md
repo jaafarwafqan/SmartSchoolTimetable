@@ -72,6 +72,12 @@ Checkpoint 2B:
 - Playwright (4): all Phase 1/2A end-to-end tests pass; no Phase 2B browser setup journey or axe screen coverage has been added yet.
 - `dotnet ef migrations has-pending-model-changes` reports no pending changes after `20261003200446_Phase2BTimetableStructure`.
 
+Checkpoint 2C (after the owner-change review):
+- .NET (95): adds `Phase2/StagesSectionsTests.cs` (weekly capacity rule, archive/restore/copy, service rules for duplicates, archive, delete, `STAGE_ARCHIVED`, save-failure mapping, paging and search, year copy linking sections to their copied stage and shift, shift delete in use, protected routes without session, Origin or launch token).
+- Coverage: Domain 97.7% and Application 94.1% of lines.
+- Vitest (46): adds `periodRows.test.ts` (row-level API errors, lesson numbering, new rows), tone names matching the API, and `styles/customProperties.test.ts`, which fails when CSS uses an undefined `var(--x)`.
+- Playwright (4): `phase2-school.spec.ts` now also creates a shift, checks generator validation, shows a row-level overlap error, saves generated periods, adds a stage and a section (capacity 30 = 5 days × 6 lessons), runs axe on both screens, and records period screenshots at 375/768/1024/1440.
+
 ## Later-phase acceptance suites
 - Phase 4 infeasibility test must construct a conflict involving two teachers, a shared lab, and a blocked period; the diagnostic must identify the conflict groups and actionable correction, not merely report infeasible.
 - Large solver-risk comparison uses the same independently verified feasible 40-section/54-teacher workload and records status, first-solution/total time, objective/bound, memory method, and independently checked hard constraints for baseline, two-stage, decomposition, and hints.

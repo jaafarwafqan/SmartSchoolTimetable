@@ -44,12 +44,12 @@ Migration `20261003183255_Phase2ASchoolProfileAndAcademicYears` was generated wi
 Migration `20261003200446_Phase2BTimetableStructure` (local `dotnet-ef`, with Designer file) adds:
 - `WorkingWeek` singleton (`Id` = 1): weekday bit mask, week start day, concurrency version. Startup seeds Sunday–Thursday and Sunday week start.
 - `BellSettings` singleton (`Id` = 1): built-in tone name, break bell flag, concurrency version. Startup seeds the Classic tone.
-- `Shifts`: academic year FK (cascade), display name and normalized name, order and version; unique normalized name and display order per year.
+- `Shifts`: academic year FK (cascade), display name and normalized name, order and version; unique normalized name per year; display order is indexed but not unique (migration `Phase2CDisplayOrderIndexes`).
 - `LessonPeriods` owned by a shift: row position, lesson/break kind, start/end time, per-period start/end bell flags. Position is unique within a shift.
 - Period generator output is transient and editable until saved. No calendar days are copied with year structure.
 
 Migration `20261003205228_Phase2CStagesSections` adds:
-- `Stages`: academic-year FK (cascade), display and normalized name, display order, archive timestamp and version; normalized name and display order are each unique within a year.
+- `Stages`: academic-year FK (cascade), display and normalized name, display order, archive timestamp and version; normalized name is unique per year; display order is indexed but not unique since `20261004060745_Phase2CDisplayOrderIndexes` (DECISIONS_PENDING #10).
 - `Sections`: stage FK and shift FK (both restrictive), display and normalized label, optional student count, archive timestamp and version; normalized label is unique within its stage.
 - A section's weekly capacity is computed from the singleton working-week day count and its shift's lesson count, excluding breaks. It is not persisted, so changes in either source appear immediately.
 

@@ -1,0 +1,96 @@
+/* Timetable structure (2B) and stages/sections (2C) screens. Tokens and logical properties only. */
+
+.year-picker-empty {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: start;
+}
+
+.weekday-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.weekday-grid legend {
+  margin-block-end: 0.5rem;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-ink-muted);
+}
+
+.card-note {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-ink-subtle);
+}
+
+.list-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.periods-editor {
+  display: grid;
+  gap: 1rem;
+  padding-block-start: 1rem;
+  border-block-start: 1px solid var(--color-line);
+}
+
+.period-list {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.period-row {
+  display: grid;
+  grid-template-columns: auto minmax(6rem, 8rem) minmax(6rem, 1fr) minmax(6rem, 1fr) auto auto auto;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.period-row:has([aria-invalid="true"]) {
+  border-color: var(--color-danger);
+}
+
+.period-row-number {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.period-row-error {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+@media (max-width: 1279px) {
+  .period-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .period-row-number {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 479px) {
+  .period-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

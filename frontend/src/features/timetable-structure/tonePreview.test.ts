@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { previewTone } from "./tonePreview";
+import { previewTone, tonePatterns } from "./tonePreview";
 
 describe("bell tone preview", () => {
   afterEach(() => vi.restoreAllMocks());
@@ -28,10 +28,15 @@ describe("bell tone preview", () => {
       return 1;
     }) as typeof window.setTimeout);
 
-    await previewTone("Chime");
+    await previewTone("chime");
 
     expect(context.createOscillator).toHaveBeenCalledTimes(3);
     expect(oscillator.start).toHaveBeenCalledTimes(3);
     expect(context.close).toHaveBeenCalledOnce();
+  });
+
+  it("has a pattern for every tone the API accepts (camelCase names)", () => {
+    expect(Object.keys(tonePatterns).sort()).toEqual(["beeps", "chime", "classic", "soft"]);
+    expect(tonePatterns.beeps).toContain(0);
   });
 });

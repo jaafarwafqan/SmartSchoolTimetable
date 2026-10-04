@@ -1,6 +1,27 @@
 # Changelog
 
 ## [Unreleased]
+### Phase 2C - stages and sections, owner-change review, quality gate (tag `phase-2c`, branch `phase-2`)
+- **Owner changes kept and corrected** (details in `docs/OWNER_CHANGES_REVIEW.md`):
+  - Year-scoped stages and sections with soft archive, as the owner designed them.
+  - Validation now lives only in the Domain; duplicate-name races return `DUPLICATE_NAME`.
+  - Weekly capacity is computed by `Section.WeeklyCapacity`, with no N+1 queries.
+  - Hard delete is allowed for unreferenced stages, sections and shifts.
+  - New error code `STAGE_ARCHIVED`.
+  - The year copy links sections to the copies of their own stage and shift.
+- **Screens rebuilt on the design system:**
+  - الدوام والحصص والجرس: working days with a week-start setting, a shifts table with edit and delete, a period editor (add, remove and re-kind rows, errors shown on each row), a generator dialog, and bell settings with a test sound.
+  - المراحل والشعب: stage and section tables, add/edit dialogs, archive and restore, confirmed delete, and the computed capacity.
+- **Fixes:**
+  - Bell tones used `Classic` in the UI while the API sends `classic`, so the select and the test sound failed.
+  - Undefined CSS variables; a new test now blocks them.
+  - Duplicate React keys made the shifts card render twice.
+  - "Saved" messages were lost when components remounted.
+- **Data:**
+  - The 2C migration moved into `Migrations/`, with its ID unchanged.
+  - Display-order indexes are no longer unique (`Phase2CDisplayOrderIndexes`).
+- **Tests:** .NET 95, Vitest 46, Playwright 4. Line coverage: Domain 97.7%, Application 94.1%.
+
 ### Phase 2B - الدوام والحصص والجرس (tag `phase-2b`, branch `phase-2`)
 - Added ISO weekday configuration with Sunday–Thursday defaults, version checks and audit entries.
 - Added year-scoped shifts and editable lesson/break periods, validated and copied when a new year copies its structure.

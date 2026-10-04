@@ -1,4 +1,4 @@
-﻿# Local API Design
+# Local API Design
 
 ## Boundary
 - The API is a private implementation detail of the local application, bound only to `127.0.0.1`.
@@ -35,7 +35,7 @@ Every failure returns `{ "code": string, "correlationId": string, "errors": [{ "
 | 403 | `INVALID_ORIGIN`, `INVALID_LAUNCH_TOKEN`, `REQUEST_FORBIDDEN`, `SETUP_REQUIRED` |
 | 404 | `NOT_FOUND` |
 | 405 | `METHOD_NOT_ALLOWED` |
-| 409 | `SETUP_ALREADY_COMPLETE`, `RECOVERY_MISSING`, `CONFLICT` (stale `version`), `RECORD_IN_USE`, `CURRENT_YEAR_REQUIRED` |
+| 409 | `SETUP_ALREADY_COMPLETE`, `RECOVERY_MISSING`, `CONFLICT` (stale `version`), `RECORD_IN_USE`, `CURRENT_YEAR_REQUIRED`, `YEAR_STRUCTURE_IN_USE`, `STAGE_ARCHIVED` |
 | 413 | `PAYLOAD_TOO_LARGE` (request body over the endpoint limit) |
 | 415 | `UNSUPPORTED_MEDIA_TYPE` |
 | 422 | `VALIDATION_FAILED` (with field codes `REQUIRED`, `USERNAME_TOO_SHORT`, `USERNAME_TOO_LONG`, `PASSWORD_TOO_SHORT`, `PASSWORD_TOO_LONG`, `PASSWORD_MISMATCH`, `INVALID_INACTIVITY_TIMEOUT`; Phase 2: `VALUE_TOO_LONG`, `VALUE_OUT_OF_RANGE`, `INVALID_OPTION`, `INVALID_DATE`, `INVALID_TIME`, `INVALID_DATE_RANGE`, `DUPLICATE_NAME`, `TERM_OUTSIDE_YEAR`, `TERMS_OVERLAP`, `INVALID_TIME_RANGE`, `PERIODS_OVERLAP`, `PERIODS_NOT_ASCENDING`, `NO_LESSON_PERIODS`, `TOO_MANY_PERIODS`, `NO_WORKING_DAYS`, `BLOCKED_PERIOD_INVALID`, `MAX_PER_DAY_EXCEEDS_PERIODS`, `MAX_PER_WEEK_EXCEEDS_CAPACITY`, `SHIFT_NOT_IN_YEAR`, `ASSET_TOO_LARGE`, `ASSET_TYPE_NOT_ALLOWED`, `ASSET_TYPE_MISMATCH`), `INVALID_USERNAME`, `INVALID_PASSWORD` |
@@ -87,6 +87,7 @@ Every route below requires the owner session (401 `UNAUTHENTICATED`). Editable r
 | GET | `/academic-years/{yearId}/shifts?search=&sort=&page=&pageSize=` | sort: `name`, `-name`, `order`, `-order` | 200 paged shifts with periods | 401, 404 |
 | POST | `/academic-years/{yearId}/shifts` | `{ name, displayOrder, version: 0 }` | 201 shift | 401, 404, 409, 422 |
 | PUT | `/academic-years/{yearId}/shifts/{id}` | `{ name, displayOrder, version }` | 200 shift | 401, 404, 409, 422 |
+| DELETE | `/academic-years/{yearId}/shifts/{id}?version=` | — | 204 | 401, 404, 409 `CONFLICT`, 409 `RECORD_IN_USE` while a section (archived included) uses the shift |
 | PUT | `/academic-years/{yearId}/shifts/{id}/periods` | `{ periods: [{ kind, startTime, endTime, startBell, endBell }], version }` | 200 shift | 401, 404, 409, 422 (`NO_LESSON_PERIODS`, `TOO_MANY_PERIODS`, `PERIODS_OVERLAP`, `PERIODS_NOT_ASCENDING`, `INVALID_TIME_RANGE`) |
 | POST | `/academic-years/{yearId}/shifts/generate-periods` | `{ firstStartTime, lessonMinutes, lessonCount, breakMinutes, breakAfterLesson }` | 200 editable period drafts; does not save | 401, 422 |
 | GET | `/bell-settings` | — | 200 `{ tone, breakBell, version }` | 401 |
@@ -94,12 +95,16 @@ Every route below requires the owner session (401 `UNAUTHENTICATED`). Editable r
 | GET | `/academic-years/{yearId}/stages?search=&sort=&page=&pageSize=&includeArchived=` | paged stage list; default excludes archived rows | 200 `{ items, total, page, pageSize }` | 401 |
 | POST | `/academic-years/{yearId}/stages` | `{ name, displayOrder, version: 0 }` | 201 stage | 401, 404, 409, 422 `DUPLICATE_NAME` |
 | PUT | `/academic-years/{yearId}/stages/{id}` | `{ name, displayOrder, version }` | 200 stage | 401, 404, 409, 422 |
+| DELETE | `/academic-years/{yearId}/stages/{id}?version=` | — | 204 | 401, 404, 409 `CONFLICT`, 409 `RECORD_IN_USE` while the stage has sections (archive it instead) |
 | POST | `/academic-years/{yearId}/stages/{id}/archive` | `{ version }` | 200 archived stage | 401, 404, 409 `RECORD_IN_USE` if active sections exist |
 | POST | `/academic-years/{yearId}/stages/{id}/restore` | `{ version }` | 200 restored stage | 401, 404, 409 |
 | GET | `/academic-years/{yearId}/stages/{stageId}/sections?search=&sort=&page=&pageSize=&includeArchived=` | paged sections with computed `weeklyCapacity` | 200 | 401, 404 |
 | POST | `/academic-years/{yearId}/stages/{stageId}/sections` | `{ label, shiftId, studentCount?, version: 0 }` | 201 section | 401, 404, 422 (`DUPLICATE_NAME`, `SHIFT_NOT_IN_YEAR`) |
 | PUT | `/academic-years/{yearId}/stages/{stageId}/sections/{id}` | `{ label, shiftId, studentCount?, version }` | 200 section | 401, 404, 409, 422 |
+| DELETE | `/academic-years/{yearId}/stages/{stageId}/sections/{id}?version=` | — | 204 | 401, 404, 409 `CONFLICT` |
 | POST | `/academic-years/{yearId}/stages/{stageId}/sections/{id}/archive` or `/restore` | `{ version }` | 200 section | 401, 404, 409 |
+
+Creating a section in an archived stage, or restoring a section of an archived stage, returns 409 `STAGE_ARCHIVED`. Display order is a sort key; equal orders are allowed and sort by name. Duplicate names (after Arabic normalization) return 422 `DUPLICATE_NAME` on the name/label field. Audit events: `ShiftCreated/Updated/Deleted`, `ShiftPeriodsUpdated`, `WorkingWeekUpdated`, `BellSettingsUpdated`, `StageCreated/Updated/Archived/Restored/Deleted`, `SectionCreated/Updated/Archived/Restored/Deleted`.
 
 Audit events: `SchoolProfileUpdated`, `SchoolAssetUploaded`, `SchoolAssetRemoved`, `AcademicYearCreated`, `AcademicYearUpdated`, `AcademicYearDeleted`, `AcademicYearMadeCurrent`, `TermCreated`, `TermUpdated`, `TermDeleted`, `TermMadeCurrent`.
 

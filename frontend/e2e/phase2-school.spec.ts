@@ -13,6 +13,8 @@ import {
 // Phase 2 end-to-end flow against the real API and a temporary database (checkpoint 2A scope).
 const server = new ApiServer();
 const school = messages.school;
+const structure = school.scheduleStructure;
+const stages = school.stagesSections;
 const password = "Phase2-Owner-1";
 const schoolName = "إعدادية النور للبنات";
 
@@ -26,7 +28,7 @@ test.afterAll(async () => {
   await server.stop();
 });
 
-test("school profile, years and terms complete the checklist; stale edits are caught", async ({ page, context }) => {
+test("profile, years, structure, stages and sections complete the checklist; stale edits are caught", async ({ page, context }) => {
   await setupOwner(page, server.baseUrl, "owner", password);
   await expect(page.locator(".checklist-label", { hasText: school.dashboard.steps.schoolProfile })).toBeVisible();
   await expect(page.getByRole("link", { name: new RegExp(school.dashboard.openStep) }).first()).toBeVisible();
@@ -88,10 +90,50 @@ test("school profile, years and terms complete the checklist; stale edits are ca
   await expect(page.locator(".app-topbar")).toContainText("الفصل الأول");
   await expectNoSeriousA11yViolations(page, "academic years");
 
+  // Timetable structure (2B): a shift, generator validation, a row-level overlap error, then a valid save.
+  await goToSection(page, school.nav.scheduleStructure);
+  await page.getByRole("button", { name: structure.addShift }).first().click();
+  const shiftDialog = page.getByRole("dialog", { name: structure.addShift });
+  await shiftDialog.getByLabel(structure.shiftName).fill("صباحي");
+  await shiftDialog.getByRole("button", { name: structure.saveShift }).click();
+  await expect(page.getByRole("status").filter({ hasText: structure.shiftSaved })).toBeVisible();
+  await page.getByRole("button", { name: structure.generate }).click();
+  const generator = page.getByRole("dialog", { name: structure.generate });
+  await generator.getByLabel(structure.lessonCount).fill("13");
+  await generator.getByRole("button", { name: structure.createList }).click();
+  await expect(generator.getByText(messages.errors.VALUE_OUT_OF_RANGE)).toBeVisible();
+  await generator.getByLabel(structure.lessonCount).fill("6");
+  await generator.getByRole("button", { name: structure.createList }).click();
+  await expect(page.locator(".period-row")).toHaveCount(7);
+  const secondStart = page.getByLabel(`${structure.startTime} - ${structure.rowLabel("2")}`);
+  await secondStart.fill("08:10");
+  await page.getByRole("button", { name: structure.savePeriods }).click();
+  await expect(page.locator(".period-row-error")).toContainText(messages.errors.PERIODS_OVERLAP);
+  await secondStart.fill("08:45");
+  await page.getByRole("button", { name: structure.savePeriods }).click();
+  await expect(page.getByRole("status").filter({ hasText: structure.periodsSaved })).toBeVisible();
+  await expectNoSeriousA11yViolations(page, "timetable structure");
+  await expectBreakpointScreenshots(page, "periods");
+
+  // Stages and sections (2C): weekly capacity = 5 working days × 6 lessons.
+  await goToSection(page, school.nav.stagesSections);
+  await page.getByRole("button", { name: stages.addStage }).first().click();
+  const stageDialog = page.getByRole("dialog", { name: stages.addStage });
+  await stageDialog.getByLabel(stages.stageName).fill("الأول المتوسط");
+  await stageDialog.getByRole("button", { name: stages.saveStage }).click();
+  await expect(page.getByRole("status").filter({ hasText: stages.stageSaved })).toBeVisible();
+  await page.getByRole("button", { name: stages.addSection }).first().click();
+  const sectionDialog = page.getByRole("dialog", { name: stages.addSection });
+  await sectionDialog.getByLabel(stages.label).fill("أ");
+  await sectionDialog.getByRole("button", { name: stages.saveSection }).click();
+  await expect(page.getByRole("status").filter({ hasText: stages.sectionSaved })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "30", exact: true })).toBeVisible();
+  await expectNoSeriousA11yViolations(page, "stages and sections");
+
   // Dashboard reflects the completed steps and real counts.
   await goToSection(page, school.nav.dashboard);
   await expect(page.getByText(school.dashboard.checklistDone)).toBeVisible();
-  await expect(page.locator(".count-item")).toContainText("1");
+  await expect(page.locator(".count-item")).toHaveText([/1/, /1/, /1/]); // years, stages, sections
   await expectNoSeriousA11yViolations(page, "dashboard (complete)");
   await expectBreakpointScreenshots(page, "dashboard");
 
