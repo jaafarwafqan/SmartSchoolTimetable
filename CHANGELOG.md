@@ -1,6 +1,20 @@
 # Changelog
 
 ## [Unreleased]
+### Phase 2.5E - scenarios, demo data, report (tags `phase-2-5e`, `phase-2-5-final`)
+- **E2E scenarios (a)–(e):**
+  - (b) is a dual-shift ثانوية with branches set up through the wizard.
+  - Screenshots of every wizard step and the curriculum at 375, 768, 1024 and 1440px.
+  - Typed-versus-chosen UX metric: (a) 2 typed, 3 chosen; (b) 2 typed, 9 chosen.
+- **Failure-injection tests** for the wizard's one-transaction steps.
+- **Tests** for a single section's shift change and for archiving a middle section.
+- **Curriculum totals row** stays visible at the bottom of the scrolling table.
+- **Demo data:** an Iraqi secondary school (morning-only and dual-shift), created through the templates.
+  - The first grade has 6 lessons a day.
+  - The sample curriculum includes a repeated subject; every line is marked as a demo number.
+- **Docs:** `docs/OWNER_TEST_SCRIPT_PHASE25.md` (Arabic, 28 steps) and `docs/PHASE25_REPORT.md`.
+- **Tests:** .NET 138, Vitest 73, Playwright 9; coverage Domain 98.7%, Application 95.6%.
+
 ### Phase 2.5 fixes 2 - owner model changes M1–M3 (tag `phase-2-5-fix2`)
 - **M1 editable breaks (ADR 0026):** up to three breaks per shift, each with its own position and duration, plus an optional gap between lessons.
   - Presets only fill the values; the suggested length per school type is 15 minutes, clearly marked as a suggestion.

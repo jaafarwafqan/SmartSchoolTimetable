@@ -184,14 +184,41 @@ export async function expectNoTextOverlap(container: Locator, screen: string): P
         return { element, rect: { left: rect.left, right: rect.right, top: middle - half, bottom: middle + half } };
       });
     });
+    // Text under an opaque layer (a sticky header, column or totals row over scrolled cells) is not visible, so
+    // it cannot overlap visible text; text drawn over text with a transparent background still counts.
+    const covered = (element: Element, rect: { left: number; right: number; top: number; bottom: number }) => {
+      const top = document.elementFromPoint((rect.left + rect.right) / 2, (rect.top + rect.bottom) / 2);
+      if (!top || top === element || element.contains(top) || top.contains(element)) return false;
+      for (let node: Element | null = top; node && !node.contains(element); node = node.parentElement) {
+        const background = getComputedStyle(node).backgroundColor;
+        if (background !== "rgba(0, 0, 0, 0)" && background !== "transparent") return true;
+      }
+      return false;
+    };
+    const visibleBoxes = boxes.filter(({ element, rect }) => !covered(element, rect));
+    // At the centre of an overlap: if an opaque element (not containing the lower text) lies between the two texts
+    // in the paint stack, the lower text is hidden there (e.g. rows scrolling under a sticky totals row).
+    type Box = { left: number; right: number; top: number; bottom: number };
+    const opaque = (node: Element) => !["rgba(0, 0, 0, 0)", "transparent"].includes(getComputedStyle(node).backgroundColor);
+    const hiddenUnderOpaqueLayer = (one: Element, two: Element, a: Box, b: Box) => {
+      const x = (Math.max(a.left, b.left) + Math.min(a.right, b.right)) / 2;
+      const y = (Math.max(a.top, b.top) + Math.min(a.bottom, b.bottom)) / 2;
+      const stack = document.elementsFromPoint(x, y);
+      const indexOf = (target: Element) => stack.findIndex((node) => node === target || target.contains(node));
+      const [first, second] = [indexOf(one), indexOf(two)];
+      if (first < 0 || second < 0) return true; // at least one is not painted there at all
+      const [upper, lower] = first <= second ? [first, two] : [second, one];
+      return stack.slice(upper, Math.max(first, second)).some((node) => !node.contains(lower) && opaque(node));
+    };
     const found: string[] = [];
-    for (let a = 0; a < boxes.length; a++) {
-      for (let b = a + 1; b < boxes.length; b++) {
-        const first = boxes[a];
-        const second = boxes[b];
+    for (let a = 0; a < visibleBoxes.length; a++) {
+      for (let b = a + 1; b < visibleBoxes.length; b++) {
+        const first = visibleBoxes[a];
+        const second = visibleBoxes[b];
         if (first.element === second.element || first.element.contains(second.element) || second.element.contains(first.element)) continue;
         const width = Math.min(first.rect.right, second.rect.right) - Math.max(first.rect.left, second.rect.left);
         const height = Math.min(first.rect.bottom, second.rect.bottom) - Math.max(first.rect.top, second.rect.top);
+        if (width > 1 && height > 1 && hiddenUnderOpaqueLayer(first.element, second.element, first.rect, second.rect)) continue;
         if (width > 1 && height > 1) found.push(`"${first.element.textContent?.trim().slice(0, 30)}" / "${second.element.textContent?.trim().slice(0, 30)}" (${Math.round(width)}x${Math.round(height)})`);
       }
     }

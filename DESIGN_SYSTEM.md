@@ -126,7 +126,7 @@ All UI is built from `frontend/src/components/ui/*`. Raw `<button>`, `<input>`, 
 - **Only the table container scrolls.** Grid and flex children that hold a table get `min-inline-size: 0`; the page never scrolls sideways at 375, 768, 1024 or 1440px (`expectNoPageScrollX`).
 - **Sticky rules:** only `thead` cells stick to the top. A row-header column (`tbody th`) sticks to the inline start with an opaque background. Stacking: corner > header > first column > cells.
 - **Headers wrap** to two lines rather than being cut (minimum column width). They may carry a small second line, such as a stage's weekly capacity.
-- **Totals go in `<tfoot>`:** exactly one cell per column, aligned under it, at most two lines (value, then a status chip with icon + text). Never change a table cell's `display` and never position text absolutely.
+- **Totals go in `<tfoot>`:** exactly one cell per column, aligned under it, at most two lines (value, then a status chip with icon + text). In a table that scrolls vertically, the totals row sticks to the bottom with an opaque background. Never change a table cell's `display` and never position text absolutely.
 - **Numeric input cells are compact** (about 3rem × 2.25rem) so six or more columns fit.
 - **No overlapping text.** Stacked Arabic lines need enough line height (about 1.6–1.8), because the glyph box is taller than a tight line box. `expectNoTextOverlap` checks the line boxes of every visible text in tables, cards and the dashboard.
 - **Counted nouns use `arabicCount`** (`format.count(n, noun)`): «مادة واحدة»، «مادتان»، «٣ مواد»، «١١ مادة». Never write `${number} مادة` in a string; a unit test rejects it.

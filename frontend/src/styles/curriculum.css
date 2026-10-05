@@ -279,9 +279,17 @@
 
 .curriculum-table tfoot td,
 .curriculum-table tfoot th {
+  /* The totals stay visible at the bottom of the scrolling table while typing (opaque, above the cells). */
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 1;
   border-block-start: 2px solid var(--color-line-strong);
   background: var(--color-surface-muted);
   vertical-align: top;
+}
+
+.curriculum-table tfoot th {
+  z-index: 3;
 }
 
 .curriculum-total-box {

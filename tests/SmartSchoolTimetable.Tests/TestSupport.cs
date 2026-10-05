@@ -1,3 +1,4 @@
+using SmartSchoolTimetable.Application.Common;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Json;
@@ -64,10 +65,11 @@ internal sealed class TestHost : IAsyncDisposable
     private readonly string _directory = Path.Combine(Path.GetTempPath(), $"smart-school-tests-{Guid.NewGuid():N}");
     private readonly TestApplicationFactory _factory;
 
-    public TestHost()
+    /// <param name="failures">Optional failure injection: the n-th database save of a request scope throws.</param>
+    public TestHost(SaveFailureInjection? failures = null)
     {
         Directory.CreateDirectory(_directory);
-        _factory = new TestApplicationFactory(DatabasePath);
+        _factory = new TestApplicationFactory(DatabasePath, failures);
         Client = _factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             BaseAddress = LocalOrigin,
@@ -145,7 +147,7 @@ internal sealed class TestHost : IAsyncDisposable
     }
 }
 
-internal sealed class TestApplicationFactory(string databasePath) : WebApplicationFactory<Program>
+internal sealed class TestApplicationFactory(string databasePath, SaveFailureInjection? failures = null) : WebApplicationFactory<Program>
 {
     public CapturingLoggerProvider LogProvider { get; } = new();
 
@@ -171,6 +173,16 @@ internal sealed class TestApplicationFactory(string databasePath) : WebApplicati
 
             services.RemoveAll<ILocalSessionStore>();
             services.AddSingleton<ILocalSessionStore>(_ => new LocalSessionStore(clock));
+
+            if (failures is not null)
+            {
+                // Wrap the real store: its transactions stay real, only the chosen save throws.
+                var real = services.Single(descriptor => descriptor.ServiceType == typeof(IDataStore));
+                services.Remove(real);
+                services.AddSingleton(failures);
+                services.AddScoped<IDataStore>(provider => new FailingDataStore(
+                    (IDataStore)ActivatorUtilities.CreateInstance(provider, real.ImplementationType!), failures));
+            }
 
             services.RemoveAll<ILoginDelay>();
             services.AddSingleton<RecordingLoginDelay>();
@@ -229,4 +241,36 @@ internal sealed class CapturingLoggerProvider : ILoggerProvider
             Func<TState, Exception?, string> formatter) =>
             provider.Add(categoryName, formatter(state, exception));
     }
+}
+
+/// <summary>Failure injection for transaction tests: when armed, the <see cref="FailOnSave"/>-th save throws.</summary>
+internal sealed class SaveFailureInjection
+{
+    private int _saves;
+    public int FailOnSave { get; set; }
+    public int Saves => _saves;
+
+    public void Arm(int failOnSave)
+    {
+        _saves = 0;
+        FailOnSave = failOnSave;
+    }
+
+    public bool ShouldFail() => FailOnSave > 0 && Interlocked.Increment(ref _saves) == FailOnSave;
+}
+
+/// <summary>An <see cref="IDataStore"/> that delegates everything and throws on the armed save (simulated disk error).</summary>
+internal sealed class FailingDataStore(IDataStore inner, SaveFailureInjection failures) : IDataStore
+{
+    public IQueryable<T> Query<T>() where T : class => inner.Query<T>();
+    public void Add<T>(T entity) where T : class => inner.Add(entity);
+    public void Remove<T>(T entity) where T : class => inner.Remove(entity);
+    public Task<List<T>> ListAsync<T>(IQueryable<T> query, CancellationToken cancellationToken) => inner.ListAsync(query, cancellationToken);
+    public Task<T?> FirstOrDefaultAsync<T>(IQueryable<T> query, CancellationToken cancellationToken) => inner.FirstOrDefaultAsync(query, cancellationToken);
+    public Task<int> CountAsync<T>(IQueryable<T> query, CancellationToken cancellationToken) => inner.CountAsync(query, cancellationToken);
+    public Task<bool> AnyAsync<T>(IQueryable<T> query, CancellationToken cancellationToken) => inner.AnyAsync(query, cancellationToken);
+    public Task ExecuteInTransactionAsync(Func<Task> work, CancellationToken cancellationToken) => inner.ExecuteInTransactionAsync(work, cancellationToken);
+
+    public Task SaveChangesAsync(CancellationToken cancellationToken) =>
+        failures.ShouldFail() ? throw new IOException("Injected save failure.") : inner.SaveChangesAsync(cancellationToken);
 }

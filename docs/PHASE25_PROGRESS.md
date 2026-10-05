@@ -4,7 +4,7 @@ Updated after every commit. A new session reads this file first, then `docs/PHAS
 
 - **Branch:** `phase-2-5`, created from `master` at `0c1824a` ("Merge Phase 2"). Never commit to `master`.
 - **Last green tag:** `phase-2-5d`.
-- **In progress:** 2.5E. The owner fixes `phase-2-5-fix1` (B1–B8) and `phase-2-5-fix2` (M1–M3) are done.
+- **Status:** Phase 2.5 is complete: `phase-2-5e` and `phase-2-5-final`. Waiting for the owner's review. Phase 3 has not been started.
 
 ## Baseline (2026-10-04, before any change)
 - Build: 0 warnings.
@@ -18,7 +18,10 @@ Updated after every commit. A new session reads this file first, then `docs/PHAS
 |---|---|---|
 | 2.5A | `phase-2-5a` (`2c0dc5a`) | Build 0 warnings; .NET 110; Vitest 58; Playwright 4; lint clean; line coverage Domain 98.3%, Application 94.8% |
 | 2.5B | `phase-2-5b` (`25840bc`) | .NET 115; Vitest 60; Playwright 4 |
-| 2.5D | `phase-2-5d` | .NET 127; Vitest 66; Playwright 5; coverage Domain 98.7%, Application 95.6% |
+| 2.5E | `phase-2-5e`, `phase-2-5-final` | .NET 138; Vitest 73; Playwright 9; coverage Domain 98.7%, Application 95.6% |
+| fixes 2 | `phase-2-5-fix2` (`12d9d45`) | .NET 133; Vitest 73; Playwright 8 |
+| fixes 1 | `phase-2-5-fix1` (`644ac50`) | .NET 129; Vitest 70; Playwright 7 |
+| 2.5D | `phase-2-5d` (`5889856`) | .NET 127; Vitest 66; Playwright 5; coverage Domain 98.7%, Application 95.6% |
 | 2.5C | `phase-2-5c` (`a610e36`) | .NET 126; Vitest 62; Playwright 4; coverage Domain 98.7%, Application 95.4% |
 
 ## Next

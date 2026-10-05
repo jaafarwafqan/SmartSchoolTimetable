@@ -3,6 +3,7 @@ import { messages } from "../src/i18n/messages";
 import { formatNumber } from "../src/lib/format";
 import { ApiServer } from "./support/apiServer";
 import { expectNoLatinText, expectNoSeriousA11yViolations } from "./support/flows";
+import { UxMeter } from "./support/ux";
 
 // Phase 2.5D: the setup wizard on a temporary database. Scenario (a) of spec 2.5 §7: a morning-only intermediate
 // school with three grades, set up through all seven steps, resumed after leaving, re-applied without changes.
@@ -32,15 +33,16 @@ test("a fresh school is set up through the wizard, resumed and finished", async 
   await page.getByLabel(messages.app.confirmCodeSaved).check();
   await page.getByRole("button", { name: messages.app.continue }).click();
 
-  // After the recovery code the wizard opens at step 1.
+  // After the recovery code the wizard opens at step 1. The UX meter counts the wizard's typed and chosen entries.
+  const ux = new UxMeter("(a) morning-only intermediate school");
   await expect(page.getByRole("heading", { name: wizard.title, level: 1 })).toBeVisible();
   const stepTitle = (step: 1 | 2 | 3 | 4 | 5 | 6 | 7) => page.getByRole("heading", { name: wizard.steps[step], level: 2 });
-  const next = () => page.getByRole("button", { name: wizard.next }).click();
+  const next = () => ux.act(page.getByRole("button", { name: wizard.next }));
   await expect(stepTitle(1)).toBeVisible();
   await next();
   await expect(page.getByText(messages.errors.REQUIRED).first()).toBeVisible(); // name is required
-  await page.getByLabel(wizard.school.name).fill("متوسطة الفرات");
-  await page.getByRole("radio", { name: new RegExp(`^${school.profile.schoolTypes.intermediate}`) }).check();
+  await ux.type(page.getByLabel(wizard.school.name), "متوسطة الفرات");
+  await ux.check(page.getByRole("radio", { name: new RegExp(`^${school.profile.schoolTypes.intermediate}`) }));
   await expect(page.getByRole("radio", { name: new RegExp(wizard.school.modes.morning) })).toBeChecked();
   await expectNoSeriousA11yViolations(page, "wizard step 1");
   await expectNoLatinText(page, "wizard step 1", ["owner"]);
@@ -56,8 +58,8 @@ test("a fresh school is set up through the wizard, resumed and finished", async 
   await expect(stepTitle(3)).toBeVisible();
   await expect(page.getByText(wizard.timing.weekly(number(35)))).toBeVisible();
   await expect(page.getByRole("table", { name: wizard.timing.previewTitle(wizard.timing.shifts.morning) }).getByRole("row")).toHaveCount(9); // header + 7 lessons + 1 break
-  await page.getByText(wizard.timing.perDay).click();
-  await page.getByRole("button", { name: school.scheduleStructure.decreaseFor(school.scheduleStructure.days.thursday) }).click();
+  await ux.choose(page.getByText(wizard.timing.perDay));
+  await ux.choose(page.getByRole("button", { name: school.scheduleStructure.decreaseFor(school.scheduleStructure.days.thursday) }));
   await expect(page.getByText(wizard.timing.weekly(number(34)))).toBeVisible();
   await expectNoSeriousA11yViolations(page, "wizard step 3");
   await expectNoLatinText(page, "wizard step 3", ["owner"]);
@@ -72,23 +74,23 @@ test("a fresh school is set up through the wizard, resumed and finished", async 
   await expect(page.getByRole("navigation", { name: wizard.progressLabel }).locator("[aria-current=step]")).toContainText(wizard.steps[4]);
 
   // Step 4: the intermediate template (three grades, two sections each), applied once; a second preview changes nothing.
-  await page.getByRole("button", { name: templates.preview }).click();
+  await ux.act(page.getByRole("button", { name: templates.preview }));
   await expect(page.locator(".plan-line")).toHaveCount(3);
-  await page.getByRole("button", { name: templates.apply }).click();
+  await ux.act(page.getByRole("button", { name: templates.apply }));
   await expect(page.getByRole("status").filter({ hasText: templates.applied(number(3)) })).toBeVisible();
   await expect(page.locator(".stage-card")).toHaveCount(3);
-  await page.getByRole("button", { name: templates.preview }).click();
+  await ux.act(page.getByRole("button", { name: templates.preview }));
   await expect(page.getByText(templates.noChanges)).toBeVisible();
   await expectNoSeriousA11yViolations(page, "wizard step 4");
   await next();
 
   // Step 5: suggested subjects, then one curriculum cell.
   await expect(stepTitle(5)).toBeVisible();
-  await page.getByRole("button", { name: templates.preview }).click();
-  await page.getByRole("button", { name: templates.apply }).click();
+  await ux.act(page.getByRole("button", { name: templates.preview }));
+  await ux.act(page.getByRole("button", { name: templates.apply }));
   await expect(page.locator(".curriculum-input").first()).toBeVisible();
   const cell = page.locator(".curriculum-input").first();
-  await cell.fill("5");
+  await ux.type(cell, "5");
   await cell.press("Enter");
   await expect(page.getByRole("status").filter({ hasText: school.curriculum.saved })).toBeVisible();
   await expect(page.locator(".curriculum-total").first()).toContainText(school.curriculum.status.under(number(29)));
@@ -97,7 +99,7 @@ test("a fresh school is set up through the wizard, resumed and finished", async 
 
   // Step 6 is optional.
   await expect(stepTitle(6)).toBeVisible();
-  await page.getByRole("button", { name: wizard.skip }).click();
+  await ux.act(page.getByRole("button", { name: wizard.skip }));
 
   // Step 7: real counts and warnings, then finish.
   await expect(stepTitle(7)).toBeVisible();
@@ -106,7 +108,8 @@ test("a fresh school is set up through the wizard, resumed and finished", async 
   await expect(page.locator(".review-warnings > li")).not.toHaveCount(0);
   await expectNoSeriousA11yViolations(page, "wizard step 7");
   await expectNoLatinText(page, "wizard review", ["owner"]);
-  await page.getByRole("button", { name: wizard.finish }).click();
+  await ux.act(page.getByRole("button", { name: wizard.finish }));
+  ux.report();
 
   await expect(page.getByRole("heading", { name: school.nav.dashboard, level: 1 })).toBeVisible();
   await expect(page.getByRole("link", { name: wizard.open })).toHaveCount(0);

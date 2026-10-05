@@ -1,5 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using SmartSchoolTimetable.Application.Calendar;
+using SmartSchoolTimetable.Application.Curriculum;
+using SmartSchoolTimetable.Application.Setup;
 using SmartSchoolTimetable.Application.SchoolSetup;
 using SmartSchoolTimetable.Application.Stages;
 using SmartSchoolTimetable.Application.Subjects;
@@ -10,8 +12,9 @@ namespace SmartSchoolTimetable.Infrastructure.DemoData;
 /// <summary>
 /// <c>--seed-demo-data &lt;new-db-path&gt; [--dual-shift]</c>: creates a SEPARATE database with a fictional Arabic
 /// sample school. It refuses an existing file and the protected paths (the default %LOCALAPPDATA% database and the
-/// configured one), so the owner's real data is never touched. Every record goes through the Application services,
-/// so all Domain rules and audit entries apply. Teacher workload is Phase 3 and is not created.
+/// configured one), so the owner's real data is never touched. Every record goes through the Application services and
+/// templates, so all Domain rules and audit entries apply. The curriculum numbers are marked demo samples; teacher
+/// workload is Phase 3 and is not created.
 /// </summary>
 public static class DemoDataSeeder
 {
@@ -19,6 +22,9 @@ public static class DemoDataSeeder
     public const string RefusedProtectedMessage = "لا يمكن إنشاء البيانات التجريبية في قاعدة البيانات الحقيقية. اختر مساراً منفصلاً.";
     public const string MissingPathMessage = "حدد مسار ملف قاعدة البيانات التجريبية الجديد بعد --seed-demo-data.";
     public const string CompletedMessage = "تم إنشاء قاعدة بيانات تجريبية في:";
+
+    /// <summary>Written on every sample curriculum line: the weekly numbers are for the demo, not official.</summary>
+    public const string CurriculumSampleNote = "رقم تجريبي للعرض فقط، وليس رقماً رسمياً.";
 
     /// <summary>Null when the path may be used; otherwise the Arabic reason for refusing it.</summary>
     public static string? CheckTarget(string? targetPath, IEnumerable<string> protectedPaths)
@@ -52,6 +58,11 @@ public static class DemoDataSeeder
             .AddScoped<SubjectsService>()
             .AddScoped<TeachersService>()
             .AddScoped<CalendarService>()
+            .AddScoped<ShiftModeService>()
+            .AddScoped<StageCardsService>()
+            .AddScoped<SetupTemplatesService>()
+            .AddScoped<CurriculumService>()
+            .AddScoped<CurriculumHelpersService>()
             .AddLocalInfrastructure(fullPath, skipLoginDelay: true);
         await using var provider = services.BuildServiceProvider();
         await LocalInfrastructureRegistration.InitializeLocalDatabaseAsync(provider, cancellationToken);

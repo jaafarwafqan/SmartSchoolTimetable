@@ -196,6 +196,17 @@ Fixes `phase-2-5-fix2` (M1, M2):
   - axe and the overlap guard.
 - Flake fixed: adding a subject while the curriculum's first load was in flight left the table stale; mutations now cancel then refresh (decision #38), and the spec passed 8 runs in a row.
 
+Checkpoint 2.5E:
+- .NET (138):
+  - `Phase25/WizardFailureInjectionTests.cs`: a `FailingDataStore` wraps the real store in `TestHost`. A save that throws in the middle of a wizard step (inside a nested transaction, on a later save, or on the progress record) rolls back the whole step on real SQLite.
+  - `Phase25/SectionEditsTests.cs`: one section moved to the other shift splits the totals; archiving a middle section keeps its label reserved, and the stepper removes only the last active section.
+  - `CalendarAndDemoDataTests`: both demo variants, sample curriculum lines marked as demo, per-stage capacity.
+- Playwright (9):
+  - `phase25-scenarios.spec.ts`: scenario (b) through the wizard, plus (c), (d) and (e), and screenshots of wizard steps 1–7 and the curriculum at four widths (page clock fixed to 2026-10-05).
+  - `phase25-wizard.spec.ts`: scenario (a).
+  - Both print the typed-versus-chosen UX metric (`e2e/support/ux.ts`).
+- `expectNoTextOverlap` ignores text hidden under an opaque layer (for example rows scrolling under the sticky totals row) and still rejects transparent text drawn over text.
+
 ## Later-phase acceptance suites
 - Phase 4 infeasibility test must construct a conflict involving two teachers, a shared lab, and a blocked period; the diagnostic must identify the conflict groups and actionable correction, not merely report infeasible.
 - Large solver-risk comparison uses the same independently verified feasible 40-section/54-teacher workload and records status, first-solution/total time, objective/bound, memory method, and independently checked hard constraints for baseline, two-stage, decomposition, and hints.
