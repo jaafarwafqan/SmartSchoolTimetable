@@ -127,7 +127,7 @@ export function SubjectTemplatePanel({ yearId, format, open = false }: { yearId:
             feedback.reset();
             const name = String(form.get("newSchoolSubject") ?? "").trim();
             if (!name) { feedback.showFieldErrors({ Name: messages.errors.REQUIRED }); return; }
-            save.mutate({ id: null, input: { name, colorIndex: 0, priority: 0, distributionEnabled: true, spreadAcrossDays: false, heavy: false, requiresDoublePeriod: false, blockedPeriods: [], notes: null, version: 0 } }, {
+            save.mutate({ id: null, input: { name, colorIndex: 0, priority: 0, distributionEnabled: true, spreadAcrossDays: false, heavy: false, requiresDoublePeriod: false, blockedPeriods: [], notes: null, requiredResourceId: null, version: 0 } }, {
               onSuccess: () => { element.reset(); feedback.showSuccess(messages.school.subjects.added(name)); },
               onError: feedback.showError,
             });

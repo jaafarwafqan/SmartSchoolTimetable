@@ -1,6 +1,18 @@
 # Changelog
 
 ## [Unreleased]
+### Phase 3B - resources, specializations, scheduling profile (tag `phase-3b`)
+- **«الموارد»** tab under «الصفوف والمنهج» (ADR 0031):
+  - Quick add in one row: name, kind (مختبر، ساحة، قاعة، أخرى) and a capacity stepper. Rows are edited in place; archive and delete are protected.
+  - A subject's row offers «المورد المطلوب» and shows «يتطلب …». A resource required by subjects cannot be archived or deleted (`RESOURCE_IN_USE`); the dialog names the subjects.
+- **Teacher specializations:** subject checkboxes in the teacher editor and a summary badge on the row.
+  - `POST /teachers/{id}/specializations/{subjectId}` adds one subject (used by the 3C warning action).
+  - Deleting a subject removes it from specializations (#53).
+- **«ملف الجدولة»** in a new Settings tab: five soft rules with on/off and a weight (0–100, steps of five), the profile version, and «استعادة الإعدادات الافتراضية» with confirmation. Settings now has the tabs «عام» and «ملف الجدولة» (#55).
+- **Editors** for teachers and subjects say how many blocked periods outside the grid will be removed on save (#56).
+- **Migration** `Phase3BResourcesProfile`; new code `RESOURCE_IN_USE`.
+- **Tests:** .NET 165, Vitest 78, Playwright 14 (the settings screenshots were re-baselined for the new tabs).
+
 ### Phase 3A - hardening (tag `phase-3a`)
 - **Build output is no longer tracked:** `src/SmartSchoolTimetable.Api/wwwroot/` is ignored and removed from the index (the build regenerates it). A new `.gitattributes` normalizes line endings and marks binary files.
 - **Reference protection** (DECISIONS_PENDING #48):

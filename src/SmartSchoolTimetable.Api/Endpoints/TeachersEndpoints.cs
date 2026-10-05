@@ -21,6 +21,8 @@ public static class TeachersEndpoints
             ApiResults.Ok(context, await service.SetArchivedAsync(id, command.Version, true, token)));
         teachers.MapPost("/{id:long}/restore", async (long id, ArchiveCommand command, HttpContext context, TeachersService service, CancellationToken token) =>
             ApiResults.Ok(context, await service.SetArchivedAsync(id, command.Version, false, token)));
+        teachers.MapPost("/{id:long}/specializations/{subjectId:long}", async (long id, long subjectId, AddSpecializationCommand command, HttpContext context, TeachersService service, CancellationToken token) =>
+            ApiResults.Ok(context, await service.AddSpecializationAsync(id, subjectId, command, token)));
         teachers.MapPost("/bulk/preview", async (BulkTeachersCommand command, HttpContext context, TeachersService service, CancellationToken token) =>
             ApiResults.Ok(context, await service.PreviewBulkAsync(command, token)));
         teachers.MapPost("/bulk", async (BulkTeachersCommand command, HttpContext context, TeachersService service, CancellationToken token) =>

@@ -26,7 +26,7 @@ export function describeGroup(group: DependentGroup, action: "delete" | "archive
   const total = action === "archive" ? group.active : group.active + group.archived;
   const counted = group.kind === "curriculumEntry"
     ? `${format.count(total, "line")} ${text.inCurriculum}`
-    : format.count(total, "section");
+    : format.count(total, group.kind);
   // The server lists active dependents first, so an archive notice names only the active ones.
   const shown = group.samples.slice(0, total);
   const hidden = total - shown.length;

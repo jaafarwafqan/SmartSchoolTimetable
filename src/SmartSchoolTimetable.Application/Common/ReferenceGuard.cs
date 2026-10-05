@@ -23,6 +23,7 @@ public static class DependentKinds
 {
     public const string Section = "section";
     public const string CurriculumEntry = "curriculumEntry";
+    public const string Subject = "subject";
 }
 
 /// <summary>One kind of dependent record: how many are active and archived, and a few names to show.</summary>
@@ -59,7 +60,8 @@ public sealed class ReferenceGuard(IDataStore store)
                 await CurriculumAsync(store.Read<CurriculumEntry>().Where(row => row.StageId == id), token)],
             ReferenceKinds.Subject => [await CurriculumAsync(store.Read<CurriculumEntry>().Where(row => row.SubjectId == id), token)],
             ReferenceKinds.Shift => [await SectionsAsync(store.Read<Section>().Where(row => row.ShiftId == id), token)],
-            ReferenceKinds.Teacher or ReferenceKinds.Section or ReferenceKinds.Resource or ReferenceKinds.CurriculumEntry => Array.Empty<DependentGroupDto>(),
+            ReferenceKinds.Resource => [await SubjectsAsync(store.Read<Subject>().Where(row => row.RequiredResourceId == id), token)],
+            ReferenceKinds.Teacher or ReferenceKinds.Section or ReferenceKinds.CurriculumEntry => Array.Empty<DependentGroupDto>(),
             _ => null,
         };
         return groups is null ? null : new ReferenceReportDto(kind, id, groups.Where(group => group.Active + group.Archived > 0).ToArray());
@@ -92,6 +94,14 @@ public sealed class ReferenceGuard(IDataStore store)
             orderby entry.IsArchived, stage.DisplayOrder, subject.NormalizedName
             select new NamedRow(stage.Name + " / " + subject.Name + (entry.Label == null ? "" : " (" + entry.Label + ")"), entry.IsArchived), token);
         return Group(DependentKinds.CurriculumEntry, rows, ErrorCodes.CurriculumInUse);
+    }
+
+    private async Task<DependentGroupDto> SubjectsAsync(IQueryable<Subject> subjects, CancellationToken token)
+    {
+        var rows = await store.ListAsync(
+            subjects.OrderBy(subject => subject.IsArchived).ThenBy(subject => subject.NormalizedName)
+                .Select(subject => new NamedRow(subject.Name, subject.IsArchived)), token);
+        return Group(DependentKinds.Subject, rows, ErrorCodes.ResourceInUse);
     }
 
     private static DependentGroupDto Group(string kind, List<NamedRow> rows, string errorCode) => new(

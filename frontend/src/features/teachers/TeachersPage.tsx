@@ -1,4 +1,5 @@
 import { ListPlus, UsersRound } from "lucide-react";
+import { useSubjects } from "../subjects/subjectsApi";
 import { OrphanBlockedNotice } from "../timetable-structure/OrphanBlockedNotice";
 import { ArchiveBlockedDialog, GuardedDeleteDialog, isReferenceError } from "../../components/References";
 import { useState } from "react";
@@ -39,6 +40,14 @@ export function TeachersPage() {
   const [deleting, setDeleting] = useState<Teacher | null>(null);
   const [archiveBlocked, setArchiveBlocked] = useState<Teacher | null>(null);
   const teachers = useTeachers({ ...filters, pageSize });
+  const subjects = useSubjects({ search: "", page: 1, pageSize: 100, includeArchived: true });
+  const subjectNames = new Map((subjects.data?.items ?? []).map((subject) => [subject.id, subject.name]));
+  /** Up to three subject names, then how many more (Phase 3 §4 teacher card). */
+  const specializationSummary = (ids: number[]) => {
+    const names = ids.map((id) => subjectNames.get(id)).filter((name): name is string => name !== undefined);
+    const shown = names.slice(0, 3).join("، ");
+    return names.length > 3 ? `${shown} ${messages.school.references.more(format.number(names.length - 3))}` : shown;
+  };
   const action = useTeacherAction();
   const create = useSaveTeacher();
   const rows = teachers.data?.items ?? [];
@@ -109,6 +118,9 @@ export function TeachersPage() {
                   <span className="row-summary-muted">{teacher.shortName}</span>
                   {teacher.offDays.length > 0 && <Badge>{teacher.offDays.map(weekdayLabel).join("، ")}</Badge>}
                   <Badge>{text.limitsValue(limit(teacher.maxLessonsPerDay), limit(teacher.maxLessonsPerWeek))}</Badge>
+                  {teacher.specializationIds.length > 0 && subjects.isSuccess && (
+                    <Badge tone="primary">{messages.school.specializations.summary(specializationSummary(teacher.specializationIds))}</Badge>
+                  )}
                   {teacher.fullyReleased && <Badge tone="warning" icon={<UsersRound aria-hidden="true" size={16} />}>{text.releasedBadge}</Badge>}
                   <ArchiveBadge archived={teacher.isArchived} />
                 </span>

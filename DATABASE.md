@@ -88,6 +88,14 @@ Migration `Phase25FixStageDayLessons` adds `StageDayLessons`:
 
 Migration `Phase25SuggestedCurriculum` adds `CurriculumEntries.IsSuggested` and `Stages.DayLessonsSuggested` (both boolean, default false; ADR 0029, 0030). The suggested curriculum itself is embedded data (`Application/Templates/iraq-curriculum.suggested.json`), not a table.
 
+Migration `Phase3BResourcesProfile` (Phase 3B, ADR 0031) adds:
+- `Resources`: `Name`, `NormalizedName` (unique), `Kind` (check 1–4), `Capacity` (check 1–20), `Notes`, `IsArchived` (indexed), `ArchivedAt`, `Version`.
+- `Subjects.RequiredResourceId` (nullable, `Restrict` to `Resources`, indexed).
+- `TeacherSpecializations`: key (`TeacherId`, `SubjectId`); `SubjectId` indexed, `Cascade` from both the teacher and the subject (DECISIONS_PENDING #53).
+- `SchedulingProfile` (one row, Id = 1, `ProfileVersion`, `Version`) and `SchedulingProfileRules` (`ProfileId`, `Key` ≤ 40, unique per profile, `Enabled`, `Weight` check 0–100). The row is created at start-up when missing.
+
+Phase 3A added no schema change. Read-only list and report queries run without change tracking (DECISIONS_PENDING #52).
+
 ## Application data
 - School profile; teachers, subjects, resources, stages, sections, workload, shifts, bell times, calendar
 - Timetable versions and lessons

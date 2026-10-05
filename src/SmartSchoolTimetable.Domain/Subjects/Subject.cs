@@ -14,12 +14,14 @@ public sealed record SubjectDetails(
     bool Heavy,
     bool RequiresDoublePeriod,
     string? Notes,
-    IReadOnlyCollection<BlockedPeriod>? BlockedPeriods);
+    IReadOnlyCollection<BlockedPeriod>? BlockedPeriods,
+    long? RequiredResourceId = null);
 
 /// <summary>
 /// A subject (global, not year-scoped: DECISIONS_PENDING #1). Colour is one of the ten subject palette tokens,
 /// priority 1–5 (5 highest), blocked periods must lie inside the current schedule grid. Soft archive keeps
-/// history for later phases. Required resources are Phase 3.
+/// history for later phases. A subject may require one resource (Phase 3, DECISIONS_PENDING #46);
+/// the Application layer checks that the resource exists and is active.
 /// </summary>
 public sealed class Subject : VersionedEntity
 {
@@ -45,6 +47,7 @@ public sealed class Subject : VersionedEntity
     public bool Heavy { get; private set; }
     public bool RequiresDoublePeriod { get; private set; }
     public string? Notes { get; private set; }
+    public long? RequiredResourceId { get; private set; }
     public bool IsArchived { get; private set; }
     public DateTimeOffset? ArchivedAt { get; private set; }
     public IReadOnlyList<BlockedPeriod> BlockedPeriods => _blockedPeriods;
@@ -115,6 +118,7 @@ public sealed class Subject : VersionedEntity
         Heavy = details.Heavy;
         RequiresDoublePeriod = details.RequiresDoublePeriod;
         Notes = string.IsNullOrWhiteSpace(details.Notes) ? null : details.Notes.Trim();
+        RequiredResourceId = details.RequiredResourceId;
         _blockedPeriods.Clear();
         _blockedPeriods.AddRange((details.BlockedPeriods ?? []).Distinct().OrderBy(period => period.Day).ThenBy(period => period.LessonNumber));
     }

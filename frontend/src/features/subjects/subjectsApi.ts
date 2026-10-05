@@ -16,6 +16,8 @@ export type Subject = {
   requiresDoublePeriod: boolean;
   blockedPeriods: BlockedSlot[];
   notes: string | null;
+  /** The one resource the subject needs (Phase 3 §2.2), or null. */
+  requiredResourceId: number | null;
   isArchived: boolean;
   archivedAt: string | null;
   version: number;

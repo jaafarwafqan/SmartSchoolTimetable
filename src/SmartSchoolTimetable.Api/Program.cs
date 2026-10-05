@@ -94,6 +94,8 @@ builder.Services.AddScoped<SuggestedCurriculumService>();
 builder.Services.AddScoped<DailySuggestionService>();
 builder.Services.AddScoped<IYearStructure, YearStructureService>();
 builder.Services.AddScoped<DashboardService>();
+builder.Services.AddScoped<SmartSchoolTimetable.Application.Resources.ResourcesService>();
+builder.Services.AddScoped<SmartSchoolTimetable.Application.Scheduling.SchedulingProfileService>();
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Common.ReferenceGuard>();
 builder.Services.AddLocalInfrastructure(
     databasePath,
@@ -121,6 +123,8 @@ app.MapCalendarEndpoints();
 app.MapSetupEndpoints();
 app.MapCurriculumEndpoints();
 app.MapReferencesEndpoints();
+app.MapResourcesEndpoints();
+app.MapSchedulingProfileEndpoints();
 app.MapFallback(async (HttpContext context) =>
 {
     if (context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))

@@ -17,7 +17,8 @@ public sealed record TeacherDto(
     string? Notes,
     bool IsArchived,
     DateTimeOffset? ArchivedAt,
-    int Version);
+    int Version,
+    IReadOnlyList<long>? SpecializationIds = null);
 
 public sealed record SaveTeacherCommand(
     string? FullName,
@@ -31,7 +32,11 @@ public sealed record SaveTeacherCommand(
     int? MaxLessonsPerDay,
     int? MaxLessonsPerWeek,
     string? Notes,
-    int Version);
+    int Version,
+    IReadOnlyList<long>? SpecializationIds = null);
+
+/// <summary>«إضافة المادة لتخصصاته» (Phase 3 §2.1).</summary>
+public sealed record AddSpecializationCommand(int Version);
 
 /// <param name="Names">Pasted full names, one per line; blank lines are ignored.</param>
 public sealed record BulkTeachersCommand(IReadOnlyList<string>? Names);

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using SmartSchoolTimetable.Application;
 using SmartSchoolTimetable.Application.Common;
+using SmartSchoolTimetable.Domain.Scheduling;
 using SmartSchoolTimetable.Domain.SchoolSetup;
 using SmartSchoolTimetable.Infrastructure.Persistence;
 
@@ -74,6 +75,11 @@ public static class LocalInfrastructureRegistration
         if (!await db.Set<BellSettings>().AnyAsync(cancellationToken))
         {
             db.Add(BellSettings.CreateDefault());
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        if (!await db.Set<SchedulingProfile>().AnyAsync(cancellationToken))
+        {
+            db.Add(SchedulingProfile.CreateDefault());
             await db.SaveChangesAsync(cancellationToken);
         }
         if (!await db.Set<SetupProgress>().AnyAsync(cancellationToken))

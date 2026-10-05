@@ -5,7 +5,7 @@ import { apiRequest } from "../api";
 export type ReferenceKind = "subject" | "teacher" | "section" | "stage" | "shift" | "resource" | "curriculumEntry";
 
 export type DependentGroup = {
-  kind: "section" | "curriculumEntry";
+  kind: "section" | "curriculumEntry" | "subject";
   active: number;
   archived: number;
   /** A few dependent names (user data, shown as written). */

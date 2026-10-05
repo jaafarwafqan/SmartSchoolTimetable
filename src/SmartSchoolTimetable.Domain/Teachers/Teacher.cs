@@ -4,7 +4,10 @@ using SmartSchoolTimetable.Domain.Text;
 
 namespace SmartSchoolTimetable.Domain.Teachers;
 
-/// <summary>Editable fields of a teacher (spec 2.10). Null limits mean "no limit".</summary>
+/// <summary>
+/// Editable fields of a teacher (spec 2.10). Null limits mean "no limit". Null <see cref="SpecializationIds"/>
+/// keeps the current specializations (Phase 3 §2.1).
+/// </summary>
 public sealed record TeacherDetails(
     string? FullName,
     string? ShortName,
@@ -16,7 +19,8 @@ public sealed record TeacherDetails(
     DateOnly? ReleaseTo,
     int? MaxLessonsPerDay,
     int? MaxLessonsPerWeek,
-    string? Notes);
+    string? Notes,
+    IReadOnlyCollection<long>? SpecializationIds = null);
 
 /// <summary>
 /// A teacher (global, DECISIONS_PENDING #1) with constraints. Rules: short name unique after normalization
@@ -31,7 +35,10 @@ public sealed class Teacher : VersionedEntity
     public const int ReasonMaxLength = 200;
     public const int NotesMaxLength = 500;
 
+    public const int MaxSpecializations = 30;
+
     private readonly List<BlockedPeriod> _blockedPeriods = [];
+    private readonly List<TeacherSpecialization> _specializations = [];
 
     private Teacher()
     {
@@ -54,6 +61,32 @@ public sealed class Teacher : VersionedEntity
     public bool IsArchived { get; private set; }
     public DateTimeOffset? ArchivedAt { get; private set; }
     public IReadOnlyList<BlockedPeriod> BlockedPeriods => _blockedPeriods;
+
+    /// <summary>Subjects the teacher is qualified for (Phase 3 §2.1). Assigning outside them is allowed with a warning.</summary>
+    public IReadOnlyList<TeacherSpecialization> Specializations => _specializations;
+
+    /// <summary>«إضافة المادة لتخصصاته»: adds one subject (checked by the Application layer). Returns false when it was already there.</summary>
+    public bool AddSpecialization(long subjectId)
+    {
+        if (_specializations.Any(item => item.SubjectId == subjectId))
+            return false;
+        var ids = _specializations.Select(item => item.SubjectId).Append(subjectId).ToArray();
+        SpecializationErrors(ids, new DomainErrors()).ThrowIfAny();
+        ReplaceSpecializations(ids);
+        Touch();
+        return true;
+    }
+
+    private static DomainErrors SpecializationErrors(long[] ids, DomainErrors errors) => errors
+        .When(ids.Any(id => id <= 0), "SpecializationIds", DomainErrorCode.InvalidOption)
+        .When(ids.Length > MaxSpecializations, "SpecializationIds", DomainErrorCode.OutOfRange);
+
+    /// <summary>Keeps the rows that stay (their key is (teacher, subject)); removes and adds only the difference.</summary>
+    private void ReplaceSpecializations(long[] ids)
+    {
+        _specializations.RemoveAll(item => !ids.Contains(item.SubjectId));
+        _specializations.AddRange(ids.Where(id => _specializations.All(item => item.SubjectId != id)).Order().Select(id => new TeacherSpecialization(id)));
+    }
 
     /// <summary>
     /// Removes blocked slots that fall outside the grid (after working days, shifts or lessons per day shrank,
@@ -122,8 +155,13 @@ public sealed class Teacher : VersionedEntity
             errors.When(details.MaxLessonsPerDay > grid.LessonsPerDay, nameof(MaxLessonsPerDay), DomainErrorCode.MaxPerDayExceedsPeriods);
             errors.When(details.MaxLessonsPerWeek > grid.MaxWeeklyLessons, nameof(MaxLessonsPerWeek), DomainErrorCode.MaxPerWeekExceedsCapacity);
         }
+        var specializations = details.SpecializationIds?.Distinct().ToArray();
+        if (specializations is not null)
+            SpecializationErrors(specializations, errors);
         grid.ValidateBlocked(details.BlockedPeriods, nameof(BlockedPeriods), errors).ThrowIfAny();
 
+        if (specializations is not null)
+            ReplaceSpecializations(specializations);
         FullName = ArabicText.Clean(details.FullName);
         NormalizedFullName = ArabicText.Normalize(details.FullName);
         ShortName = ArabicText.Clean(details.ShortName);

@@ -1,4 +1,5 @@
 import { BookOpen } from "lucide-react";
+import { useAllResources } from "../resources/resourcesApi";
 import { OrphanBlockedNotice } from "../timetable-structure/OrphanBlockedNotice";
 import { ArchiveBlockedDialog, GuardedDeleteDialog, isReferenceError } from "../../components/References";
 import { useRef, useState } from "react";
@@ -39,6 +40,8 @@ export function SubjectsPage() {
   const [deleting, setDeleting] = useState<Subject | null>(null);
   const [archiveBlocked, setArchiveBlocked] = useState<Subject | null>(null);
   const subjects = useSubjects({ search, page, pageSize, includeArchived });
+  const resources = useAllResources();
+  const resourceName = (id: number | null) => (id === null ? undefined : resources.data?.items.find((resource) => resource.id === id)?.name);
   const action = useSubjectAction();
   const create = useSaveSubject();
   const rows = subjects.data?.items ?? [];
@@ -48,7 +51,7 @@ export function SubjectsPage() {
     addFeedback.reset();
     create.mutate({
       id: null,
-      input: { name: String(form.get("newSubjectName") ?? ""), colorIndex: 0, priority: 0, distributionEnabled: true, spreadAcrossDays: false, heavy: false, requiresDoublePeriod: false, blockedPeriods: [], notes: null, version: 0 },
+      input: { name: String(form.get("newSubjectName") ?? ""), colorIndex: 0, priority: 0, distributionEnabled: true, spreadAcrossDays: false, heavy: false, requiresDoublePeriod: false, blockedPeriods: [], notes: null, requiredResourceId: null, version: 0 },
     }, {
       onSuccess: (created) => { element.reset(); addFeedback.showSuccess(text.added(created.name)); },
       onError: addFeedback.showError,
@@ -98,6 +101,7 @@ export function SubjectsPage() {
                   <strong>{subject.name}</strong>
                   <Badge>{text.priorityValue(format.number(subject.priority))}</Badge>
                   {subject.blockedPeriods.length > 0 && <Badge>{text.blockedSummary(format.number(subject.blockedPeriods.length))}</Badge>}
+                  {resourceName(subject.requiredResourceId) && <Badge tone="primary">{messages.school.requiredResource.badge(resourceName(subject.requiredResourceId) ?? "")}</Badge>}
                   <ArchiveBadge archived={subject.isArchived} />
                 </span>
               )}

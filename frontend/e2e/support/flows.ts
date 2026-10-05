@@ -41,6 +41,8 @@ const tabGroups: Readonly<Record<string, string>> = {
   [nav.stagesSections]: nav.classes,
   [nav.subjects]: nav.classes,
   [nav.curriculum]: nav.classes,
+  [nav.resources]: nav.classes,
+  [nav.schedulingProfile]: nav.settings,
 };
 
 /** Opens a screen through the sidebar, and through its group's tab when the screen is a tab. */

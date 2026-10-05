@@ -1,6 +1,7 @@
 using SmartSchoolTimetable.Application.Common;
 using SmartSchoolTimetable.Application.SchoolSetup;
 using SmartSchoolTimetable.Domain.Curriculum;
+using SmartSchoolTimetable.Domain.Resources;
 using SmartSchoolTimetable.Domain.Subjects;
 using SmartSchoolTimetable.Domain.Text;
 
@@ -8,7 +9,7 @@ namespace SmartSchoolTimetable.Application.Subjects;
 
 /// <summary>
 /// Subjects: unique normalized names, palette colours, priority, flags and blocked periods checked against the
-/// current schedule grid. Soft archive; hard delete is allowed because nothing references subjects before Phase 3.
+/// current schedule grid. Soft archive; delete and archive go through the reference guard (curriculum lines).
 /// </summary>
 public sealed class SubjectsService(IDataStore store, TimeProvider clock)
 {
@@ -43,6 +44,8 @@ public sealed class SubjectsService(IDataStore store, TimeProvider clock)
                 ColorIndex = command.ColorIndex == 0 ? await NextColorAsync(token) : command.ColorIndex,
                 Priority = command.Priority == 0 ? Subject.DefaultPriority : command.Priority,
             };
+        if (await ResourceRejectedAsync(command.RequiredResourceId, null, token))
+            return OperationResult.Invalid<SubjectDto>(nameof(command.RequiredResourceId), ErrorCodes.InvalidOption);
         var grid = await ScheduleGrids.LoadAsync(store, token);
         Subject? subject = null;
         if (StoreSaving.TryDomain<SubjectDto>(() => subject = Subject.Create(ToDetails(command), grid)) is { } invalid)
@@ -63,6 +66,8 @@ public sealed class SubjectsService(IDataStore store, TimeProvider clock)
             return OperationResult.Failure<SubjectDto>(ErrorCodes.Conflict);
         if (await NameTakenAsync(id, command.Name, token))
             return OperationResult.Invalid<SubjectDto>(nameof(command.Name), ErrorCodes.DuplicateName);
+        if (await ResourceRejectedAsync(command.RequiredResourceId, subject.RequiredResourceId, token))
+            return OperationResult.Invalid<SubjectDto>(nameof(command.RequiredResourceId), ErrorCodes.InvalidOption);
         var grid = await ScheduleGrids.LoadAsync(store, token);
         if (StoreSaving.TryDomain<SubjectDto>(() => subject.Update(ToDetails(command), grid)) is { } invalid)
             return invalid;
@@ -108,7 +113,13 @@ public sealed class SubjectsService(IDataStore store, TimeProvider clock)
         command.Heavy,
         command.RequiresDoublePeriod,
         command.Notes,
-        ScheduleGrids.FromDtos(command.BlockedPeriods));
+        ScheduleGrids.FromDtos(command.BlockedPeriods),
+        command.RequiredResourceId);
+
+    /// <summary>A newly chosen resource must exist and be active; keeping the current one is always allowed.</summary>
+    private async Task<bool> ResourceRejectedAsync(long? resourceId, long? currentId, CancellationToken token) =>
+        resourceId is { } id && id != currentId
+        && !await store.AnyAsync(store.Query<Resource>().Where(resource => resource.Id == id && !resource.IsArchived), token);
 
     /// <summary>The first palette colour no active subject uses; when all ten are used, colours cycle.</summary>
     private async Task<int> NextColorAsync(CancellationToken token)
@@ -141,5 +152,6 @@ public sealed class SubjectsService(IDataStore store, TimeProvider clock)
         row.Notes,
         row.IsArchived,
         row.ArchivedAt,
-        row.Version);
+        row.Version,
+        row.RequiredResourceId);
 }

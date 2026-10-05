@@ -233,6 +233,17 @@ Suggested curriculum (`phase-2-5-curriculum`):
   - `OrphanBlockedPeriodsTests`: lowering lessons per day from 6 to 4 reports exactly the teacher's 2 and the subject's 1 orphan slots, removes nothing by itself, refuses a stale version, cleans only the confirmed teacher (version + 1) and leaves the subject's orphan.
   - `QueryCountTests`: ten list and report endpoints run the same number of SQL commands (counted by `QueryCounter`, a `DbCommandInterceptor` in `TestHost`) for a school with 1 stage and one with 3 stages, 18 sections, 9 subjects, 13 teachers and 25 lines.
 - Vitest: `components/References.test.tsx` (dependent wording with `arabicCount`: delete counts archived ones, archive names only active ones, hidden names are counted).
+### 3B - resources, specializations, profile
+- .NET `Phase3/ResourcesAndProfileTests`:
+  - resource validation (name, kind, capacity 1–20) and versions;
+  - the profile's default weights 20/30/15/25/10; `ProfileVersion` + 1 per real change; same rules in another order change nothing; missing, unknown, duplicate and out-of-range rules are rejected; restore defaults;
+  - specializations: kept when not sent, added once, at most 30;
+  - API: resources (duplicate name, kind, capacity, paging, sort, search, conflict, 401, 403); a subject requiring the field blocks archive and delete with `RESOURCE_IN_USE` and the report names it; an archived resource cannot be newly chosen; clearing the requirement frees it;
+  - specializations through the API, including the one-click add and removal with a deleted subject;
+  - the profile API (versions, conflict, `Rules` validation, restore needs `Confirm`);
+  - migration `Phase3BResourcesProfile` on a database at `Phase25SuggestedCurriculum` with an existing subject.
+- Vitest: `profileApi.test.ts` (weight choices in steps of five, keeping a saved odd value).
+- Playwright `phase3-resources-profile.spec.ts`: quick add of two resources (kind, capacity stepper); the subject's required-resource chooser and row badge; the delete dialog naming the subject with «حذف» disabled; the profile's weight change (version 2) and restore defaults (version 3); axe, no horizontal scroll, no overlapping text and screenshots at 375/768/1024/1440.
 
 ## Later-phase acceptance suites
 - Phase 4 infeasibility test must construct a conflict involving two teachers, a shared lab, and a blocked period; the diagnostic must identify the conflict groups and actionable correction, not merely report infeasible.

@@ -185,6 +185,24 @@ Curriculum cells and entries carry `isSuggested`. Audit events: `SuggestedCurric
 - **`PUT /academic-years/{yearId}/curriculum/cell` with `weeklyLessons: null`** archives the line instead of deleting it. The table response carries it as `cleared` (`{ id, version, … }`); undo is `POST /curriculum-entries/{id}/restore` with that version (`409 STAGE_ARCHIVED` when the stage was archived meanwhile).
 - Audit events: `CurriculumEntryCleared`, `OrphanBlockedPeriodsRemoved`.
 
+### Phase 3B: resources, specializations, scheduling profile
+| Method | Route | Request | Success | Errors |
+|---|---|---|---|---|
+| GET | `/resources/` | `search`, `sort` (`name`, `kind`, `capacity`, `-` for descending), `page`, `pageSize`, `includeArchived` | 200 paged `{ id, name, kind: lab\|field\|hall\|other, capacity, notes, isArchived, archivedAt, version }` | 401 |
+| POST | `/resources/` | `{ name, kind, capacity (default 1), notes, version: 0 }` | 201 | 401, 403, 422 (`Name` `DUPLICATE_NAME`, `Kind` `INVALID_OPTION`, `Capacity` `VALUE_OUT_OF_RANGE`) |
+| PUT | `/resources/{id}` | same with the read `version` | 200 | 401, 403, 404, 409 `CONFLICT`, 422 |
+| POST | `/resources/{id}/archive`, `/restore` | `{ version }` | 200 | 401, 403, 404, 409 `CONFLICT`, 409 `RESOURCE_IN_USE` (an active subject requires it) |
+| DELETE | `/resources/{id}?version=` | — | 204 | 401, 403, 404, 409 `CONFLICT`, 409 `RESOURCE_IN_USE` (any subject requires it) |
+| POST | `/teachers/{id}/specializations/{subjectId}` | `{ version }` | 200 teacher («إضافة المادة لتخصصاته»; adding twice changes nothing) | 401, 403, 404, 409, 422 `SubjectId` `INVALID_OPTION` |
+| GET | `/scheduling-profile/` | — | 200 `{ rules: [{ key, enabled, weight, enabledByDefault, defaultWeight }], profileVersion, isDefault, version }` | 401 |
+| PUT | `/scheduling-profile/` | `{ rules: [{ key, enabled, weight }], version }` (every rule once, weight 0–100) | 200; `profileVersion` + 1 when something changed | 401, 403, 409 `CONFLICT`, 422 `Rules` |
+| POST | `/scheduling-profile/restore-defaults` | `{ confirm: true, version }` | 200 defaults; `profileVersion` + 1 | 401, 403, 409, 422 `Confirm` `REQUIRED` |
+
+- **Subjects** carry `requiredResourceId` (DTO and save command). A newly chosen resource must be active: `422 RequiredResourceId INVALID_OPTION`.
+- **Teachers** carry `specializationIds`. The save command's `specializationIds` is optional: null keeps the list. New ids must be active subjects (`422 SpecializationIds INVALID_OPTION`).
+- **`GET /references/resource/{id}`** lists the subjects that require the resource (dependent kind `subject`).
+- Audit events: `ResourceCreated`, `ResourceUpdated`, `ResourceArchived`, `ResourceRestored`, `ResourceDeleted`, `TeacherSpecializationAdded`, `SchedulingProfileUpdated`, `SchedulingProfileDefaultsRestored`.
+
 ### Subjects and the schedule grid (Phase 2, checkpoint 2D)
 | Method | Route | Request | Success | Endpoint-specific errors |
 |---|---|---|---|---|

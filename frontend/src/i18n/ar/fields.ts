@@ -55,4 +55,9 @@ export const fields = {
   Count: "عدد الشعب",
   LabelStyle: "تسمية الشعب",
   Breaks: "الاستراحات",
+  Capacity: "السعة",
+  RequiredResourceId: "المورد المطلوب",
+  SpecializationIds: "التخصصات",
+  Rules: "قواعد ملف الجدولة",
+  Confirm: "التأكيد",
 } as const;

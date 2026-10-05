@@ -121,3 +121,9 @@ No implementation of domain logic; only specification and validation strategy.
 - **Reference guard (`Application/Common/ReferenceGuard`):** the one place that answers which records depend on a subject, teacher, section, stage, shift, resource or curriculum line. Dependents today: a stage has sections and curriculum lines; a subject has curriculum lines; a shift has sections. Archive needs no active dependent, delete no dependent at all (DECISIONS_PENDING #48).
 - **Clearing a curriculum cell** archives the line; restoring it is the undo (#49).
 - **`Teacher.DropBlockedOutside(grid)` / `Subject.DropBlockedOutside(grid)`:** remove the blocked slots outside the current `ScheduleGrid` and return them; the version is bumped only when something was removed. Used only after the owner confirms the orphan preview (#50).
+
+## Phase 3B: resources, specializations, profile (ADR 0031)
+- **`Resource`:** name, `ResourceKind` (Lab, Field, Hall, Other), `Capacity` 1–20 (sections per slot, per shift), notes, soft archive, `Version`.
+- **`Subject.RequiredResourceId`:** at most one resource; existence and active state are checked in Application.
+- **`Teacher.Specializations`:** owned `TeacherSpecialization(SubjectId)`, at most 30. `TeacherDetails.SpecializationIds` null keeps them; `AddSpecialization` adds one (no change when already present).
+- **`SchedulingProfile`:** one row; five `SchedulingRule(Key, Enabled, Weight 0–100)` in `SchedulingRuleKeys.Defaults` order. `Update` needs every key exactly once; `RestoreDefaults`; `ProfileVersion` and `Version` grow only on a real change.

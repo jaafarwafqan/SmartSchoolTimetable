@@ -33,6 +33,15 @@ export const navGroups: readonly NavGroup[] = [
       { to: "/classes/stages", label: nav.stagesSections },
       { to: "/classes/subjects", label: nav.subjects },
       { to: "/classes/curriculum", label: nav.curriculum },
+      { to: "/classes/resources", label: nav.resources },
+    ],
+  },
+  {
+    root: "/settings",
+    label: nav.settings,
+    tabs: [
+      { to: "/settings/general", label: nav.settingsGeneral },
+      { to: "/settings/scheduling", label: nav.schedulingProfile },
     ],
   },
 ];
