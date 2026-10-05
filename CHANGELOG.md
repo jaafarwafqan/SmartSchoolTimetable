@@ -1,6 +1,20 @@
 # Changelog
 
 ## [Unreleased]
+### Phase 2.5 fixes 1 - owner findings B1–B8 (tag `phase-2-5-fix1`)
+- **B1:** curriculum totals are one compact `<tfoot>` cell per stage column, with planned out of capacity and a status chip. The old cells were turned into grids and stacked into one column.
+- **B2:** curriculum header: full stage names that wrap, the weekly capacity under each name (M3), sticky header and subject column with opaque backgrounds, compact 3rem inputs. A shared rule had made every `th` stick to the top.
+- **B3:** no horizontal page scroll. Grid and flex children shrink (`min-inline-size: 0`); only table containers scroll.
+- **B4:** `expectNoTextOverlap` and `expectNoPageScrollX` Playwright helpers. Stacked Arabic lines got room (curriculum header, dashboard counts).
+- **B5:** step labels and order covered by a test (not reproduced; decision #33).
+- **B6:** the school's subjects are one chip list.
+  - Added subjects show as checked chips «مضافة».
+  - Removing a chip archives the subject, with «تراجع».
+  - Quick add is in the same panel, and the curriculum table refreshes immediately.
+- **B7:** `arabicCount` and `format.count()` for every counted noun. All hand-built count strings were replaced, and a test forbids new ones.
+- **B8:** Iraqi month names for Gregorian dates (decision #31).
+- **Tests:** .NET 129, Vitest 70, Playwright 7.
+
 ### Default owner account withdrawn (owner instruction)
 - The default account added in `f827c5a` was removed. An empty database shows first-run setup again (create owner, recovery code, wizard).
 - `FirstRunTests`: an empty database reports setup required with zero users, and no default credential may appear in the source.

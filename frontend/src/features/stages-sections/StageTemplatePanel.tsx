@@ -135,7 +135,7 @@ export function StageTemplatePanel({ yearId, open = false }: { yearId: number; o
                 key: `${line.key}-${line.action}`,
                 label: line.name,
                 action: line.action,
-                extra: line.sectionsToAdd > 0 ? <span className="plan-line-extra">{text.addSections(format.number(line.sectionsToAdd))}</span> : undefined,
+                extra: line.sectionsToAdd > 0 ? <span className="plan-line-extra">{text.addSections(format.count(line.sectionsToAdd, "section", "oblique"))}</span> : undefined,
               }))} />
           )}
         </div>

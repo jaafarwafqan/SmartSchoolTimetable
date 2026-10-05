@@ -84,7 +84,7 @@ export function GeneratePeriodsDialog({ open, yearId, defaultStart, onClose, onG
         )}
         {multipleBreaks && (
           <p className="card-note">{presetText.presetBreaks(preset.breaks
-            .map((slot) => presetText.presetBreak(format.number(slot.afterLesson), format.number(slot.minutes)))
+            .map((slot) => presetText.presetBreak(format.number(slot.afterLesson), format.count(slot.minutes, "minute")))
             .join(presetText.listSeparator))}</p>
         )}
         <div className="form-grid" key={`preset-${presetKey}`}>

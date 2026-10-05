@@ -112,7 +112,7 @@ export function StageCardsPanel({ yearId }: { yearId: number }) {
                 </ul>
               )}
               {capacities.map(([id, capacity]) => (
-                <p key={`capacity-${card.stage.id}-${id}`} className="stage-card-capacity">{text.capacity(format.number(capacity), shiftName(id))}</p>
+                <p key={`capacity-${card.stage.id}-${id}`} className="stage-card-capacity">{text.capacity(format.count(capacity, "lesson"), shiftName(id))}</p>
               ))}
             </li>
           );

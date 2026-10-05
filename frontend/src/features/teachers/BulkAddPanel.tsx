@@ -75,7 +75,7 @@ export function BulkAddPanel({ onClose, onSaved, closable = true }: BulkAddPanel
       {preview && <DataTable caption={text.bulkPreview} columns={columns} rows={preview.lines} rowKey={(line) => String(line.line)} />}
       <div className="form-actions">
         <Button icon={<Save aria-hidden="true" size={20} />} loading={createBulk.isPending} disabled={ready.length === 0} onClick={saveReady}>
-          {text.bulkSave(format.number(ready.length))}
+          {text.bulkSave(format.count(ready.length, "teacher", "oblique"))}
         </Button>
         <Button variant="secondary" icon={<Eye aria-hidden="true" size={20} />} loading={previewBulk.isPending} onClick={runPreview}>{text.bulkPreview}</Button>
         {closable && <Button variant="secondary" icon={<X aria-hidden="true" size={20} />} onClick={close}>{messages.app.cancel}</Button>}

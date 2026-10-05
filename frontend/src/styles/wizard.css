@@ -5,6 +5,14 @@
   gap: 1rem;
 }
 
+/* Grid and flex children may shrink below their content, so only table containers scroll (fix B3). */
+.page > *,
+.wizard-layout > *,
+.form-stack > *,
+.wizard-card {
+  min-inline-size: 0;
+}
+
 @media (min-width: 1024px) {
   .wizard-layout {
     grid-template-columns: 15rem minmax(0, 1fr);

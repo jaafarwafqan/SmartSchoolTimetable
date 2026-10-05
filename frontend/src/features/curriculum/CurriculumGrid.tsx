@@ -28,13 +28,21 @@ export function parseLessons(raw: string): { ok: true; value: number | null } | 
   return value >= minLessons && value <= maxLessons ? { ok: true, value } : { ok: false };
 }
 
-function TotalBadge({ total, format }: { total: ShiftTotal; format: (value: number) => string }) {
-  if (total.status === "equal")
-    return <Badge tone="success" icon={<CircleCheck aria-hidden="true" size={16} />}>{text.status.equal}</Badge>;
-  if (total.status === "under")
-    return <Badge tone="warning" icon={<CircleAlert aria-hidden="true" size={16} />}>{text.status.under(format(total.difference))}</Badge>;
-  return <Badge tone="danger" icon={<CircleX aria-hidden="true" size={16} />}>{text.status.over(format(-total.difference))}</Badge>;
+function statusText(total: ShiftTotal, format: (value: number) => string) {
+  if (total.status === "equal") return text.status.equal;
+  return total.status === "under" ? text.status.under(format(total.difference)) : text.status.over(format(-total.difference));
 }
+
+/** Status chip (icon + text); in a two-shift stage the text names the shift. */
+function TotalBadge({ total, format, withShift }: { total: ShiftTotal; format: (value: number) => string; withShift: boolean }) {
+  const label = withShift ? text.shiftStatus(total.shiftName, statusText(total, format)) : statusText(total, format);
+  if (total.status === "equal") return <Badge tone="success" icon={<CircleCheck aria-hidden="true" size={14} />}>{label}</Badge>;
+  if (total.status === "under") return <Badge tone="warning" icon={<CircleAlert aria-hidden="true" size={14} />}>{label}</Badge>;
+  return <Badge tone="danger" icon={<CircleX aria-hidden="true" size={14} />}>{label}</Badge>;
+}
+
+const capacities = (totals: readonly ShiftTotal[], format: (value: number) => string) =>
+  [...new Set(totals.map((total) => total.weeklyCapacity))].map(format).join(" / ");
 
 /** One editable cell: local draft, saved on Enter or when focus leaves; Escape restores the saved value. */
 function LessonCell({ row, cell, stageName, rowIndex, colIndex, format, disabled, onSave }: {
@@ -105,7 +113,12 @@ export function CurriculumGrid({ table, format, saving, onSave }: GridProps) {
         <thead>
           <tr>
             <th scope="col" className="curriculum-subject-head">{text.subject}</th>
-            {table.stages.map((stage) => <th key={`head-${stage.id}`} scope="col">{stage.name}</th>)}
+            {table.stages.map((stage) => (
+              <th key={`head-${stage.id}`} scope="col" className="curriculum-stage-head">
+                <span className="curriculum-stage-name">{stage.name}</span>
+                {stage.totals.length > 0 && <span className="curriculum-stage-capacity">{text.headerCapacity(capacities(stage.totals, format))}</span>}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
@@ -128,14 +141,18 @@ export function CurriculumGrid({ table, format, saving, onSave }: GridProps) {
             <th scope="row">{text.totalsRow}</th>
             {table.stages.map((stage) => (
               <td key={`total-${stage.id}`} className="curriculum-total">
-                <strong>{text.planned(format(stage.plannedLessons))}</strong>
-                {stage.totals.length === 0 && <span className="curriculum-total-line">{text.noSections}</span>}
-                {stage.totals.map((total) => (
-                  <span key={`total-${stage.id}-${total.shiftId}`} className="curriculum-total-line">
-                    <span>{text.shiftCapacity(total.shiftName, format(total.weeklyCapacity))}</span>
-                    <TotalBadge total={total} format={format} />
-                  </span>
-                ))}
+                <div className="curriculum-total-box">
+                  <strong className="curriculum-total-sum">
+                    {stage.totals.length === 0 ? format(stage.plannedLessons) : text.plannedOf(format(stage.plannedLessons), capacities(stage.totals, format))}
+                  </strong>
+                  {stage.totals.length === 0
+                    ? <span className="curriculum-total-note">{text.noSections}</span>
+                    : (
+                      <span className="curriculum-total-chips">
+                        {stage.totals.map((total) => <TotalBadge key={`total-${stage.id}-${total.shiftId}`} total={total} format={format} withShift={stage.totals.length > 1} />)}
+                      </span>
+                    )}
+                </div>
               </td>
             ))}
           </tr>

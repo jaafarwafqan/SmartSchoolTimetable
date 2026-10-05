@@ -148,3 +148,54 @@ export const tinyPng = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
   "base64",
 );
+
+/** Fix B3: the page itself never scrolls sideways; only table containers may. */
+export async function expectNoPageScrollX(page: Page, screen: string): Promise<void> {
+  const [scrollWidth, clientWidth] = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+  expect(scrollWidth, `horizontal page scroll on ${screen} at ${clientWidth}px`).toBeLessThanOrEqual(clientWidth);
+}
+
+/**
+ * Fix B4: fails when the boxes of two visible texts inside the container overlap. Texts are the innermost elements
+ * that own non-empty text, measured per line box; an element and its own ancestors never count as overlapping.
+ * Boxes touching by under 1px are tolerated (rounding).
+ */
+export async function expectNoTextOverlap(container: Locator, screen: string): Promise<void> {
+  const overlaps = await container.evaluate((root) => {
+    const owners = [...root.querySelectorAll<HTMLElement>("*")].filter((element) => {
+      if (element.closest("[aria-hidden='true'], .sr-only")) return false;
+      const details = element.closest("details");
+      if (details && !details.open && !element.closest("summary")) return false; // closed disclosure content is not shown
+      const ownText = [...element.childNodes].some((node) => node.nodeType === Node.TEXT_NODE && (node.textContent ?? "").trim() !== "");
+      const style = getComputedStyle(element);
+      return ownText && style.visibility !== "hidden" && style.display !== "none" && element.getClientRects().length > 0;
+    });
+    // One box per rendered line, trimmed to the line height: the glyph box of Arabic fonts is taller than the
+    // line box, so untrimmed boxes of two stacked lines would "overlap" without any visible collision.
+    const boxes = owners.flatMap((element) => {
+      const style = getComputedStyle(element);
+      const fontSize = parseFloat(style.fontSize);
+      const lineHeight = style.lineHeight === "normal" ? fontSize * 1.2 : parseFloat(style.lineHeight);
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      return [...range.getClientRects()].filter((rect) => rect.width > 0 && rect.height > 0).map((rect) => {
+        const half = Math.min(rect.height, lineHeight) / 2;
+        const middle = (rect.top + rect.bottom) / 2;
+        return { element, rect: { left: rect.left, right: rect.right, top: middle - half, bottom: middle + half } };
+      });
+    });
+    const found: string[] = [];
+    for (let a = 0; a < boxes.length; a++) {
+      for (let b = a + 1; b < boxes.length; b++) {
+        const first = boxes[a];
+        const second = boxes[b];
+        if (first.element === second.element || first.element.contains(second.element) || second.element.contains(first.element)) continue;
+        const width = Math.min(first.rect.right, second.rect.right) - Math.max(first.rect.left, second.rect.left);
+        const height = Math.min(first.rect.bottom, second.rect.bottom) - Math.max(first.rect.top, second.rect.top);
+        if (width > 1 && height > 1) found.push(`"${first.element.textContent?.trim().slice(0, 30)}" / "${second.element.textContent?.trim().slice(0, 30)}" (${Math.round(width)}x${Math.round(height)})`);
+      }
+    }
+    return found;
+  });
+  expect(overlaps, `overlapping texts on ${screen}`).toEqual([]);
+}

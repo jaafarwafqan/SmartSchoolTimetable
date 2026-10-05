@@ -50,7 +50,7 @@ export function DayLessonsEditor({ yearId, shift, onSaved, onReload }: DayLesson
           </li>
         ))}
       </ul>
-      <p className="day-lessons-total">{text.weeklyTotal(format.number(total))}</p>
+      <p className="day-lessons-total">{text.weeklyTotal(format.count(total, "lesson"))}</p>
       <div className="form-actions">
         <Button icon={<Save aria-hidden="true" size={20} />} loading={save.isPending} disabled={feedback.conflict}
           onClick={() => {

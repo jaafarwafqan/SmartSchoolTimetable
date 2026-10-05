@@ -166,6 +166,21 @@ Checkpoint 2.5D:
   - axe and the Latin-text check on the steps.
   - `setupOwner` now postpones the wizard; dashboard and settings baselines were regenerated (new cards).
 
+Fixes `phase-2-5-fix1` (owner findings B1–B8):
+- Vitest (70): `lib/arabicCount.test.ts`:
+  - every noun at 1, 2, 3, 11 and 100, plus the boundaries 10, 99, 103 and 111, in both numeral systems;
+  - the Iraqi month names for all twelve months;
+  - a guard that fails on any `${number} noun` string in `src` (shown to catch a planted violation).
+- Playwright (7): `phase25-fixes.spec.ts`, on a secondary school with nine stage columns:
+  - B5: step labels and their order;
+  - B3: no horizontal page scroll on every wizard step and every main screen at 375, 768, 1024 and 1440px;
+  - B4: no overlapping text (line boxes) on the periods preview, stage cards, curriculum table, dashboard and settings;
+  - B6: a typed subject appears as a chip «مضافة» and as a table row, is removed and restored with «تراجع»;
+  - B7: the count message for the added suggestions;
+  - B1/B2/M3: one header and one totals cell per stage, aligned, headers not clipped, compact inputs below the header, capacity in the header;
+  - B8: Iraqi month names on the year step and the years list;
+  - a self-test showing the overlap guard rejects the old stacked-totals markup.
+
 ## Later-phase acceptance suites
 - Phase 4 infeasibility test must construct a conflict involving two teachers, a shared lab, and a blocked period; the diagnostic must identify the conflict groups and actionable correction, not merely report infeasible.
 - Large solver-risk comparison uses the same independently verified feasible 40-section/54-teacher workload and records status, first-solution/total time, objective/bound, memory method, and independently checked hard constraints for baseline, two-stage, decomposition, and hints.

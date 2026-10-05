@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { messages } from "../src/i18n/messages";
+import { arabicCount } from "../src/lib/arabicCount";
+import { formatNumber } from "../src/lib/format";
 import { ApiServer } from "./support/apiServer";
 import {
   expectBreakpointScreenshots,
@@ -24,6 +26,7 @@ const subjects = school.subjects;
 const teachers = school.teachers;
 const calendar = school.calendar;
 const password = "Phase2-Owner-1";
+const latin = (value: number) => formatNumber(value, "latn"); // the flow switches the school to western digits
 const schoolName = "إعدادية النور للبنات";
 
 test.describe.configure({ mode: "serial" });
@@ -128,7 +131,7 @@ test("the whole setup checklist completes end to end; stale edits are caught", a
   await expect(page.getByRole("status").filter({ hasText: structure.periodsSaved })).toBeVisible();
   // Per-day lesson counts (spec 2.5 §3.1): Thursday has one lesson less, so a section's capacity is 6×4 + 5 = 29.
   await page.getByRole("button", { name: structure.decreaseFor(school.scheduleStructure.days.thursday) }).click();
-  await expect(page.getByText(structure.weeklyTotal("29"))).toBeVisible();
+  await expect(page.getByText(structure.weeklyTotal(arabicCount(29, "lesson", latin)))).toBeVisible();
   await page.getByRole("button", { name: structure.saveDayLessons }).click();
   await expect(page.getByRole("status").filter({ hasText: structure.dayLessonsSaved })).toBeVisible();
   await expectNoSeriousA11yViolations(page, "timetable structure");
@@ -199,8 +202,8 @@ test("the whole setup checklist completes end to end; stale edits are caught", a
   await bulkPanel.getByRole("button", { name: teachers.bulkPreview }).click();
   await expect(bulkPanel.getByText(teachers.bulkStatuses.exists)).toBeVisible();
   await expectNoSeriousA11yViolations(page, "bulk add preview");
-  await bulkPanel.getByRole("button", { name: teachers.bulkSave("2") }).click();
-  await expect(page.getByRole("status").filter({ hasText: teachers.bulkSaved("2") })).toBeVisible();
+  await bulkPanel.getByRole("button", { name: teachers.bulkSave(arabicCount(2, "teacher", latin, "oblique")) }).click();
+  await expect(page.getByRole("status").filter({ hasText: teachers.bulkSaved(arabicCount(2, "teacher", latin, "oblique")) })).toBeVisible();
   await expect(page.locator(".ui-expandable-toggle", { hasText: "حسن علي مهدي" })).toBeVisible();
   await expectNoSeriousA11yViolations(page, "teachers");
   await expectNoLatinText(page, "teachers", ["owner"]);

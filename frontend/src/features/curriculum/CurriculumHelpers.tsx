@@ -10,6 +10,7 @@ import { Field } from "../../components/ui/field";
 import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
 import { messages } from "../../i18n/messages";
+import { useFormatter } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
 import { parseLessons } from "./CurriculumGrid";
 import { useCopyCurriculum, useSetAcross, useSetCell, type CurriculumPlan, type CurriculumTable } from "./curriculumApi";
@@ -86,6 +87,7 @@ export function AddRepeatForm({ yearId, table }: Omit<HelperProps, "format">) {
 
 /** Copy one stage's lines to other stages: only missing lines are created; nothing is replaced. */
 export function CopyCurriculumTool({ yearId, table, format }: HelperProps) {
+  const { count } = useFormatter();
   const feedback = useFormFeedback();
   const copy = useCopyCurriculum(yearId);
   const [from, setFrom] = useState<number | null>(null);
@@ -116,7 +118,7 @@ export function CopyCurriculumTool({ yearId, table, format }: HelperProps) {
           {plan && plan.changes > 0 && (
             <Button icon={<Check aria-hidden="true" size={20} />} loading={copy.apply.isPending}
               onClick={() => copy.apply.mutate(input, {
-                onSuccess: (result) => { copy.preview.reset(); feedback.showSuccess(text.copyApplied(format(result.changes))); },
+                onSuccess: (result) => { copy.preview.reset(); feedback.showSuccess(text.copyApplied(count(result.changes, "line", "oblique"))); },
                 onError: feedback.showError,
               })}>{messages.school.templates.apply}</Button>
           )}
@@ -129,6 +131,7 @@ export function CopyCurriculumTool({ yearId, table, format }: HelperProps) {
 
 /** The same weekly lessons for one subject line across chosen stages (creates or updates; never deletes). */
 export function SetAcrossTool({ yearId, table, format }: HelperProps) {
+  const { count } = useFormatter();
   const feedback = useFormFeedback();
   const across = useSetAcross(yearId);
   const subjects = subjectsOf(table);
@@ -175,7 +178,7 @@ export function SetAcrossTool({ yearId, table, format }: HelperProps) {
           {plan && plan.changes > 0 && (
             <Button icon={<Check aria-hidden="true" size={20} />} loading={across.apply.isPending}
               onClick={() => { const input = build(); if (input) across.apply.mutate(input, {
-                onSuccess: (result) => { across.preview.reset(); feedback.showSuccess(text.acrossApplied(format(result.changes))); },
+                onSuccess: (result) => { across.preview.reset(); feedback.showSuccess(text.acrossApplied(count(result.changes, "line", "oblique"))); },
                 onError: feedback.showError,
               }); }}>{messages.school.templates.apply}</Button>
           )}

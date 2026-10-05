@@ -64,7 +64,7 @@ function ShiftBlock({ kind, plan, days, presets, yearId, onChange }: {
         <TimeField id={`wizard-${kind}-start`} label={text.timing.firstStart(name)} value={plan.firstStartTime} onChange={(time) => onChange({ ...plan, firstStartTime: time })} />
         <Field id={`wizard-${kind}-minutes`} label={text.timing.minutes(name)}>
           <Select id={`wizard-${kind}-minutes`} value={String(plan.lessonMinutes)} onChange={(event) => onChange({ ...plan, lessonMinutes: Number(event.target.value) })}
-            options={[...new Set([...lessonMinuteChoices, plan.lessonMinutes])].sort((a, b) => a - b).map((minutes) => ({ value: String(minutes), label: text.timing.minutesOption(format.number(minutes)) }))} />
+            options={[...new Set([...lessonMinuteChoices, plan.lessonMinutes])].sort((a, b) => a - b).map((minutes) => ({ value: String(minutes), label: format.count(minutes, "minute") }))} />
         </Field>
         <div className="ui-field">
           <span className="stepper-caption" aria-hidden="true">{text.timing.lessons(name)}</span>

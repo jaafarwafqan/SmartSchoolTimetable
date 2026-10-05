@@ -1,18 +1,15 @@
 import { CircleAlert, CircleCheck, Flag } from "lucide-react";
-import { useRef, useState } from "react";
-import { InlineAddForm } from "../../components/InlineAddForm";
-import { TextField } from "../../components/TextField";
+import { useState } from "react";
 import { Alert } from "../../components/ui/alert";
-import { Card } from "../../components/ui/card";
 import { Spinner } from "../../components/ui/spinner";
 import { messages } from "../../i18n/messages";
+import type { Formatter } from "../../lib/format";
 import { useFormatter, useSchoolContext } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
 import { CurriculumEditor } from "../curriculum/CurriculumPage";
 import { SubjectTemplatePanel } from "../curriculum/SubjectTemplatePanel";
 import { StageCardsPanel } from "../stages-sections/StageCardsPanel";
 import { StageTemplatePanel } from "../stages-sections/StageTemplatePanel";
-import { useSaveSubject } from "../subjects/subjectsApi";
 import { BulkAddPanel } from "../teachers/BulkAddPanel";
 import { WizardFooter } from "./WizardFrame";
 import { useRecordStep, useSetupReview, type SetupProgress, type SetupWarning } from "./wizardApi";
@@ -54,36 +51,17 @@ export function StagesStep({ progress, onBack, onDone }: DataStepProps) {
   );
 }
 
-/** Step 5: suggested subjects plus quick add, then the same curriculum table as the screen. */
+/** Step 5: the school's subjects (chips, suggestions, quick add), then the same curriculum table as the screen. */
 export function CurriculumStep({ progress, onBack, onDone }: DataStepProps) {
   const format = useFormatter();
   const yearId = useSchoolContext().data?.currentYear?.id ?? null;
   const step = useStepRecorder(progress, 5, onDone);
-  const add = useFormFeedback();
-  const saveSubject = useSaveSubject();
-  const formRef = useRef<HTMLFormElement>(null);
   return (
     <div className="form-stack">
       <p className="card-note">{text.curriculum.note}</p>
       {yearId === null ? <NoYear /> : (
         <>
-          <Card className="page-card">
-            <SubjectTemplatePanel yearId={yearId} format={format.number} open />
-            <Alert tone="success" message={add.success} />
-            <Alert tone="error" message={add.error} />
-            <InlineAddForm label={text.curriculum.quickAdd} buttonLabel={text.curriculum.quickAdd} pending={saveSubject.isPending} formRef={formRef}
-              onSubmit={(form, element) => {
-                add.reset();
-                const name = String(form.get("wizardSubjectName") ?? "").trim();
-                if (!name) { add.showFieldErrors({ Name: messages.errors.REQUIRED }); return; }
-                saveSubject.mutate({ id: null, input: { name, colorIndex: 0, priority: 0, distributionEnabled: true, spreadAcrossDays: false, heavy: false, requiresDoublePeriod: false, blockedPeriods: [], notes: null, version: 0 } }, {
-                  onSuccess: () => { element.reset(); add.showSuccess(messages.school.subjects.added(name)); },
-                  onError: add.showError,
-                });
-              }}>
-              <TextField id="wizardSubjectName" label={messages.school.subjects.newName} maxLength={100} field="Name" errors={add.fieldErrors} />
-            </InlineAddForm>
-          </Card>
+          <SubjectTemplatePanel yearId={yearId} format={format.number} open />
           <CurriculumEditor yearId={yearId} />
         </>
       )}
@@ -101,15 +79,15 @@ export function TeachersStep({ progress, onBack, onDone }: DataStepProps) {
     <div className="form-stack">
       <p className="card-note">{text.teachers.note}</p>
       <Alert tone="success" message={saved} />
-      <BulkAddPanel closable={false} onClose={() => undefined} onSaved={(count) => setSaved(text.teachers.saved(format.number(count)))} />
+      <BulkAddPanel closable={false} onClose={() => undefined} onSaved={(count) => setSaved(text.teachers.saved(format.count(count, "teacher", "oblique")))} />
       <WizardFooter step={6} pending={step.pending} error={step.feedback.error} onBack={onBack} onNext={() => step.next()} onSkip={() => step.next(true)} />
     </div>
   );
 }
 
-function warningText(warning: SetupWarning, format: (value: number) => string) {
+function warningText(warning: SetupWarning, count: Formatter["count"]) {
   const texts = text.review.warningTexts;
-  if (warning.code === "under" || warning.code === "over") return texts[warning.code](warning.stageName, warning.shiftName ?? "", format(warning.value));
+  if (warning.code === "under" || warning.code === "over") return texts[warning.code](warning.stageName, warning.shiftName ?? "", count(warning.value, "lesson"));
   return texts[warning.code](warning.stageName);
 }
 
@@ -157,7 +135,7 @@ export function ReviewStep({ progress, onBack, onFinished }: { progress: SetupPr
                   {data.warnings.map((warning, index) => (
                     <li key={`warning-${warning.code}-${warning.stageName}-${warning.shiftName ?? ""}-${index}`}>
                       <CircleAlert aria-hidden="true" size={18} />
-                      <span>{warningText(warning, format.number)}</span>
+                      <span>{warningText(warning, format.count)}</span>
                     </li>
                   ))}
                 </ul>

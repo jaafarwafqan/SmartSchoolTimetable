@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Badge } from "../../components/ui/badge";
 import { Card } from "../../components/ui/card";
 import { messages } from "../../i18n/messages";
+import { useFormatter } from "../../lib/schoolContext";
 import type { CurriculumStage, ShiftTotal } from "../curriculum/curriculumApi";
 
 const text = messages.school.wizard.dashboardCurriculum;
@@ -16,6 +17,7 @@ function StatusBadge({ total, format }: { total: ShiftTotal; format: (value: num
 
 /** Curriculum totals per stage and shift on the dashboard (spec 2.5 §6), linking to the curriculum screen. */
 export function CurriculumStatusCard({ stages, format }: { stages: CurriculumStage[]; format: (value: number) => string }) {
+  const { count } = useFormatter();
   return (
     <Card className="dashboard-card" aria-labelledby="curriculum-status-title">
       <h2 id="curriculum-status-title"><Link to="/classes/curriculum">{text.title}</Link></h2>
@@ -24,7 +26,7 @@ export function CurriculumStatusCard({ stages, format }: { stages: CurriculumSta
           {stages.map((stage) => (
             <li key={`curriculum-status-${stage.id}`} className="curriculum-status-row">
               <span className="curriculum-status-name">{stage.name}</span>
-              <span className="curriculum-status-planned">{text.planned(format(stage.plannedLessons))}</span>
+              <span className="curriculum-status-planned">{count(stage.plannedLessons, "lesson")}</span>
               {stage.totals.length === 0
                 ? <span className="card-note">{messages.school.curriculum.noSections}</span>
                 : stage.totals.map((total) => (

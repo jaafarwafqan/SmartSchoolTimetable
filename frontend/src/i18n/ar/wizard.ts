@@ -63,7 +63,6 @@ export const wizard = {
     lessonsDecrease: (shift: string) => `إنقاص حصص ${isolate(shift)}`,
     lessonsIncrease: (shift: string) => `زيادة حصص ${isolate(shift)}`,
     minutes: (shift: string) => `مدة الحصة في ${isolate(shift)}`,
-    minutesOption: (minutes: string) => `${minutes} دقيقة`,
     perDay: "تعديل عدد الحصص لكل يوم",
     previewTitle: (shift: string) => `معاينة حصص ${isolate(shift)}`,
     lessonRow: (number: string) => `الحصة ${number}`,
@@ -83,7 +82,7 @@ export const wizard = {
   },
   teachers: {
     note: "الصق أسماء المعلمين، اسماً في كل سطر. هذه الخطوة اختيارية ويمكن تخطيها.",
-    saved: (count: string) => `تمت إضافة ${count} معلم.`,
+    saved: (teachers: string) => `تمت إضافة ${teachers}.`,
   },
   review: {
     counts: "ملخص الإعداد",
@@ -101,8 +100,8 @@ export const wizard = {
     warningTexts: {
       noSections: (stage: string) => `${isolate(stage)}: لا توجد شعب.`,
       emptyCurriculum: (stage: string) => `${isolate(stage)}: لم تُحدد حصص المنهج بعد.`,
-      under: (stage: string, shift: string, lessons: string) => `${isolate(stage)} (${isolate(shift)}): ناقص ${lessons} حصة عن السعة الأسبوعية.`,
-      over: (stage: string, shift: string, lessons: string) => `${isolate(stage)} (${isolate(shift)}): زائد ${lessons} حصة عن السعة الأسبوعية.`,
+      under: (stage: string, shift: string, lessons: string) => `${isolate(stage)} (${isolate(shift)}): ناقص ${lessons} عن السعة الأسبوعية.`,
+      over: (stage: string, shift: string, lessons: string) => `${isolate(stage)} (${isolate(shift)}): زائد ${lessons} عن السعة الأسبوعية.`,
     },
     finishedNote: "يمكنك إنهاء الإعداد الآن وإكمال الملاحظات لاحقاً من الشاشات المعنية.",
     finished: "اكتمل إعداد المدرسة.",
@@ -110,6 +109,5 @@ export const wizard = {
   dashboardCurriculum: {
     title: "حالة المنهج لكل مرحلة",
     empty: "لا توجد مراحل في السنة الحالية بعد.",
-    planned: (lessons: string) => `${lessons} حصة`,
   },
 } as const;

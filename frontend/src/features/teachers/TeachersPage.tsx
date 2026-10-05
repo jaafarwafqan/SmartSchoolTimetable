@@ -72,7 +72,7 @@ export function TeachersPage() {
           onClick={() => setBulk((current) => ({ open: !current.open, key: current.key + 1 }))}>{text.bulkAdd}</Button>} />
       {bulk.open && (
         <BulkAddPanel key={`bulk-${bulk.key}`} onClose={() => setBulk((current) => ({ ...current, open: false }))}
-          onSaved={(count) => { setBulk((current) => ({ ...current, open: false })); feedback.showSuccess(text.bulkSaved(format.number(count))); }} />
+          onSaved={(count) => { setBulk((current) => ({ ...current, open: false })); feedback.showSuccess(text.bulkSaved(format.count(count, "teacher", "oblique"))); }} />
       )}
       <Card className="page-card">
         <Alert tone="success" message={addFeedback.success} />

@@ -72,7 +72,7 @@ export const scheduleStructure = {
   dayLessonsFor: (day: string) => `عدد حصص يوم ${day}`,
   decreaseFor: (day: string) => `إنقاص حصص يوم ${day}`,
   increaseFor: (day: string) => `زيادة حصص يوم ${day}`,
-  weeklyTotal: (count: string) => `المجموع الأسبوعي: ${count} حصة`,
+  weeklyTotal: (lessons: string) => `المجموع الأسبوعي: ${lessons}`,
   saveDayLessons: "حفظ عدد الحصص لكل يوم",
   dayLessonsSaved: "تم حفظ عدد الحصص لكل يوم.",
 } as const;
