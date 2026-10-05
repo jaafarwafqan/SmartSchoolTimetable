@@ -45,7 +45,11 @@ export function findingMessage(finding: ReadinessFinding, format: Formatter): st
     case "ASSIGNMENT_INFEASIBLE": return text.messages.ASSIGNMENT_INFEASIBLE(name, format.count(required, "lesson"), format.count(available, "lesson"), format.count(shortage, "lesson"));
     case "RESOURCE_OVER_CAPACITY": return text.messages.RESOURCE_OVER_CAPACITY(name, isolate(finding.details[0] ?? ""), format.count(required, "lesson"), format.count(available, "lesson"), format.count(shortage, "lesson"));
     case "RESOURCE_ARCHIVED": return text.messages.RESOURCE_ARCHIVED(name);
-    case "DOUBLE_PERIOD_IMPOSSIBLE": return text.messages.DOUBLE_PERIOD_IMPOSSIBLE(name, format.count(required, "pair"), format.count(available, "pair"));
+    case "DOUBLE_PERIOD_IMPOSSIBLE": {
+      const message = text.messages.DOUBLE_PERIOD_IMPOSSIBLE(name, format.count(required, "pair"), format.count(available, "pair"));
+      // A warning in the standard mode: say that it blocks generation only in the double-lesson mode.
+      return finding.severity === "warning" ? `${message} ${text.doublePeriodWarningNote}` : message;
+    }
     case "DOUBLE_PERIOD_TIGHT": return text.messages.DOUBLE_PERIOD_TIGHT(name, format.count(required, "pair"));
     case "ORPHAN_BLOCKED_PERIODS": return text.messages.ORPHAN_BLOCKED_PERIODS(name, format.count(required, "lesson"));
     case "SHIFT_WITHOUT_PERIODS": return text.messages.SHIFT_WITHOUT_PERIODS(name);

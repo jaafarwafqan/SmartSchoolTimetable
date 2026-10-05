@@ -52,4 +52,10 @@ describe("readiness findings", () => {
     expect([0, 1, 2, 3, 11].map((value) => errorCount(value, format))).toEqual(["لا أخطاء", "خطأ واحد", "خطآن", "٣ أخطاء", "١١ خطأً"]);
     expect([0, 1, 2].map((value) => warningCount(value, format))).toEqual(["لا ملاحظات", "ملاحظة واحدة", "ملاحظتان"]);
   });
+
+  it("explains that an impossible double only blocks the double-lesson mode when it is a warning", () => {
+    const base = finding({ code: "DOUBLE_PERIOD_IMPOSSIBLE", entity: { kind: "subject", id: 9, name: "الفنية" }, required: 2, available: 1 });
+    expect(findingMessage({ ...base, severity: "warning" }, format)).toContain(messages.school.readiness.doublePeriodWarningNote);
+    expect(findingMessage({ ...base, severity: "error" }, format)).not.toContain(messages.school.readiness.doublePeriodWarningNote);
+  });
 });

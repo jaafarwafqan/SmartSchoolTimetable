@@ -183,7 +183,8 @@ public sealed class PreSolveValidatorTests
     [Fact]
     public void DoublePeriodsNeedConsecutivePairs()
     {
-        // 4 lessons in doubles = 2 pairs. Lessons 1–2 and 4–5 on Sunday only: exactly 2 pairs (tight); 1–3 only: 1 pair (error).
+        // 4 lessons in doubles = 2 pairs. Lessons 1–2 and 4–5 on Sunday only: exactly 2 pairs (tight); 1–3 only: 1 pair,
+        // a warning in the standard mode and an error in the «دروس مزدوجة» mode (DECISIONS_PENDING #65).
         SchedulingInput Build(int[] open)
         {
             var factory = new InputFactory();
@@ -193,7 +194,9 @@ public sealed class PreSolveValidatorTests
             return factory.Build();
         }
         Assert.Equal((2, 2, PreSolveValidator.Warning), Tuple(Single(PreSolveValidator.Validate(Build([1, 2, 4, 5])), FindingCodes.DoublePeriodTight)));
-        Assert.Equal((2, 1, PreSolveValidator.Error), Tuple(Single(PreSolveValidator.Validate(Build([1, 2, 3])), FindingCodes.DoublePeriodImpossible)));
+        Assert.Equal((2, 1, PreSolveValidator.Warning), Tuple(Single(PreSolveValidator.Validate(Build([1, 2, 3])), FindingCodes.DoublePeriodImpossible)));
+        Assert.Equal((2, 1, PreSolveValidator.Error), Tuple(Single(PreSolveValidator.Validate(Build([1, 2, 3]), new ValidatorOptions(DoublePeriodsRequired: true)), FindingCodes.DoublePeriodImpossible)));
+        Assert.Equal((2, 2, PreSolveValidator.Warning), Tuple(Single(PreSolveValidator.Validate(Build([1, 2, 4, 5]), new ValidatorOptions(true)), FindingCodes.DoublePeriodTight)));
         static (int, int, string) Tuple(ValidationFinding finding) => (finding.Required!.Value, finding.Available!.Value, finding.Severity);
     }
 
@@ -221,8 +224,9 @@ public sealed class PreSolveValidatorTests
             }).ToArray(),
         };
 
-        var finding = Single(PreSolveValidator.Validate(input), FindingCodes.DoublePeriodImpossible);
-        Assert.Equal((1, 0, 1), (finding.Required!.Value, finding.Available!.Value, finding.Shortage!.Value));
+        var finding = Single(PreSolveValidator.Validate(input, new ValidatorOptions(DoublePeriodsRequired: true)), FindingCodes.DoublePeriodImpossible);
+        Assert.Equal((1, 0, 1, PreSolveValidator.Error), (finding.Required!.Value, finding.Available!.Value, finding.Shortage!.Value, finding.Severity));
+        Assert.True(PreSolveValidator.Validate(input).Ready); // the standard mode only warns
     }
 
     [Fact]

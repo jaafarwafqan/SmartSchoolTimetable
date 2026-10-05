@@ -19,17 +19,17 @@ public sealed record ReadinessDto(
 /// <summary>«جاهزية الجدولة» (Phase 3 §3): builds the scheduling input, hashes it and runs the pre-solve validator.</summary>
 public sealed class ReadinessService(IDataStore store, TimeProvider clock)
 {
-    public async Task<OperationResult<ReadinessDto>> CheckAsync(long yearId, CancellationToken token)
+    public async Task<OperationResult<ReadinessDto>> CheckAsync(long yearId, CancellationToken token, ValidatorOptions? options = null)
     {
         if (await SchedulingInputBuilder.BuildAsync(store, yearId, token) is not { } input)
             return OperationResult.Failure<ReadinessDto>(ErrorCodes.NotFound);
-        return OperationResult.Success(Check(input, clock.GetUtcNow()));
+        return OperationResult.Success(Check(input, clock.GetUtcNow(), options));
     }
 
-    public static ReadinessDto Check(SchedulingInput input, DateTimeOffset now)
+    public static ReadinessDto Check(SchedulingInput input, DateTimeOffset now, ValidatorOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(input);
-        var report = PreSolveValidator.Validate(input);
+        var report = PreSolveValidator.Validate(input, options);
         var cells = input.Sections.Sum(section => input.Lines.Count(line => line.StageId == section.StageId));
         return new ReadinessDto(report.Ready, report.Errors, report.Warnings, report.Findings, SchedulingInputHash.Compute(input), now,
             input.Sections.Count, cells, input.Assignments.Count, input.Teachers.Count(teacher => !teacher.IsArchived));

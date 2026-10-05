@@ -1,4 +1,5 @@
 import { CircleAlert, CircleCheck, ExternalLink, RefreshCw } from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { userErrorMessage } from "../../api";
 import { Alert } from "../../components/ui/alert";
@@ -11,18 +12,27 @@ import { isolate } from "../../i18n/isolate";
 import { PageHeader } from "../../layout/PageHeader";
 import { useFormatter, useSchoolContext } from "../../lib/schoolContext";
 import { entityHref, findingMessage, fixHref, groupFindings, errorCount, warningCount } from "./readinessPresentation";
+import { Checkbox } from "../../components/ui/checkbox";
 import { useReadiness } from "./readinessApi";
 
 const text = messages.school.readiness;
+
+/** A UTC timestamp as the local "YYYY-MM-DD" and "HH:mm" the formatter expects. */
+function localDateTime(iso: string): { date: string; time: string } {
+  const value = new Date(iso);
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return { date: `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`, time: `${pad(value.getHours())}:${pad(value.getMinutes())}` };
+}
 
 export function ReadinessPage() {
   const format = useFormatter();
   const school = useSchoolContext();
   const yearId = school.data?.currentYear?.id;
-  const readiness = useReadiness(yearId);
+  const [doublePeriods, setDoublePeriods] = useState(false);
+  const readiness = useReadiness(yearId, doublePeriods);
   const groups = readiness.data ? groupFindings(readiness.data.findings) : [];
-  const checkedDate = readiness.data?.checkedAt.slice(0, 10);
-  const checkedTime = readiness.data?.checkedAt.slice(11, 16);
+  // The check time is stored in UTC: show it in the computer's local time.
+  const checked = readiness.data ? localDateTime(readiness.data.checkedAt) : null;
   return (
     <div className="page">
       <PageHeader title={text.title} description={text.description} actions={(
@@ -31,6 +41,12 @@ export function ReadinessPage() {
         </Button>
       )} />
       {!yearId && school.isSuccess && <Alert tone="warning" message={text.noYear} />}
+      {yearId && (
+        <span className="form-stack">
+          <Checkbox checked={doublePeriods} onChange={(event) => setDoublePeriods(event.target.checked)}>{text.doublePeriodsMode}</Checkbox>
+          <span className="card-note">{text.doublePeriodsModeHint}</span>
+        </span>
+      )}
       {school.isError && <Alert tone="error" message={userErrorMessage(school.error)} />}
       {yearId && readiness.isPending && <p>{text.loading}</p>}
       {readiness.isError && <Alert tone="error" message={text.loadFailed}>{userErrorMessage(readiness.error)}</Alert>}
@@ -45,7 +61,7 @@ export function ReadinessPage() {
               <Badge tone={readiness.data.errors ? "danger" : "success"}>{errorCount(readiness.data.errors, format)}</Badge>
               <Badge>{warningCount(readiness.data.warnings, format)}</Badge>
             </div>
-            <p className="readiness-meta"><span>{text.checkedSummary(format.date(checkedDate!), format.time(checkedTime!))}</span>
+            <p className="readiness-meta"><span>{text.checkedSummary(format.date(checked!.date), format.time(checked!.time))}</span>
               <span>{text.hashLabel} <LtrText>{text.shortHash(readiness.data.inputHash.slice(0, 12))}</LtrText></span></p>
           </Card>
           <section className="readiness-findings" aria-labelledby="readiness-findings-title">

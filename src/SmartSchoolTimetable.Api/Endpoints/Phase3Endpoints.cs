@@ -57,8 +57,8 @@ public static class Phase3Endpoints
 
     public static IEndpointRouteBuilder MapReadinessEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapOwnerGroup("/academic-years/{yearId:long}/readiness").MapGet("/", async (long yearId, HttpContext context, ReadinessService service, CancellationToken token) =>
-            ApiResults.Ok(context, await service.CheckAsync(yearId, token)));
+        endpoints.MapOwnerGroup("/academic-years/{yearId:long}/readiness").MapGet("/", async (long yearId, bool? doublePeriods, HttpContext context, ReadinessService service, CancellationToken token) =>
+            ApiResults.Ok(context, await service.CheckAsync(yearId, token, new ValidatorOptions(doublePeriods == true))));
         return endpoints;
     }
 

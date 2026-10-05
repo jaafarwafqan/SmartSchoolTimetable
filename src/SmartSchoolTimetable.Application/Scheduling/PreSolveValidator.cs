@@ -32,6 +32,13 @@ public sealed record ValidationFinding(
     IReadOnlyList<string> Details,
     IReadOnlyList<string> Fixes);
 
+/// <param name="DoublePeriodsRequired">The «دروس مزدوجة» mode: double lessons are hard constraints, so a line that
+/// cannot get its pairs is an error. Off (default): they are a soft preference and it is a warning.</param>
+public sealed record ValidatorOptions(bool DoublePeriodsRequired = false)
+{
+    public static readonly ValidatorOptions Default = new();
+}
+
 public sealed record ValidationReport(bool Ready, int Errors, int Warnings, IReadOnlyList<ValidationFinding> Findings);
 
 /// <summary>
@@ -47,9 +54,10 @@ public static class PreSolveValidator
 
     private sealed record Slot(long Shift, int Day, int Lesson);
 
-    public static ValidationReport Validate(SchedulingInput input)
+    public static ValidationReport Validate(SchedulingInput input, ValidatorOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(input);
+        options ??= ValidatorOptions.Default;
         var context = new Context(input);
         var findings = new List<ValidationFinding>();
         CheckNothingToSchedule(context, findings);
@@ -60,7 +68,7 @@ public static class PreSolveValidator
         CheckSubjectSlots(context, findings);
         CheckAssignments(context, findings);
         CheckResources(context, findings);
-        CheckDoublePeriods(context, findings);
+        CheckDoublePeriods(context, options, findings);
         CheckConsistency(context, findings);
         var errors = findings.Count(finding => finding.Severity == Error);
         return new ValidationReport(errors == 0, errors, findings.Count - errors, findings);
@@ -299,9 +307,11 @@ public static class PreSolveValidator
 
     /// <summary>
     /// Check 7: a line taught in double periods needs lessons ÷ 2 pairs of consecutive usable slots on the same day
-    /// (section, subject and its teacher). Impossible = error; exactly enough = warning («ضيق»).
+    /// (section, subject and its teacher). Impossible = an error only when double lessons are REQUIRED (the
+    /// «دروس مزدوجة» generation mode); in the standard mode they are a soft preference, so it is a warning (an error
+    /// there could block a school that can be timetabled: DECISIONS_PENDING #65). Exactly enough = warning («ضيق»).
     /// </summary>
-    private static void CheckDoublePeriods(Context context, List<ValidationFinding> findings)
+    private static void CheckDoublePeriods(Context context, ValidatorOptions options, List<ValidationFinding> findings)
     {
         foreach (var section in context.Input.Sections)
         {
@@ -317,7 +327,8 @@ public static class PreSolveValidator
                 var available = usable.GroupBy(slot => slot.Day).Sum(day => PairsIn(day, context));
                 var related = new[] { SectionEntity(section) };
                 if (pairs > available)
-                    findings.Add(Finding(FindingCodes.DoublePeriodImpossible, Error, SubjectEntity(subject), pairs, available, related, fixes: ["removeSubjectBlocks", "turnOffDoublePeriod"]));
+                    findings.Add(Finding(FindingCodes.DoublePeriodImpossible, options.DoublePeriodsRequired ? Error : Warning, SubjectEntity(subject), pairs, available, related,
+                        fixes: ["removeSubjectBlocks", "turnOffDoublePeriod"]));
                 else if (pairs == available)
                     findings.Add(Finding(FindingCodes.DoublePeriodTight, Warning, SubjectEntity(subject), pairs, available, related, fixes: "removeSubjectBlocks"));
             }

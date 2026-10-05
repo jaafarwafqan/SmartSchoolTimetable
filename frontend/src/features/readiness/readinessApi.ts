@@ -57,10 +57,11 @@ export type ReadinessReport = {
 
 export const readinessKey = (yearId: number) => ["dashboard", "readiness", yearId] as const;
 
-export function useReadiness(yearId: number | undefined) {
+/** `doublePeriods`: check for the «دروس مزدوجة» mode, where an impossible double period is an error (ADR 0035). */
+export function useReadiness(yearId: number | undefined, doublePeriods = false) {
   return useQuery({
-    queryKey: readinessKey(yearId ?? 0),
-    queryFn: () => apiRequest<ReadinessReport>(`/api/v1/academic-years/${yearId}/readiness`),
+    queryKey: [...readinessKey(yearId ?? 0), doublePeriods],
+    queryFn: () => apiRequest<ReadinessReport>(`/api/v1/academic-years/${yearId}/readiness/${doublePeriods ? "?doublePeriods=true" : ""}`),
     enabled: yearId !== undefined,
   });
 }

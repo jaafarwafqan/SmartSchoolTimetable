@@ -1,6 +1,6 @@
 # ADR 0035: Conservative pre-solve validator
 
-- Status: Accepted for Phase 3D.
+- Status: Accepted for Phase 3D; double-period severity amended in the Phase 3 finish (DECISIONS_PENDING #65).
 - Date: 2026-10-05
 
 ## Context
@@ -8,8 +8,12 @@ The readiness report runs before Phase 4's CP-SAT solver. A false blocking error
 
 ## Decision
 - Validate only the pure `SchedulingInput`; results are deterministic and grouped by affected entity.
-- Emit an error only when a necessary demand exceeds a proven upper bound (section capacity, teacher slot/load capacity, subject-allowed slots, resource capacity per shift/slot, or consecutive pairs for double lessons). A pair cannot cross a break row. An assignment to an archived or fully released teacher is also an error.
+- Emit an error only when a necessary demand exceeds a proven upper bound (section capacity, teacher slot/load capacity, subject-allowed slots, resource capacity per shift/slot, or, in the double-lesson mode, consecutive pairs for double lessons). A pair cannot cross a break row. An assignment to an archived or fully released teacher is also an error.
 - Emit warnings for uncertain conditions such as partial release, overlap, disabled distribution, orphan blocked periods, an empty stage, and tight-but-possible double periods.
+- **Double periods depend on the generation mode** (`ValidatorOptions.DoublePeriodsRequired`):
+  - In the standard mode, doubles are a soft preference in Phase 4. `DOUBLE_PERIOD_IMPOSSIBLE` is therefore a WARNING whose Arabic text says it will block generation in the «دروس مزدوجة» mode. An error here could block a school that can be timetabled.
+  - With the option on (the «دروس مزدوجة» mode, readiness `?doublePeriods=true`, the checkbox on the readiness screen), doubles are hard constraints and the same finding is an ERROR.
+  - The input and its hash are the same in both modes.
 - Use stable codes, severity, entity references, numeric details and fix codes. Arabic wording and links are client dictionary data.
 - Do not claim completeness: some jointly interacting constraints can be missed. The validator is not a solver and never places lessons.
 
