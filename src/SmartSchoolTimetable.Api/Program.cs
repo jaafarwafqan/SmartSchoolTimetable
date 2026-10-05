@@ -97,6 +97,15 @@ builder.Services.AddLocalInfrastructure(
 
 var app = builder.Build();
 await LocalInfrastructureRegistration.InitializeLocalDatabaseAsync(app.Services);
+if (app.Configuration.GetValue("DefaultOwner:Enabled", false))
+{
+    // ADR 0025: a database without an owner gets the configured default account (password changeable in Settings).
+    await using var ownerScope = app.Services.CreateAsyncScope();
+    var created = await ownerScope.ServiceProvider.GetRequiredService<ILocalAuthService>().EnsureDefaultOwnerAsync(
+        app.Configuration["DefaultOwner:Username"] ?? "admin", app.Configuration["DefaultOwner:Password"] ?? string.Empty, CancellationToken.None);
+    if (created)
+        StartupLog.DefaultOwnerCreated(app.Logger);
+}
 
 app.UseExceptionHandler();
 app.UseMiddleware<UnifiedApiErrorMiddleware>();
@@ -165,3 +174,9 @@ if (!app.Environment.IsEnvironment("Testing"))
 await app.WaitForShutdownAsync();
 
 public partial class Program;
+
+internal static partial class StartupLog
+{
+    [LoggerMessage(EventId = 1001, Level = LogLevel.Warning, Message = "Default owner account created. Change its password from Settings.")]
+    public static partial void DefaultOwnerCreated(ILogger logger);
+}

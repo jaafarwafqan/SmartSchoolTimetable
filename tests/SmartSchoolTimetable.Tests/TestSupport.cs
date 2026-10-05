@@ -64,10 +64,11 @@ internal sealed class TestHost : IAsyncDisposable
     private readonly string _directory = Path.Combine(Path.GetTempPath(), $"smart-school-tests-{Guid.NewGuid():N}");
     private readonly TestApplicationFactory _factory;
 
-    public TestHost()
+    /// <param name="defaultOwner">Enables the default owner account (ADR 0025); off so tests go through setup.</param>
+    public TestHost(bool defaultOwner = false)
     {
         Directory.CreateDirectory(_directory);
-        _factory = new TestApplicationFactory(DatabasePath);
+        _factory = new TestApplicationFactory(DatabasePath, defaultOwner);
         Client = _factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             BaseAddress = LocalOrigin,
@@ -145,7 +146,7 @@ internal sealed class TestHost : IAsyncDisposable
     }
 }
 
-internal sealed class TestApplicationFactory(string databasePath) : WebApplicationFactory<Program>
+internal sealed class TestApplicationFactory(string databasePath, bool defaultOwner = false) : WebApplicationFactory<Program>
 {
     public CapturingLoggerProvider LogProvider { get; } = new();
 
@@ -155,6 +156,7 @@ internal sealed class TestApplicationFactory(string databasePath) : WebApplicati
         builder.UseSetting("LocalHost:Port", "5080");
         builder.UseSetting("Authentication:InactivityTimeoutMinutes", "5");
         builder.UseSetting("Database:Path", databasePath);
+        builder.UseSetting("DefaultOwner:Enabled", defaultOwner ? "true" : "false");
         builder.ConfigureLogging(logging =>
         {
             logging.AddProvider(LogProvider);

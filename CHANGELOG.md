@@ -1,6 +1,11 @@
 # Changelog
 
 ## [Unreleased]
+### Default owner account (owner request)
+- A new or reset database creates the owner account `admin` / `Admin@12345` at start-up (ADR 0025). The app opens at the login screen, and the password can be changed from Settings.
+- `DefaultOwner` settings in `appsettings.json`; tests and E2E turn it off to keep covering first-run setup.
+- **Tests:** .NET 129 (adds `DefaultOwnerTests`), Vitest 66, Playwright 5.
+
 ### Phase 2.5D - setup wizard (tag `phase-2-5d`)
 - **Setup wizard** at `/setup` (ADR 0023), seven steps: المدرسة، السنة الدراسية، الدوام، الصفوف والشعب، المواد والمنهج، المعلمون، المراجعة.
   - Choice cards, proposed year and terms, working-day and period presets with a live preview, per-day counts.

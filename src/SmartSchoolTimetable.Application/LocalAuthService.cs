@@ -78,6 +78,40 @@ public sealed class LocalAuthService(
         }
     }
 
+    /// <summary>
+    /// Default owner (ADR 0025): on a database without an owner, creates it with the configured credentials so the
+    /// app opens at the login screen. The recovery code generated here is never shown; it is marked acknowledged,
+    /// and the owner creates a visible one from Settings. The password stays changeable. An existing owner is never touched.
+    /// </summary>
+    public async Task<bool> EnsureDefaultOwnerAsync(string username, string password, CancellationToken cancellationToken)
+    {
+        var normalizedUsername = NormalizeUsername(username);
+        if (ValidateCredentials(normalizedUsername, password) is { } error)
+            throw new InvalidOperationException($"The configured default owner account is invalid ({error}).");
+
+        await operationGate.WaitAsync(cancellationToken);
+        try
+        {
+            if (await ownerRepository.GetOwnerAsync(cancellationToken) is not null)
+                return false;
+            var now = timeProvider.GetUtcNow();
+            var (passwordSalt, passwordHash) = credentialHasher.HashPassword(password);
+            var (recoverySalt, recoveryHash) = credentialHasher.HashRecoveryCode(NormalizeRecoveryCode(GenerateRecoveryCode()));
+            var owner = OwnerAccount.Create(username.Trim(), normalizedUsername, passwordSalt, passwordHash,
+                credentialHasher.CurrentPasswordIterations, recoverySalt, recoveryHash, now);
+            owner.AcknowledgeRecoveryCode(now);
+            await ownerRepository.CreateOwnerAsync(
+                owner,
+                LocalAuditEntry.Create(now, "OwnerAccountCreated", "owner-account", "Default owner account created at first start."),
+                cancellationToken);
+            return true;
+        }
+        finally
+        {
+            operationGate.Release();
+        }
+    }
+
     public async Task<AuthOperationResult> LoginAsync(
         string username,
         string password,
