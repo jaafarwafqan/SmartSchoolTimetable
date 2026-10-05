@@ -7,7 +7,8 @@ import type { Section, Stage } from "../stages-sections/stagesApi";
 export type CapacityStatus = "under" | "equal" | "over";
 export type ShiftTotal = { shiftId: number; shiftName: string; sections: number; weeklyCapacity: number; status: CapacityStatus; difference: number };
 export type CurriculumStage = { id: number; name: string; plannedLessons: number; totals: ShiftTotal[] };
-export type CurriculumCell = { stageId: number; entryId: number | null; weeklyLessons: number | null; version: number | null; duplicates: number };
+/** `isSuggested`: the value came from the suggested template and was not edited since («مقترح»). */
+export type CurriculumCell = { stageId: number; entryId: number | null; weeklyLessons: number | null; version: number | null; duplicates: number; isSuggested: boolean };
 export type CurriculumRow = { subjectId: number; subjectName: string; colorIndex: number; label: string | null; cells: CurriculumCell[] };
 export type CurriculumTable = { stages: CurriculumStage[]; rows: CurriculumRow[] };
 export type CellInput = { stageId: number; subjectId: number; label: string | null; weeklyLessons: number | null; entryId: number | null; version: number | null };
@@ -75,7 +76,7 @@ function useSetupMutation<TInput, TResult>(request: (input: TInput) => Promise<T
   return useMutation({
     mutationFn: request,
     onSuccess: async () => {
-      await Promise.all([refreshQueries(queryClient, [curriculumKey, stageCardsKey, ["stages"], ["sections"], ["subjects"], ["suggested-subjects"]]), refreshSchoolData()]);
+      await Promise.all([refreshQueries(queryClient, [curriculumKey, stageCardsKey, ["stages"], ["sections"], ["subjects"], ["suggested-subjects"], ["daily-suggestion"]]), refreshSchoolData()]);
     },
   });
 }
@@ -115,4 +116,54 @@ export function useSetStageDayLessons(yearId: number) {
 export function useSetSectionCount(yearId: number) {
   return useSetupMutation(({ stageId, ...input }: SectionCountInput) =>
     apiRequest<StageCard>(`${yearPath(yearId)}/stage-cards/${stageId}/section-count`, "PUT", input));
+}
+
+// Suggested Iraqi curriculum (ADR 0028, 0029) and the daily distribution (ADR 0030).
+export type SuggestedEntryLine = { subject: string; lessons: number; action: "create" | "exists" | "update" | "unchanged" | "skipped"; optional: boolean; currentLessons: number | null };
+export type SuggestedStage = { stageId: number; stageName: string; needsReview: boolean; statedTotal: number; suggestedTotal: number; currentTotal: number; resultingTotal: number; entries: SuggestedEntryLine[] };
+export type SuggestedSubjectLine = { name: string; action: "create" | "exists"; existingName: string | null; optional: boolean; included: boolean };
+export type SuggestedPlan = { provenance: string; subjects: SuggestedSubjectLine[]; stages: SuggestedStage[]; optionalSubjects: string[]; changes: number };
+export type SuggestedInput = { optionalSubjects: string[]; confirm?: boolean };
+export type DailyStatus = "apply" | "same" | "manual" | "aboveCapacity" | "belowDays" | "noCurriculum";
+export type DailyStage = { stageId: number; stageName: string; weeklyTotal: number; capacity: number; suggested: DayLessonsEntry[]; current: DayLessonsEntry[]; status: DailyStatus; changedSinceSuggestion: boolean; version: number };
+type DayLessonsEntry = { day: number; lessons: number };
+
+const suggestedPath = (yearId: number) => `${yearPath(yearId)}/curriculum/suggested`;
+
+/** The suggestion for the current choices; also tells which stages need review (used by the table header). */
+export function useSuggestedPreview(yearId: number, optionalSubjects: readonly string[]) {
+  return useQuery({
+    queryKey: [...curriculumKey, "suggested", yearId, [...optionalSubjects].sort()],
+    queryFn: () => apiRequest<SuggestedPlan>(`${suggestedPath(yearId)}/preview`, "POST", { optionalSubjects }),
+  });
+}
+
+export function useApplySuggested(yearId: number) {
+  return useSetupMutation((input: SuggestedInput) => apiRequest<SuggestedPlan>(suggestedPath(yearId), "POST", input));
+}
+
+export function usePreviewStageReset(yearId: number) {
+  return useMutation({
+    mutationFn: ({ stageId, ...input }: SuggestedInput & { stageId: number }) =>
+      apiRequest<SuggestedPlan>(`${suggestedPath(yearId)}/stages/${stageId}/reset/preview`, "POST", input),
+  });
+}
+
+export function useResetStage(yearId: number) {
+  return useSetupMutation(({ stageId, ...input }: SuggestedInput & { stageId: number }) =>
+    apiRequest<SuggestedPlan>(`${suggestedPath(yearId)}/stages/${stageId}/reset`, "POST", { ...input, confirm: true }));
+}
+
+export const dailyKey = ["daily-suggestion"] as const;
+
+export function useDailySuggestion(yearId: number | null) {
+  return useQuery({
+    queryKey: [...dailyKey, yearId],
+    enabled: yearId !== null,
+    queryFn: () => apiRequest<{ stages: DailyStage[] }>(`${yearPath(yearId ?? 0)}/daily-suggestion`),
+  });
+}
+
+export function useApplyDailySuggestion(yearId: number) {
+  return useSetupMutation((stageIds: number[]) => apiRequest<{ stages: DailyStage[] }>(`${yearPath(yearId)}/daily-suggestion`, "POST", { stageIds }));
 }

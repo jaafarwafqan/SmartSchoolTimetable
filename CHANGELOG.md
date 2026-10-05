@@ -1,6 +1,18 @@
 # Changelog
 
 ## [Unreleased]
+### Phase 2.5 suggested Iraqi curriculum (tag `phase-2-5-curriculum`)
+- **«تعبئة المنهج المقترح»** in the curriculum tab and wizard step 5 (ADR 0028, 0029).
+  - Uses the owner's suggested weekly lessons for primary, intermediate and preparatory stages; unverified, labelled «مقترح» with a provenance banner.
+  - Preview first, then an idempotent, non-destructive apply. Existing subjects are matched through aliases. Optional Kurdish and French start unchecked.
+  - The three literary stages carry a review warning.
+  - Suggested cells show «مقترح» until edited; «إعادة المقترح لهذه المرحلة» restores values after a before/after confirmation.
+- **«اقتراح توزيع الحصص اليومية»** on the stages screen, the curriculum tab and wizard step 5 (ADR 0030).
+  - An even split of each stage's curriculum total, with the earlier days longer, never above the shift.
+  - Manual counts are never overwritten, and a notice appears when the total changes.
+- **Migration** `Phase25SuggestedCurriculum`; new code `DAILY_TOTAL_ABOVE_SHIFT`.
+- **Tests:** .NET 150, Vitest 73, Playwright 13.
+
 ### Phase 2.5E - scenarios, demo data, report (tags `phase-2-5e`, `phase-2-5-final`)
 - **E2E scenarios (a)–(e):**
   - (b) is a dual-shift ثانوية with branches set up through the wizard.

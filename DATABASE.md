@@ -86,6 +86,8 @@ Migration `Phase25FixStageDayLessons` adds `StageDayLessons`:
 - `StageId`, `Day`, `Lessons` (check ≥ 1), unique per stage and day (ADR 0027).
 - A working day without a row inherits the shift's count, so existing data needs no change.
 
+Migration `Phase25SuggestedCurriculum` adds `CurriculumEntries.IsSuggested` and `Stages.DayLessonsSuggested` (both boolean, default false; ADR 0029, 0030). The suggested curriculum itself is embedded data (`Application/Templates/iraq-curriculum.suggested.json`), not a table.
+
 ## Application data
 - School profile; teachers, subjects, resources, stages, sections, workload, shifts, bell times, calendar
 - Timetable versions and lessons

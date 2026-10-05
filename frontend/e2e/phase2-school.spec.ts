@@ -257,7 +257,7 @@ test("the whole setup checklist completes end to end; stale edits are caught", a
   await expectYearInOrder(page.getByRole("table", { name: school.nav.academicYears }), "2027", "2028");
   await goToSection(page, school.nav.stagesSections);
   await page.getByLabel(stages.year).selectOption({ index: 0 }); // newest year first
-  await expect(page.getByRole("cell", { name: "الأول المتوسط", exact: true })).toBeVisible();
+  await expect(page.getByRole("table", { name: stages.stages }).getByRole("cell", { name: "الأول المتوسط", exact: true })).toBeVisible();
   await expect(page.getByRole("cell", { name: "29", exact: true })).toBeVisible();
 
   // Stage template, section stepper and curriculum (spec 2.5 §3.3, §3.4, §4) on the copied year.

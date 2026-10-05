@@ -26,6 +26,11 @@ public sealed class CurriculumEntry : VersionedEntity
     public string NormalizedLabel { get; private set; } = string.Empty;
     public bool NeedsDoublePeriod { get; private set; }
     public string? Notes { get; private set; }
+    /// <summary>
+    /// Created or reset from the suggested curriculum template (ADR 0029); cleared as soon as the owner edits the line,
+    /// so a later template run never overwrites an owner's value.
+    /// </summary>
+    public bool IsSuggested { get; private set; }
     public bool IsArchived { get; private set; }
     public DateTimeOffset? ArchivedAt { get; private set; }
 
@@ -36,9 +41,27 @@ public sealed class CurriculumEntry : VersionedEntity
         return entry;
     }
 
+    /// <summary>A line from the suggested template, marked «مقترح».</summary>
+    public static CurriculumEntry CreateSuggested(long stageId, long subjectId, int weeklyLessons)
+    {
+        var entry = Create(stageId, subjectId, weeklyLessons, null, needsDoublePeriod: false, null);
+        entry.IsSuggested = true;
+        return entry;
+    }
+
+    /// <summary>An owner edit: the line is no longer a suggestion.</summary>
     public void Update(int weeklyLessons, string? label, bool needsDoublePeriod, string? notes)
     {
         Apply(weeklyLessons, label, needsDoublePeriod, notes);
+        IsSuggested = false;
+        Touch();
+    }
+
+    /// <summary>"إعادة المقترح لهذه المرحلة" after the owner confirmed the before/after preview.</summary>
+    public void ResetToSuggestion(int weeklyLessons)
+    {
+        Apply(weeklyLessons, Label, NeedsDoublePeriod, Notes);
+        IsSuggested = true;
         Touch();
     }
 
@@ -63,7 +86,12 @@ public sealed class CurriculumEntry : VersionedEntity
     }
 
     /// <summary>A copy for another stage (curriculum copy helper).</summary>
-    public CurriculumEntry CopyTo(long stageId) => Create(stageId, SubjectId, WeeklyLessons, Label, NeedsDoublePeriod, Notes);
+    public CurriculumEntry CopyTo(long stageId)
+    {
+        var copy = Create(stageId, SubjectId, WeeklyLessons, Label, NeedsDoublePeriod, Notes);
+        copy.IsSuggested = IsSuggested;
+        return copy;
+    }
 
     /// <summary>True for the same subject and label (normalized); used to skip duplicates when copying.</summary>
     public bool SameLineAs(long subjectId, string? label) => SubjectId == subjectId && NormalizedLabel == ArabicText.Normalize(label);

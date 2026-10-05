@@ -27,6 +27,12 @@ public sealed class Stage : VersionedEntity
     /// </summary>
     public IReadOnlyList<DayLessons> DayLessonCounts => _dayLessons.OrderBy(entry => entry.Day).ToArray();
 
+    /// <summary>
+    /// True when the counts came from "اقتراح توزيع الحصص اليومية" (ADR 0030); any owner edit clears it, and a later
+    /// suggestion never overwrites counts the owner set by hand.
+    /// </summary>
+    public bool DayLessonsSuggested { get; private set; }
+
     /// <summary>Lessons a section of this stage has on <paramref name="day"/> in <paramref name="shift"/>.</summary>
     public int LessonsOn(int day, Shift shift)
     {
@@ -53,7 +59,15 @@ public sealed class Stage : VersionedEntity
             .ThrowIfAny();
         _dayLessons.Clear();
         _dayLessons.AddRange(counts);
+        DayLessonsSuggested = false;
         Touch();
+    }
+
+    /// <summary>Applies the daily distribution suggestion (validated like an owner edit, then marked as suggested).</summary>
+    public void ApplySuggestedDayLessons(IReadOnlyCollection<DayLessons> counts, IReadOnlyCollection<int> workingDays, Func<int, int> maxOnDay)
+    {
+        SetDayLessons(counts, workingDays, maxOnDay);
+        DayLessonsSuggested = true;
     }
 
     /// <summary>Lowers the stage's count for a day to <paramref name="lessons"/> when it is higher (a shift was shortened).</summary>
@@ -103,6 +117,7 @@ public sealed class Stage : VersionedEntity
     {
         var copy = Create(academicYearId, Name, DisplayOrder, TemplateKey);
         copy._dayLessons.AddRange(_dayLessons);
+        copy.DayLessonsSuggested = DayLessonsSuggested;
         if (IsArchived) copy.Archive(ArchivedAt ?? DateTimeOffset.UtcNow);
         return copy;
     }

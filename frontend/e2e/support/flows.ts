@@ -98,6 +98,7 @@ export async function expectNoLatinText(page: Page, screen: string, allowed: rea
 
 /** Spec 2.5 §2.1: a year range such as "2027 - 2028" is displayed in logical order (first year on the left). */
 export async function expectYearInOrder(scope: Locator, first: string, second: string): Promise<void> {
+  await expect(scope).toContainText(second); // the rows may still be loading
   const ordered = await scope.evaluate((element, years) => {
     const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {

@@ -105,10 +105,12 @@ Fixes data-entry weight before Phase 3. The full specification is in `docs/PHASE
 | fixes 1 | Owner findings B1–B8 (curriculum table layout, overflow, overlap guard, subject chips, Arabic counts, Iraqi months) | `phase-2-5-fix1` |
 | fixes 2 | M1 editable breaks, M2 lessons per day per stage, M3 capacity in curriculum headers | `phase-2-5-fix2` |
 | 2.5E | E2E scenarios, demo variants, docs, owner test script, report | `phase-2-5e`, then `phase-2-5-final` |
+| curriculum | Owner's suggested Iraqi curriculum (preview, idempotent apply, «مقترح» flag, per-stage reset) and the daily distribution suggestion | `phase-2-5-curriculum` |
 
 ## Phase 3 - Workload and capacity
 - Workload, resources, scheduling profiles, capacity analysis, and deterministic validation.
-- **Source of weekly workload:** the curriculum table (stage × subject × weekly lessons; repeated lines allowed, ADR 0021). Teachers are assigned to curriculum entries per section.
+- **Source of weekly workload:** the curriculum table (stage × subject × weekly lessons; repeated lines allowed, ADR 0021), including lines filled from the owner's suggested curriculum (ADR 0028; a suggestion, not an official plan). Teachers are assigned to curriculum entries per section.
+- **Allowed periods:** each section may only use its stage's day counts (ADR 0027, 0030).
 - **Capacity rule (ADR 0027):** a section's day has the first N lessons of its shift's day, where N is its stage's own count (default: the shift's). Workload checks and the Phase 4 solver must not use lessons beyond N.
 ### Acceptance criteria
 - Workload totals and section capacity accurately report shortage/excess in Arabic.

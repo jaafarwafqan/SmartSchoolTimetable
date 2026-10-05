@@ -71,4 +71,5 @@ public static class ErrorCodes
     public const string ShiftModeInUse = "SHIFT_MODE_IN_USE";
     public const string CurriculumInUse = "CURRICULUM_IN_USE";
     public const string StageLessonsAboveShift = "STAGE_LESSONS_ABOVE_SHIFT";
+    public const string DailyTotalAboveShift = "DAILY_TOTAL_ABOVE_SHIFT";
 }

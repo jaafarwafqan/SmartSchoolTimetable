@@ -94,5 +94,5 @@ public sealed class CurriculumService(IDataStore store, TimeProvider clock)
         store.FirstOrDefaultAsync(store.Query<CurriculumEntry>().Where(entry => entry.Id == id), token);
 
     internal static CurriculumEntryDto ToDto(CurriculumEntry entry) =>
-        new(entry.Id, entry.StageId, entry.SubjectId, entry.WeeklyLessons, entry.Label, entry.NeedsDoublePeriod, entry.Notes, entry.IsArchived, entry.Version);
+        new(entry.Id, entry.StageId, entry.SubjectId, entry.WeeklyLessons, entry.Label, entry.NeedsDoublePeriod, entry.Notes, entry.IsArchived, entry.Version, entry.IsSuggested);
 }

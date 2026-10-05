@@ -99,7 +99,37 @@ These are logged in `docs/DECISIONS_PENDING.md`, each with its reason and how to
 - Files were deleted outside the repository during a reset, including backups.
 - CLAUDE.md now forbids deletion outside the repository and the test folders, forbids deleting backups, and requires confirmed paths for any destructive command.
 
+## Suggested Iraqi curriculum (tag `phase-2-5-curriculum`)
+This instruction arrived after `phase-2-5-final` was tagged. It is committed after it (decision #43); the existing tag was not moved.
+
+Final verification for this tag:
+
+| Command | Result |
+|---|---|
+| `dotnet build -c Release --no-incremental` | 0 warnings, 0 errors |
+| `dotnet test -c Release` | 150 passed |
+| `npm run lint` | clean |
+| Vitest | 73 passed |
+| Playwright | 13 passed |
+| Line coverage | Domain 98.8%, Application 95.7% |
+
+| Requirement | Proof |
+|---|---|
+| §1 provenance, never "official" | `SuggestedCurriculumTests.TheTemplateMatchesTheStagesAndTheExpectedTotals` (provenance text); `phase25-curriculum.spec.ts` (a) checks the banner «مقترح من خطة دراسية قدّمها المالك وغير مُتحقَّق منه رسمياً…»; ADR 0028 |
+| §1 three literary stages need review, totals from rows | the same unit test (exactly those three; review ⇔ stated total equals neither computed total); scenario (c): warnings in the panel and three in the table header |
+| §1 optional Kurdish and French unchecked | `OptionalSubjectsAndReviewWarningsFollowTheSchool` (French `included: false`, `skipped`); scenario (b) (checkbox not checked) |
+| §2 JSON stored exactly, schema, names, lessons 1–15, totals table | unit test against the 15 totals of §5, stage names = stage-template names, lessons in range |
+| §2 alias matching, no duplicates | `PrimaryApplyIsIdempotentNonDestructiveAndMatchesAliases` (اللغة الإنجليزية matched; one English subject); unit `SameSubject` cases |
+| §3 preview, idempotent, non-destructive, `IsSuggested` cleared on edit, per-stage reset with confirmation | the primary integration test (preview saves nothing, second apply 0 changes, edited value kept, reset refused without `confirm`, before/after shown); `SuggestionFlagsClearOnOwnerEdits`; scenarios (e) and (f) |
+| §3 subjects get auto colours, priority 3 | the primary integration test (all priorities 3) |
+| §4 even distribution with earlier days longer; 6 days; caps; above capacity | `DistributionPutsExtraLessonsOnEarlierDays` (28/27/29/30/31/33); `DistributionRespectsTheShiftAndReportsWhyItCannot`; `DAILY_TOTAL_ABOVE_SHIFT` in the integration test; scenario (d) (reason shown) |
+| §4 preview, confirm, manual values never overwritten, change notice | integration test (statuses `apply` → `same`, `manual` skipped, `changedSinceSuggestion`); scenarios (a) and (d) (confirmation dialog) |
+| §4 dual-shift capacity | `OptionalSubjectsAndReviewWarningsFollowTheSchool` (capacity 30 for a stage on both shifts); scenario (d) |
+| §5 expected totals | unit test (all 15); integration test (primary 28/28/27/29/30/30; intermediate 30/30/31 and 33/33/34); scenarios (a) and (b) |
+| Migration on an existing database | `TheMigrationAddsTheFlagsToAnExistingDatabase` |
+| (g) axe, overflow, overlap at four widths | scenario (d) |
+
 ## Known limits (not hidden)
-- The suggested break length (15) and the subject-name templates are suggestions, not official Iraqi values.
+- The suggested break length (15), the subject-name templates and the owner's curriculum numbers are suggestions, not verified official Iraqi values. The French intermediate grades are an assumption (decision #40).
 - The wizard's timing step refuses (rather than previews) shortening a shift below a stage's own count; the periods tab has the preview.
 - Workload, teacher assignment and capacity checks against workload are Phase 3 and were not started.

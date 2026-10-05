@@ -111,3 +111,8 @@ No implementation of domain logic; only specification and validation strategy.
   - `Section.WeeklyCapacity(week, shift, stage)` sums the stage's days.
   - The shift stays the bell schedule; blocked-period grids remain per shift.
   - **Rule:** a section only uses the first N lessons of its day; Phase 3 and the solver must respect it.
+
+## Phase 2.5 suggested curriculum
+- **`CurriculumEntry.IsSuggested`:** `CreateSuggested`, `ResetToSuggestion`; cleared by every owner edit (ADR 0029).
+- **`DailyDistribution.Suggest(total, days in week order, maxOnDay)`:** even split, extra lessons on the earlier days, capped per day; problems `NoCurriculum`, `BelowWorkingDays`, `AboveShiftCapacity` (ADR 0030).
+- **`Stage.ApplySuggestedDayLessons` / `DayLessonsSuggested`:** counts from the suggestion; any owner edit clears the flag, and later suggestions skip such stages.

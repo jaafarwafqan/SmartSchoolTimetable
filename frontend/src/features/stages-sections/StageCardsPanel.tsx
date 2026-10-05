@@ -12,7 +12,7 @@ import { useFormFeedback } from "../../lib/useFormFeedback";
 import { RotateCcw } from "lucide-react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import { useSetSectionCount, useSetStageDayLessons, useStageCards, type LabelStyle, type StageCard } from "../curriculum/curriculumApi";
+import { useDailySuggestion, useSetSectionCount, useSetStageDayLessons, useStageCards, type LabelStyle, type StageCard } from "../curriculum/curriculumApi";
 import { useShifts, useWorkingWeek, type Shift } from "../timetable-structure/scheduleApi";
 import { weekdayLabel, weekdaysFrom } from "../timetable-structure/weekdays";
 
@@ -115,6 +115,8 @@ export function StageCardsPanel({ yearId }: { yearId: number }) {
   const cards = useStageCards(yearId);
   const shifts = useShifts(yearId);
   const week = useWorkingWeek();
+  const daily = useDailySuggestion(yearId);
+  const changed = new Set((daily.data?.stages ?? []).filter((stage) => stage.changedSinceSuggestion).map((stage) => stage.stageId));
   const days = weekdaysFrom(week.data?.weekStartDay ?? 7).filter((day) => (week.data?.days ?? []).includes(day));
   const setCount = useSetSectionCount(yearId);
   const [shiftChoice, setShiftChoice] = useState<number | null>(null);
@@ -177,6 +179,7 @@ export function StageCardsPanel({ yearId }: { yearId: number }) {
                   ))}
                 </ul>
               )}
+              {changed.has(card.stage.id) && <p className="daily-changed" role="status">{messages.school.daily.changed}</p>}
               <StageLessons yearId={yearId} card={card} shifts={shiftList} days={days}
                 onSaved={(stage) => feedback.showSuccess(text.lessonsSaved(stage))} onError={feedback.showError} />
               {capacities.map(([id, capacity]) => (

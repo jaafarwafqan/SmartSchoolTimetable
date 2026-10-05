@@ -7,6 +7,7 @@ import { fromDigits } from "../../components/ui/segment-input";
 import { subjectColorClasses, type SubjectColorIndex } from "../../components/ui/timetable-cell";
 import { messages } from "../../i18n/messages";
 import type { CellInput, CurriculumCell, CurriculumRow, CurriculumTable, ShiftTotal } from "./curriculumApi";
+import { ReviewWarning } from "./SuggestedCurriculumPanel";
 
 const text = messages.school.curriculum;
 export const minLessons = 1;
@@ -14,6 +15,8 @@ export const maxLessons = 15;
 
 type GridProps = {
   table: CurriculumTable;
+  /** Stages whose suggested lines come from a template stage that needs review (ADR 0028). */
+  reviewStageIds?: ReadonlySet<number>;
   format: (value: number) => string;
   saving: boolean;
   onSave: (input: CellInput, onDone: (ok: boolean) => void) => void;
@@ -95,6 +98,7 @@ function LessonCell({ row, cell, stageName, rowIndex, colIndex, format, disabled
           if (event.key === "Escape") { setDraft(null); setInvalid(false); }
         }}
       />
+      {cell.isSuggested && <span className="suggested-mark">{messages.school.suggested.badge}</span>}
       {cell.duplicates > 0 && (
         <span className="curriculum-duplicates" title={text.duplicatesTitle}>{text.duplicates(format(cell.duplicates))}</span>
       )}
@@ -106,7 +110,8 @@ function LessonCell({ row, cell, stageName, rowIndex, colIndex, format, disabled
  * The curriculum table (spec 2.5 §3.3): subjects (and their repeated lines) down, stages across. Arrow keys move
  * between cells (EditGrid); totals per stage and shift sit below.
  */
-export function CurriculumGrid({ table, format, saving, onSave }: GridProps) {
+export function CurriculumGrid({ table, format, saving, onSave, reviewStageIds }: GridProps) {
+  const hasSuggested = (stageId: number) => table.rows.some((row) => row.cells.some((cell) => cell.stageId === stageId && cell.isSuggested));
   return (
     <div className="curriculum-scroll">
       <EditGrid caption={text.tableCaption} className="curriculum-table">
@@ -117,6 +122,7 @@ export function CurriculumGrid({ table, format, saving, onSave }: GridProps) {
               <th key={`head-${stage.id}`} scope="col" className="curriculum-stage-head">
                 <span className="curriculum-stage-name">{stage.name}</span>
                 {stage.totals.length > 0 && <span className="curriculum-stage-capacity">{text.headerCapacity(capacities(stage.totals, format))}</span>}
+                {reviewStageIds?.has(stage.id) && hasSuggested(stage.id) && <ReviewWarning short />}
               </th>
             ))}
           </tr>

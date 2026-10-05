@@ -5,7 +5,7 @@ import { scheduleStructure, shiftMode, stagesSections } from "./structure";
 import { blockedGrid, subjects } from "./subjects";
 import { teachers } from "./teachers";
 import { calendar } from "./calendar";
-import { curriculum, stageCards, templates } from "./curriculum";
+import { curriculum, daily, stageCards, suggested, templates } from "./curriculum";
 import { wizard } from "./wizard";
 
 export const school = {
@@ -207,4 +207,6 @@ export const school = {
   stageCards,
   templates,
   wizard,
+  suggested,
+  daily,
 } as const;

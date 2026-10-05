@@ -7,7 +7,8 @@ public sealed record ShiftTotalDto(long ShiftId, string ShiftName, int Sections,
 public sealed record CurriculumStageDto(long Id, string Name, int PlannedLessons, IReadOnlyList<ShiftTotalDto> Totals);
 
 /// <param name="Duplicates">Further entries with the same subject and label in this stage (shown as a warning).</param>
-public sealed record CurriculumCellDto(long StageId, long? EntryId, int? WeeklyLessons, int? Version, int Duplicates);
+/// <param name="IsSuggested">The value came from the suggested template and was not edited since («مقترح»).</param>
+public sealed record CurriculumCellDto(long StageId, long? EntryId, int? WeeklyLessons, int? Version, int Duplicates, bool IsSuggested = false);
 
 /// <param name="Label">Null for the subject's main row; a repeated entry has its own label (e.g. "قواعد").</param>
 public sealed record CurriculumRowDto(long SubjectId, string SubjectName, int ColorIndex, string? Label, IReadOnlyList<CurriculumCellDto> Cells);
@@ -18,7 +19,7 @@ public sealed record CurriculumTableDto(IReadOnlyList<CurriculumStageDto> Stages
 /// <param name="EntryId">The entry shown in the cell, with its <paramref name="Version"/>; null to create a new entry.</param>
 public sealed record SetCurriculumCellCommand(long StageId, long SubjectId, string? Label, int? WeeklyLessons, long? EntryId, int? Version);
 
-public sealed record CurriculumEntryDto(long Id, long StageId, long SubjectId, int WeeklyLessons, string? Label, bool NeedsDoublePeriod, string? Notes, bool IsArchived, int Version);
+public sealed record CurriculumEntryDto(long Id, long StageId, long SubjectId, int WeeklyLessons, string? Label, bool NeedsDoublePeriod, string? Notes, bool IsArchived, int Version, bool IsSuggested = false);
 
 public sealed record SaveCurriculumEntryCommand(int WeeklyLessons, string? Label, bool NeedsDoublePeriod, string? Notes, int Version);
 

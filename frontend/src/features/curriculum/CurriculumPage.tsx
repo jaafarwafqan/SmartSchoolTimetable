@@ -13,7 +13,9 @@ import { useFormFeedback } from "../../lib/useFormFeedback";
 import { useYearChoice, YearPicker } from "../academic-years/YearPicker";
 import { CurriculumGrid, maxLessons, minLessons } from "./CurriculumGrid";
 import { AddRepeatForm, CopyCurriculumTool, SetAcrossTool } from "./CurriculumHelpers";
-import { useCurriculum, useSetCell } from "./curriculumApi";
+import { useCurriculum, useSetCell, useSuggestedPreview } from "./curriculumApi";
+import { DailySuggestionPanel } from "./DailySuggestionPanel";
+import { SuggestedCurriculumPanel } from "./SuggestedCurriculumPanel";
 import { SubjectTemplatePanel } from "./SubjectTemplatePanel";
 
 const text = messages.school.curriculum;
@@ -25,6 +27,8 @@ export function CurriculumEditor({ yearId, children }: { yearId: number; childre
   const table = useCurriculum(yearId);
   const save = useSetCell(yearId);
   const data = table.data;
+  const suggestion = useSuggestedPreview(yearId, []);
+  const reviewStageIds = new Set((suggestion.data?.stages ?? []).filter((stage) => stage.needsReview).map((stage) => stage.stageId));
 
   return (
     <>
@@ -32,6 +36,7 @@ export function CurriculumEditor({ yearId, children }: { yearId: number; childre
         <h2 id="curriculum-title">{text.title}</h2>
         <p id="curriculum-cell-hint" className="card-note">{text.cellHint(format.number(minLessons), format.number(maxLessons))}</p>
         {children}
+        {data && data.stages.length > 0 && <SuggestedCurriculumPanel yearId={yearId} />}
         {table.isError && <Alert tone="error" message={messages.school.common.loadFailed} />}
         {feedback.conflict && <ConflictAlert onReload={() => { feedback.reset(); void table.refetch(); }} loading={table.isFetching} />}
         <Alert tone="success" message={feedback.success} />
@@ -46,7 +51,7 @@ export function CurriculumEditor({ yearId, children }: { yearId: number; childre
             action={<Link className="link-button" to="/classes/subjects"><BookOpen aria-hidden="true" size={20} /><span>{messages.school.nav.subjects}</span></Link>} />
         )}
         {data && data.stages.length > 0 && data.rows.length > 0 && (
-          <CurriculumGrid table={data} format={format.number} saving={save.isPending}
+          <CurriculumGrid table={data} format={format.number} saving={save.isPending} reviewStageIds={reviewStageIds}
             onSave={(input, done) => {
               feedback.reset();
               save.mutate(input, {
@@ -64,6 +69,7 @@ export function CurriculumEditor({ yearId, children }: { yearId: number; childre
           <SetAcrossTool yearId={yearId} table={data} format={format.number} />
         </Card>
       )}
+      {data && data.stages.length > 0 && <DailySuggestionPanel yearId={yearId} />}
     </>
   );
 }

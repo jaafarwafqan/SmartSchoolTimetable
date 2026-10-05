@@ -54,7 +54,7 @@ internal static class CurriculumTableBuilder
                 {
                     var matches = subjectEntries.Where(entry => entry.StageId == stage.Id && entry.NormalizedLabel == normalized).ToArray();
                     var first = matches.FirstOrDefault();
-                    return new CurriculumCellDto(stage.Id, first?.Id, first?.WeeklyLessons, first?.Version, Math.Max(0, matches.Length - 1));
+                    return new CurriculumCellDto(stage.Id, first?.Id, first?.WeeklyLessons, first?.Version, Math.Max(0, matches.Length - 1), first?.IsSuggested == true);
                 }).ToArray();
                 rows.Add(new CurriculumRowDto(subject.Id, subject.Name, subject.ColorIndex, label, cells));
             }

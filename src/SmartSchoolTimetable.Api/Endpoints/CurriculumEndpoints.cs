@@ -35,6 +35,18 @@ public static class CurriculumEndpoints
             ApiResults.Ok(context, await service.StagesAsync(yearId, command, false, token)));
         year.MapPost("/templates/stages", async (long yearId, StageTemplateCommand command, HttpContext context, SetupTemplatesService service, CancellationToken token) =>
             ApiResults.Ok(context, await service.StagesAsync(yearId, command, true, token)));
+        year.MapPost("/curriculum/suggested/preview", async (long yearId, SuggestedCurriculumCommand command, HttpContext context, SuggestedCurriculumService service, CancellationToken token) =>
+            ApiResults.Ok(context, await service.PreviewAsync(yearId, command, token)));
+        year.MapPost("/curriculum/suggested", async (long yearId, SuggestedCurriculumCommand command, HttpContext context, SuggestedCurriculumService service, CancellationToken token) =>
+            ApiResults.Ok(context, await service.ApplyAsync(yearId, command, token)));
+        year.MapPost("/curriculum/suggested/stages/{stageId:long}/reset/preview", async (long yearId, long stageId, SuggestedCurriculumCommand command, HttpContext context, SuggestedCurriculumService service, CancellationToken token) =>
+            ApiResults.Ok(context, await service.PreviewResetAsync(yearId, stageId, command, token)));
+        year.MapPost("/curriculum/suggested/stages/{stageId:long}/reset", async (long yearId, long stageId, SuggestedCurriculumCommand command, HttpContext context, SuggestedCurriculumService service, CancellationToken token) =>
+            ApiResults.Ok(context, await service.ResetStageAsync(yearId, stageId, command, token)));
+        year.MapGet("/daily-suggestion", async (long yearId, DailySuggestionService service, CancellationToken token) =>
+            Results.Ok(await service.PreviewAsync(yearId, token)));
+        year.MapPost("/daily-suggestion", async (long yearId, ApplyDailySuggestionCommand command, HttpContext context, DailySuggestionService service, CancellationToken token) =>
+            ApiResults.Ok(context, await service.ApplyAsync(yearId, command, token)));
         year.MapGet("/templates/suggested-subjects", async (long yearId, SetupTemplatesService service, CancellationToken token) =>
             Results.Ok(await service.SuggestedSubjectsAsync(yearId, token)));
 

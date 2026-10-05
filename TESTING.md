@@ -207,6 +207,24 @@ Checkpoint 2.5E:
   - Both print the typed-versus-chosen UX metric (`e2e/support/ux.ts`).
 - `expectNoTextOverlap` ignores text hidden under an opaque layer (for example rows scrolling under the sticky totals row) and still rejects transparent text drawn over text.
 
+Suggested curriculum (`phase-2-5-curriculum`):
+- .NET (150): `Phase25/SuggestedCurriculumTests.cs`:
+  - the JSON against the owner's totals (all and without optional), lessons 1–15, stage names = stage-template names, exactly three `needsReview` stages, aliases;
+  - the distribution examples 28/27/29/30/31/33, six working days, a short Thursday, above capacity, below the number of days, no curriculum;
+  - flags cleared by owner edits;
+  - primary apply: preview saves nothing; an alias is matched, not duplicated; totals 28/28/27/29/30/30; apply twice = 0 changes; an edited value survives; the reset needs `confirm` and shows before/after;
+  - the daily suggestion makes every stage "equal", manual counts are skipped, a later change shows the notice, above capacity is refused, unknown stage ids give 422, and the request without a token gets 403 and without a session 401;
+  - intermediate without French 30/30/31 and with French 33/33/34; Kurdish unchecked; the literary review flag; the dual-shift bound (30);
+  - the migration upgrading an existing database.
+- Playwright (13): `phase25-curriculum.spec.ts`:
+  - (a) primary six grades, then the daily suggestion → six "مطابق";
+  - (b) intermediate 30/30/31, then with French 33/33/34;
+  - (c) preparatory review warnings in the panel and the header;
+  - (d) a dual-shift ثانوية (السادس العلمي above the evening capacity, with the reason; eight stages "مطابق");
+  - (e) the second apply changes nothing;
+  - (f) an edited value stays, and the reset restores it after a before/after confirmation;
+  - (g) axe, no horizontal page scroll and no overlapping text at 375, 768, 1024 and 1440px.
+
 ## Later-phase acceptance suites
 - Phase 4 infeasibility test must construct a conflict involving two teachers, a shared lab, and a blocked period; the diagnostic must identify the conflict groups and actionable correction, not merely report infeasible.
 - Large solver-risk comparison uses the same independently verified feasible 40-section/54-teacher workload and records status, first-solution/total time, objective/bound, memory method, and independently checked hard constraints for baseline, two-stage, decomposition, and hints.

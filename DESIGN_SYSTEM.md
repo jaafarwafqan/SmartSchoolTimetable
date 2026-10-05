@@ -238,6 +238,18 @@ Records are added by choosing and by quick add, not by long forms. Each pattern 
 - **`LtrText`** (and the `ltrRuns()` string helper for options and ARIA labels): years, times, dates, codes, file names and usernames keep their logical order in RTL. "2026 - 2027" must never be shown as "2027 - 2026". A Vitest unit test and an E2E position check enforce this.
 - **Fixed UI text is Arabic only.** The dictionary test (`i18n/noLatinText.test.ts`) and the E2E check `expectNoLatinText` fail on Latin letters. Allowed exceptions: data (usernames) and the image format codes PNG, JPEG, WebP.
 
+## 17. Suggestions (Phase 2.5)
+- **«مقترح» marks a value that came from a template and was not edited since.**
+  - A primary badge appears on panels.
+  - A small mark under a table cell (`suggested-mark`).
+  - The mark disappears on the owner's first edit.
+- **Provenance banner:** a panel that applies suggested content starts with an info alert naming its source honestly. Never use «رسمي».
+- **Review warning:** a warning icon plus the full Arabic sentence (`ReviewWarning`). In a table header, a short «يحتاج مراجعة» with the full sentence available to screen readers and as a tooltip. Text uses `ink`, the icon `warning`; never colour alone.
+- **Preview before apply:**
+  - A suggestion's apply button never changes anything the owner typed.
+  - A destructive variant (a reset to the suggestion) shows before → after in a centred confirmation dialog.
+- **Status per row:** a badge with icon and text, for example «اقتراح جديد»، «مطابق للاقتراح»، «معدّل يدوياً، لن يتغير». Rows that cannot be applied explain why and what to do.
+
 ## 16. Wizard pattern (Phase 2.5D)
 - **Layout:** a step list (`nav` named «خطوات الإعداد», the current step marked with `aria-current="step"`, done steps with a check icon and hidden text) beside one card for the current step. The list sits above the card under 1024px.
 - **Footer:** «السابق»، «حفظ والمتابعة» (saves the step)، optional «تخطي هذه الخطوة»، and the «إكمال لاحقاً» link back to the dashboard. Errors appear in the footer next to the step's buttons.

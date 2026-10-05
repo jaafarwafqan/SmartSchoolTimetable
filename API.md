@@ -162,6 +162,18 @@ Each step is one transaction through the normal services, and records the step i
 
 `/templates` also returns `breakDefaults: { minutes: { primary, intermediate, preparatory, secondary, other } }` (suggestions). The wizard timing step accepts `gapMinutes` per shift. Section `weeklyCapacity`, curriculum totals, the dashboard and the review use the stage's own counts. Audit events: `StageDayLessonsUpdated`, `StageDayLessonsLowered`.
 
+### Phase 2.5: suggested curriculum and daily distribution
+| Method | Route | Request | Success | Errors |
+|---|---|---|---|---|
+| POST | `/academic-years/{yearId}/curriculum/suggested/preview` | `{ optionalSubjects: [] }` | 200 `{ provenance, subjects: [{ name, action: create\|exists, existingName, optional, included }], stages: [{ stageId, stageName, needsReview, statedTotal, suggestedTotal, currentTotal, resultingTotal, entries: [{ subject, lessons, action, optional, currentLessons }] }], optionalSubjects, changes }` | 401, 403, 404 |
+| POST | `/academic-years/{yearId}/curriculum/suggested` | same | 200 plan; adds only missing subjects and (stage, subject) lines, marked suggested; idempotent; one transaction | 401, 403, 404, 409, 422 |
+| POST | `/academic-years/{yearId}/curriculum/suggested/stages/{stageId}/reset/preview` | `{ optionalSubjects }` | 200 before/after (`update`, `unchanged`, `create` with `currentLessons`) | 401, 404 |
+| POST | `/academic-years/{yearId}/curriculum/suggested/stages/{stageId}/reset` | `{ optionalSubjects, confirm: true }` | 200 | 401, 404, 422 `Confirm` `REQUIRED` |
+| GET | `/academic-years/{yearId}/daily-suggestion` | — | 200 `{ stages: [{ stageId, stageName, weeklyTotal, capacity, suggested: [{ day, lessons }], current, status: apply\|same\|manual\|aboveCapacity\|belowDays\|noCurriculum, changedSinceSuggestion, version }] }` | 401 |
+| POST | `/academic-years/{yearId}/daily-suggestion` | `{ stageIds }` | 200 updated suggestion; manual stages are skipped | 401, 403, 409 `DAILY_TOTAL_ABOVE_SHIFT`, 422 `StageIds` |
+
+Curriculum cells and entries carry `isSuggested`. Audit events: `SuggestedCurriculumApplied`, `SuggestedCurriculumStageReset`, `StageDayLessonsSuggested`.
+
 ### Subjects and the schedule grid (Phase 2, checkpoint 2D)
 | Method | Route | Request | Success | Endpoint-specific errors |
 |---|---|---|---|---|

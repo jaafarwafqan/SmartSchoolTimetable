@@ -75,7 +75,7 @@ function useStructureMutation<TInput, TResult>(request: (input: TInput) => Promi
     mutationFn: request,
     onSuccess: async () => {
       // Timing changes move capacities: refresh the stage cards, sections and curriculum totals too.
-      await Promise.all([refreshQueries(queryClient, [key, gridKey, ["stage-cards"], ["sections"], ["curriculum"]]), refreshSchoolData()]);
+      await Promise.all([refreshQueries(queryClient, [key, gridKey, ["stage-cards"], ["sections"], ["curriculum"], ["daily-suggestion"]]), refreshSchoolData()]);
     },
   });
 }

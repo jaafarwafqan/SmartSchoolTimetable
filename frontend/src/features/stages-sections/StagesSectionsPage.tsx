@@ -6,6 +6,7 @@ import { useYearChoice, YearPicker } from "../academic-years/YearPicker";
 import { SectionsPanel } from "./SectionsPanel";
 import { StageCardsPanel } from "./StageCardsPanel";
 import { StageTemplatePanel } from "./StageTemplatePanel";
+import { DailySuggestionPanel } from "../curriculum/DailySuggestionPanel";
 import { StagesPanel } from "./StagesPanel";
 
 const text = messages.school.stagesSections;
@@ -24,6 +25,7 @@ export function StagesSectionsPage() {
       </Card>
       {yearId !== null && <StageTemplatePanel key={`template-${yearId}`} yearId={yearId} />}
       {yearId !== null && <StageCardsPanel key={`cards-${yearId}`} yearId={yearId} />}
+      {yearId !== null && <DailySuggestionPanel key={`daily-${yearId}`} yearId={yearId} />}
       {yearId !== null && (
         <StagesPanel
           key={`year-${yearId}`}

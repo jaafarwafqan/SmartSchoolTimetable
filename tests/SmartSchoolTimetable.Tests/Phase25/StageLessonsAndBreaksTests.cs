@@ -134,8 +134,11 @@ public sealed class StageLessonsAndBreaksTests
                 var year = AcademicYear.Create("2025-2026", new DateOnly(2025, 9, 1), new DateOnly(2026, 6, 30));
                 old.Add(year);
                 await old.SaveChangesAsync();
-                old.Add(Stage.Create(year.Id, "الأول المتوسط", 1));
-                await old.SaveChangesAsync();
+                // The current model has newer columns, so the old-schema row is written with SQL.
+                await old.Database.ExecuteSqlInterpolatedAsync($"""
+                    INSERT INTO "Stages" ("AcademicYearId", "Name", "NormalizedName", "DisplayOrder", "TemplateKey", "IsArchived", "ArchivedAt", "Version")
+                    VALUES ({year.Id}, {"الأول المتوسط"}, {"الاول المتوسط"}, 1, NULL, 0, NULL, 1)
+                    """);
             }
             await using var upgraded = new LocalDbContext(options);
             await upgraded.Database.MigrateAsync();

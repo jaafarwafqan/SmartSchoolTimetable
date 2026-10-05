@@ -4,7 +4,7 @@ Updated after every commit. A new session reads this file first, then `docs/PHAS
 
 - **Branch:** `phase-2-5`, created from `master` at `0c1824a` ("Merge Phase 2"). Never commit to `master`.
 - **Last green tag:** `phase-2-5d`.
-- **Status:** Phase 2.5 is complete: `phase-2-5e` and `phase-2-5-final`. Waiting for the owner's review. Phase 3 has not been started.
+- **Status:** Phase 2.5 is complete (`phase-2-5e`, `phase-2-5-final`), plus the owner's suggested curriculum (`phase-2-5-curriculum`, committed after the final tag; decision #43). Waiting for the owner's review. Phase 3 has not been started.
 
 ## Baseline (2026-10-04, before any change)
 - Build: 0 warnings.
@@ -18,7 +18,8 @@ Updated after every commit. A new session reads this file first, then `docs/PHAS
 |---|---|---|
 | 2.5A | `phase-2-5a` (`2c0dc5a`) | Build 0 warnings; .NET 110; Vitest 58; Playwright 4; lint clean; line coverage Domain 98.3%, Application 94.8% |
 | 2.5B | `phase-2-5b` (`25840bc`) | .NET 115; Vitest 60; Playwright 4 |
-| 2.5E | `phase-2-5e`, `phase-2-5-final` | .NET 138; Vitest 73; Playwright 9; coverage Domain 98.7%, Application 95.6% |
+| curriculum | `phase-2-5-curriculum` | .NET 150; Vitest 73; Playwright 13; coverage Domain 98.8%, Application 95.7% |
+| 2.5E | `phase-2-5e`, `phase-2-5-final` (`747b042`) | .NET 138; Vitest 73; Playwright 9; coverage Domain 98.7%, Application 95.6% |
 | fixes 2 | `phase-2-5-fix2` (`12d9d45`) | .NET 133; Vitest 73; Playwright 8 |
 | fixes 1 | `phase-2-5-fix1` (`644ac50`) | .NET 129; Vitest 70; Playwright 7 |
 | 2.5D | `phase-2-5d` (`5889856`) | .NET 127; Vitest 66; Playwright 5; coverage Domain 98.7%, Application 95.6% |
