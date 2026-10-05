@@ -28,7 +28,7 @@ test.describe.configure({ mode: "serial" });
 test.beforeAll(async ({ browser }) => { await server.start(browser, "phase25-scenarios"); });
 test.afterAll(async () => { await server.stop(); });
 
-const stepTitle = (page: Page, step: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8) => page.getByRole("heading", { level: 2, name: wizard.steps[step] });
+const stepTitle = (page: Page, step: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8) => page.getByRole("heading", { level: 2, exact: true, name: wizard.steps[step] });
 
 test("scenario (b): a dual-shift ثانوية with branches through the wizard", async ({ page }) => {
   // A fixed date keeps the proposed year (and the screenshots) stable.
@@ -103,11 +103,14 @@ test("scenario (b): a dual-shift ثانوية with branches through the wizard",
   await expectBreakpointScreenshots(page, "wizard-step-5");
   await next();
 
-  // 6. Teachers is optional; 7. review, then finish.
+  // 6. Teachers and 7. workload are optional (the workload step came with Phase 3E); 8. review, then finish.
   await expect(stepTitle(page, 6)).toBeVisible();
   await expectBreakpointScreenshots(page, "wizard-step-6");
   await ux.act(page.getByRole("button", { name: wizard.skip }));
   await expect(stepTitle(page, 7)).toBeVisible();
+  await expectNoSeriousA11yViolations(page, "scenario b step 7");
+  await ux.act(page.getByRole("button", { name: wizard.skip }));
+  await expect(stepTitle(page, 8)).toBeVisible();
   await expect(page.locator(".count-item", { hasText: wizard.review.shifts })).toContainText(arab(2));
   await expect(page.locator(".count-item", { hasText: wizard.review.sections })).toContainText(arab(9));
   await expectNoLatinText(page, "scenario b review", ["owner"]);

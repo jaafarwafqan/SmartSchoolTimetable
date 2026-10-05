@@ -85,7 +85,7 @@ export const wizard = {
     saved: (teachers: string) => `تمت إضافة ${teachers}.`,
   },
   workload: {
-    counts: (assigned: string, total: string) => `المعيّن ${assigned} من إجمالي ${total}. يمكنك اقتراح توزيع الأنصبة أو المتابعة لاحقاً.`,
+    counts: (assigned: string, total: string) => `بنود المنهج التي لها معلم في الشعب: ${assigned} من ${total}. يمكنك اقتراح توزيع الأنصبة أو المتابعة لاحقاً.`,
   },
   review: {
     counts: "ملخص الإعداد",

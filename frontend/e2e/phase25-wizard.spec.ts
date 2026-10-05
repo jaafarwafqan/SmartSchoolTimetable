@@ -36,7 +36,7 @@ test("a fresh school is set up through the wizard, resumed and finished", async 
   // After the recovery code the wizard opens at step 1. The UX meter counts the wizard's typed and chosen entries.
   const ux = new UxMeter("(a) morning-only intermediate school");
   await expect(page.getByRole("heading", { name: wizard.title, level: 1 })).toBeVisible();
-  const stepTitle = (step: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8) => page.getByRole("heading", { name: wizard.steps[step], level: 2 });
+  const stepTitle = (step: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8) => page.getByRole("heading", { name: wizard.steps[step], level: 2, exact: true });
   const next = () => ux.act(page.getByRole("button", { name: wizard.next }));
   await expect(stepTitle(1)).toBeVisible();
   await next();
@@ -103,7 +103,7 @@ test("a fresh school is set up through the wizard, resumed and finished", async 
 
   // Step 7: real workload counts, then skip the optional suggestion.
   await expect(stepTitle(7)).toBeVisible();
-  await expect(page.getByText(wizard.workload.counts("٠ نصاب", "٢ بندان"))).toBeVisible();
+  await expect(page.getByText(wizard.workload.counts("٠", "٢"))).toBeVisible();
   await expectNoSeriousA11yViolations(page, "wizard step 7");
   await ux.act(page.getByRole("button", { name: wizard.skip }));
 

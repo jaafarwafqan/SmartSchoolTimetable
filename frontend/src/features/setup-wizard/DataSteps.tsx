@@ -97,7 +97,7 @@ export function WorkloadStep({ progress, onBack, onDone }: DataStepProps) {
   const total = matrix.data?.stages.reduce((sum, stage) => sum + stage.totalCells, 0) ?? 0;
   return (
     <div className="form-stack">
-      <p className="card-note">{text.workload.counts(format.count(assigned, "assignment"), format.count(total, "line"))}</p>
+      <p className="card-note">{text.workload.counts(format.number(assigned), format.number(total))}</p>
       {yearId === null ? <NoYear /> : <AssignmentSuggester yearId={yearId} embedded />}
       <WizardFooter step={7} pending={step.pending} error={step.feedback.error} onBack={onBack} onNext={() => step.next()} onSkip={() => step.next(true)} />
     </div>
