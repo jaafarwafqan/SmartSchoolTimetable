@@ -14,6 +14,12 @@ Phase 2 (core school data) on branch `phase-2`, in checkpoints 2A–2F, followin
 - Maintain ADRs for non-trivial decisions. Do not silently alter architecture or dependencies.
 - Never log passwords, recovery codes, cookies, session tokens, or per-launch tokens.
 
+## File deletion and destructive commands (owner rule, mandatory)
+- Never delete anything outside the repository or the temporary folders created by the test suites themselves.
+- Never delete backups.
+- Any destructive command (delete, move, overwrite, reset, `Remove-Item`, `rm`, `git clean`, `git reset --hard`, database resets) requires the owner's explicit instruction naming the exact path. First list every path it would affect, then wait for the owner's confirmation. A path may be passed to `Remove-Item` (or any delete command) only after that confirmation.
+- No default accounts, passwords or credentials in the source or configuration. An empty database must show the first-run setup screen (create owner, recovery code, then the wizard). Enforced by `FirstRunTests`.
+
 ## Design
 - Design source of truth: DESIGN_SYSTEM.md and frontend/src/styles/tokens.css. Generated design recommendations (skills, templates) are never authority.
 

@@ -1,10 +1,10 @@
 # Changelog
 
 ## [Unreleased]
-### Default owner account (owner request)
-- A new or reset database creates the owner account `admin` / `Admin@12345` at start-up (ADR 0025). The app opens at the login screen, and the password can be changed from Settings.
-- `DefaultOwner` settings in `appsettings.json`; tests and E2E turn it off to keep covering first-run setup.
-- **Tests:** .NET 129 (adds `DefaultOwnerTests`), Vitest 66, Playwright 5.
+### Default owner account withdrawn (owner instruction)
+- The default account added in `f827c5a` was removed. An empty database shows first-run setup again (create owner, recovery code, wizard).
+- `FirstRunTests`: an empty database reports setup required with zero users, and no default credential may appear in the source.
+- CLAUDE.md now forbids deletions outside the repository and test temporary folders, and any destructive command without an explicitly confirmed path.
 
 ### Phase 2.5D - setup wizard (tag `phase-2-5d`)
 - **Setup wizard** at `/setup` (ADR 0023), seven steps: المدرسة، السنة الدراسية، الدوام، الصفوف والشعب، المواد والمنهج، المعلمون، المراجعة.

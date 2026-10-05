@@ -20,9 +20,6 @@ public interface ILocalAuthService
 {
     Task<LocalAuthStatus> GetStatusAsync(string? sessionId, CancellationToken cancellationToken);
     Task<AuthOperationResult> SetupAsync(string username, string password, CancellationToken cancellationToken);
-
-    /// <summary>Creates the default owner account when none exists (ADR 0025); true when it was created now.</summary>
-    Task<bool> EnsureDefaultOwnerAsync(string username, string password, CancellationToken cancellationToken);
     Task<AuthOperationResult> LoginAsync(string username, string password, CancellationToken cancellationToken);
     Task<AuthOperationResult> RecoverAsync(string recoveryCode, string newPassword, CancellationToken cancellationToken);
     Task<AuthOperationResult> RegenerateRecoveryCodeAsync(

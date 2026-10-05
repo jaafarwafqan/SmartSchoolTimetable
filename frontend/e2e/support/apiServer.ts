@@ -40,7 +40,6 @@ export class ApiServer {
         ...process.env,
         ASPNETCORE_ENVIRONMENT: "Production",
         Database__Path: join(this.databaseDirectory, "e2e.db"),
-        DefaultOwner__Enabled: "false", // the flows exercise first-run setup (ADR 0025)
         LocalHost__Port: String(port),
       },
       stdio: ["ignore", "pipe", "pipe"],

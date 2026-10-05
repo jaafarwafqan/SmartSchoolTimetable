@@ -32,8 +32,6 @@ dotnet run --project .\src\SmartSchoolTimetable.Api\SmartSchoolTimetable.Api.csp
 
 The app displays the resolved database path and the prompts in Arabic, and asks for the exact confirmation `RESET` (kept ASCII so it can be typed on any keyboard layout); any other input cancels. It removes the database and SQLite sidecar files only. The console is switched to UTF-8; if Arabic shows as boxes, use Windows Terminal or a console font with Arabic glyphs. This permanently deletes the local owner account and all local data. Start the app using the run command above to return to first-run setup.
 
-**Default account (ADR 0025):** with the shipped settings, a new or reset database gets the owner account `admin` / `Admin@12345`, and the app opens at the login screen. Change the password and create a recovery code from Settings. To use the setup screen instead, set `DefaultOwner:Enabled` to `false` in `appsettings.json`.
-
 ### Interim database backup (until Phase 6)
 There is no in-app backup yet. **Stop the app first** (close the console or press Ctrl+C), then run this from the folder where the backup should be created:
 

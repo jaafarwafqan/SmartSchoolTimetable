@@ -1,23 +1,17 @@
-# ADR 0025: Default owner account on a new database
+# ADR 0025: Default owner account (withdrawn)
 
-- Status: Accepted (owner decision, 2026-10-05). It amends the first-run setup in ADR 0009 and SECURITY.md.
+- Status: **Withdrawn** on 2026-10-05 at the owner's instruction. Never re-introduce.
 - Date: 2026-10-05
 
-## Context
-The owner asked for a fixed admin account that is always there on a new database, so the app can be started fresh without the setup screen. Asked how fixed it should be, the owner chose: **created automatically, password changeable** (not hard-coded and unchangeable).
+## What happened
+- Commit `f827c5a` added a default owner account to make a fresh start easier:
+  - `DefaultOwner` settings in `appsettings.json` (username `admin` with a fixed password);
+  - `LocalAuthService.EnsureDefaultOwnerAsync`;
+  - a start-up call in `Program.cs` that created the account on a database without an owner.
+- It weakened the first-run design of ADR 0009: a public password, no recovery code shown, and no setup screen.
 
 ## Decision
-- **Configuration:** `DefaultOwner` in `appsettings.json`: `Enabled` (true), `Username` (`admin`), `Password` (`Admin@12345`).
-- **At start-up, after migrations:** if the database has **no** owner, `LocalAuthService.EnsureDefaultOwnerAsync` creates one with these credentials. It uses the same password hashing, rules and audit entry ("Default owner account created at first start.") as setup. An existing owner is never changed or recreated.
-- **The app opens at the login screen**, not the setup screen. A warning is logged (without the password) to change it from Settings.
-- **Recovery code:** one is generated and stored as a hash but never shown, and it is marked acknowledged. To have a usable recovery code, the owner generates one in Settings (this needs the current password).
-- **Invalid configured credentials** (for example a short password) stop the start with an error instead of creating a weak account.
-- **Tests and E2E** turn the default account off (`DefaultOwner:Enabled=false`), so the first-run setup flow stays covered. One test class covers the default account.
-
-## Security consequences
-- The default password is public: it is in the repository and in this ADR. Until it is changed, anyone who can use this Windows account and reach `127.0.0.1` can sign in. Remote access is still impossible: Kestrel is bound to loopback, and the Host/Origin checks and per-launch token are unchanged.
-- **Mitigation:** the owner should change the password from Settings on first use. Setting `DefaultOwner:Enabled` to `false` restores the original setup screen.
-
-## Alternatives considered
-- **A hard-coded account that cannot be changed:** rejected by the owner's choice. It would also remove password change and recovery.
-- **Default account in Development only:** the owner wanted it for the normal run.
+- The change is reverted. An empty database has no account and shows the first-run setup screen: create the owner, confirm the recovery code, then the setup wizard (ADR 0023).
+- `FirstRunTests` guard the rule:
+  - an empty database reports `setupRequired` with zero owner rows;
+  - the build fails if a default credential, a `DefaultOwner` setting, or a password value in `appsettings*.json` appears under `src/` or `frontend/src/`.
