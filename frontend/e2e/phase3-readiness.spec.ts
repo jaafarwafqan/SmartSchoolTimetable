@@ -31,6 +31,8 @@ test("(3D) dashboard and readiness report show the real unassigned-line finding"
   try {
     await setupOwner(page, server.baseUrl, "owner", "Readiness-Owner-1");
     await seedUnassigned(page);
+    // The data was written through the API behind the open dashboard: reload so the card reads it (no race).
+    await page.reload();
     const card = page.locator(".readiness-card");
     await expect(card.getByText(readiness.blocked)).toBeVisible();
     await card.getByRole("link").click();

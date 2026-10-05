@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { isolate } from "../../i18n/isolate";
 import { createFormatter } from "../../lib/format";
-import { findingMessage, groupFindings } from "./readinessPresentation";
+import { errorCount, findingMessage, groupFindings, warningCount } from "./readinessPresentation";
 import { messages } from "../../i18n/messages";
 import { findingCodes, type ReadinessFinding } from "./readinessApi";
 
@@ -46,5 +46,10 @@ describe("readiness findings", () => {
 
   it("falls back to a generic Arabic message for an unknown code", () => {
     expect(findingMessage(finding({ code: "SOMETHING_NEW" }), format)).toBe(messages.school.readiness.unknownFinding);
+  });
+
+  it("says zero in words and agrees the counted nouns", () => {
+    expect([0, 1, 2, 3, 11].map((value) => errorCount(value, format))).toEqual(["لا أخطاء", "خطأ واحد", "خطآن", "٣ أخطاء", "١١ خطأً"]);
+    expect([0, 1, 2].map((value) => warningCount(value, format))).toEqual(["لا ملاحظات", "ملاحظة واحدة", "ملاحظتان"]);
   });
 });

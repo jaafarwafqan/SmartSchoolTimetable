@@ -77,3 +77,12 @@ export function fixHref(fix: string): string {
   if (["raiseResourceCapacity", "restoreResource"].includes(fix)) return "/classes/resources";
   return "/school/timing";
 }
+
+/** «لا أخطاء» / «خطأ واحد» / «٣ أخطاء»: zero is said in words, never «٠ خطأ». */
+export function errorCount(count: number, format: Formatter): string {
+  return count === 0 ? text.noErrors : format.count(count, "error");
+}
+
+export function warningCount(count: number, format: Formatter): string {
+  return count === 0 ? text.noWarnings : format.count(count, "warning");
+}

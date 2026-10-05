@@ -5,6 +5,7 @@ import { Card } from "../../components/ui/card";
 import { messages } from "../../i18n/messages";
 import { useFormatter } from "../../lib/schoolContext";
 import { useSchoolContext } from "../../lib/schoolContext";
+import { errorCount, warningCount } from "./readinessPresentation";
 import { useReadiness } from "./readinessApi";
 
 const text = messages.school.readiness;
@@ -26,7 +27,7 @@ export function ReadinessCard() {
             {readiness.data.ready ? <CircleCheck aria-hidden="true" size={20} /> : <CircleAlert aria-hidden="true" size={20} />}
             <strong>{readiness.data.ready ? text.ready : text.blocked}</strong>
           </p>
-          <p>{text.countSummary(format.count(readiness.data.errors, "error"), format.count(readiness.data.warnings, "warning"))}</p>
+          <p>{text.countSummary(errorCount(readiness.data.errors, format), warningCount(readiness.data.warnings, format))}</p>
         </>
       )}
       <Link className="link-button" to={yearId ? "/readiness" : "/school/year"}>

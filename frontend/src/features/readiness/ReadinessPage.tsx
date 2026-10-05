@@ -10,7 +10,7 @@ import { messages } from "../../i18n/messages";
 import { isolate } from "../../i18n/isolate";
 import { PageHeader } from "../../layout/PageHeader";
 import { useFormatter, useSchoolContext } from "../../lib/schoolContext";
-import { entityHref, findingMessage, fixHref, groupFindings } from "./readinessPresentation";
+import { entityHref, findingMessage, fixHref, groupFindings, errorCount, warningCount } from "./readinessPresentation";
 import { useReadiness } from "./readinessApi";
 
 const text = messages.school.readiness;
@@ -42,8 +42,8 @@ export function ReadinessPage() {
               <strong>{readiness.data.ready ? text.ready : text.blocked}</strong>
             </p>
             <div className="readiness-counts">
-              <Badge tone={readiness.data.errors ? "danger" : "success"}>{format.count(readiness.data.errors, "error")}</Badge>
-              <Badge>{format.count(readiness.data.warnings, "warning")}</Badge>
+              <Badge tone={readiness.data.errors ? "danger" : "success"}>{errorCount(readiness.data.errors, format)}</Badge>
+              <Badge>{warningCount(readiness.data.warnings, format)}</Badge>
             </div>
             <p className="readiness-meta"><span>{text.checkedSummary(format.date(checkedDate!), format.time(checkedTime!))}</span>
               <span>{text.hashLabel} <LtrText>{text.shortHash(readiness.data.inputHash.slice(0, 12))}</LtrText></span></p>

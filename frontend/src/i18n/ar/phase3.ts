@@ -176,6 +176,8 @@ export const readiness = {
   shortHash: (hash: string) => `${hash}…`,
   checkedSummary: (date: string, time: string) => `وقت الفحص: ${date} ${time}`,
   countSummary: (errors: string, warnings: string) => `${errors}، ${warnings}`,
+  noErrors: "لا أخطاء",
+  noWarnings: "لا ملاحظات",
   refresh: "إعادة الفحص",
   loading: "جارٍ فحص بيانات الجدولة...",
   loadFailed: "تعذر فحص جاهزية الجدولة. أعد المحاولة.",
