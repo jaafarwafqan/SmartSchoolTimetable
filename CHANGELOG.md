@@ -1,6 +1,125 @@
 # Changelog
 
 ## [Unreleased]
+### Phase 2.5 suggested Iraqi curriculum (tag `phase-2-5-curriculum`)
+- **«تعبئة المنهج المقترح»** in the curriculum tab and wizard step 5 (ADR 0028, 0029).
+  - Uses the owner's suggested weekly lessons for primary, intermediate and preparatory stages; unverified, labelled «مقترح» with a provenance banner.
+  - Preview first, then an idempotent, non-destructive apply. Existing subjects are matched through aliases. Optional Kurdish and French start unchecked.
+  - The three literary stages carry a review warning.
+  - Suggested cells show «مقترح» until edited; «إعادة المقترح لهذه المرحلة» restores values after a before/after confirmation.
+- **«اقتراح توزيع الحصص اليومية»** on the stages screen, the curriculum tab and wizard step 5 (ADR 0030).
+  - An even split of each stage's curriculum total, with the earlier days longer, never above the shift.
+  - Manual counts are never overwritten, and a notice appears when the total changes.
+- **Migration** `Phase25SuggestedCurriculum`; new code `DAILY_TOTAL_ABOVE_SHIFT`.
+- **Tests:** .NET 150, Vitest 73, Playwright 13.
+
+### Phase 2.5E - scenarios, demo data, report (tags `phase-2-5e`, `phase-2-5-final`)
+- **E2E scenarios (a)–(e):**
+  - (b) is a dual-shift ثانوية with branches set up through the wizard.
+  - Screenshots of every wizard step and the curriculum at 375, 768, 1024 and 1440px.
+  - Typed-versus-chosen UX metric: (a) 2 typed, 3 chosen; (b) 2 typed, 9 chosen.
+- **Failure-injection tests** for the wizard's one-transaction steps.
+- **Tests** for a single section's shift change and for archiving a middle section.
+- **Curriculum totals row** stays visible at the bottom of the scrolling table.
+- **Demo data:** an Iraqi secondary school (morning-only and dual-shift), created through the templates.
+  - The first grade has 6 lessons a day.
+  - The sample curriculum includes a repeated subject; every line is marked as a demo number.
+- **Docs:** `docs/OWNER_TEST_SCRIPT_PHASE25.md` (Arabic, 28 steps) and `docs/PHASE25_REPORT.md`.
+- **Tests:** .NET 138, Vitest 73, Playwright 9; coverage Domain 98.7%, Application 95.6%.
+
+### Phase 2.5 fixes 2 - owner model changes M1–M3 (tag `phase-2-5-fix2`)
+- **M1 editable breaks (ADR 0026):** up to three breaks per shift, each with its own position and duration, plus an optional gap between lessons.
+  - Presets only fill the values; the suggested length per school type is 15 minutes, clearly marked as a suggestion.
+  - Wizard step 3 and the periods generator share `BreaksEditor`; the morning and evening shifts are independent.
+- **M2 lessons per day per stage (ADR 0027):** «عدد الحصص اليومية» with «تعديل لكل يوم» on each stage card (wizard step 4 and the stages screen).
+  - Capacity of sections, stage cards, curriculum totals, the dashboard and the review use the stage's own counts.
+  - Shortening a shift below a stage is previewed and confirmed.
+  - Migration `Phase25FixStageDayLessons`; new code `STAGE_LESSONS_ABOVE_SHIFT`.
+- **M3:** each stage's weekly capacity under its name in the curriculum header (done in fix 1).
+- **Stale data fix:** mutation hooks cancel in-flight reads before refreshing them.
+- **Tests:** .NET 133, Vitest 73, Playwright 8.
+
+### Phase 2.5 fixes 1 - owner findings B1–B8 (tag `phase-2-5-fix1`)
+- **B1:** curriculum totals are one compact `<tfoot>` cell per stage column, with planned out of capacity and a status chip. The old cells were turned into grids and stacked into one column.
+- **B2:** curriculum header: full stage names that wrap, the weekly capacity under each name (M3), sticky header and subject column with opaque backgrounds, compact 3rem inputs. A shared rule had made every `th` stick to the top.
+- **B3:** no horizontal page scroll. Grid and flex children shrink (`min-inline-size: 0`); only table containers scroll.
+- **B4:** `expectNoTextOverlap` and `expectNoPageScrollX` Playwright helpers. Stacked Arabic lines got room (curriculum header, dashboard counts).
+- **B5:** step labels and order covered by a test (not reproduced; decision #33).
+- **B6:** the school's subjects are one chip list.
+  - Added subjects show as checked chips «مضافة».
+  - Removing a chip archives the subject, with «تراجع».
+  - Quick add is in the same panel, and the curriculum table refreshes immediately.
+- **B7:** `arabicCount` and `format.count()` for every counted noun. All hand-built count strings were replaced, and a test forbids new ones.
+- **B8:** Iraqi month names for Gregorian dates (decision #31).
+- **Tests:** .NET 129, Vitest 70, Playwright 7.
+
+### Default owner account withdrawn (owner instruction)
+- The default account added in `f827c5a` was removed. An empty database shows first-run setup again (create owner, recovery code, wizard).
+- `FirstRunTests`: an empty database reports setup required with zero users, and no default credential may appear in the source.
+- CLAUDE.md now forbids deletions outside the repository and test temporary folders, and any destructive command without an explicitly confirmed path.
+
+### Phase 2.5D - setup wizard (tag `phase-2-5d`)
+- **Setup wizard** at `/setup` (ADR 0023), seven steps: المدرسة، السنة الدراسية، الدوام، الصفوف والشعب، المواد والمنهج، المعلمون، المراجعة.
+  - Choice cards, proposed year and terms, working-day and period presets with a live preview, per-day counts.
+  - Template and curriculum steps reuse the screens' components.
+  - Optional teachers step; review with real counts and warnings.
+- **Each server step is one transaction** through the normal services. Nested service transactions now join the step's transaction.
+- **Resumable:** opens once after a new account's recovery code; then from the dashboard («استكمال الإعداد») or Settings.
+- **Dashboard:** curriculum status per stage and shift.
+- **Tests:** .NET 127, Vitest 66, Playwright 5; line coverage Domain 98.7%, Application 95.6%.
+
+### Phase 2.5C - templates, stage cards, curriculum (tag `phase-2-5c`)
+- **Curriculum table** (المنهج الدراسي, a new tab under الصفوف والمنهج; ADR 0021):
+  - Weekly lessons per subject and stage, edited in place with arrow-key navigation (`EditGrid`).
+  - A subject may repeat in a stage with a label («إضافة تكرار لهذه المادة»).
+  - Live totals per stage and shift against capacity, marked ناقص / مطابق / زائد with an icon and text.
+- **Typing savers** with preview: copy a stage's curriculum to other stages; set the same lessons for one subject across stages (ADR 0022).
+- **Stage cards:** a section stepper per stage. New sections get the next label (Arabic letters, numbers or Latin letters); removing the last one is confirmed.
+- **Templates** (JSON, marked «مقترحة، يمكن تعديلها»):
+  - Iraqi stages by school type, with branches for the preparatory grades.
+  - Suggested subject names, with no invented lesson counts.
+  - Period presets in the generator, including several breaks.
+  - Applying is previewed first, runs in one transaction, and is idempotent.
+- **Year copy** also copies the active curriculum lines.
+- **New error code:** `CURRICULUM_IN_USE` (a stage or subject is still in the curriculum).
+- **Migration:** `Phase25CCurriculumTemplates`.
+- **Tests:** .NET 126, Vitest 62, Playwright 4; line coverage Domain 98.7%, Application 95.4%.
+
+### Phase 2.5B - per-day lessons, shift mode, setup progress (tag `phase-2-5b`)
+- **Per-day lesson counts** (ADR 0020): each shift teaches the first N lessons on each working day.
+  - Capacity, the schedule grid, blocked-period checks and teacher limits use the per-day counts.
+  - A stepper row on the periods tab edits them.
+  - Grid cells for lessons that do not exist on a day are hatched and disabled.
+- **Shift mode** (صباحي فقط، مسائي فقط، مزدوج) on the timing tab, as choice cards.
+  - A preview shows what will be created or removed, and which sections block the change (`SHIFT_MODE_IN_USE`).
+  - The evening generator proposes the morning end + 30 minutes.
+- **Setup progress record** for the resumable wizard (2.5D).
+- **New error codes:** `NO_CURRENT_YEAR`, `SHIFT_MODE_IN_USE`.
+- **Migration:** `Phase25BDayLessonsShiftModeSetup`.
+- **New primitives:** `Stepper`, `ChoiceCards`.
+- **Tests:** .NET 115, Vitest 60, Playwright 4.
+
+### Phase 2.5A - foundation fixes (tag `phase-2-5a`, branch `phase-2-5`)
+- **Side panel cause fixed:** the CSS reset removed the dialog's `margin: auto`, so dialogs stuck to a screen edge. Dialogs are now centred, and an E2E check covers it.
+- **Navigation:**
+  - Five sidebar items: لوحة التحكم، المدرسة، الصفوف والمنهج، المعلمون، الإعدادات.
+  - Group screens are tabs, and breadcrumbs show the group.
+  - Old URLs redirect.
+- **Phone navigation:** opens in the page flow; `MobileDrawer` was deleted (ADR 0024).
+- **Dates and times:** new `DateField` and `TimeField`: day/month/year and 24-hour HH:mm, the school's numerals, typing in either digit set, arrow keys, ISO values. All 11 native date and time inputs were replaced; native inputs are now forbidden by lint.
+- **Bidi:** `LtrText` and `ltrRuns()`. `isolate()` now also isolates numeric ranges, so "2026 - 2027" is no longer shown reversed.
+- **Arabic text:**
+  - The user menu shows «المالك» with the username as data.
+  - "Enter" was removed from the hints.
+  - A dictionary test and an E2E check reject Latin text.
+- **Add patterns** (DESIGN_SYSTEM.md 14 and 15, `/design`):
+  - Subjects and teachers: quick add by name (Enter), details edited in place.
+  - Teacher bulk add: a panel inside the page.
+  - Calendar: a quick-add row.
+  - The subject and teacher dialogs were removed.
+- **Server defaults for quick add:** the next free subject colour, priority 3, and a proposed teacher short name.
+- **Tests:** .NET 110, Vitest 58, Playwright 4.
+
 ### Phase 2F - academic calendar, demo data, final docs (tags `phase-2f`, `phase-2-final`)
 - **Academic calendar** (التقويم الدراسي):
   - One day or a date range, a title, a kind and an "affects schedule" flag.

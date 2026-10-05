@@ -1,22 +1,28 @@
 // Phase 2 strings: app shell, dashboard, school profile, academic years. Numbers are passed in pre-formatted;
 // user-entered values are bidi-isolated.
 import { isolate } from "../isolate";
-import { scheduleStructure, stagesSections } from "./structure";
+import { scheduleStructure, shiftMode, stagesSections } from "./structure";
 import { blockedGrid, subjects } from "./subjects";
 import { teachers } from "./teachers";
 import { calendar } from "./calendar";
+import { curriculum, daily, stageCards, suggested, templates } from "./curriculum";
+import { wizard } from "./wizard";
 
 export const school = {
   nav: {
     dashboard: "لوحة التحكم",
     profile: "بيانات المدرسة",
-    academicYears: "السنة الدراسية والفصول",
+    school: "المدرسة",
+    classes: "الصفوف والمنهج",
+    academicYears: "السنة والفصول",
     scheduleStructure: "الدوام والحصص والجرس",
     stagesSections: "المراحل والشعب",
     subjects: "المواد",
+    curriculum: "المنهج الدراسي",
     teachers: "المعلمون",
     calendar: "التقويم الدراسي",
     settings: "الإعدادات",
+    setupWizard: "معالج الإعداد",
     sidebarLabel: "القائمة الجانبية",
     collapse: "طي القائمة",
     expand: "توسيع القائمة",
@@ -31,6 +37,7 @@ export const school = {
     currentYear: (name: string) => `السنة الدراسية: ${isolate(name)}`,
     currentTerm: (name: string) => `الفصل: ${isolate(name)}`,
     userMenu: "قائمة المستخدم",
+    ownerRole: "المالك",
     lock: "قفل الشاشة",
     lockedNotice: "تم قفل الجلسة. أدخل كلمة المرور للمتابعة.",
   },
@@ -190,9 +197,16 @@ export const school = {
     rowActions: (name: string) => `إجراءات ${isolate(name)}`,
   },
   scheduleStructure,
+  shiftMode,
   stagesSections,
   subjects,
   blockedGrid,
   teachers,
   calendar,
+  curriculum,
+  stageCards,
+  templates,
+  wizard,
+  suggested,
+  daily,
 } as const;

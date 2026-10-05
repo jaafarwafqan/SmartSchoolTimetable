@@ -73,6 +73,21 @@ Migration `Phase2FCalendar` adds `CalendarDays`:
 
 Demo databases created with `--seed-demo-data` use exactly this schema (migrated on creation) in a separate file.
 
+Migration `Phase25BDayLessonsShiftModeSetup` (2.5B) adds:
+- `Shifts.Kind` (`Morning`, `Evening` or `Other`; existing rows get `Other`).
+- `ShiftDayLessons`: `ShiftId`, `Day`, `Lessons`, unique per shift and day. Only days that differ from the shift's lesson count are stored (ADR 0020).
+- `SetupProgress`: one row (`Id` = 1, seeded at startup) with `CurrentStep`, `CompletedMask`, `SkippedMask`, `IsFinished`, `UpdatedAt`, `Version`.
+
+Migration `Phase25CCurriculumTemplates` (2.5C) adds:
+- `Stages.TemplateKey` (≤ 40, nullable): the template grade and branch a stage came from.
+- `CurriculumEntries`: `StageId`, `SubjectId` (both `Restrict`), `WeeklyLessons` (check 1–15), `Label`, `NormalizedLabel`, `NeedsDoublePeriod`, `Notes`, `IsArchived`, `ArchivedAt`, `Version`. Indexed on (StageId, SubjectId) and SubjectId; deliberately **not unique** (ADR 0021).
+
+Migration `Phase25FixStageDayLessons` adds `StageDayLessons`:
+- `StageId`, `Day`, `Lessons` (check ≥ 1), unique per stage and day (ADR 0027).
+- A working day without a row inherits the shift's count, so existing data needs no change.
+
+Migration `Phase25SuggestedCurriculum` adds `CurriculumEntries.IsSuggested` and `Stages.DayLessonsSuggested` (both boolean, default false; ADR 0029, 0030). The suggested curriculum itself is embedded data (`Application/Templates/iraq-curriculum.suggested.json`), not a table.
+
 ## Application data
 - School profile; teachers, subjects, resources, stages, sections, workload, shifts, bell times, calendar
 - Timetable versions and lessons

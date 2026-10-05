@@ -14,6 +14,8 @@ public static class StagesSectionsEndpoints
             ApiResults.From(context, await service.CreateStageAsync(yearId, command, token), value => Results.Created($"/api/v1/academic-years/{yearId}/stages/{value.Id}", value)));
         stages.MapPut("/{id:long}", async (long yearId, long id, SaveStageCommand command, HttpContext context, StagesSectionsService service, CancellationToken token) =>
             ApiResults.Ok(context, await service.UpdateStageAsync(yearId, id, command, token)));
+        stages.MapPut("/{id:long}/day-lessons", async (long yearId, long id, SetStageDayLessonsCommand command, HttpContext context, StagesSectionsService service, CancellationToken token) =>
+            ApiResults.Ok(context, await service.SetStageDayLessonsAsync(yearId, id, command, token)));
         stages.MapDelete("/{id:long}", async (long yearId, long id, int version, HttpContext context, StagesSectionsService service, CancellationToken token) =>
             ApiResults.NoContent(context, await service.DeleteStageAsync(yearId, id, version, token)));
         stages.MapPost("/{id:long}/archive", async (long yearId, long id, ArchiveCommand command, HttpContext context, StagesSectionsService service, CancellationToken token) =>

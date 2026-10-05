@@ -1,0 +1,45 @@
+{
+  "comment": "Period and working-day presets (spec 2.5 section 4.1). Every value stays editable after applying.",
+  "periods": [
+    {
+      "key": "single-break-after-3",
+      "name": "استراحة واحدة بعد الحصة الثالثة",
+      "firstStart": "08:00",
+      "lessonMinutes": 45,
+      "lessonCount": 7,
+      "breaks": [{ "afterLesson": 3, "minutes": 15 }]
+    },
+    {
+      "key": "single-break-after-4",
+      "name": "استراحة واحدة بعد الحصة الرابعة",
+      "firstStart": "08:00",
+      "lessonMinutes": 45,
+      "lessonCount": 7,
+      "breaks": [{ "afterLesson": 4, "minutes": 15 }]
+    },
+    {
+      "key": "short-every-two",
+      "name": "فرصة قصيرة بعد كل حصتين",
+      "firstStart": "08:00",
+      "lessonMinutes": 40,
+      "lessonCount": 6,
+      "breaks": [{ "afterLesson": 2, "minutes": 5 }, { "afterLesson": 4, "minutes": 5 }]
+    },
+    {
+      "key": "evening-single-break",
+      "name": "دوام مسائي مع استراحة واحدة",
+      "firstStart": "13:00",
+      "lessonMinutes": 40,
+      "lessonCount": 6,
+      "breaks": [{ "afterLesson": 3, "minutes": 10 }]
+    }
+  ],
+  "breakDefaults": {
+    "comment": "SUGGESTED break lengths per school type, not official values; 15 minutes everywhere until the owner supplies real ones.",
+    "minutes": { "primary": 15, "intermediate": 15, "preparatory": 15, "secondary": 15, "other": 15 }
+  },
+  "workingDays": [
+    { "key": "sun-thu", "name": "من الأحد إلى الخميس", "days": [7, 1, 2, 3, 4], "weekStart": 7, "isDefault": true },
+    { "key": "sat-thu", "name": "من السبت إلى الخميس", "days": [6, 7, 1, 2, 3, 4], "weekStart": 6, "isDefault": false }
+  ]
+}

@@ -1,5 +1,6 @@
 import { ChevronDown, Lock, LogOut, Settings, UserRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { LtrText } from "../components/ui/ltr-text";
 import { Menu } from "../components/ui/menu";
 import { useLock, useLogout } from "../features/auth/useLogout";
 import { messages } from "../i18n/messages";
@@ -15,7 +16,8 @@ export function UserMenu({ username, onError }: { username: string | null; onErr
       trigger={(
         <>
           <UserRound aria-hidden="true" size={18} strokeWidth={2} />
-          <span className="user-menu-name">{username}</span>
+          <span className="user-menu-role">{messages.school.shell.ownerRole}</span>
+          {username && <LtrText className="user-menu-name">{username}</LtrText>}
           <ChevronDown aria-hidden="true" size={16} strokeWidth={2} />
         </>
       )}

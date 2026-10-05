@@ -1,5 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../../api";
+import { refreshQueries } from "../../lib/refreshQueries";
 import { useRefreshSchoolData } from "../../lib/schoolContext";
 import type { Paged } from "../academic-years/yearsApi";
 import type { BlockedSlot } from "../timetable-structure/scheduleApi";
@@ -40,7 +41,8 @@ function useSubjectsMutation<TInput, TResult>(request: (input: TInput) => Promis
   return useMutation({
     mutationFn: request,
     onSuccess: async () => {
-      await Promise.all([queryClient.invalidateQueries({ queryKey: subjectsKey }), refreshSchoolData()]);
+      // The curriculum table and the subject suggestions list subjects too (fix B6: no reload needed).
+      await Promise.all([refreshQueries(queryClient, [subjectsKey, ["curriculum"], ["suggested-subjects"]]), refreshSchoolData()]);
     },
   });
 }
@@ -50,6 +52,12 @@ export function useSaveSubject() {
     id === null
       ? apiRequest<Subject>(`${subjectsPath}/`, "POST", input)
       : apiRequest<Subject>(`${subjectsPath}/${id}`, "PUT", input));
+}
+
+/** Archive or restore one subject and get it back (its new version is needed for an undo). */
+export function useArchiveSubject() {
+  return useSubjectsMutation(({ subject, archived }: { subject: Subject; archived: boolean }) =>
+    apiRequest<Subject>(`${subjectsPath}/${subject.id}/${archived ? "archive" : "restore"}`, "POST", { version: subject.version }));
 }
 
 export function useSubjectAction() {

@@ -65,14 +65,14 @@ public sealed class ArchitectureTests
     /// <summary>
     /// Feature folders depend inward only: a Domain feature may use the shared Common/Text/SchoolSetup structure;
     /// an Application feature may use Application.Common and the shared SchoolSetup context, never another
-    /// feature (for example Stages may use SchoolSetup, never the reverse). Dashboard is the documented exception:
-    /// it is a read model over every feature.
+    /// feature (for example Stages may use SchoolSetup, never the reverse). Dashboard (a read model over every feature)
+    /// and Setup (templates and the wizard, which orchestrate the normal feature services) are the documented exceptions.
     /// </summary>
     [Fact]
     public void FeatureFoldersRespectDependencyDirection()
     {
         var domainViolations = FeatureViolations(DomainAssembly, "SmartSchoolTimetable.Domain", ["Common", "Text", "SchoolSetup"], []);
-        var applicationViolations = FeatureViolations(ApplicationAssembly, "SmartSchoolTimetable.Application", ["Common", "SchoolSetup"], ["Dashboard"]);
+        var applicationViolations = FeatureViolations(ApplicationAssembly, "SmartSchoolTimetable.Application", ["Common", "SchoolSetup"], ["Dashboard", "Setup"]);
         Assert.Empty(domainViolations);
         Assert.Empty(applicationViolations);
     }

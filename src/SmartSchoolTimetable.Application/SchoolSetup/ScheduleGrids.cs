@@ -5,7 +5,11 @@ namespace SmartSchoolTimetable.Application.SchoolSetup;
 
 /// <param name="Days">Working days in display order (ISO numbers).</param>
 /// <param name="LessonsPerDay">Most lessons per day of any shift in the current year; 0 until periods exist.</param>
-public sealed record ScheduleGridDto(IReadOnlyList<int> Days, int LessonsPerDay);
+/// <param name="LessonsByDay">Lessons that exist on each working day (cells beyond it are unavailable).</param>
+/// <param name="MaxWeeklyLessons">Weekly lessons of the largest shift (teacher weekly limit bound).</param>
+public sealed record ScheduleGridDto(IReadOnlyList<int> Days, int LessonsPerDay, IReadOnlyList<DayLessonsDto> LessonsByDay, int MaxWeeklyLessons);
+
+public sealed record DayLessonsDto(int Day, int Lessons);
 
 public sealed record BlockedPeriodDto(int Day, int LessonNumber);
 
@@ -20,13 +24,14 @@ public static class ScheduleGrids
         var shifts = year is null
             ? []
             : await store.ListAsync(store.Query<Shift>().Where(shift => shift.AcademicYearId == year.Id), cancellationToken);
-        return new ScheduleGrid(week.Days, shifts.Count == 0 ? 0 : shifts.Max(shift => shift.LessonCount));
+        return ScheduleGrid.From(week.Days, shifts);
     }
 
     public static ScheduleGridDto ToDto(ScheduleGrid grid)
     {
         ArgumentNullException.ThrowIfNull(grid);
-        return new ScheduleGridDto(grid.WorkingDays, grid.LessonsPerDay);
+        return new ScheduleGridDto(grid.WorkingDays, grid.LessonsPerDay,
+            grid.WorkingDays.Select(day => new DayLessonsDto(day, grid.LessonsOn(day))).ToArray(), grid.MaxWeeklyLessons);
     }
 
     public static IReadOnlyList<BlockedPeriod> FromDtos(IReadOnlyList<BlockedPeriodDto>? periods) =>

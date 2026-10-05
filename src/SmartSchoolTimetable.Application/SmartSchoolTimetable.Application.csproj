@@ -1,4 +1,10 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <!-- Setup templates (spec 2.5 §4.1) are data, not code: embedded JSON validated by tests. -->
+    <EmbeddedResource Include="Setup\Templates\*.json" />
+    <EmbeddedResource Include="Templates\*.json" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\SmartSchoolTimetable.Domain\SmartSchoolTimetable.Domain.csproj" />

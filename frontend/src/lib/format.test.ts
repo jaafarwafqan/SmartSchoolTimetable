@@ -12,10 +12,10 @@ describe("formatting helper", () => {
   });
 
   it("uses Arabic grammatical number for minutes", () => {
-    expect(formatMinutes(1)).toBe(messages.app.minutesOne);
-    expect(formatMinutes(2)).toBe(messages.app.minutesTwo);
-    expect(formatMinutes(5)).toBe(messages.app.minutesFew("٥"));
-    expect(formatMinutes(30, "latn")).toBe(messages.app.minutesMany("30"));
+    expect(formatMinutes(1)).toBe("دقيقة واحدة");
+    expect(formatMinutes(2)).toBe("دقيقتان");
+    expect(formatMinutes(5)).toBe("٥ دقائق");
+    expect(formatMinutes(30, "latn")).toBe("30 دقيقة");
     expect(formatInactivityTimeout(null)).toBe(messages.app.neverLock);
   });
 
@@ -40,7 +40,7 @@ describe("formatting helper", () => {
   });
 
   it("isolates user values embedded in Arabic sentences", () => {
-    expect(isolate("2026-2027")).toBe("⁨2026-2027⁩");
-    expect(messages.school.years.termsOf("2026-2027")).toContain("⁨2026-2027⁩");
+    expect(isolate("2026-2027")).toBe("⁨⁦2026-2027⁩⁩"); // first-strong isolate around an LTR range
+    expect(messages.school.years.termsOf("2026 - 2027")).toContain("⁦2026 - 2027⁩");
   });
 });

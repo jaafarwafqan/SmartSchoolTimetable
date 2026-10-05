@@ -84,7 +84,9 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .period-row-number {
+  /* Number and kind on their own lines, so start and end times share one line. */
+  .period-row-number,
+  .period-row > .ui-select-control {
     grid-column: 1 / -1;
   }
 }

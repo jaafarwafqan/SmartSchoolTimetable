@@ -54,6 +54,17 @@ internal sealed class ShiftConfiguration : IEntityTypeConfiguration<Shift>
             period.HasIndex("ShiftId", nameof(LessonPeriod.Position)).IsUnique();
         });
         builder.Navigation(shift => shift.Periods).UsePropertyAccessMode(PropertyAccessMode.Field);
+        builder.Property(shift => shift.Kind).HasConversion<string>().HasMaxLength(16);
+        // Per-day lesson counts (ADR 0020): only days that differ from the shift's lesson count are stored.
+        builder.OwnsMany(shift => shift.DayLessonOverrides, day =>
+        {
+            day.ToTable("ShiftDayLessons");
+            day.WithOwner().HasForeignKey("ShiftId");
+            day.Property<long>("Id").ValueGeneratedOnAdd();
+            day.HasKey("Id");
+            day.HasIndex("ShiftId", nameof(DayLessons.Day)).IsUnique();
+        });
+        builder.Navigation(shift => shift.DayLessonOverrides).UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }
 
@@ -112,9 +123,20 @@ internal sealed class StageConfiguration : IEntityTypeConfiguration<Stage>
         builder.HasKey(stage => stage.Id);
         builder.Property(stage => stage.Name).HasMaxLength(Stage.NameMaxLength).IsRequired();
         builder.Property(stage => stage.NormalizedName).HasMaxLength(Stage.NameMaxLength).IsRequired();
+        builder.Property(stage => stage.TemplateKey).HasMaxLength(Stage.TemplateKeyMaxLength);
         builder.HasIndex(stage => new { stage.AcademicYearId, stage.NormalizedName }).IsUnique();
         builder.HasIndex(stage => new { stage.AcademicYearId, stage.DisplayOrder });
         builder.HasOne<AcademicYear>().WithMany().HasForeignKey(stage => stage.AcademicYearId).OnDelete(DeleteBehavior.Cascade);
+        // ADR 0027: the stage's own lessons per working day; a day without a row inherits the shift's count.
+        builder.OwnsMany(stage => stage.DayLessonCounts, day =>
+        {
+            day.ToTable("StageDayLessons", table => table.HasCheckConstraint("CK_StageDayLessons_Lessons", "\"Lessons\" >= 1"));
+            day.WithOwner().HasForeignKey("StageId");
+            day.Property<long>("Id").ValueGeneratedOnAdd();
+            day.HasKey("Id");
+            day.HasIndex("StageId", nameof(DayLessons.Day)).IsUnique();
+        });
+        builder.Navigation(stage => stage.DayLessonCounts).HasField("_dayLessons").UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }
 
@@ -129,5 +151,17 @@ internal sealed class SectionConfiguration : IEntityTypeConfiguration<Section>
         builder.HasIndex(section => new { section.StageId, section.NormalizedLabel }).IsUnique();
         builder.HasOne<Stage>().WithMany().HasForeignKey(section => section.StageId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Shift>().WithMany().HasForeignKey(section => section.ShiftId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+internal sealed class SetupProgressConfiguration : IEntityTypeConfiguration<SetupProgress>
+{
+    public void Configure(EntityTypeBuilder<SetupProgress> builder)
+    {
+        builder.ToTable("SetupProgress");
+        builder.HasKey(progress => progress.Id);
+        builder.Property(progress => progress.Id).ValueGeneratedNever();
+        builder.Ignore(progress => progress.CompletedSteps);
+        builder.Ignore(progress => progress.SkippedSteps);
     }
 }

@@ -13,7 +13,7 @@ namespace SmartSchoolTimetable.Tests.Phase2;
 
 public sealed class SubjectsTests
 {
-    private static readonly ScheduleGrid Grid = new([7, 1, 2, 3, 4], 6);
+    private static readonly ScheduleGrid Grid = ScheduleGrid.Uniform([7, 1, 2, 3, 4], 6);
 
     private static SubjectDetails Details(string? name = "الرياضيات", int color = 3, int priority = 5, string? notes = null, params BlockedPeriod[] blocked) =>
         new(name, color, priority, true, true, false, true, notes, blocked);
@@ -26,8 +26,8 @@ public sealed class SubjectsTests
         Assert.False(Grid.Contains(new BlockedPeriod(5, 1)));  // Friday is not a working day
         Assert.False(Grid.Contains(new BlockedPeriod(1, 7)));  // beyond the lessons per day
         Assert.False(Grid.Contains(new BlockedPeriod(1, 0)));
-        Assert.Equal(30, Grid.WeeklyCapacity);
-        Assert.False(new ScheduleGrid([7], 0).Contains(new BlockedPeriod(7, 1))); // no periods defined yet
+        Assert.Equal(30, Grid.MaxWeeklyLessons);
+        Assert.False(ScheduleGrid.Uniform([7], 0).Contains(new BlockedPeriod(7, 1))); // no periods defined yet
     }
 
     [Fact]

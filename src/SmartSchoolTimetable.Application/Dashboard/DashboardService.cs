@@ -1,4 +1,5 @@
 using SmartSchoolTimetable.Application.Common;
+using SmartSchoolTimetable.Application.Curriculum;
 using SmartSchoolTimetable.Application.SchoolSetup;
 using SmartSchoolTimetable.Domain.SchoolSetup;
 using SmartSchoolTimetable.Domain.Subjects;
@@ -11,7 +12,13 @@ public sealed record DashboardCountDto(string Key, int Value);
 /// <param name="Key">Stable step id the UI maps to a label and a screen.</param>
 public sealed record ChecklistItemDto(string Key, bool Done);
 
-public sealed record DashboardSummaryDto(IReadOnlyList<DashboardCountDto> Counts, IReadOnlyList<ChecklistItemDto> Checklist);
+/// <param name="Curriculum">Planned lessons of each active stage of the current year against capacity, per shift.</param>
+/// <param name="SetupFinished">False until the setup wizard is finished: the dashboard offers «استكمال الإعداد».</param>
+public sealed record DashboardSummaryDto(
+    IReadOnlyList<DashboardCountDto> Counts,
+    IReadOnlyList<ChecklistItemDto> Checklist,
+    IReadOnlyList<CurriculumStageDto> Curriculum,
+    bool SetupFinished);
 
 /// <summary>
 /// Real counts from the database and a computed setup checklist; nothing is estimated or invented. Year-scoped
@@ -30,12 +37,13 @@ public sealed class DashboardService(IDataStore store)
 
         var yearId = currentYear?.Id ?? 0;
         var shifts = await store.ListAsync(store.Query<Shift>().Where(row => row.AcademicYearId == yearId), cancellationToken);
-        var stageIds = await store.ListAsync(
-            store.Query<Stage>().Where(row => row.AcademicYearId == yearId && !row.IsArchived).Select(row => row.Id), cancellationToken);
+        var stages = (await store.ListAsync(
+            store.Query<Stage>().Where(row => row.AcademicYearId == yearId && !row.IsArchived), cancellationToken)).ToDictionary(row => row.Id);
+        var stageIds = stages.Keys.ToList();
         var sections = await store.ListAsync(
             store.Query<Section>().Where(row => !row.IsArchived && stageIds.Contains(row.StageId)), cancellationToken);
         var shiftById = shifts.ToDictionary(shift => shift.Id);
-        var capacityGaps = sections.Count(section => Section.WeeklyCapacity(week, shiftById.GetValueOrDefault(section.ShiftId)) == 0);
+        var capacityGaps = sections.Count(section => Section.WeeklyCapacity(week, shiftById.GetValueOrDefault(section.ShiftId), stages.GetValueOrDefault(section.StageId)) == 0);
 
         var counts = new List<DashboardCountDto>
         {
@@ -55,6 +63,8 @@ public sealed class DashboardService(IDataStore store)
             new("subjects", subjects > 0),
             new("teachers", teachers > 0),
         };
-        return new DashboardSummaryDto(counts, checklist);
+        var curriculum = await CurriculumTableBuilder.BuildAsync(store, yearId, cancellationToken);
+        var progress = await store.FirstOrDefaultAsync(store.Query<SetupProgress>(), cancellationToken);
+        return new DashboardSummaryDto(counts, checklist, curriculum.Stages, progress?.IsFinished == true);
     }
 }

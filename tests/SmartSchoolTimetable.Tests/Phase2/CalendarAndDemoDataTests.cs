@@ -1,3 +1,4 @@
+using SmartSchoolTimetable.Domain.Curriculum;
 using System.Net;
 using Microsoft.Extensions.DependencyInjection;
 using SmartSchoolTimetable.Application;
@@ -109,8 +110,12 @@ public sealed class CalendarAndDemoDataTests
             Assert.Equal(20, await store.CountAsync(store.Query<Teacher>(), default));
             Assert.Equal(2, await store.CountAsync(store.Query<Teacher>().Where(teacher => teacher.FullyReleased), default));
             Assert.Equal(10, await store.CountAsync(store.Query<Subject>(), default));
-            Assert.Equal(4, await store.CountAsync(store.Query<Stage>(), default));
-            Assert.Equal(12, await store.CountAsync(store.Query<Section>(), default));
+            Assert.Equal(5, await store.CountAsync(store.Query<Stage>(), default)); // three intermediate grades + الرابع العلمي/الأدبي
+            Assert.Equal(13, await store.CountAsync(store.Query<Section>(), default));
+            var entries = await store.ListAsync(store.Query<CurriculumEntry>(), default);
+            Assert.Equal(22, entries.Count); // sample lines of the first grade, copied to the second
+            Assert.All(entries, entry => Assert.Equal(DemoDataSeeder.CurriculumSampleNote, entry.Notes)); // marked as demo numbers
+            Assert.Contains(entries, entry => entry.Label == "أدب"); // a repeated subject
             Assert.Equal(8, await store.CountAsync(store.Query<CalendarDay>(), default));
             var shifts = await store.ListAsync(store.Query<Shift>(), default);
             Assert.Equal([7, 7], shifts.Select(shift => shift.LessonCount));
@@ -118,6 +123,17 @@ public sealed class CalendarAndDemoDataTests
             var summary = await new DashboardService(store).GetSummaryAsync(default);
             Assert.All(summary.Checklist, item => Assert.True(item.Done, item.Key));
             Assert.Contains(summary.Counts, count => count is { Key: "capacityGaps", Value: 0 });
+            Assert.Equal(("equal", 30), (summary.Curriculum[0].Totals.Single().Status, summary.Curriculum[0].Totals.Single().WeeklyCapacity)); // own 6 lessons a day
+            Assert.Equal(["under", "under"], summary.Curriculum[1].Totals.Select(total => total.Status).Concat(summary.Curriculum[3].Totals.Select(total => total.Status)).Take(2));
+            Assert.Equal(["evening"], shifts.Where(shift => shift.Id == store.Query<Section>().First(section => section.Label == "أ" && section.StageId == summary.Curriculum[3].Id).ShiftId).Select(shift => shift.Kind == ShiftKind.Evening ? "evening" : "other"));
+
+            var morningOnly = Path.Combine(directory.FullName, "morning.db");
+            Assert.True(await DemoDataSeeder.SeedAsync(morningOnly, [], dualShift: false, output));
+            var single = new ServiceCollection().AddLocalInfrastructure(morningOnly, skipLoginDelay: true);
+            await using var singleProvider = single.BuildServiceProvider();
+            await using var singleScope = singleProvider.CreateAsyncScope();
+            var singleStore = singleScope.ServiceProvider.GetRequiredService<IDataStore>();
+            Assert.Equal([ShiftKind.Morning], (await singleStore.ListAsync(singleStore.Query<Shift>(), default)).Select(shift => shift.Kind));
         }
         finally
         {

@@ -100,6 +100,28 @@ public sealed class SchoolProfile : VersionedEntity
         return previous?.StoredFileName;
     }
 
+    /// <summary>Shift mode = study type (spec 2.5 §3.2): morning only, evening only or dual.</summary>
+    public void SetStudyType(StudyType studyType, DateTimeOffset now)
+    {
+        new DomainErrors().When(!Enum.IsDefined(studyType), nameof(StudyType), DomainErrorCode.InvalidOption).ThrowIfAny();
+        if (StudyType == studyType)
+            return;
+        StudyType = studyType;
+        UpdatedAt = now;
+        Touch();
+    }
+
+    /// <summary>Wizard step 1: the school type is chosen from cards (no other profile field changes).</summary>
+    public void SetSchoolType(SchoolType schoolType, DateTimeOffset now)
+    {
+        new DomainErrors().When(!Enum.IsDefined(schoolType), nameof(SchoolType), DomainErrorCode.InvalidOption).ThrowIfAny();
+        if (SchoolType == schoolType)
+            return;
+        SchoolType = schoolType;
+        UpdatedAt = now;
+        Touch();
+    }
+
     public SchoolAsset? GetAsset(SchoolAssetKind kind) => kind == SchoolAssetKind.Logo ? Logo : Stamp;
 
     private static string? OptionalText(string? value) =>

@@ -90,3 +90,29 @@ No implementation of domain logic; only specification and validation strategy.
   - Title ≤ 120; one day or a range of up to 366 days.
   - Kind: official holiday, school holiday, exam or special day; plus an "affects schedule" flag.
   - `IsOutside(yearStart, yearEnd)` drives the "outside the current year" warning; such entries are never blocked.
+
+## Phase 2.5B
+- **`Shift.Kind`** (morning, evening, other) and **per-day lesson counts** (`SetDayLessons`, `LessonsOn`, `WeeklyLessons`). A day teaches the first N lessons (ADR 0020).
+- **`Section.WeeklyCapacity`** sums the per-day counts.
+- **`ScheduleGrid.From(days, shifts)`:** lessons per day = the most any shift teaches that day; the weekly bound = the largest shift's total.
+- **Shift mode = `SchoolProfile.StudyType`** (`SetStudyType`); `SetSchoolType` serves wizard step 1.
+- **`SetupProgress`:** steps 1–7, completed and skipped sets (a completed step is never "skipped"), the current step, finished.
+
+## Phase 2.5C
+- **`CurriculumEntry`** (ADR 0021): a subject taught in a stage for 1–15 lessons a week, with an optional label. `SameLineAs(subject, label)` compares normalized labels. (stage, subject) may repeat.
+- **`CurriculumTotals.For(planned, capacities)`:** one result per shift used by the stage's sections: `Under`, `Equal` or `Over`, with `Difference` = capacity − planned.
+- **`SectionLabels`:** أ، ب، ج، د، هـ، و، ز، ح، ط، ي … then أ1، ب1 …; or numbers; or Latin A–Z then A1. `Next` skips labels already used.
+- **`Stage.TemplateKey`:** the template grade (and branch) a stage came from, used to match it again.
+- **`PeriodPlan`** takes a list of `BreakSlot(AfterLesson, Minutes)`; the single-break constructor is kept.
+
+## Phase 2.5 fixes 2
+- **Breaks (ADR 0026):** `PeriodPlan` takes up to three `BreakSlot(AfterLesson, Minutes)` and a `GapMinutes` (0–30) between lessons that have no break between them.
+- **Lessons per stage (ADR 0027):** `Stage.DayLessonCounts`, `SetDayLessons(counts, workingDays, maxOnDay)`, `LessonsOn(day, shift)` = `min(own ?? shift, shift)`, and `ClampDayLessons`.
+  - `Section.WeeklyCapacity(week, shift, stage)` sums the stage's days.
+  - The shift stays the bell schedule; blocked-period grids remain per shift.
+  - **Rule:** a section only uses the first N lessons of its day; Phase 3 and the solver must respect it.
+
+## Phase 2.5 suggested curriculum
+- **`CurriculumEntry.IsSuggested`:** `CreateSuggested`, `ResetToSuggestion`; cleared by every owner edit (ADR 0029).
+- **`DailyDistribution.Suggest(total, days in week order, maxOnDay)`:** even split, extra lessons on the earlier days, capped per day; problems `NoCurriculum`, `BelowWorkingDays`, `AboveShiftCapacity` (ADR 0030).
+- **`Stage.ApplySuggestedDayLessons` / `DayLessonsSuggested`:** counts from the suggestion; any owner edit clears the flag, and later suggestions skip such stages.

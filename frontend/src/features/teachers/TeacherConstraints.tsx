@@ -1,3 +1,4 @@
+import { DateField } from "../../components/DateField";
 import { TextField } from "../../components/TextField";
 import { Checkbox } from "../../components/ui/checkbox";
 import { messages } from "../../i18n/messages";
@@ -12,6 +13,8 @@ const text = messages.school.teachers;
 export type ConstraintState = { offDays: number[]; blocked: BlockedSlot[]; released: boolean };
 
 type TeacherConstraintsProps = {
+  /** Unique per open editor, so several rows can be expanded at once. */
+  prefix: string;
   teacher: Teacher | null;
   state: ConstraintState;
   onChange: (state: ConstraintState) => void;
@@ -19,14 +22,14 @@ type TeacherConstraintsProps = {
 };
 
 /** Constraints area: off-day toggles, blocked-periods grid, full release with dates, and lesson limits. */
-export function TeacherConstraints({ teacher, state, onChange, errors }: TeacherConstraintsProps) {
+export function TeacherConstraints({ prefix, teacher, state, onChange, errors }: TeacherConstraintsProps) {
   const grid = useScheduleGrid();
   const days = grid.data?.days ?? [];
 
   return (
-    <section className="form-stack" aria-labelledby="teacher-constraints-title">
-      <h3 id="teacher-constraints-title">{text.constraints}</h3>
-      <fieldset className="weekday-grid" aria-describedby={errors.OffDays ? "teacher-off-days-error" : undefined}>
+    <section className="form-stack" aria-labelledby={`${prefix}-constraints-title`}>
+      <h3 id={`${prefix}-constraints-title`}>{text.constraints}</h3>
+      <fieldset className="weekday-grid" aria-describedby={errors.OffDays ? `${prefix}-off-days-error` : undefined}>
         <legend>{text.offDays}</legend>
         {days.map((day) => (
           <Checkbox key={day} checked={state.offDays.includes(day)} data-field="OffDays"
@@ -35,20 +38,20 @@ export function TeacherConstraints({ teacher, state, onChange, errors }: Teacher
           </Checkbox>
         ))}
       </fieldset>
-      {errors.OffDays && <p id="teacher-off-days-error" className="ui-field-error">{errors.OffDays}</p>}
-      <BlockedPeriodsEditor id="teacher-blocked" value={state.blocked} onChange={(blocked) => onChange({ ...state, blocked })} error={errors.BlockedPeriods} />
+      {errors.OffDays && <p id={`${prefix}-off-days-error`} className="ui-field-error">{errors.OffDays}</p>}
+      <BlockedPeriodsEditor id={`${prefix}-blocked`} value={state.blocked} onChange={(blocked) => onChange({ ...state, blocked })} error={errors.BlockedPeriods} />
       <Checkbox checked={state.released} onChange={(event) => onChange({ ...state, released: event.target.checked })}>{text.fullyReleased}</Checkbox>
       {state.released && (
         <div className="form-grid">
-          <TextField id="releaseReason" label={text.releaseReason} defaultValue={teacher?.releaseReason ?? ""} maxLength={200} field="ReleaseReason" errors={errors} />
-          <TextField id="releaseFrom" type="date" label={text.releaseFrom} defaultValue={teacher?.releaseFrom ?? ""} field="ReleaseFrom" errors={errors} />
-          <TextField id="releaseTo" type="date" label={text.releaseTo} defaultValue={teacher?.releaseTo ?? ""} field="ReleaseTo" errors={errors} />
+          <TextField id={`${prefix}-releaseReason`} label={text.releaseReason} defaultValue={teacher?.releaseReason ?? ""} maxLength={200} field="ReleaseReason" errors={errors} />
+          <DateField id={`${prefix}-releaseFrom`} label={text.releaseFrom} defaultValue={teacher?.releaseFrom ?? ""} field="ReleaseFrom" errors={errors} />
+          <DateField id={`${prefix}-releaseTo`} label={text.releaseTo} defaultValue={teacher?.releaseTo ?? ""} field="ReleaseTo" errors={errors} />
         </div>
       )}
       <p className="ui-field-hint">{text.limitsHint}</p>
       <div className="form-grid">
-        <TextField id="maxPerDay" type="number" min={1} label={`${text.limits} ${text.maxPerDay}`} defaultValue={teacher?.maxLessonsPerDay?.toString() ?? ""} field="MaxLessonsPerDay" errors={errors} />
-        <TextField id="maxPerWeek" type="number" min={1} label={`${text.limits} ${text.maxPerWeek}`} defaultValue={teacher?.maxLessonsPerWeek?.toString() ?? ""} field="MaxLessonsPerWeek" errors={errors} />
+        <TextField id={`${prefix}-maxPerDay`} type="number" min={1} label={`${text.limits} ${text.maxPerDay}`} defaultValue={teacher?.maxLessonsPerDay?.toString() ?? ""} field="MaxLessonsPerDay" errors={errors} />
+        <TextField id={`${prefix}-maxPerWeek`} type="number" min={1} label={`${text.limits} ${text.maxPerWeek}`} defaultValue={teacher?.maxLessonsPerWeek?.toString() ?? ""} field="MaxLessonsPerWeek" errors={errors} />
       </div>
     </section>
   );

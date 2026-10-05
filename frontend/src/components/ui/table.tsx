@@ -21,6 +21,8 @@ type DataTableProps<Row> = {
   empty?: ReactNode;
   /** Forces a visual row state for the style guide only. */
   demoHoverKey?: string;
+  /** For tables that may scroll sideways: the container becomes a named, keyboard-focusable region (WCAG 2.1.1). */
+  scrollable?: boolean;
 };
 
 const skeletonRows = 3;
@@ -36,10 +38,11 @@ export function DataTable<Row>({
   loading = false,
   empty,
   demoHoverKey,
+  scrollable = false,
 }: DataTableProps<Row>) {
   const showEmpty = !loading && rows.length === 0;
   return (
-    <div className="ui-table-container">
+    <div className="ui-table-container" {...(scrollable ? { role: "region", "aria-label": caption, tabIndex: 0 } : {})}>
       <table className="ui-table" aria-busy={loading || undefined}>
         <caption className="sr-only">{caption}</caption>
         <thead>

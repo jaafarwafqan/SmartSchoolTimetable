@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../../api";
+import { refreshQueries } from "../../lib/refreshQueries";
 import { useRefreshSchoolData } from "../../lib/schoolContext";
 import type { Paged } from "../academic-years/yearsApi";
 
@@ -7,13 +8,37 @@ export type PeriodKind = "lesson" | "break";
 export type BellTone = "classic" | "chime" | "beeps" | "soft";
 export type Period = { position: number; kind: PeriodKind; startTime: string; endTime: string; startBell: boolean; endBell: boolean };
 export type PeriodInput = Omit<Period, "position">;
-export type Shift = { id: number; academicYearId: number; name: string; displayOrder: number; lessonCount: number; periods: Period[]; version: number };
+export type ShiftKind = "morning" | "evening" | "other";
+export type DayLessons = { day: number; lessons: number };
+export type Shift = {
+  id: number;
+  academicYearId: number;
+  name: string;
+  displayOrder: number;
+  kind: ShiftKind;
+  lessonCount: number;
+  periods: Period[];
+  /** Lessons taught on each working day (per-day counts). */
+  dayLessons: DayLessons[];
+  weeklyLessons: number;
+  version: number;
+};
 export type WorkingWeek = { days: number[]; weekStartDay: number; version: number };
 export type BellSettings = { tone: BellTone; breakBell: boolean; version: number };
 export type ShiftInput = { name: string; displayOrder: number; version: number };
-export type ScheduleGrid = { days: number[]; lessonsPerDay: number };
+export type ScheduleGrid = { days: number[]; lessonsPerDay: number; lessonsByDay: DayLessons[]; maxWeeklyLessons: number };
 export type BlockedSlot = { day: number; lessonNumber: number };
-export type GenerateInput = { firstStartTime: string; lessonMinutes: number; lessonCount: number; breakMinutes: number; breakAfterLesson: number | null };
+export type GenerateInput = {
+  firstStartTime: string;
+  lessonMinutes: number;
+  lessonCount: number;
+  breakMinutes: number;
+  breakAfterLesson: number | null;
+  /** Several breaks (period presets); when set, the single break fields are ignored by the server. */
+  breaks?: { afterLesson: number; minutes: number }[];
+  /** Minutes between lessons without a break between them (ADR 0026). */
+  gapMinutes?: number;
+};
 
 export const shiftsKey = ["shifts"] as const;
 const gridKey = ["schedule-grid"] as const;
@@ -49,7 +74,8 @@ function useStructureMutation<TInput, TResult>(request: (input: TInput) => Promi
   return useMutation({
     mutationFn: request,
     onSuccess: async () => {
-      await Promise.all([queryClient.invalidateQueries({ queryKey: key }), queryClient.invalidateQueries({ queryKey: gridKey }), refreshSchoolData()]);
+      // Timing changes move capacities: refresh the stage cards, sections and curriculum totals too.
+      await Promise.all([refreshQueries(queryClient, [key, gridKey, ["stage-cards"], ["sections"], ["curriculum"], ["daily-suggestion"]]), refreshSchoolData()]);
     },
   });
 }
@@ -69,6 +95,21 @@ export function useDeleteShift(yearId: number) {
 export function useSavePeriods(yearId: number) {
   return useStructureMutation(({ shiftId, periods, version }: { shiftId: number; periods: PeriodInput[]; version: number }) =>
     apiRequest<Shift>(`${shiftsPath(yearId)}/${shiftId}/periods`, "PUT", { periods, version }), shiftsKey);
+}
+
+export type StageLessonsImpact = { stageId: number; stageName: string; day: number; stageLessons: number; shiftLessons: number };
+
+export function useSaveDayLessons(yearId: number) {
+  return useStructureMutation(({ shiftId, dayLessons, version, confirmStageChanges = false }: { shiftId: number; dayLessons: DayLessons[]; version: number; confirmStageChanges?: boolean }) =>
+    apiRequest<Shift>(`${shiftsPath(yearId)}/${shiftId}/day-lessons`, "PUT", { dayLessons, version, confirmStageChanges }), shiftsKey);
+}
+
+/** Stages whose own count would be above the shortened shift (ADR 0027); nothing is saved. */
+export function usePreviewDayLessons(yearId: number) {
+  return useMutation({
+    mutationFn: ({ shiftId, dayLessons, version }: { shiftId: number; dayLessons: DayLessons[]; version: number }) =>
+      apiRequest<StageLessonsImpact[]>(`${shiftsPath(yearId)}/${shiftId}/day-lessons/impact`, "POST", { dayLessons, version }),
+  });
 }
 
 export function useGeneratePeriods(yearId: number) {

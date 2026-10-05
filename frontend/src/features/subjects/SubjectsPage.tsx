@@ -1,42 +1,57 @@
-import { BookOpen, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { BookOpen, Trash2 } from "lucide-react";
+import { useRef, useState } from "react";
 import { ConflictAlert } from "../../components/ConflictAlert";
+import { InlineAddForm } from "../../components/InlineAddForm";
 import { ArchiveBadge, RecordActions } from "../../components/RecordActions";
 import { SearchField } from "../../components/SearchField";
+import { TextField } from "../../components/TextField";
 import { Alert } from "../../components/ui/alert";
-import { Button } from "../../components/ui/button";
+import { Badge } from "../../components/ui/badge";
 import { Card } from "../../components/ui/card";
 import { Checkbox } from "../../components/ui/checkbox";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { EmptyState } from "../../components/ui/empty-state";
+import { ExpandableRow } from "../../components/ui/expandable-row";
 import { Pagination } from "../../components/ui/pagination";
-import { DataTable, type TableColumn } from "../../components/ui/table";
 import { subjectColorClasses, type SubjectColorIndex } from "../../components/ui/timetable-cell";
 import { messages } from "../../i18n/messages";
 import { PageHeader } from "../../layout/PageHeader";
 import { useFormatter } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
-import { SubjectDialog } from "./SubjectDialog";
-import { useSubjectAction, useSubjects, type Subject } from "./subjectsApi";
+import { SubjectEditor } from "./SubjectEditor";
+import { useSaveSubject, useSubjectAction, useSubjects, type Subject } from "./subjectsApi";
 
 const text = messages.school.subjects;
 const common = messages.school.common;
 const pageSize = 25;
 
-/** المواد: list with search, archive filter and paging; add/edit dialog; archive/restore; confirmed delete. */
+/** المواد: quick add by name (Enter), search and archive filter, details edited in place on each row. */
 export function SubjectsPage() {
   const format = useFormatter();
   const feedback = useFormFeedback();
+  const addFeedback = useFormFeedback();
+  const addForm = useRef<HTMLFormElement>(null);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [includeArchived, setIncludeArchived] = useState(false);
-  const [dialog, setDialog] = useState<{ open: boolean; subject: Subject | null; key: number }>({ open: false, subject: null, key: 0 });
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<Subject | null>(null);
   const subjects = useSubjects({ search, page, pageSize, includeArchived });
   const action = useSubjectAction();
+  const create = useSaveSubject();
   const rows = subjects.data?.items ?? [];
   const reload = () => { feedback.reset(); void subjects.refetch(); };
-  const openDialog = (subject: Subject | null) => setDialog((current) => ({ open: true, subject, key: current.key + 1 }));
+
+  function quickAdd(form: FormData, element: HTMLFormElement) {
+    addFeedback.reset();
+    create.mutate({
+      id: null,
+      input: { name: String(form.get("newSubjectName") ?? ""), colorIndex: 0, priority: 0, distributionEnabled: true, spreadAcrossDays: false, heavy: false, requiresDoublePeriod: false, blockedPeriods: [], notes: null, version: 0 },
+    }, {
+      onSuccess: (created) => { element.reset(); addFeedback.showSuccess(text.added(created.name)); },
+      onError: addFeedback.showError,
+    });
+  }
 
   function toggleArchive(subject: Subject) {
     feedback.reset();
@@ -46,34 +61,16 @@ export function SubjectsPage() {
     });
   }
 
-  const columns: readonly TableColumn<Subject>[] = [
-    {
-      key: "name",
-      header: text.name,
-      cell: (subject) => (
-        <span className="ui-subject-chip">
-          <span className={`ui-subject-dot ${subjectColorClasses[subject.colorIndex as SubjectColorIndex] ?? ""}`} aria-hidden="true" />
-          {subject.name}
-        </span>
-      ),
-    },
-    { key: "priority", header: text.priority, cell: (subject) => format.number(subject.priority), numeric: true },
-    { key: "blocked", header: text.blockedCount, cell: (subject) => format.number(subject.blockedPeriods.length), numeric: true },
-    { key: "status", header: common.status, cell: (subject) => <ArchiveBadge archived={subject.isArchived} /> },
-    {
-      key: "actions",
-      header: common.actions,
-      cell: (subject) => (
-        <RecordActions name={subject.name} archived={subject.isArchived} onEdit={() => openDialog(subject)}
-          onToggleArchive={() => toggleArchive(subject)} onDelete={() => setDeleting(subject)} />
-      ),
-    },
-  ];
-
   return (
     <div className="page">
-      <PageHeader title={text.title} description={text.description}
-        actions={<Button icon={<Plus aria-hidden="true" size={20} />} onClick={() => openDialog(null)}>{text.add}</Button>} />
+      <PageHeader title={text.title} description={text.description} />
+      <Card className="page-card">
+        <Alert tone="success" message={addFeedback.success} />
+        <Alert tone="error" message={addFeedback.error} />
+        <InlineAddForm label={text.add} buttonLabel={text.addButton} pending={create.isPending} formRef={addForm} onSubmit={quickAdd} onInput={addFeedback.clearFieldFromEvent}>
+          <TextField id="newSubjectName" label={text.newName} hint={text.quickAddHint} maxLength={80} required field="Name" errors={addFeedback.fieldErrors} />
+        </InlineAddForm>
+      </Card>
       {subjects.isError && <Alert tone="error" message={common.loadFailed} />}
       {feedback.conflict && <ConflictAlert onReload={reload} loading={subjects.isFetching} />}
       <Alert tone="success" message={feedback.success} />
@@ -83,25 +80,32 @@ export function SubjectsPage() {
           <SearchField id="subject-search" label={text.search} value={search} onChange={(value) => { setSearch(value); setPage(1); }} />
           <Checkbox checked={includeArchived} onChange={(event) => { setIncludeArchived(event.target.checked); setPage(1); }}>{common.includeArchived}</Checkbox>
         </div>
-        <DataTable
-          caption={text.title}
-          columns={columns}
-          rows={rows}
-          rowKey={(subject) => String(subject.id)}
-          loading={subjects.isPending}
-          empty={<EmptyState icon={<BookOpen aria-hidden="true" size={24} />} message={text.empty}
-            action={<Button icon={<Plus aria-hidden="true" size={20} />} onClick={() => openDialog(null)}>{text.add}</Button>} />}
-        />
+        {subjects.isSuccess && rows.length === 0 && <EmptyState icon={<BookOpen aria-hidden="true" size={24} />} message={text.empty} />}
+        <ul className="expandable-list" aria-label={text.title}>
+          {rows.map((subject) => (
+            <ExpandableRow
+              key={subject.id}
+              id={`subject-${subject.id}`}
+              expanded={expandedId === subject.id}
+              onToggle={() => setExpandedId(expandedId === subject.id ? null : subject.id)}
+              summary={(
+                <span className="row-summary">
+                  <span className={`ui-subject-dot ${subjectColorClasses[subject.colorIndex as SubjectColorIndex] ?? ""}`} aria-hidden="true" />
+                  <strong>{subject.name}</strong>
+                  <Badge>{text.priorityValue(format.number(subject.priority))}</Badge>
+                  {subject.blockedPeriods.length > 0 && <Badge>{text.blockedSummary(format.number(subject.blockedPeriods.length))}</Badge>}
+                  <ArchiveBadge archived={subject.isArchived} />
+                </span>
+              )}
+              actions={<RecordActions name={subject.name} archived={subject.isArchived} onEdit={() => setExpandedId(subject.id)} onToggleArchive={() => toggleArchive(subject)} onDelete={() => setDeleting(subject)} />}
+            >
+              <SubjectEditor subject={subject} onCancel={() => setExpandedId(null)} onReload={() => { setExpandedId(null); reload(); }}
+                onSaved={() => { setExpandedId(null); feedback.showSuccess(text.saved); }} />
+            </ExpandableRow>
+          ))}
+        </ul>
         {subjects.data && <Pagination page={page} pageSize={pageSize} total={subjects.data.total} format={format} onPage={setPage} />}
       </Card>
-      <SubjectDialog
-        key={`subject-dialog-${dialog.key}`}
-        open={dialog.open}
-        subject={dialog.subject}
-        onClose={() => setDialog((current) => ({ ...current, open: false }))}
-        onReload={() => { setDialog((current) => ({ ...current, open: false })); reload(); }}
-        onSaved={() => { setDialog((current) => ({ ...current, open: false })); feedback.showSuccess(text.saved); }}
-      />
       <ConfirmDialog
         open={deleting !== null}
         danger

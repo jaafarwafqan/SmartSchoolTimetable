@@ -11,11 +11,20 @@ import { isolate } from "../../i18n/isolate";
 import { messages } from "../../i18n/messages";
 import { useFormatter } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
+import { DayLessonsEditor } from "./DayLessonsEditor";
 import { PeriodsEditor } from "./PeriodsEditor";
+import { addMinutes } from "./periodRows";
 import { ShiftDialog } from "./ShiftDialog";
 import { useDeleteShift, useShifts, type Shift } from "./scheduleApi";
 
 const text = messages.school.scheduleStructure;
+
+/** Generator default (spec 2.5 §3.2): the evening shift starts 30 minutes after the morning shift ends. */
+function generatorStart(shift: Shift, shifts: readonly Shift[]): string {
+  const morning = shifts.find((item) => item.kind === "morning");
+  const lastEnd = morning?.periods.at(-1)?.endTime;
+  return shift.kind === "evening" && lastEnd ? addMinutes(lastEnd, 30) : "08:00";
+}
 
 /** Shifts of the selected year (table with edit/delete) and the periods editor of the selected shift. */
 export function ShiftsCard({ yearId }: { yearId: number }) {
@@ -69,7 +78,8 @@ export function ShiftsCard({ yearId }: { yearId: number }) {
         empty={<EmptyState icon={<CalendarClock aria-hidden="true" size={24} />} message={text.noShifts}
           action={<Button icon={<Plus aria-hidden="true" size={20} />} onClick={() => openDialog(null)}>{text.addShift}</Button>} />}
       />
-      {selected && <PeriodsEditor key={`shift-${selected.id}`} yearId={yearId} shift={selected} onReload={reload} onSaved={() => feedback.showSuccess(text.periodsSaved)} />}
+      {selected && <PeriodsEditor key={`shift-${selected.id}`} yearId={yearId} shift={selected} onReload={reload} onSaved={() => feedback.showSuccess(text.periodsSaved)} generatorStart={generatorStart(selected, rows)} />}
+      {selected && <DayLessonsEditor key={`days-${selected.id}`} yearId={yearId} shift={selected} onReload={reload} onSaved={() => feedback.showSuccess(text.dayLessonsSaved)} />}
       <ShiftDialog
         open={dialog.open}
         yearId={yearId}

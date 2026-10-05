@@ -3,10 +3,11 @@ import { isolate } from "../isolate";
 
 export const blockedGrid = {
   title: "الحصص المحجوبة",
-  hint: "اختر الخلايا التي لا تُوضع فيها الحصة. استخدم الأسهم للتنقل والمسافة أو Enter للتبديل.",
+  hint: "اختر الخلايا التي لا تُوضع فيها الحصة. استخدم الأسهم للتنقل، ومفتاح المسافة أو الإدخال للتبديل.",
   noGrid: "عرّف أيام الدوام وحصص الوردية في السنة الحالية أولاً لتحديد الحصص المحجوبة.",
   outsideGrid: "بعض الحصص المحجوبة المحفوظة خارج أيام الدوام أو الحصص الحالية، وستُحذف عند الحفظ.",
   lesson: (number: string) => `ح${number}`,
+  unavailable: (day: string, lesson: string) => `${day}، الحصة ${lesson}: غير موجودة في هذا اليوم`,
   cell: (day: string, lesson: string, blocked: boolean) => `${day}، الحصة ${lesson}: ${blocked ? "محجوبة" : "متاحة"}`,
 } as const;
 
@@ -14,6 +15,12 @@ export const subjects = {
   title: "المواد",
   description: "المواد الدراسية بألوانها وأولويتها وقيود توزيعها.",
   add: "إضافة مادة",
+  addButton: "إضافة",
+  newName: "اسم المادة الجديدة",
+  quickAddHint: "اكتب الاسم ثم اضغط مفتاح الإدخال؛ يُختار اللون تلقائياً ويمكن تعديل التفاصيل لاحقاً.",
+  added: (name: string) => `تمت إضافة المادة ${isolate(name)}.`,
+  advanced: "خيارات متقدمة",
+  blockedSummary: (count: string) => `حصص محجوبة: ${count}`,
   edit: "تعديل المادة",
   save: "حفظ المادة",
   saved: "تم حفظ المادة.",

@@ -35,7 +35,7 @@ Every failure returns `{ "code": string, "correlationId": string, "errors": [{ "
 | 403 | `INVALID_ORIGIN`, `INVALID_LAUNCH_TOKEN`, `REQUEST_FORBIDDEN`, `SETUP_REQUIRED` |
 | 404 | `NOT_FOUND` |
 | 405 | `METHOD_NOT_ALLOWED` |
-| 409 | `SETUP_ALREADY_COMPLETE`, `RECOVERY_MISSING`, `CONFLICT` (stale `version`), `RECORD_IN_USE`, `CURRENT_YEAR_REQUIRED`, `YEAR_STRUCTURE_IN_USE`, `STAGE_ARCHIVED` |
+| 409 | `SETUP_ALREADY_COMPLETE`, `RECOVERY_MISSING`, `CONFLICT` (stale `version`), `RECORD_IN_USE`, `CURRENT_YEAR_REQUIRED`, `YEAR_STRUCTURE_IN_USE`, `STAGE_ARCHIVED`, `NO_CURRENT_YEAR`, `SHIFT_MODE_IN_USE` |
 | 413 | `PAYLOAD_TOO_LARGE` (request body over the endpoint limit) |
 | 415 | `UNSUPPORTED_MEDIA_TYPE` |
 | 422 | `VALIDATION_FAILED` (with field codes `REQUIRED`, `USERNAME_TOO_SHORT`, `USERNAME_TOO_LONG`, `PASSWORD_TOO_SHORT`, `PASSWORD_TOO_LONG`, `PASSWORD_MISMATCH`, `INVALID_INACTIVITY_TIMEOUT`; Phase 2: `VALUE_TOO_LONG`, `VALUE_OUT_OF_RANGE`, `INVALID_OPTION`, `INVALID_DATE`, `INVALID_TIME`, `INVALID_DATE_RANGE`, `DUPLICATE_NAME`, `TERM_OUTSIDE_YEAR`, `TERMS_OVERLAP`, `INVALID_TIME_RANGE`, `PERIODS_OVERLAP`, `PERIODS_NOT_ASCENDING`, `NO_LESSON_PERIODS`, `TOO_MANY_PERIODS`, `NO_WORKING_DAYS`, `BLOCKED_PERIOD_INVALID`, `MAX_PER_DAY_EXCEEDS_PERIODS`, `MAX_PER_WEEK_EXCEEDS_CAPACITY`, `SHIFT_NOT_IN_YEAR`, `ASSET_TOO_LARGE`, `ASSET_TYPE_NOT_ALLOWED`, `ASSET_TYPE_MISMATCH`), `INVALID_USERNAME`, `INVALID_PASSWORD` |
@@ -108,6 +108,72 @@ Creating a section in an archived stage, or restoring a section of an archived s
 
 Audit events: `SchoolProfileUpdated`, `SchoolAssetUploaded`, `SchoolAssetRemoved`, `AcademicYearCreated`, `AcademicYearUpdated`, `AcademicYearDeleted`, `AcademicYearMadeCurrent`, `TermCreated`, `TermUpdated`, `TermDeleted`, `TermMadeCurrent`.
 
+### Phase 2.5B: per-day lessons, shift mode, setup progress
+| Method | Route | Request | Success | Errors |
+|---|---|---|---|---|
+| PUT | `/academic-years/{yearId}/shifts/{id}/day-lessons` | `{ dayLessons: [{ day, lessons }], version }`: 0..lesson count per working day | 200 shift; shifts now also carry `kind` (`morning`, `evening` or `other`), `dayLessons` for every working day, and `weeklyLessons` | 401, 404, 409 `CONFLICT`, 422 `DayLessons`: `INVALID_OPTION` (not a working day), `DUPLICATE_NAME` (day repeated), `VALUE_OUT_OF_RANGE` |
+| GET | `/shift-mode/impact?mode=morning\|evening\|dual` | — | 200 `{ mode, allowed, shiftsToCreate, shiftsToRemove, affectedSections: [{ sectionId, stageName, label, shiftName, isArchived }] }` | 401, 409 `NO_CURRENT_YEAR`, 422 `Mode` |
+| PUT | `/shift-mode` | `{ mode, version }` (school-profile version) | 200 `{ mode, shifts, profileVersion }`; creates or adopts morning/evening shifts of the current year, removes unneeded unused ones | 401, 409 `CONFLICT`, 409 `NO_CURRENT_YEAR`, 409 `SHIFT_MODE_IN_USE`, 422 |
+| GET | `/setup-progress` | — | 200 `{ currentStep, completedSteps, skippedSteps, isFinished, schoolType, shiftMode, version }` | 401 |
+| PUT | `/setup-progress` | `{ currentStep (1–7), completedSteps, skippedSteps, isFinished, version }` | 200 progress | 401, 409 `CONFLICT`, 422 (`VALUE_OUT_OF_RANGE`) |
+
+`/schedule-grid` now also returns `lessonsByDay: [{ day, lessons }]` and `maxWeeklyLessons`. Audit events: `ShiftDayLessonsUpdated`, `ShiftModeChanged`, `SetupProgressSaved`, `SetupFinished`.
+
+### Phase 2.5C: stage cards, curriculum, templates
+Every `…/preview` route returns the plan without saving; its twin without `/preview` applies it (ADR 0022). Plan line actions: `create`, `update`, `exists`, `unchanged`, `ambiguous`, `notApplicable`.
+
+| Method | Route | Request | Success | Errors |
+|---|---|---|---|---|
+| GET | `/academic-years/{yearId}/stage-cards?includeArchived=` | — | 200 `[{ stage, sections }]`; stages now carry `templateKey` | 401 |
+| PUT | `/academic-years/{yearId}/stage-cards/{stageId}/section-count` | `{ count (0–30), shiftId, labelStyle: arabic\|numbers\|latin }` | 200 card; adds the next labels or removes the last sections | 401, 404, 409 `STAGE_ARCHIVED`, 422 `Count`, `LabelStyle`, `ShiftId` (`SHIFT_NOT_IN_YEAR`) |
+| GET | `/academic-years/{yearId}/curriculum` | — | 200 `{ stages: [{ id, name, plannedLessons, totals: [{ shiftId, shiftName, sections, weeklyCapacity, status, difference }] }], rows: [{ subjectId, subjectName, colorIndex, label, cells: [{ stageId, entryId, weeklyLessons, version, duplicates }] }] }`; status is `under`, `equal` or `over` | 401 |
+| PUT | `/academic-years/{yearId}/curriculum/cell` | `{ stageId, subjectId, label, weeklyLessons (1–15, or null to clear), entryId, version }` | 200 table | 401, 404, 409 `CONFLICT`, 409 `STAGE_ARCHIVED`, 422 `SubjectId`, `WeeklyLessons`, `Label` |
+| POST | `/academic-years/{yearId}/curriculum/copy[/preview]` | `{ fromStageId, toStageIds }` | 200 plan; creates only missing lines | 401, 404 |
+| POST | `/academic-years/{yearId}/curriculum/set-across[/preview]` | `{ subjectId, label, weeklyLessons, stageIds }` | 200 plan | 401, 422 `SubjectId`, `WeeklyLessons` |
+| PUT | `/curriculum-entries/{id}` | `{ weeklyLessons, label, needsDoublePeriod, notes, version }` | 200 entry | 401, 404, 409 `CONFLICT`, 422 |
+| POST | `/curriculum-entries/{id}/archive`, `/restore` | `{ version }` | 200 entry | 401, 404, 409 `CONFLICT` |
+| DELETE | `/curriculum-entries/{id}?version=` | — | 204 | 401, 404, 409 `CONFLICT` |
+| GET | `/templates` | — | 200 `{ branches, grades: [{ key, name, branchStem, schoolTypes }], periodPresets, workingDayPresets }` | 401 |
+| POST | `/academic-years/{yearId}/templates/stages[/preview]` | `{ schoolType, grades: [{ gradeKey, branches, sections, shiftId, labelStyle }] }` | 200 `{ lines: [{ key, name, action, existingSections, sectionsToAdd }], changes }`; one transaction | 401, 404, 422 `SchoolType`, and any error of the services it calls (everything rolled back) |
+| GET | `/academic-years/{yearId}/templates/suggested-subjects` | — | 200 subject names | 401 |
+| POST | `/templates/subjects[/preview]` | `{ names }` | 200 `{ lines: [{ name, action }], changes }` | 401, 422 |
+
+`POST …/shifts/generate-periods` also accepts `breaks: [{ afterLesson, minutes }]` (period presets with several breaks). Stage and subject archive/delete can now return 409 `CURRICULUM_IN_USE`. Audit events: `SectionsAdded`, `SectionsRemoved`, `CurriculumEntryCreated`, `CurriculumEntryUpdated`, `CurriculumEntryDeleted`, `CurriculumEntryArchived`, `CurriculumEntryRestored`, `CurriculumCopied`, `CurriculumLessonsSet`.
+
+### Phase 2.5D: setup wizard
+Each step is one transaction through the normal services, and records the step in the setup progress (ADR 0023). All return 200 with the setup progress.
+
+| Method | Route | Request | Errors |
+|---|---|---|---|
+| PUT | `/setup-wizard/school` | `{ name, schoolType, shiftMode, principalName }`; with a current year, the shifts follow the mode | 401, 403, 409 `CONFLICT`, 409 `SHIFT_MODE_IN_USE`, 422 (`Name`, `SchoolType`, `StudyType`) |
+| PUT | `/setup-wizard/year` | `{ label, startDate, endDate, terms: [{ name, startDate, endDate }] }`; reuses a year with the same label, makes it current, adds or updates terms by name, sets a current term | 401, 409, 422 (year and term validation codes) |
+| PUT | `/setup-wizard/timing` | `{ days, weekStartDay, shifts: [{ kind, firstStartTime, lessonMinutes, lessonCount, breaks, dayLessons }] }`; working days, the mode's shifts, generated periods and per-day counts | 401, 409 `NO_CURRENT_YEAR`, 409 `CONFLICT`, 422 (`Shifts` `INVALID_OPTION`, generator and period codes) |
+| GET | `/setup-wizard/review` | — ; 200 `{ schoolName, yearLabel, shifts, stages, sections, subjects, curriculumLines, teachers, warnings: [{ code: noSections\|emptyCurriculum\|under\|over, stageName, shiftName, value }] }` | 401 |
+
+`/dashboard-summary` now also returns `curriculum` (the stages with planned lessons and per-shift totals, as in `/curriculum`) and `setupFinished`.
+
+### Phase 2.5 fixes 2: breaks and lessons per stage
+| Method | Route | Request | Success | Errors |
+|---|---|---|---|---|
+| POST | `/academic-years/{yearId}/shifts/generate-periods` | also `breaks` (up to 3 × `{ afterLesson, minutes }`) and `gapMinutes` (0–30) | 200 generated periods | 422 `Breaks`, `GapMinutes`, `BreakAfterLesson`, `BreakMinutes` |
+| PUT | `/academic-years/{yearId}/stages/{id}/day-lessons` | `{ dayLessons: [{ day, lessons }], version }`; an empty list inherits the shift | 200 stage; stages now carry `dayLessons` | 401, 403, 404, 409 `CONFLICT`, 409 `STAGE_ARCHIVED`, 422 `DayLessons` (`INVALID_OPTION`, `DUPLICATE_NAME`, `VALUE_OUT_OF_RANGE`) |
+| POST | `/academic-years/{yearId}/shifts/{id}/day-lessons/impact` | `{ dayLessons, version }` | 200 `[{ stageId, stageName, day, stageLessons, shiftLessons }]`; nothing is saved | 401, 404, 422 |
+| PUT | `/academic-years/{yearId}/shifts/{id}/day-lessons` | also `confirmStageChanges` (default false) | 200 shift; with confirmation, the affected stages are lowered | 409 `STAGE_LESSONS_ABOVE_SHIFT` when stages would exceed the shift without confirmation |
+
+`/templates` also returns `breakDefaults: { minutes: { primary, intermediate, preparatory, secondary, other } }` (suggestions). The wizard timing step accepts `gapMinutes` per shift. Section `weeklyCapacity`, curriculum totals, the dashboard and the review use the stage's own counts. Audit events: `StageDayLessonsUpdated`, `StageDayLessonsLowered`.
+
+### Phase 2.5: suggested curriculum and daily distribution
+| Method | Route | Request | Success | Errors |
+|---|---|---|---|---|
+| POST | `/academic-years/{yearId}/curriculum/suggested/preview` | `{ optionalSubjects: [] }` | 200 `{ provenance, subjects: [{ name, action: create\|exists, existingName, optional, included }], stages: [{ stageId, stageName, needsReview, statedTotal, suggestedTotal, currentTotal, resultingTotal, entries: [{ subject, lessons, action, optional, currentLessons }] }], optionalSubjects, changes }` | 401, 403, 404 |
+| POST | `/academic-years/{yearId}/curriculum/suggested` | same | 200 plan; adds only missing subjects and (stage, subject) lines, marked suggested; idempotent; one transaction | 401, 403, 404, 409, 422 |
+| POST | `/academic-years/{yearId}/curriculum/suggested/stages/{stageId}/reset/preview` | `{ optionalSubjects }` | 200 before/after (`update`, `unchanged`, `create` with `currentLessons`) | 401, 404 |
+| POST | `/academic-years/{yearId}/curriculum/suggested/stages/{stageId}/reset` | `{ optionalSubjects, confirm: true }` | 200 | 401, 404, 422 `Confirm` `REQUIRED` |
+| GET | `/academic-years/{yearId}/daily-suggestion` | — | 200 `{ stages: [{ stageId, stageName, weeklyTotal, capacity, suggested: [{ day, lessons }], current, status: apply\|same\|manual\|aboveCapacity\|belowDays\|noCurriculum, changedSinceSuggestion, version }] }` | 401 |
+| POST | `/academic-years/{yearId}/daily-suggestion` | `{ stageIds }` | 200 updated suggestion; manual stages are skipped | 401, 403, 409 `DAILY_TOTAL_ABOVE_SHIFT`, 422 `StageIds` |
+
+Curriculum cells and entries carry `isSuggested`. Audit events: `SuggestedCurriculumApplied`, `SuggestedCurriculumStageReset`, `StageDayLessonsSuggested`.
+
 ### Subjects and the schedule grid (Phase 2, checkpoint 2D)
 | Method | Route | Request | Success | Endpoint-specific errors |
 |---|---|---|---|---|
@@ -117,6 +183,8 @@ Audit events: `SchoolProfileUpdated`, `SchoolAssetUploaded`, `SchoolAssetRemoved
 | PUT | `/subjects/{id}` | same, with the read `version` | 200 subject | 401, 404, 409 `CONFLICT`, 422 |
 | POST | `/subjects/{id}/archive` or `/restore` | `{ version }` | 200 subject | 401, 404, 409 |
 | DELETE | `/subjects/{id}?version=` | — | 204 (nothing references subjects before Phase 3) | 401, 404, 409 |
+
+Quick add: `colorIndex: 0` picks the next unused palette colour (cycling after ten), and `priority: 0` means the default 3. A teacher created with an empty `shortName` gets a proposed one; if none is free, `ShortName` returns `REQUIRED`.
 
 Audit events: `SubjectCreated`, `SubjectUpdated`, `SubjectArchived`, `SubjectRestored`, `SubjectDeleted`. The dashboard adds the counts `subjects` and `capacityGaps` and the checklist step `subjects`.
 

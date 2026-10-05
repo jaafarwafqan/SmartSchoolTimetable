@@ -109,6 +109,122 @@ Checkpoint 2F:
 - Playwright (4): the phase 2 flow ends with the calendar (an out-of-year warning, kind selection, the month view, axe on both views). Baselines were regenerated with `maxDiffPixelRatio` 0.0002, so a new sidebar item or tile fails the comparison; two consecutive runs were stable.
 - Manual check: `--seed-demo-data` was run against a scratch path. It created the file, then refused the same path on a second run, and printed an Arabic message when the path was missing.
 
+## Phase 2.5 test inventory (updated per checkpoint)
+Checkpoint 2.5A:
+- .NET (110): adds `Phase25/QuickAddTests.cs` (automatic subject colours and cycling, default priority, proposed teacher short names and the fallback when none is free).
+- Vitest (58):
+  - `components/DateTimeFields.test.tsx`: ISO composition, day/month/year order, Arabic-Indic digits, typing either digit set, arrow keys, 24-hour wrap, minutes step 5, LTR time group.
+  - `LtrText`: year order and `ltrRuns`.
+  - `i18n/noLatinText.test.ts`: no Latin letters anywhere in the dictionary.
+  - `styles/noDrawers.test.ts`.
+- ESLint adds `design-system/no-native-date-time` and `design-system/no-drawers`. A probe file proved that both fire.
+- Playwright (4):
+  - The flow uses the new navigation (sidebar group, then tab), segmented date and time fields, and quick add with in-place details for subjects and teachers. The bulk panel replaces the bulk dialog, and the calendar has a quick-add row.
+  - Every 3–6 field dialog is checked to be centred, 32–40rem wide and without inner scrolling at 1280×720.
+  - Five screens are checked for Latin text.
+  - A spaced year label ("2027 - 2028") is checked for display order.
+  - The phone menu is checked to open in the page flow (no dialog, `position: static`) and to return focus on Esc.
+  - All screenshot baselines were regenerated.
+
+Checkpoint 2.5B:
+- .NET (115): adds `Phase25/DayLessonsAndShiftModeTests.cs`:
+  - per-day storage and its validation, capping after periods shrink, capacity sums;
+  - the grid per day and its weekly bound, teacher limits against it;
+  - setup progress masks;
+  - shift mode: no current year, adopt by name, create, remove, blocked by sections with the impact list, stale version;
+  - routes for day lessons, the grid, shift mode and setup progress.
+- Vitest (60): adds `components/ui/stepper.test.tsx` (buttons, keys and bounds; grid cells for lessons that do not exist on a day are aria-disabled and never toggle).
+- Playwright: the flow lowers Thursday to 5 lessons with the stepper, and section capacity becomes 29 (also in the copied year).
+
+Checkpoint 2.5C:
+- .NET (126): adds `Phase25/CurriculumDomainTests.cs` and `Phase25/CurriculumServiceTests.cs`:
+  - section labels, curriculum entry validation and labels, totals under/equal/over per shift;
+  - the template JSON files (keys, school types, branch stages, presets generate, no lesson counts);
+  - the stepper (next labels, removing the last, errors); repeated subjects and totals in the table, conflicts, clearing, archive, delete;
+  - copy and set-across previews, idempotence, `ambiguous`, never overwriting; protections (`CURRICULUM_IN_USE`);
+  - templates create only what is missing and never lower sections; the year copy carries curriculum lines;
+  - routes, including a failing stage template rolled back on the real SQLite database, and multi-break generation.
+- Vitest (62): `components/ui/edit-grid.test.tsx` (arrow keys, RTL direction, edges) and `features/curriculum/curriculumGrid.test.ts` (cell parsing, Arabic-Indic digits).
+- Playwright, on the copied year:
+  - applies the preparatory stage template (preview, apply, then preview again shows no change);
+  - raises and lowers sections with the stepper (removal confirmed);
+  - fills a curriculum cell (under by 23) and cancels an invalid value with Escape;
+  - adds a repeated line «هندسة» (under by 21);
+  - runs axe and the Latin-text check.
+
+Checkpoint 2.5D:
+- .NET (127): `Phase25/SetupWizardTests.cs` on the real SQLite database:
+  - steps 1–3 save through the services and can run again without changes (one year, two terms, two shifts);
+  - a failing timing step rolls back the working week too;
+  - duplicate shift kinds, an invalid school type, no current year;
+  - step 1 refused with `SHIFT_MODE_IN_USE` and rolled back;
+  - the review counts and warnings; the dashboard curriculum status and `setupFinished`.
+- Vitest (66): `features/setup-wizard/wizardLogic.test.ts` (the proposed year from today, term dates, weekly lessons with per-day exceptions, reading a saved shift back for resume).
+- Playwright (5): `phase25-wizard.spec.ts`, scenario (a):
+  - a fresh owner lands in the wizard and sets up a morning-only intermediate school through all seven steps;
+  - covers a required-name error, a per-day exception (34 a week), leaving and resuming at step 4 from the dashboard, the template re-applied without changes, a curriculum cell, the optional step skipped, the review, finishing, the dashboard status and the Settings entry;
+  - axe and the Latin-text check on the steps.
+  - `setupOwner` now postpones the wizard; dashboard and settings baselines were regenerated (new cards).
+
+Fixes `phase-2-5-fix1` (owner findings B1–B8):
+- Vitest (70): `lib/arabicCount.test.ts`:
+  - every noun at 1, 2, 3, 11 and 100, plus the boundaries 10, 99, 103 and 111, in both numeral systems;
+  - the Iraqi month names for all twelve months;
+  - a guard that fails on any `${number} noun` string in `src` (shown to catch a planted violation).
+- Playwright (7): `phase25-fixes.spec.ts`, on a secondary school with nine stage columns:
+  - B5: step labels and their order;
+  - B3: no horizontal page scroll on every wizard step and every main screen at 375, 768, 1024 and 1440px;
+  - B4: no overlapping text (line boxes) on the periods preview, stage cards, curriculum table, dashboard and settings;
+  - B6: a typed subject appears as a chip «مضافة» and as a table row, is removed and restored with «تراجع»;
+  - B7: the count message for the added suggestions;
+  - B1/B2/M3: one header and one totals cell per stage, aligned, headers not clipped, compact inputs below the header, capacity in the header;
+  - B8: Iraqi month names on the year step and the years list;
+  - a self-test showing the overlap guard rejects the old stacked-totals markup.
+
+Fixes `phase-2-5-fix2` (M1, M2):
+- .NET (133): `Phase25/StageLessonsAndBreaksTests.cs`:
+  - break durations and the gap (exact times), at most three breaks, gap range, suggested defaults;
+  - stage lessons: inheritance, capping by the shift, validation codes, clamping, copy, reset;
+  - routes: stage lessons per day (wrong token, out of range, version conflict, not found), section and curriculum capacity per stage, shift-shortening impact, refusal without confirmation and lowering with it;
+  - the migration upgrading an existing database from `Phase25CCurriculumTemplates`.
+- Vitest (73): `features/timetable-structure/breaks.test.ts` (positions, at most three, durations and the gap read back per shift).
+- Playwright (8): `phase25-model.spec.ts`:
+  - the breaks editor changes the live preview (duration, an added break, the gap), and the saved breaks have the exact times;
+  - a stage with fewer daily lessons gets a smaller capacity, while the other stage keeps the shift's;
+  - per-day editing on the card; curriculum headers and totals per stage;
+  - the shorten-shift confirmation with the affected stage;
+  - axe and the overlap guard.
+- Flake fixed: adding a subject while the curriculum's first load was in flight left the table stale; mutations now cancel then refresh (decision #38), and the spec passed 8 runs in a row.
+
+Checkpoint 2.5E:
+- .NET (138):
+  - `Phase25/WizardFailureInjectionTests.cs`: a `FailingDataStore` wraps the real store in `TestHost`. A save that throws in the middle of a wizard step (inside a nested transaction, on a later save, or on the progress record) rolls back the whole step on real SQLite.
+  - `Phase25/SectionEditsTests.cs`: one section moved to the other shift splits the totals; archiving a middle section keeps its label reserved, and the stepper removes only the last active section.
+  - `CalendarAndDemoDataTests`: both demo variants, sample curriculum lines marked as demo, per-stage capacity.
+- Playwright (9):
+  - `phase25-scenarios.spec.ts`: scenario (b) through the wizard, plus (c), (d) and (e), and screenshots of wizard steps 1–7 and the curriculum at four widths (page clock fixed to 2026-10-05).
+  - `phase25-wizard.spec.ts`: scenario (a).
+  - Both print the typed-versus-chosen UX metric (`e2e/support/ux.ts`).
+- `expectNoTextOverlap` ignores text hidden under an opaque layer (for example rows scrolling under the sticky totals row) and still rejects transparent text drawn over text.
+
+Suggested curriculum (`phase-2-5-curriculum`):
+- .NET (150): `Phase25/SuggestedCurriculumTests.cs`:
+  - the JSON against the owner's totals (all and without optional), lessons 1–15, stage names = stage-template names, exactly three `needsReview` stages, aliases;
+  - the distribution examples 28/27/29/30/31/33, six working days, a short Thursday, above capacity, below the number of days, no curriculum;
+  - flags cleared by owner edits;
+  - primary apply: preview saves nothing; an alias is matched, not duplicated; totals 28/28/27/29/30/30; apply twice = 0 changes; an edited value survives; the reset needs `confirm` and shows before/after;
+  - the daily suggestion makes every stage "equal", manual counts are skipped, a later change shows the notice, above capacity is refused, unknown stage ids give 422, and the request without a token gets 403 and without a session 401;
+  - intermediate without French 30/30/31 and with French 33/33/34; Kurdish unchecked; the literary review flag; the dual-shift bound (30);
+  - the migration upgrading an existing database.
+- Playwright (13): `phase25-curriculum.spec.ts`:
+  - (a) primary six grades, then the daily suggestion → six "مطابق";
+  - (b) intermediate 30/30/31, then with French 33/33/34;
+  - (c) preparatory review warnings in the panel and the header;
+  - (d) a dual-shift ثانوية (السادس العلمي above the evening capacity, with the reason; eight stages "مطابق");
+  - (e) the second apply changes nothing;
+  - (f) an edited value stays, and the reset restores it after a before/after confirmation;
+  - (g) axe, no horizontal page scroll and no overlapping text at 375, 768, 1024 and 1440px.
+
 ## Later-phase acceptance suites
 - Phase 4 infeasibility test must construct a conflict involving two teachers, a shared lab, and a blocked period; the diagnostic must identify the conflict groups and actionable correction, not merely report infeasible.
 - Large solver-risk comparison uses the same independently verified feasible 40-section/54-teacher workload and records status, first-solution/total time, objective/bound, memory method, and independently checked hard constraints for baseline, two-stage, decomposition, and hints.

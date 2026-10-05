@@ -1,5 +1,6 @@
 using SmartSchoolTimetable.Application.Common;
 using SmartSchoolTimetable.Application.SchoolSetup;
+using SmartSchoolTimetable.Domain.Curriculum;
 using SmartSchoolTimetable.Domain.Subjects;
 using SmartSchoolTimetable.Domain.Text;
 
@@ -33,6 +34,13 @@ public sealed class SubjectsService(IDataStore store, TimeProvider clock)
     public async Task<OperationResult<SubjectDto>> CreateAsync(SaveSubjectCommand command, CancellationToken token)
     {
         ArgumentNullException.ThrowIfNull(command);
+        // Quick add sends only the name: colour 0 means "next free palette colour", priority 0 the default 3.
+        if (command.ColorIndex == 0 || command.Priority == 0)
+            command = command with
+            {
+                ColorIndex = command.ColorIndex == 0 ? await NextColorAsync(token) : command.ColorIndex,
+                Priority = command.Priority == 0 ? Subject.DefaultPriority : command.Priority,
+            };
         var grid = await ScheduleGrids.LoadAsync(store, token);
         Subject? subject = null;
         if (StoreSaving.TryDomain<SubjectDto>(() => subject = Subject.Create(ToDetails(command), grid)) is { } invalid)
@@ -66,6 +74,8 @@ public sealed class SubjectsService(IDataStore store, TimeProvider clock)
             return OperationResult.Failure<SubjectDto>(ErrorCodes.NotFound);
         if (!subject.IsVersion(version))
             return OperationResult.Failure<SubjectDto>(ErrorCodes.Conflict);
+        if (archived && await store.AnyAsync(store.Query<CurriculumEntry>().Where(entry => entry.SubjectId == id && !entry.IsArchived), token))
+            return OperationResult.Failure<SubjectDto>(ErrorCodes.CurriculumInUse);
         if (archived)
             subject.Archive(clock.GetUtcNow());
         else
@@ -80,6 +90,8 @@ public sealed class SubjectsService(IDataStore store, TimeProvider clock)
             return OperationResult.Failure<bool>(ErrorCodes.NotFound);
         if (!subject.IsVersion(version))
             return OperationResult.Failure<bool>(ErrorCodes.Conflict);
+        if (await store.AnyAsync(store.Query<CurriculumEntry>().Where(entry => entry.SubjectId == id), token))
+            return OperationResult.Failure<bool>(ErrorCodes.CurriculumInUse);
         store.Remove(subject);
         AuditTrail.Record(store, clock, "SubjectDeleted", $"subject:{id}", "Subject deleted.");
         return await store.SaveAsync(() => true, "Name", token);
@@ -95,6 +107,14 @@ public sealed class SubjectsService(IDataStore store, TimeProvider clock)
         command.RequiresDoublePeriod,
         command.Notes,
         ScheduleGrids.FromDtos(command.BlockedPeriods));
+
+    /// <summary>The first palette colour no active subject uses; when all ten are used, colours cycle.</summary>
+    private async Task<int> NextColorAsync(CancellationToken token)
+    {
+        var used = await store.ListAsync(store.Query<Subject>().Where(row => !row.IsArchived).Select(row => row.ColorIndex), token);
+        var free = Enumerable.Range(1, Subject.ColorCount).FirstOrDefault(color => !used.Contains(color));
+        return free != 0 ? free : used.Count % Subject.ColorCount + 1;
+    }
 
     private Task<Subject?> FindAsync(long id, CancellationToken token) =>
         store.FirstOrDefaultAsync(store.Query<Subject>().Where(row => row.Id == id), token);

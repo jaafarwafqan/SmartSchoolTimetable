@@ -5,6 +5,12 @@ namespace SmartSchoolTimetable.Domain.SchoolSetup;
 
 public enum PeriodKind { Lesson, Break }
 
+/// <summary>Morning and evening shifts are created by the school's shift mode (spec 2.5 §3.2); others are custom.</summary>
+public enum ShiftKind { Other, Morning, Evening }
+
+/// <summary>Lessons taught on one working day by a shift: the first <paramref name="Lessons"/> lessons of the shift.</summary>
+public sealed record DayLessons(int Day, int Lessons);
+
 /// <summary>A row of a shift's daily schedule, proposed by the owner or by <see cref="PeriodGenerator"/>.</summary>
 public sealed record PeriodDraft(PeriodKind Kind, TimeOnly StartTime, TimeOnly EndTime, bool StartBell = true, bool EndBell = true);
 
@@ -51,6 +57,7 @@ public sealed class Shift : VersionedEntity
     public const int MaxRows = 20;
 
     private readonly List<LessonPeriod> _periods = [];
+    private readonly List<DayLessons> _dayLessonOverrides = [];
 
     private Shift()
     {
@@ -60,17 +67,38 @@ public sealed class Shift : VersionedEntity
     public string Name { get; private set; } = string.Empty;
     public string NormalizedName { get; private set; } = string.Empty;
     public int DisplayOrder { get; private set; }
+    public ShiftKind Kind { get; private set; }
     public IReadOnlyList<LessonPeriod> Periods => _periods.OrderBy(period => period.Position).ToArray();
 
     /// <summary>Lessons per day (breaks excluded).</summary>
     public int LessonCount => _periods.Count(period => period.Kind == PeriodKind.Lesson);
 
-    public static Shift Create(long academicYearId, string? name, int displayOrder)
+    /// <summary>Per-day exceptions only (days whose count differs from <see cref="LessonCount"/>; ADR 0020).</summary>
+    public IReadOnlyList<DayLessons> DayLessonOverrides => _dayLessonOverrides.OrderBy(day => day.Day).ToArray();
+
+    /// <summary>Lessons taught on <paramref name="day"/>: the per-day count, capped at the current lesson count.</summary>
+    public int LessonsOn(int day) =>
+        _dayLessonOverrides.FirstOrDefault(entry => entry.Day == day) is { } entry ? Math.Min(entry.Lessons, LessonCount) : LessonCount;
+
+    /// <summary>Weekly lessons of this shift over the given working days (breaks excluded).</summary>
+    public int WeeklyLessons(IEnumerable<int> workingDays) => workingDays.Sum(LessonsOn);
+
+    public static Shift Create(long academicYearId, string? name, int displayOrder, ShiftKind kind = ShiftKind.Other)
     {
         Validate(name, displayOrder);
-        var shift = new Shift { AcademicYearId = academicYearId };
+        var shift = new Shift { AcademicYearId = academicYearId, Kind = kind };
         shift.Apply(name!, displayOrder);
         return shift;
+    }
+
+    /// <summary>Marks an existing shift as the school's morning or evening shift (shift mode adopts same-named shifts).</summary>
+    public void SetKind(ShiftKind kind)
+    {
+        new DomainErrors().When(!Enum.IsDefined(kind), nameof(Kind), DomainErrorCode.InvalidOption).ThrowIfAny();
+        if (Kind == kind)
+            return;
+        Kind = kind;
+        Touch();
     }
 
     public void Update(string? name, int displayOrder)
@@ -90,6 +118,24 @@ public sealed class Shift : VersionedEntity
         Touch();
     }
 
+    /// <summary>
+    /// Sets how many lessons are taught on each working day (spec 2.5 §3.1). Each count is 0..<see cref="LessonCount"/>;
+    /// days left out use the full count. Only days that differ from the full count are stored.
+    /// </summary>
+    public void SetDayLessons(IReadOnlyCollection<DayLessons>? counts, IReadOnlyCollection<int> workingDays)
+    {
+        ArgumentNullException.ThrowIfNull(workingDays);
+        counts ??= [];
+        new DomainErrors()
+            .When(counts.Any(entry => !workingDays.Contains(entry.Day)), "DayLessons", DomainErrorCode.InvalidOption)
+            .When(counts.GroupBy(entry => entry.Day).Any(group => group.Count() > 1), "DayLessons", DomainErrorCode.Duplicate)
+            .When(counts.Any(entry => entry.Lessons < 0 || entry.Lessons > LessonCount), "DayLessons", DomainErrorCode.OutOfRange)
+            .ThrowIfAny();
+        _dayLessonOverrides.Clear();
+        _dayLessonOverrides.AddRange(counts.Where(entry => entry.Lessons != LessonCount));
+        Touch();
+    }
+
     /// <summary>The lesson number (1..N) of each lesson row, in time order.</summary>
     public IReadOnlyList<(int Number, LessonPeriod Period)> Lessons() =>
         Periods.Where(period => period.Kind == PeriodKind.Lesson)
@@ -99,10 +145,11 @@ public sealed class Shift : VersionedEntity
     /// <summary>A copy of this shift and its periods for another academic year (new-year structure copy).</summary>
     public Shift CopyTo(long academicYearId)
     {
-        var copy = new Shift { AcademicYearId = academicYearId };
+        var copy = new Shift { AcademicYearId = academicYearId, Kind = Kind };
         copy.Apply(Name, DisplayOrder);
         foreach (var period in Periods)
             copy._periods.Add(new LessonPeriod(period.Position, period.ToDraft()));
+        copy._dayLessonOverrides.AddRange(_dayLessonOverrides);
         return copy;
     }
 

@@ -61,6 +61,62 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("SmartSchoolTimetable.Domain.Curriculum.CurriculumEntry", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset?>("ArchivedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsSuggested")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("NeedsDoublePeriod")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("NormalizedLabel")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("StageId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("SubjectId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("WeeklyLessons")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubjectId");
+
+                    b.HasIndex("StageId", "SubjectId");
+
+                    b.ToTable("CurriculumEntries", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CurriculumEntries_WeeklyLessons", "\"WeeklyLessons\" BETWEEN 1 AND 15");
+                        });
+                });
+
             modelBuilder.Entity("SmartSchoolTimetable.Domain.LocalAuditEntry", b =>
                 {
                     b.Property<long>("Id")
@@ -324,6 +380,35 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                     b.ToTable("Sections", (string)null);
                 });
 
+            modelBuilder.Entity("SmartSchoolTimetable.Domain.SchoolSetup.SetupProgress", b =>
+                {
+                    b.Property<long>("Id")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CompletedMask")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CurrentStep")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsFinished")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SkippedMask")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SetupProgress", (string)null);
+                });
+
             modelBuilder.Entity("SmartSchoolTimetable.Domain.SchoolSetup.Shift", b =>
                 {
                     b.Property<long>("Id")
@@ -335,6 +420,11 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
 
                     b.Property<int>("DisplayOrder")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -372,6 +462,9 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                     b.Property<DateTimeOffset?>("ArchivedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("DayLessonsSuggested")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("DisplayOrder")
                         .HasColumnType("INTEGER");
 
@@ -386,6 +479,10 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                     b.Property<string>("NormalizedName")
                         .IsRequired()
                         .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TemplateKey")
+                        .HasMaxLength(40)
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Version")
@@ -557,6 +654,21 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Teachers", (string)null);
+                });
+
+            modelBuilder.Entity("SmartSchoolTimetable.Domain.Curriculum.CurriculumEntry", b =>
+                {
+                    b.HasOne("SmartSchoolTimetable.Domain.SchoolSetup.Stage", null)
+                        .WithMany()
+                        .HasForeignKey("StageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SmartSchoolTimetable.Domain.Subjects.Subject", null)
+                        .WithMany()
+                        .HasForeignKey("SubjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("SmartSchoolTimetable.Domain.SchoolSetup.AcademicYear", b =>
@@ -736,6 +848,34 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                                 .HasForeignKey("ShiftId");
                         });
 
+                    b.OwnsMany("SmartSchoolTimetable.Domain.SchoolSetup.DayLessons", "DayLessonOverrides", b1 =>
+                        {
+                            b1.Property<long>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("INTEGER");
+
+                            b1.Property<int>("Day")
+                                .HasColumnType("INTEGER");
+
+                            b1.Property<int>("Lessons")
+                                .HasColumnType("INTEGER");
+
+                            b1.Property<long>("ShiftId")
+                                .HasColumnType("INTEGER");
+
+                            b1.HasKey("Id");
+
+                            b1.HasIndex("ShiftId", "Day")
+                                .IsUnique();
+
+                            b1.ToTable("ShiftDayLessons", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("ShiftId");
+                        });
+
+                    b.Navigation("DayLessonOverrides");
+
                     b.Navigation("Periods");
                 });
 
@@ -746,6 +886,37 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                         .HasForeignKey("AcademicYearId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.OwnsMany("SmartSchoolTimetable.Domain.SchoolSetup.DayLessons", "DayLessonCounts", b1 =>
+                        {
+                            b1.Property<long>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("INTEGER");
+
+                            b1.Property<int>("Day")
+                                .HasColumnType("INTEGER");
+
+                            b1.Property<int>("Lessons")
+                                .HasColumnType("INTEGER");
+
+                            b1.Property<long>("StageId")
+                                .HasColumnType("INTEGER");
+
+                            b1.HasKey("Id");
+
+                            b1.HasIndex("StageId", "Day")
+                                .IsUnique();
+
+                            b1.ToTable("StageDayLessons", null, t =>
+                                {
+                                    t.HasCheckConstraint("CK_StageDayLessons_Lessons", "\"Lessons\" >= 1");
+                                });
+
+                            b1.WithOwner()
+                                .HasForeignKey("StageId");
+                        });
+
+                    b.Navigation("DayLessonCounts");
                 });
 
             modelBuilder.Entity("SmartSchoolTimetable.Domain.Subjects.Subject", b =>

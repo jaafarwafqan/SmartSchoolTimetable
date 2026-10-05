@@ -1,4 +1,6 @@
 using SmartSchoolTimetable.Application.Common;
+using SmartSchoolTimetable.Application.SchoolSetup;
+using SmartSchoolTimetable.Domain.Curriculum;
 using SmartSchoolTimetable.Domain.SchoolSetup;
 using SmartSchoolTimetable.Domain.Text;
 
@@ -57,7 +59,7 @@ public sealed class StagesSectionsService(IDataStore store, TimeProvider clock)
         if (!await store.AnyAsync(store.Query<AcademicYear>().Where(row => row.Id == yearId), token))
             return OperationResult.Failure<StageDto>(ErrorCodes.NotFound);
         Stage? stage = null;
-        if (StoreSaving.TryDomain<StageDto>(() => stage = Stage.Create(yearId, command.Name, command.DisplayOrder)) is { } invalid)
+        if (StoreSaving.TryDomain<StageDto>(() => stage = Stage.Create(yearId, command.Name, command.DisplayOrder, command.TemplateKey)) is { } invalid)
             return invalid;
         if (await StageNameTakenAsync(yearId, null, command.Name, token))
             return OperationResult.Invalid<StageDto>(nameof(command.Name), ErrorCodes.DuplicateName);
@@ -90,6 +92,8 @@ public sealed class StagesSectionsService(IDataStore store, TimeProvider clock)
             return OperationResult.Failure<StageDto>(ErrorCodes.Conflict);
         if (archived && await store.AnyAsync(store.Query<Section>().Where(row => row.StageId == id && !row.IsArchived), token))
             return OperationResult.Failure<StageDto>(ErrorCodes.RecordInUse);
+        if (archived && await store.AnyAsync(store.Query<CurriculumEntry>().Where(entry => entry.StageId == id && !entry.IsArchived), token))
+            return OperationResult.Failure<StageDto>(ErrorCodes.CurriculumInUse);
         if (archived)
             stage.Archive(clock.GetUtcNow());
         else
@@ -107,6 +111,8 @@ public sealed class StagesSectionsService(IDataStore store, TimeProvider clock)
             return OperationResult.Failure<bool>(ErrorCodes.Conflict);
         if (await store.AnyAsync(store.Query<Section>().Where(row => row.StageId == id), token))
             return OperationResult.Failure<bool>(ErrorCodes.RecordInUse);
+        if (await store.AnyAsync(store.Query<CurriculumEntry>().Where(entry => entry.StageId == id), token))
+            return OperationResult.Failure<bool>(ErrorCodes.CurriculumInUse);
         store.Remove(stage);
         AuditTrail.Record(store, clock, "StageDeleted", $"stage:{id}", "Stage deleted.");
         return await store.SaveAsync(() => true, "Name", token);
@@ -205,29 +211,30 @@ public sealed class StagesSectionsService(IDataStore store, TimeProvider clock)
     private async Task<Section?> FindSectionAsync(long yearId, long stageId, long id, CancellationToken token) =>
         await FindStageAsync(yearId, stageId, token) is null ? null : await FindSectionInStageAsync(stageId, id, token);
 
-    private static StageDto ToDto(Stage row) =>
-        new(row.Id, row.AcademicYearId, row.Name, row.DisplayOrder, row.IsArchived, row.ArchivedAt, row.Version);
+    internal static StageDto ToDto(Stage row) =>
+        new(row.Id, row.AcademicYearId, row.Name, row.DisplayOrder, row.TemplateKey,
+            row.DayLessonCounts.Select(entry => new DayLessonsDto(entry.Day, entry.Lessons)).ToArray(), row.IsArchived, row.ArchivedAt, row.Version);
 
-    /// <summary>Loads the working week and the referenced shifts once per page (no per-row queries).</summary>
-    private sealed class SectionMapper(WorkingWeek? week, IReadOnlyDictionary<long, Shift> shifts)
+    /// <summary>
+    /// The stage's own lessons per working day (ADR 0027). Each count is at most what the stage's shifts teach that
+    /// day (the shifts of its active sections; all shifts of the year while it has none).
+    /// </summary>
+    public async Task<OperationResult<StageDto>> SetStageDayLessonsAsync(long yearId, long id, SetStageDayLessonsCommand command, CancellationToken token)
     {
-        public static async Task<SectionMapper> LoadAsync(IDataStore store, IReadOnlyCollection<Section> sections, CancellationToken token)
-        {
-            var week = await store.FirstOrDefaultAsync(store.Query<WorkingWeek>(), token);
-            var shiftIds = sections.Select(section => section.ShiftId).Distinct().ToArray();
-            var shifts = await store.ListAsync(store.Query<Shift>().Where(shift => shiftIds.Contains(shift.Id)), token);
-            return new SectionMapper(week, shifts.ToDictionary(shift => shift.Id));
-        }
-
-        public SectionDto ToDto(Section row) => new(
-            row.Id,
-            row.StageId,
-            row.Label,
-            row.ShiftId,
-            row.StudentCount,
-            Section.WeeklyCapacity(week, shifts.GetValueOrDefault(row.ShiftId)),
-            row.IsArchived,
-            row.ArchivedAt,
-            row.Version);
+        ArgumentNullException.ThrowIfNull(command);
+        if (await store.FirstOrDefaultAsync(store.Query<Stage>().Where(stage => stage.Id == id && stage.AcademicYearId == yearId), token) is not { } stage)
+            return OperationResult.Failure<StageDto>(ErrorCodes.NotFound);
+        if (!stage.IsVersion(command.Version))
+            return OperationResult.Failure<StageDto>(ErrorCodes.Conflict);
+        if (stage.IsArchived)
+            return OperationResult.Failure<StageDto>(ErrorCodes.StageArchived);
+        var days = (await store.FirstOrDefaultAsync(store.Query<WorkingWeek>(), token))?.Days ?? [];
+        var shiftIds = await store.ListAsync(store.Query<Section>().Where(section => section.StageId == id && !section.IsArchived).Select(section => section.ShiftId).Distinct(), token);
+        var shifts = await store.ListAsync(store.Query<Shift>().Where(shift => shift.AcademicYearId == yearId && (shiftIds.Count == 0 || shiftIds.Contains(shift.Id))), token);
+        var counts = (command.DayLessons ?? []).Select(entry => new DayLessons(entry.Day, entry.Lessons)).ToArray();
+        if (StoreSaving.TryDomain<StageDto>(() => stage.SetDayLessons(counts, days, day => shifts.Count == 0 ? 0 : shifts.Max(shift => shift.LessonsOn(day)))) is { } invalid)
+            return invalid;
+        AuditTrail.Record(store, clock, "StageDayLessonsUpdated", $"stage:{id}", "Stage lessons per day updated.");
+        return await store.SaveAsync(() => ToDto(stage), "DayLessons", token);
     }
 }

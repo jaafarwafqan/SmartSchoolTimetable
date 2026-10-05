@@ -3,7 +3,8 @@ import { apiRequest } from "../../api";
 import { useRefreshSchoolData } from "../../lib/schoolContext";
 import type { Paged } from "../academic-years/yearsApi";
 
-export type Stage = { id: number; academicYearId: number; name: string; displayOrder: number; isArchived: boolean; archivedAt: string | null; version: number };
+/** `dayLessons`: the stage's own lessons per working day (ADR 0027); a day not listed uses the shift's count. */
+export type Stage = { id: number; academicYearId: number; name: string; displayOrder: number; templateKey: string | null; dayLessons: { day: number; lessons: number }[]; isArchived: boolean; archivedAt: string | null; version: number };
 export type Section = {
   id: number;
   stageId: number;

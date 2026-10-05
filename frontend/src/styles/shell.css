@@ -1,4 +1,4 @@
-/* Application shell: top bar, right-hand sidebar (collapsible), mobile drawer (DESIGN_SYSTEM.md 6.6). */
+/* Application shell: top bar, right-hand sidebar (collapsible), in-flow mobile menu (DESIGN_SYSTEM.md 6.6). */
 
 .app-shell {
   min-block-size: 100vh;
@@ -35,7 +35,7 @@
   gap: 0.5rem;
 }
 
-.drawer-trigger {
+.mobile-menu-toggle {
   display: none;
 }
 
@@ -138,40 +138,22 @@
   white-space: nowrap;
 }
 
-/* ---------- Mobile drawer ---------- */
-.app-drawer {
-  inline-size: min(85vw, 18rem);
-  block-size: 100vh;
-  max-block-size: 100vh;
-  /* Anchored to the inline start (right in RTL), the side the sidebar occupies on wide screens. */
-  inset-inline-start: 0;
-  inset-inline-end: auto;
-  margin: 0;
-  padding: 0.75rem;
-  border: 0;
+/* ---------- Mobile menu (in page flow, never an edge-anchored panel) ---------- */
+.app-mobile-menu {
+  padding: 0.5rem 1rem 1rem;
+  border-block-end: 1px solid var(--color-line);
   background: var(--color-surface);
-  box-shadow: var(--shadow-popover);
 }
 
-.app-drawer::backdrop {
-  background: color-mix(in srgb, var(--color-ink) 45%, transparent);
-}
-
-.app-drawer .app-sidebar {
+.app-mobile-menu .app-sidebar {
   position: static;
   min-block-size: 0;
   padding: 0;
   border: 0;
 }
 
-.app-drawer-header {
-  display: flex;
-  justify-content: flex-end;
-  margin-block-end: 0.5rem;
-}
-
 @media (max-width: 47.99rem) {
-  .drawer-trigger {
+  .mobile-menu-toggle {
     display: inline-flex;
   }
 
@@ -191,5 +173,11 @@
 
   .app-main {
     padding: 1rem 1rem 2.5rem;
+  }
+}
+
+@media (min-width: 48rem) {
+  .app-mobile-menu {
+    display: none;
   }
 }

@@ -35,6 +35,9 @@ public sealed class TeachersService(IDataStore store, TimeProvider clock)
     public async Task<OperationResult<TeacherDto>> CreateAsync(SaveTeacherCommand command, CancellationToken token)
     {
         ArgumentNullException.ThrowIfNull(command);
+        // Quick add sends only the full name: the short name is proposed like in bulk add (DECISIONS_PENDING #13).
+        if (string.IsNullOrWhiteSpace(command.ShortName) && !string.IsNullOrWhiteSpace(command.FullName))
+            command = command with { ShortName = await ProposeShortNameAsync(command.FullName, token) };
         var input = new InputErrors();
         var details = ToDetails(command, input);
         if (input.Any)
@@ -144,6 +147,13 @@ public sealed class TeachersService(IDataStore store, TimeProvider clock)
         command.MaxLessonsPerDay,
         command.MaxLessonsPerWeek,
         command.Notes);
+
+    /// <summary>A free short name, or null (then the required-field error asks the owner to type one).</summary>
+    private async Task<string?> ProposeShortNameAsync(string fullName, CancellationToken token)
+    {
+        var taken = (await store.ListAsync(store.Query<Teacher>().Select(row => row.NormalizedShortName), token)).ToHashSet(StringComparer.Ordinal);
+        return TeacherNames.ProposeShortName(fullName, taken.Contains);
+    }
 
     private Task<Teacher?> FindAsync(long id, CancellationToken token) =>
         store.FirstOrDefaultAsync(store.Query<Teacher>().Where(row => row.Id == id), token);

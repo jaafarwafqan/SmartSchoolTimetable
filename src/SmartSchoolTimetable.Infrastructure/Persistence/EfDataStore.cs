@@ -30,6 +30,13 @@ public sealed class EfDataStore(LocalDbContext dbContext) : IDataStore
     public async Task ExecuteInTransactionAsync(Func<Task> work, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(work);
+        // Inside an open transaction (a wizard step calling services that use their own), join it: the outer
+        // owner commits or rolls back everything once (ADR 0023).
+        if (dbContext.Database.CurrentTransaction is not null)
+        {
+            await work();
+            return;
+        }
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         await work();
         await transaction.CommitAsync(cancellationToken);

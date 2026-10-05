@@ -76,6 +76,11 @@ public static class LocalInfrastructureRegistration
             db.Add(BellSettings.CreateDefault());
             await db.SaveChangesAsync(cancellationToken);
         }
+        if (!await db.Set<SetupProgress>().AnyAsync(cancellationToken))
+        {
+            db.Add(SetupProgress.CreateDefault(DateTimeOffset.UtcNow));
+            await db.SaveChangesAsync(cancellationToken);
+        }
     }
 
     private sealed class NoLoginDelay : ILoginDelay

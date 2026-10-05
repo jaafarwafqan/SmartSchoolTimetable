@@ -1,4 +1,4 @@
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Wand2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Alert } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
@@ -8,6 +8,7 @@ import { userErrorMessage } from "../../api";
 import { messages } from "../../i18n/messages";
 import { PageHeader } from "../../layout/PageHeader";
 import { useFormatter } from "../../lib/schoolContext";
+import { CurriculumStatusCard } from "./CurriculumStatusCard";
 import { countItems } from "./dashboardItems";
 import { SetupChecklist } from "./SetupChecklist";
 import { useDashboard } from "./useDashboard";
@@ -31,6 +32,16 @@ export function DashboardPage() {
       )}
       {summary.data && (
         <div className="dashboard-grid">
+          {!summary.data.setupFinished && (
+            <Card className="dashboard-card setup-resume" aria-labelledby="setup-resume-title">
+              <h2 id="setup-resume-title">{messages.school.wizard.title}</h2>
+              <p className="card-note">{messages.school.wizard.openHint}</p>
+              <Link className="ui-button ui-button-primary ui-button-md setup-resume-link" to="/setup">
+                <Wand2 aria-hidden="true" size={20} />
+                <span>{messages.school.wizard.open}</span>
+              </Link>
+            </Card>
+          )}
           <SetupChecklist steps={summary.data.checklist} />
           <Card className="dashboard-card" aria-labelledby="counts-title">
             <h2 id="counts-title">{messages.school.dashboard.countsTitle}</h2>
@@ -43,6 +54,7 @@ export function DashboardPage() {
               ))}
             </dl>
           </Card>
+          <CurriculumStatusCard stages={summary.data.curriculum} format={format.number} />
         </div>
       )}
     </div>

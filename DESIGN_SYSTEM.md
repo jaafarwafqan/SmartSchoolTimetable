@@ -123,6 +123,14 @@ All UI is built from `frontend/src/components/ui/*`. Raw `<button>`, `<input>`, 
 - Numeric columns use tabular numerals. Wide tables scroll inside their own container.
 - Empty state: icon + sentence + primary action. Loading: skeleton rows, not a blocking spinner.
 - Pagination or virtual scrolling above 100 rows.
+- **Only the table container scrolls.** Grid and flex children that hold a table get `min-inline-size: 0`; the page never scrolls sideways at 375, 768, 1024 or 1440px (`expectNoPageScrollX`).
+- **Sticky rules:** only `thead` cells stick to the top. A row-header column (`tbody th`) sticks to the inline start with an opaque background. Stacking: corner > header > first column > cells.
+- **Headers wrap** to two lines rather than being cut (minimum column width). They may carry a small second line, such as a stage's weekly capacity.
+- **Totals go in `<tfoot>`:** exactly one cell per column, aligned under it, at most two lines (value, then a status chip with icon + text). In a table that scrolls vertically, the totals row sticks to the bottom with an opaque background. Never change a table cell's `display` and never position text absolutely.
+- **Numeric input cells are compact** (about 3rem × 2.25rem) so six or more columns fit.
+- **No overlapping text.** Stacked Arabic lines need enough line height (about 1.6–1.8), because the glyph box is taller than a tight line box. `expectNoTextOverlap` checks the line boxes of every visible text in tables, cards and the dashboard.
+- **Counted nouns use `arabicCount`** (`format.count(n, noun)`): «مادة واحدة»، «مادتان»، «٣ مواد»، «١١ مادة». Never write `${number} مادة` in a string; a unit test rejects it.
+- **Gregorian dates show the Iraqi month names** (أيلول، تشرين الأول … حزيران). The numerals setting stays independent.
 
 ### 6.5 Timetable grid (core screen)
 - Days as rows or columns per the school setting; periods labeled with time.
@@ -133,7 +141,8 @@ All UI is built from `frontend/src/components/ui/*`. Raw `<button>`, `<input>`, 
 
 ### 6.6 Navigation and layout
 - Right-hand sidebar (RTL) with icon + label; collapsible to icons with tooltips. Top bar holds the school name, current academic year/term, and user menu (settings, lock, logout).
-- On screens below 768px the sidebar becomes a drawer and the weekly grid becomes a day view.
+- On screens below 768px the navigation opens in the page flow under the top bar (no overlay, no side drawer: section 14 and ADR 0024), and the weekly grid becomes a day view.
+- Five sidebar items; screens of a group are tabs under the page title (route tabs, `aria-current="page"`). Breadcrumbs: dashboard › group › screen.
 - Breadcrumbs for nested screens. The current page is marked with `aria-current="page"`.
 
 ---
@@ -200,3 +209,50 @@ Test and design at 375, 768, 1024 and 1440 px. Layout may reflow but must never 
 - A new component type or a new color requires an entry in this document first.
 - Generated design recommendations (design skills, templates) are inputs for discussion, never authority. Nothing from them is adopted unless written here.
 - Dark theme and theme presets are deferred. When added, they override semantic tokens only and must pass the contrast test; components do not change.
+
+---
+
+## 14. Add and edit patterns
+
+Records are added by choosing and by quick add, not by long forms. Each pattern has one component.
+
+| Fields | Pattern | Component | Used for |
+|---|---|---|---|
+| 1–2 | **Inline row** in the list: type, then press Enter. The fields clear after a successful add, so the next item can be typed straight away. | `InlineAddForm` | quick add of subjects, teachers and calendar days; section count; curriculum cells |
+| 3–6 | **Centred dialog**: 32–40rem wide, focus trapped, Esc closes, no inner scrolling at 1280×720. Never anchored to a screen edge (`margin: auto`; checked by E2E). | `Dialog` | academic year, term, generate periods, calendar day, shift |
+| Long or optional details | **Quick add by name only**, then details edited **in place** on an expandable row. Advanced options are folded under «خيارات متقدمة». Never a long modal form. | `ExpandableRow` | teacher constraints, subject options |
+| Many at once | **Bulk panel** inside the page, with a preview before saving. | page `Card` | teachers from pasted names |
+
+- **No side drawers or sheets** anywhere. The ESLint rule `design-system/no-drawers` and the test `styles/noDrawers.test.ts` fail if one is introduced (ADR 0024).
+- `/design` shows every pattern (section «أنماط الإضافة والتعديل»).
+
+## 15. Dates, times and left-to-right runs
+
+- **`DateField`:** day / month / year segments, in that order.
+  - It shows the school's numerals.
+  - Typing accepts Arabic-Indic or Western digits; ArrowUp and ArrowDown change the focused segment.
+  - The full Arabic date (Hijri when chosen) appears as the hint.
+  - The value sent to the API is ISO `yyyy-MM-dd`.
+- **`TimeField`:** 24-hour `HH:mm` (hours, then minutes; minutes step by 5 with the arrow keys). The time is kept left-to-right and uses the school's numerals.
+- **No native date or time inputs:** native `<input type="date|time">` are forbidden (`design-system/no-native-date-time`), because they show browser-locale formats (mm/dd/yyyy, AM/PM).
+- **`LtrText`** (and the `ltrRuns()` string helper for options and ARIA labels): years, times, dates, codes, file names and usernames keep their logical order in RTL. "2026 - 2027" must never be shown as "2027 - 2026". A Vitest unit test and an E2E position check enforce this.
+- **Fixed UI text is Arabic only.** The dictionary test (`i18n/noLatinText.test.ts`) and the E2E check `expectNoLatinText` fail on Latin letters. Allowed exceptions: data (usernames) and the image format codes PNG, JPEG, WebP.
+
+## 17. Suggestions (Phase 2.5)
+- **«مقترح» marks a value that came from a template and was not edited since.**
+  - A primary badge appears on panels.
+  - A small mark under a table cell (`suggested-mark`).
+  - The mark disappears on the owner's first edit.
+- **Provenance banner:** a panel that applies suggested content starts with an info alert naming its source honestly. Never use «رسمي».
+- **Review warning:** a warning icon plus the full Arabic sentence (`ReviewWarning`). In a table header, a short «يحتاج مراجعة» with the full sentence available to screen readers and as a tooltip. Text uses `ink`, the icon `warning`; never colour alone.
+- **Preview before apply:**
+  - A suggestion's apply button never changes anything the owner typed.
+  - A destructive variant (a reset to the suggestion) shows before → after in a centred confirmation dialog.
+- **Status per row:** a badge with icon and text, for example «اقتراح جديد»، «مطابق للاقتراح»، «معدّل يدوياً، لن يتغير». Rows that cannot be applied explain why and what to do.
+
+## 16. Wizard pattern (Phase 2.5D)
+- **Layout:** a step list (`nav` named «خطوات الإعداد», the current step marked with `aria-current="step"`, done steps with a check icon and hidden text) beside one card for the current step. The list sits above the card under 1024px.
+- **Footer:** «السابق»، «حفظ والمتابعة» (saves the step)، optional «تخطي هذه الخطوة»، and the «إكمال لاحقاً» link back to the dashboard. Errors appear in the footer next to the step's buttons.
+- **Focus:** moving to a step focuses its title (`tabIndex=-1`).
+- **Choose, don't type:** choice cards, selects, steppers and previews. Proposed values carry the hint «قيمة مقترحة، يمكنك تعديلها».
+- **Reuse:** steps reuse the screens' components (template panels, stage cards, the curriculum table, bulk add), shown open in place. Never a drawer.

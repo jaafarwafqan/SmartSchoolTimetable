@@ -10,6 +10,7 @@ import { messages } from "../../i18n/messages";
 import { AuthLayout } from "../../layout/AuthLayout";
 import { passwordMinLength, usernameMaxLength, usernameMinLength } from "../../lib/credentialRules";
 import { formatNumber } from "../../lib/format";
+import { useUiStore } from "../../state/session";
 import { useFormFeedback, type FieldErrors } from "../../lib/useFormFeedback";
 import { useStoreIssuedRecoveryCode, type RecoveryCodeResponse } from "./useRecoveryCode";
 
@@ -28,10 +29,11 @@ function validateSetup({ username, password, confirmPassword }: SetupPayload): F
 export function SetupScreen() {
   const storeIssuedCode = useStoreIssuedRecoveryCode();
   const feedback = useFormFeedback();
+  const setStartSetupWizard = useUiStore((state) => state.setStartSetupWizard);
   const setup = useMutation({
     mutationFn: (payload: SetupPayload) =>
       apiRequest<RecoveryCodeResponse>("/api/v1/auth/setup", "POST", payload),
-    onSuccess: (result) => storeIssuedCode(result.recoveryCode),
+    onSuccess: (result) => { setStartSetupWizard(true); storeIssuedCode(result.recoveryCode); },
     onError: feedback.showError,
   });
 

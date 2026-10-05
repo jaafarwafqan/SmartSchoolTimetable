@@ -1,3 +1,4 @@
+import { arabicCount, type CountNoun, type GrammaticalCase } from "./arabicCount";
 import { messages } from "../i18n/messages";
 
 /**
@@ -39,10 +40,7 @@ export function formatNumber(value: number, system: NumeralSystem = defaultNumer
 
 /** Arabic duration in minutes with correct grammatical number (1, 2, 3–10, 11+). */
 export function formatMinutes(minutes: number, system: NumeralSystem = defaultNumeralSystem): string {
-  if (minutes === 1) return messages.app.minutesOne;
-  if (minutes === 2) return messages.app.minutesTwo;
-  const count = formatNumber(minutes, system);
-  return minutes >= 3 && minutes <= 10 ? messages.app.minutesFew(count) : messages.app.minutesMany(count);
+  return arabicCount(minutes, "minute", (value) => formatNumber(value, system));
 }
 
 /** Inactivity timeout label: a duration, or "never" when the value is null. */
@@ -62,26 +60,48 @@ export function todayIn(timeZone: string, now: Date = new Date()): string {
 
 export type Formatter = ReturnType<typeof createFormatter>;
 
+/**
+ * Gregorian month names as used in Iraq (DECISIONS_PENDING #31): كانون الثاني … كانون الأول. `ar-IQ` yields them;
+ * this table also replaces the month part if an engine lacks that locale's data. Hijri months are unchanged.
+ */
+export const iraqiMonthNames = [
+  "كانون الثاني", "شباط", "آذار", "نيسان", "أيار", "حزيران",
+  "تموز", "آب", "أيلول", "تشرين الأول", "تشرين الثاني", "كانون الأول",
+] as const;
+
+function withIraqiMonths(format: Intl.DateTimeFormat, gregorian: boolean) {
+  return (date: Date) => format.formatToParts(date)
+    .map((part) => (gregorian && part.type === "month" ? iraqiMonthNames[date.getUTCMonth()] : part.value))
+    .join("");
+}
+
 export function createFormatter(preferences: DisplayPreferences = defaultDisplay) {
   const system = numeralSystemOf(preferences.numeralSystem);
   const calendar = preferences.calendarDisplay === "hijri" ? "islamic-umalqura" : "gregory";
-  const dateFormat = new Intl.DateTimeFormat("ar", {
+  const gregorian = calendar === "gregory";
+  const locale = gregorian ? "ar-IQ" : "ar";
+  const dateFormat = new Intl.DateTimeFormat(locale, {
     calendar, numberingSystem: system, timeZone: "UTC", day: "numeric", month: "long", year: "numeric",
   });
-  const monthFormat = new Intl.DateTimeFormat("ar", {
+  const monthFormat = new Intl.DateTimeFormat(locale, {
     calendar, numberingSystem: system, timeZone: "UTC", month: "long", year: "numeric",
   });
   const timeFormat = new Intl.DateTimeFormat("ar", {
     numberingSystem: system, timeZone: "UTC", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
   });
+  const formatDate = withIraqiMonths(dateFormat, gregorian);
+  const formatMonth = withIraqiMonths(monthFormat, gregorian);
   return {
     preferences,
     number: (value: number) => formatNumber(value, system),
+    /** A counted noun with Arabic agreement and the school's numerals ("٩ مواد"، "مادتان"). */
+    count: (value: number, noun: CountNoun, grammaticalCase?: GrammaticalCase) =>
+      arabicCount(value, noun, (number) => formatNumber(number, system), grammaticalCase),
     minutes: (value: number) => formatMinutes(value, system),
     inactivity: (value: number | null) => formatInactivityTimeout(value, system),
-    date: (value: string) => dateFormat.format(parseApiDate(value)),
-    dateRange: (start: string, end: string) => `${dateFormat.format(parseApiDate(start))} – ${dateFormat.format(parseApiDate(end))}`,
-    month: (value: string) => monthFormat.format(parseApiDate(value)),
+    date: (value: string) => formatDate(parseApiDate(value)),
+    dateRange: (start: string, end: string) => `${formatDate(parseApiDate(start))} – ${formatDate(parseApiDate(end))}`,
+    month: (value: string) => formatMonth(parseApiDate(value)),
     time: (value: string) => timeFormat.format(new Date(`1970-01-01T${value}:00Z`)),
     today: () => todayIn(preferences.timeZone),
   };

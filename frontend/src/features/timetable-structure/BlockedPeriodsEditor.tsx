@@ -8,10 +8,15 @@ import { weekdayLabel } from "./weekdays";
 
 const text = messages.school.blockedGrid;
 
-/** Keeps only slots inside the current grid (working days × lessons per day); the server rejects the rest. */
+/** Lessons that exist on a day (per-day counts, ADR 0020). */
+export function lessonsOn(grid: ScheduleGrid | undefined, day: number): number {
+  return grid?.lessonsByDay.find((entry) => entry.day === day)?.lessons ?? 0;
+}
+
+/** Keeps only slots inside the current grid (working days × that day's lessons); the server rejects the rest. */
 export function slotsInGrid(slots: readonly BlockedSlot[], grid: ScheduleGrid | undefined): BlockedSlot[] {
   if (!grid) return [];
-  return slots.filter((slot) => grid.days.includes(slot.day) && slot.lessonNumber >= 1 && slot.lessonNumber <= grid.lessonsPerDay);
+  return slots.filter((slot) => grid.days.includes(slot.day) && slot.lessonNumber >= 1 && slot.lessonNumber <= lessonsOn(grid, slot.day));
 }
 
 type BlockedPeriodsEditorProps = {
@@ -45,6 +50,8 @@ export function BlockedPeriodsEditor({ id, value, onChange, error }: BlockedPeri
             cellLabel={(day, lesson, blocked) => text.cell(day, format.number(lesson), blocked)}
             value={inside}
             onChange={onChange}
+            isAvailable={(slot) => slot.lessonNumber <= lessonsOn(grid.data, slot.day)}
+            unavailableLabel={(day, lesson) => text.unavailable(day, format.number(lesson))}
           />
         </>
       )}

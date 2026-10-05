@@ -2,6 +2,8 @@ import { isolate } from "../isolate";
 
 // Shared application strings (authentication, shell, settings). Arabic only; no hard-coded digits.
 export const app = {
+  dateParts: { day: "اليوم", month: "الشهر", year: "السنة", separator: "/" },
+  timeParts: { hours: "الساعة", minutes: "الدقيقة", separator: ":" },
   brand: "الجدول الذكي",
   tagline: "نظام محلي لإدارة الجداول المدرسية",
   loading: "جارٍ فتح التطبيق...",
@@ -52,10 +54,6 @@ export const app = {
   usernameHint: (min: string, max: string) => `من ${min} إلى ${max} حرفاً.`,
   passwordHint: (min: string) => `${min} أحرف على الأقل.`,
   neverLock: "مطلقاً",
-  minutesOne: "دقيقة واحدة",
-  minutesTwo: "دقيقتان",
-  minutesFew: (count: string) => `${count} دقائق`,
-  minutesMany: (count: string) => `${count} دقيقة`,
   noSystemFeatures: "ستظهر هنا أدوات إدارة الجداول بعد اعتماد المرحلة التالية.",
   showPassword: "إظهار كلمة المرور",
   hidePassword: "إخفاء كلمة المرور",

@@ -17,14 +17,14 @@ const text = messages.school.scheduleStructure;
 
 const toInput = ({ kind, startTime, endTime, startBell, endBell }: PeriodInput): PeriodInput => ({ kind, startTime, endTime, startBell, endBell });
 
-type PeriodsEditorProps = { yearId: number; shift: Shift; onReload: () => void; onSaved: () => void };
+type PeriodsEditorProps = { yearId: number; shift: Shift; onReload: () => void; onSaved: () => void; generatorStart: string };
 
 /**
  * Editable daily schedule of one shift. Rows change locally until "save"; the server validates order, overlaps,
  * time ranges and lesson count, and each error is shown on its own row. Rows re-sync from the server when the
  * stored version changes and nothing is unsaved.
  */
-export function PeriodsEditor({ yearId, shift, onReload, onSaved }: PeriodsEditorProps) {
+export function PeriodsEditor({ yearId, shift, onReload, onSaved, generatorStart }: PeriodsEditorProps) {
   const format = useFormatter();
   const feedback = useFormFeedback();
   const save = useSavePeriods(yearId);
@@ -94,6 +94,7 @@ export function PeriodsEditor({ yearId, shift, onReload, onSaved }: PeriodsEdito
       <GeneratePeriodsDialog
         open={generating}
         yearId={yearId}
+        defaultStart={generatorStart}
         onClose={() => setGenerating(false)}
         onGenerated={(periods) => { setGenerating(false); update(periods.map(toInput)); feedback.showSuccess(text.generated); }}
       />

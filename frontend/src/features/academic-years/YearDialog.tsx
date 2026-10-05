@@ -2,10 +2,12 @@ import { Save, X } from "lucide-react";
 import { useId, type FormEvent } from "react";
 import { ConflictAlert } from "../../components/ConflictAlert";
 import { SelectField } from "../../components/SelectField";
+import { DateField } from "../../components/DateField";
 import { TextField } from "../../components/TextField";
 import { Alert } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import { Dialog } from "../../components/ui/dialog";
+import { ltrRuns } from "../../i18n/isolate";
 import { messages } from "../../i18n/messages";
 import { useFormFeedback } from "../../lib/useFormFeedback";
 import { useAcademicYears, useSaveYear, type AcademicYear } from "./yearsApi";
@@ -26,7 +28,7 @@ export function YearDialog({ open, year, onClose, onSaved, onReload }: YearDialo
   const feedback = useFormFeedback();
   const save = useSaveYear();
   const years = useAcademicYears({ search: "", page: 1, pageSize: 100 });
-  const copyOptions = [{ value: "", label: text.noCopy }, ...(years.data?.items ?? []).map((item) => ({ value: String(item.id), label: item.label }))];
+  const copyOptions = [{ value: "", label: text.noCopy }, ...(years.data?.items ?? []).map((item) => ({ value: String(item.id), label: ltrRuns(item.label) }))];
 
   function close() {
     feedback.reset();
@@ -74,8 +76,8 @@ export function YearDialog({ open, year, onClose, onSaved, onReload }: YearDialo
         <Alert tone="error" message={feedback.error} />
         <TextField id="yearLabel" label={text.label} hint={text.labelHint} defaultValue={year?.label ?? ""} maxLength={50} required field="Label" errors={feedback.fieldErrors} />
         <div className="form-grid">
-          <TextField id="yearStart" type="date" label={text.startDate} defaultValue={year?.startDate ?? ""} required field="StartDate" errors={feedback.fieldErrors} />
-          <TextField id="yearEnd" type="date" label={text.endDate} defaultValue={year?.endDate ?? ""} required field="EndDate" errors={feedback.fieldErrors} />
+          <DateField id="yearStart" label={text.startDate} defaultValue={year?.startDate ?? ""} required field="StartDate" errors={feedback.fieldErrors} />
+          <DateField id="yearEnd" label={text.endDate} defaultValue={year?.endDate ?? ""} required field="EndDate" errors={feedback.fieldErrors} />
         </div>
         {!year && copyOptions.length > 1 && (
           <SelectField id="yearCopyFrom" label={text.copyFrom} hint={text.copyHint} options={copyOptions} defaultValue="" field="CopyStructureFromYearId" errors={feedback.fieldErrors} />
