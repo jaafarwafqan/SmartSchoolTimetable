@@ -2,11 +2,13 @@ using Microsoft.Extensions.DependencyInjection;
 using SmartSchoolTimetable.Application.Calendar;
 using SmartSchoolTimetable.Application.Common;
 using SmartSchoolTimetable.Application.Curriculum;
+using SmartSchoolTimetable.Application.Resources;
 using SmartSchoolTimetable.Application.SchoolSetup;
 using SmartSchoolTimetable.Application.Setup;
 using SmartSchoolTimetable.Application.Stages;
 using SmartSchoolTimetable.Application.Subjects;
 using SmartSchoolTimetable.Application.Teachers;
+using SmartSchoolTimetable.Application.Workload;
 
 namespace SmartSchoolTimetable.Infrastructure.DemoData;
 
@@ -14,7 +16,9 @@ namespace SmartSchoolTimetable.Infrastructure.DemoData;
 /// The fictional sample school: an Iraqi secondary school (intermediate grades + the fourth preparatory grade in
 /// both branches), morning-only or dual-shift. Everything is created through the same services and templates as the
 /// wizard. The weekly curriculum numbers are SAMPLES for the demo, marked as such on every line; they are not
-/// official. All names are invented; any resemblance to real people is coincidental.
+/// official. All names are invented; any resemblance to real people is coincidental. Phase 3: sample specializations,
+/// a sports field (capacity 2) and a computer lab (capacity 1), and teacher assignments made by the suggester, so
+/// every checklist step is done. <c>withProblems</c> then adds three problems for the readiness report.
 /// </summary>
 internal sealed class DemoSchool(IServiceProvider services, CancellationToken token)
 {
@@ -28,7 +32,7 @@ internal sealed class DemoSchool(IServiceProvider services, CancellationToken to
         ("الاجتماعيات", null, 3), ("الحاسوب", null, 1), ("التربية الرياضية", null, 1),
     ];
 
-    public async Task CreateAsync(bool dualShift)
+    public async Task CreateAsync(bool dualShift, bool withProblems = false)
     {
         var profile = services.GetRequiredService<SchoolProfileService>();
         var current = await profile.GetAsync(token);
@@ -61,10 +65,62 @@ internal sealed class DemoSchool(IServiceProvider services, CancellationToken to
         Ensure(await stages.SetStageDayLessonsAsync(year.Id, first.Id,
             new SetStageDayLessonsCommand(SundayToThursday.Select(day => new DayLessonsDto(day, 6)).ToArray(), first.Version), token));
 
-        await DemoCatalog.CreateSubjectsAsync(services.GetRequiredService<SubjectsService>(), token);
+        var subjects = services.GetRequiredService<SubjectsService>();
+        await DemoCatalog.CreateSubjectsAsync(subjects, token);
+        await CreateResourcesAsync(subjects);
         await CreateCurriculumAsync(year.Id, first.Id);
-        await DemoCatalog.CreateTeachersAsync(services.GetRequiredService<TeachersService>(), token);
+        var subjectIds = (await subjects.ListAsync(new ListQuery(null, null, 1, ListQuery.MaxPageSize, true), token)).Items.ToDictionary(subject => subject.Name, subject => subject.Id);
+        await DemoCatalog.CreateTeachersAsync(services.GetRequiredService<TeachersService>(), subjectIds, token);
         await DemoCatalog.CreateCalendarAsync(services.GetRequiredService<CalendarService>(), token);
+
+        // Workload through the suggester (the same preview the owner sees), applied after confirmation.
+        var suggested = Ensure(await services.GetRequiredService<WorkloadService>().SuggestAssignmentsAsync(year.Id, apply: true, confirm: true, token));
+        if (suggested.Unassigned.Count > 0)
+            throw new InvalidOperationException($"Demo data: the suggester left {suggested.Unassigned.Count} lines unassigned.");
+        if (withProblems)
+            await AddProblemsAsync(year.Id, subjects);
+    }
+
+    /// <summary>The sports field (capacity 2) for physical education and the computer lab (capacity 1) for computing.</summary>
+    private async Task CreateResourcesAsync(SubjectsService subjects)
+    {
+        var resources = services.GetRequiredService<ResourcesService>();
+        var field = Ensure(await resources.CreateAsync(new SaveResourceCommand("الساحة الرياضية", "field", 2, "سعة تجريبية للعرض.", 0), token));
+        var lab = Ensure(await resources.CreateAsync(new SaveResourceCommand("مختبر الحاسوب", "lab", 1, "سعة تجريبية للعرض.", 0), token));
+        await RequireAsync(subjects, "التربية الرياضية", field.Id, null);
+        await RequireAsync(subjects, "الحاسوب", lab.Id, null);
+    }
+
+    /// <summary>Saves a subject with a required resource and, when given, new blocked periods.</summary>
+    private async Task RequireAsync(SubjectsService subjects, string name, long? resourceId, BlockedPeriodDto[]? blocked)
+    {
+        var subject = (await subjects.ListAsync(new ListQuery(name, null, 1, 10, false), token)).Items.Single(item => item.Name == name);
+        Ensure(await subjects.UpdateAsync(subject.Id, new SaveSubjectCommand(subject.Name, subject.ColorIndex, subject.Priority, subject.DistributionEnabled,
+            subject.SpreadAcrossDays, subject.Heavy, subject.RequiresDoublePeriod, blocked ?? subject.BlockedPeriods, subject.Notes, subject.Version,
+            resourceId ?? subject.RequiredResourceId), token));
+    }
+
+    /// <summary>
+    /// <c>--with-problems</c>: an overloaded teacher (weekly limit 3 below the assigned lessons), physics with one allowed
+    /// slot for its 2 lessons, and the sports field at capacity 1 with physical education allowed in only 3 slots.
+    /// </summary>
+    private async Task AddProblemsAsync(long yearId, SubjectsService subjects)
+    {
+        var teachers = services.GetRequiredService<TeachersService>();
+        var loads = Ensure(await services.GetRequiredService<WorkloadService>().GetTeacherLoadsAsync(yearId, token));
+        var load = loads.Single(item => item.FullName == DemoDataSeeder.OverloadedTeacher);
+        var teacher = (await teachers.ListAsync(new ListQuery(DemoDataSeeder.OverloadedTeacher, null, 1, 10, false), null, token)).Items.Single(item => item.FullName == DemoDataSeeder.OverloadedTeacher);
+        Ensure(await teachers.UpdateAsync(teacher.Id, new SaveTeacherCommand(teacher.FullName, teacher.ShortName, teacher.OffDays, teacher.BlockedPeriods,
+            teacher.FullyReleased, teacher.ReleaseReason, teacher.ReleaseFrom, teacher.ReleaseTo, teacher.MaxLessonsPerDay, load.AssignedLessons - DemoDataSeeder.OverloadShortage,
+            teacher.Notes, teacher.Version, null), token));
+
+        BlockedPeriodDto[] AllBut(params (int Day, int Lesson)[] open) =>
+            SundayToThursday.SelectMany(day => Enumerable.Range(1, 7).Where(lesson => !open.Contains((day, lesson))).Select(lesson => new BlockedPeriodDto(day, lesson))).ToArray();
+        await RequireAsync(subjects, "الفيزياء", null, AllBut((7, 2)));
+        var resources = services.GetRequiredService<ResourcesService>();
+        var field = (await resources.ListAsync(new ListQuery("الساحة", null, 1, 10, false), token)).Items.Single();
+        Ensure(await resources.UpdateAsync(field.Id, new SaveResourceCommand(field.Name, field.Kind, 1, field.Notes, field.Version), token));
+        await RequireAsync(subjects, "التربية الرياضية", null, AllBut((7, 2), (7, 3), (7, 4)));
     }
 
     private async Task<ShiftDto> PlanAsync(TimetableStructureService structure, long yearId, ShiftDto shift, string start, int lessonMinutes, BreakSlotDto pause)

@@ -5,8 +5,11 @@ using SmartSchoolTimetable.Application;
 using SmartSchoolTimetable.Application.Calendar;
 using SmartSchoolTimetable.Application.Common;
 using SmartSchoolTimetable.Application.Dashboard;
+using SmartSchoolTimetable.Application.Scheduling;
 using SmartSchoolTimetable.Domain.Calendar;
 using SmartSchoolTimetable.Domain.Common;
+using SmartSchoolTimetable.Domain.Resources;
+using SmartSchoolTimetable.Domain.Workload;
 using SmartSchoolTimetable.Domain.SchoolSetup;
 using SmartSchoolTimetable.Domain.Subjects;
 using SmartSchoolTimetable.Domain.Teachers;
@@ -122,6 +125,15 @@ public sealed class CalendarAndDemoDataTests
             Assert.All(shifts, shift => Assert.Equal(8, shift.Periods.Count)); // 7 lessons + 1 break
             var summary = await new DashboardService(store).GetSummaryAsync(default);
             Assert.All(summary.Checklist, item => Assert.True(item.Done, item.Key));
+            // Phase 3: resources with sample capacities, specializations, and every line of the six sections assigned
+            // by the suggester, so the readiness report has no error (only warnings).
+            Assert.Equal([("الساحة الرياضية", 2), ("مختبر الحاسوب", 1)], (await store.ListAsync(store.Query<Resource>().OrderBy(resource => resource.Capacity == 1), default)).Select(resource => (resource.Name, resource.Capacity)));
+            Assert.Equal(66, await store.CountAsync(store.Query<WorkloadAssignment>().Where(row => !row.IsArchived), default)); // 6 sections × 11 lines
+            Assert.All(await store.ListAsync(store.Query<Teacher>(), default), teacher => Assert.NotEmpty(teacher.Specializations));
+            var yearId = (await store.ListAsync(store.Query<AcademicYear>(), default)).Single().Id;
+            var input = (await SchedulingInputBuilder.BuildAsync(store, yearId, default))!;
+            var report = PreSolveValidator.Validate(input);
+            Assert.True(report.Ready, string.Join(", ", report.Findings.Where(finding => finding.Severity == PreSolveValidator.Error).Select(finding => $"{finding.Code} {finding.Entity.Name}")));
             Assert.Contains(summary.Counts, count => count is { Key: "capacityGaps", Value: 0 });
             Assert.Equal(("equal", 30), (summary.Curriculum[0].Totals.Single().Status, summary.Curriculum[0].Totals.Single().WeeklyCapacity)); // own 6 lessons a day
             Assert.Equal(["under", "under"], summary.Curriculum[1].Totals.Select(total => total.Status).Concat(summary.Curriculum[3].Totals.Select(total => total.Status)).Take(2));
@@ -134,6 +146,40 @@ public sealed class CalendarAndDemoDataTests
             await using var singleScope = singleProvider.CreateAsyncScope();
             var singleStore = singleScope.ServiceProvider.GetRequiredService<IDataStore>();
             Assert.Equal([ShiftKind.Morning], (await singleStore.ListAsync(singleStore.Query<Shift>(), default)).Select(shift => shift.Kind));
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            directory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task DemoDataWithProblemsShowsTheThreeReadinessErrors()
+    {
+        var directory = Directory.CreateTempSubdirectory("demo-problems-");
+        var target = Path.Combine(directory.FullName, "problems.db");
+        try
+        {
+            using var output = new StringWriter();
+            Assert.True(await DemoDataSeeder.SeedAsync(target, [], dualShift: false, output, withProblems: true));
+            var services = new ServiceCollection().AddLocalInfrastructure(target, skipLoginDelay: true);
+            await using var provider = services.BuildServiceProvider();
+            await using var scope = provider.CreateAsyncScope();
+            var store = scope.ServiceProvider.GetRequiredService<IDataStore>();
+            var yearId = (await store.ListAsync(store.Query<AcademicYear>(), default)).Single().Id;
+            var report = PreSolveValidator.Validate((await SchedulingInputBuilder.BuildAsync(store, yearId, default))!);
+            Assert.False(report.Ready);
+            var overload = Assert.Single(report.Findings, finding => finding.Code == FindingCodes.TeacherOverload);
+            Assert.Equal((DemoDataSeeder.OverloadedTeacher, DemoDataSeeder.OverloadShortage), (overload.Entity.Name, overload.Shortage!.Value));
+            // Physics is reported once per grade with curriculum (the two grades have different day counts).
+            var physics = report.Findings.Where(finding => finding.Code == FindingCodes.SubjectSlotsShort).ToArray();
+            Assert.Equal(2, physics.Length);
+            Assert.All(physics, finding => Assert.Equal(("الفيزياء", 2, 1, 1, 3), (finding.Entity.Name, finding.Required!.Value, finding.Available!.Value, finding.Shortage!.Value, finding.Related.Count)));
+            var field = Assert.Single(report.Findings, finding => finding.Code == FindingCodes.ResourceOverCapacity);
+            Assert.Equal(("الساحة الرياضية", 6, 3, 3), (field.Entity.Name, field.Required!.Value, field.Available!.Value, field.Shortage!.Value));
+            // Still a complete sample school: every line has a teacher.
+            Assert.All((await new DashboardService(store).GetSummaryAsync(default)).Checklist, item => Assert.True(item.Done, item.Key));
         }
         finally
         {

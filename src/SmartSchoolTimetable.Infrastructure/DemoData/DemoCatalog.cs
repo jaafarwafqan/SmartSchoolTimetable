@@ -24,30 +24,34 @@ internal static class DemoCatalog
         new("التربية الرياضية", 1, false, false, false, false, [new(7, 1), new(1, 1), new(2, 1), new(3, 1), new(4, 1)], "لا توضع في الحصة الأولى."),
     ];
 
-    private sealed record TeacherSeed(string FullName, string ShortName, int[] OffDays, BlockedPeriodDto[] Blocked, int? PerDay, int? PerWeek, bool Released = false);
+    private sealed record TeacherSeed(string FullName, string ShortName, int[] OffDays, BlockedPeriodDto[] Blocked, int? PerDay, int? PerWeek, bool Released = false)
+    {
+        /// <summary>Sample specializations (Phase 3), by subject name.</summary>
+        public string[] Subjects { get; init; } = [];
+    }
 
     private static readonly TeacherSeed[] Teachers =
     [
-        new("علي حسين كاظم", "علي حسين", [], [], 5, 24),
-        new("زينب جاسم محمد", "زينب جاسم", [4], [], 5, 20),
-        new("حيدر عبد الأمير صالح", "حيدر عبد الأمير", [], [new(7, 1), new(7, 2)], 6, 24),
-        new("نور الهدى فاضل", "نور الهدى", [], [], null, 22),
-        new("مصطفى كريم عباس", "مصطفى كريم", [7], [], 5, 18),
-        new("فاطمة رحيم جواد", "فاطمة رحيم", [], [new(3, 6), new(3, 7)], 4, 20),
-        new("أحمد سلمان داود", "أحمد سلمان", [], [], 6, 26),
-        new("هدى ناصر علوان", "هدى ناصر", [1], [], 5, 20),
-        new("محمد جواد كاظم", "محمد جواد", [], [new(2, 1)], null, null),
-        new("سارة عادل حسن", "سارة عادل", [], [], 5, 22),
-        new("كرار فلاح مهدي", "كرار فلاح", [2], [new(4, 7)], 5, 20),
-        new("رقية ستار جبار", "رقية ستار", [], [], 6, 24),
-        new("عباس حميد ياسين", "عباس حميد", [], [], 4, 16),
-        new("آمنة كاظم عبيد", "آمنة كاظم", [3], [], 5, 18),
-        new("حسن علي مطر", "حسن علي", [], [new(7, 7), new(1, 7)], 5, 22),
-        new("مريم وليد سعيد", "مريم وليد", [], [], null, 20),
-        new("يوسف رعد حمزة", "يوسف رعد", [], [], 6, 28),
-        new("إيمان صادق حسون", "إيمان صادق", [4], [], 4, 15),
-        new("جعفر ماجد عزيز", "جعفر ماجد", [], [], null, null, Released: true),
-        new("بتول عدنان شاكر", "بتول عدنان", [], [], null, null, Released: true),
+        new("علي حسين كاظم", "علي حسين", [], [], 5, 24) { Subjects = ["الرياضيات"] },
+        new("زينب جاسم محمد", "زينب جاسم", [4], [], 5, 20) { Subjects = ["اللغة العربية"] },
+        new("حيدر عبد الأمير صالح", "حيدر عبد الأمير", [], [new(7, 1), new(7, 2)], 6, 24) { Subjects = ["اللغة الإنكليزية"] },
+        new("نور الهدى فاضل", "نور الهدى", [], [], null, 22) { Subjects = ["اللغة العربية"] },
+        new("مصطفى كريم عباس", "مصطفى كريم", [7], [], 5, 18) { Subjects = ["الفيزياء", "الكيمياء"] },
+        new("فاطمة رحيم جواد", "فاطمة رحيم", [], [new(3, 6), new(3, 7)], 4, 20) { Subjects = ["الأحياء"] },
+        new("أحمد سلمان داود", "أحمد سلمان", [], [], 6, 26) { Subjects = ["الرياضيات", "الحاسوب"] },
+        new("هدى ناصر علوان", "هدى ناصر", [1], [], 5, 20) { Subjects = ["اللغة الإنكليزية"] },
+        new("محمد جواد كاظم", "محمد جواد", [], [new(2, 1)], null, null) { Subjects = ["الاجتماعيات", "التربية الإسلامية"] },
+        new("سارة عادل حسن", "سارة عادل", [], [], 5, 22) { Subjects = ["اللغة العربية", "التربية الإسلامية"] },
+        new("كرار فلاح مهدي", "كرار فلاح", [2], [new(4, 7)], 5, 20) { Subjects = ["الأحياء", "الكيمياء"] },
+        new("رقية ستار جبار", "رقية ستار", [], [], 6, 24) { Subjects = ["الرياضيات"] },
+        new("عباس حميد ياسين", "عباس حميد", [], [], 4, 16) { Subjects = ["التربية الرياضية"] },
+        new("آمنة كاظم عبيد", "آمنة كاظم", [3], [], 5, 18) { Subjects = ["الفيزياء", "الأحياء"] },
+        new("حسن علي مطر", "حسن علي", [], [new(7, 7), new(1, 7)], 5, 22) { Subjects = ["اللغة الإنكليزية", "الاجتماعيات"] },
+        new("مريم وليد سعيد", "مريم وليد", [], [], null, 20) { Subjects = ["التربية الإسلامية", "اللغة العربية"] },
+        new("يوسف رعد حمزة", "يوسف رعد", [], [], 6, 28) { Subjects = ["الرياضيات", "الفيزياء"] },
+        new("إيمان صادق حسون", "إيمان صادق", [4], [], 4, 15) { Subjects = ["الحاسوب", "الاجتماعيات"] },
+        new("جعفر ماجد عزيز", "جعفر ماجد", [], [], null, null, Released: true) { Subjects = ["الكيمياء"] },
+        new("بتول عدنان شاكر", "بتول عدنان", [], [], null, null, Released: true) { Subjects = ["الاجتماعيات"] },
     ];
 
     private static readonly (string Title, string Start, string? End, string Kind, bool Affects)[] CalendarDays =
@@ -72,13 +76,14 @@ internal static class DemoCatalog
         }
     }
 
-    public static async Task CreateTeachersAsync(TeachersService service, CancellationToken token)
+    /// <param name="subjectIds">Subject ids by name, for the sample specializations.</param>
+    public static async Task CreateTeachersAsync(TeachersService service, IReadOnlyDictionary<string, long> subjectIds, CancellationToken token)
     {
         foreach (var seed in Teachers)
         {
             DemoSchool.Ensure(await service.CreateAsync(new SaveTeacherCommand(seed.FullName, seed.ShortName, seed.OffDays, seed.Blocked,
                 seed.Released, seed.Released ? "تفرغ إداري" : null, seed.Released ? "2026-09-21" : null, seed.Released ? "2027-01-20" : null,
-                seed.PerDay, seed.PerWeek, null, 0), token));
+                seed.PerDay, seed.PerWeek, null, 0, seed.Subjects.Select(name => subjectIds[name]).ToArray()), token));
         }
     }
 

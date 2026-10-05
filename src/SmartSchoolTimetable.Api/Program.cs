@@ -21,10 +21,11 @@ using SmartSchoolTimetable.Infrastructure.DemoData;
 const string resetArgument = "--reset-local-database";
 const string seedArgument = "--seed-demo-data";
 const string dualShiftArgument = "--dual-shift";
+const string withProblemsArgument = "--with-problems";
 var resetRequested = args.Contains(resetArgument, StringComparer.Ordinal);
 var seedIndex = Array.IndexOf(args, seedArgument);
 var seedTarget = seedIndex >= 0 && seedIndex + 1 < args.Length ? args[seedIndex + 1] : null;
-var commandArguments = new HashSet<string>(StringComparer.Ordinal) { resetArgument, seedArgument, dualShiftArgument };
+var commandArguments = new HashSet<string>(StringComparer.Ordinal) { resetArgument, seedArgument, dualShiftArgument, withProblemsArgument };
 var builderArguments = args.Where((argument, index) =>
     !commandArguments.Contains(argument) && !(seedIndex >= 0 && index == seedIndex + 1)).ToArray();
 var builder = WebApplication.CreateBuilder(builderArguments);
@@ -43,7 +44,8 @@ if (seedIndex >= 0)
 {
     // A separate demo database; the default and configured databases are refused (DemoDataSeeder).
     Console.OutputEncoding = Encoding.UTF8;
-    var created = await DemoDataSeeder.SeedAsync(seedTarget, [defaultDatabasePath, databasePath], args.Contains(dualShiftArgument, StringComparer.Ordinal), Console.Out);
+    var created = await DemoDataSeeder.SeedAsync(seedTarget, [defaultDatabasePath, databasePath], args.Contains(dualShiftArgument, StringComparer.Ordinal), Console.Out,
+        withProblems: args.Contains(withProblemsArgument, StringComparer.Ordinal));
     Environment.ExitCode = created ? 0 : 1;
     return;
 }
