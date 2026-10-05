@@ -60,10 +60,14 @@ public sealed class StageCardsService(IDataStore store, TimeProvider clock)
         }
         else if (command.Count < active.Count)
         {
-            // Only the last sections are removed. Nothing references a section before Phase 3 (workload); Phase 3
-            // adds its reference check here so a section with workload is never removed.
+            // Only the last sections are removed, and never one that something refers to (workload assignments).
+            var references = new ReferenceGuard(store);
             foreach (var section in active.Skip(command.Count))
+            {
+                if (await references.DeleteBlockedAsync(ReferenceKinds.Section, section.Id, token) is { } inUse)
+                    return OperationResult.Failure<StageCardDto>(inUse);
                 store.Remove(section);
+            }
             AuditTrail.Record(store, clock, "SectionsRemoved", $"stage:{stageId}", $"Sections reduced to {command.Count}.");
         }
         var saved = await store.SaveAsync(() => true, "Count", token);

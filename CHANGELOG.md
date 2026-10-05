@@ -1,6 +1,21 @@
 # Changelog
 
 ## [Unreleased]
+### Phase 3C - workload assignments (tag `phase-3c`)
+- **«الأنصبة»** tab next to «المعلمون» (ADR 0032, #59).
+  - **«حسب الشعبة»:** a matrix per stage (sections × curriculum lines) with a teacher chooser in each cell. The chooser lists the subject's specialists, or everyone with «عرض الجميع», and shows each teacher's load.
+    - Empty cells say «غير معيّن»; each section shows «x من y».
+    - «خارج التخصص» comes with «إضافة المادة لتخصصاته».
+    - Keyboard: left/right between cells; a choice is saved on Enter or on leaving the cell (#60).
+  - **«حسب المعلم»:** load bars (assigned / limit) with «ضمن الحد، قريب، تجاوز», the numbers (assigned, max per week, available) and the assignment list.
+  - **Quick warnings:** «المعلم …: المسند …، المتاح …، يزيد …».
+  - **Bulk actions,** each previewed then confirmed, never overwriting unless chosen: across a stage, class teacher of a section, transfer, remove.
+- **Teacher rows** show «النصاب: x من y» and the status when not within.
+- **Protection** (`WORKLOAD_IN_USE`): teachers and sections with assignments cannot be archived or deleted, and the stepper never removes them.
+  - Clearing or archiving a curriculum line with assignments opens a dialog listing them. Confirming archives them with the line; the undo restores both.
+- **Domain:** `WorkloadAssignment` and `TeacherAvailability` (#57, #61, #62). Migration `Phase3CWorkload`.
+- **Tests:** .NET 173, Vitest 83, Playwright 15. The Phase 2 teachers screenshots were re-baselined after viewing them (new tabs and load badges); teacher, subject, curriculum, stage and timing changes now refresh the workload views.
+
 ### Phase 3B - resources, specializations, scheduling profile (tag `phase-3b`)
 - **«الموارد»** tab under «الصفوف والمنهج» (ADR 0031):
   - Quick add in one row: name, kind (مختبر، ساحة، قاعة، أخرى) and a capacity stepper. Rows are edited in place; archive and delete are protected.

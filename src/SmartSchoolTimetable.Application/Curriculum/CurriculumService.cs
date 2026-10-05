@@ -2,6 +2,7 @@ using SmartSchoolTimetable.Application.Common;
 using SmartSchoolTimetable.Domain.Curriculum;
 using SmartSchoolTimetable.Domain.SchoolSetup;
 using SmartSchoolTimetable.Domain.Subjects;
+using SmartSchoolTimetable.Domain.Workload;
 
 namespace SmartSchoolTimetable.Application.Curriculum;
 
@@ -34,10 +35,9 @@ public sealed class CurriculumService(IDataStore store, TimeProvider clock)
             if (command.WeeklyLessons is null)
             {
                 // Clearing is a soft delete (Phase 3 §5.4): the line is archived, the response carries it for the undo
-                // notice, and the reference guard refuses while anything depends on the line.
-                if (await references.ArchiveBlockedAsync(ReferenceKinds.CurriculumEntry, entryId, token) is { } inUse)
+                // notice. Assignments of the line are archived with it only after the owner confirmed.
+                if (await ArchiveWorkloadAsync(entry, command.ConfirmWorkload, token) is { } inUse)
                     return OperationResult.Failure<CurriculumTableDto>(inUse);
-                entry.Archive(clock.GetUtcNow());
                 AuditTrail.Record(store, clock, "CurriculumEntryCleared", $"curriculum-entry:{entryId}", "Curriculum cell cleared (line archived).");
                 return await store.SaveAsync(async ct => await GetTableAsync(yearId, ct) with { Cleared = ToDto(entry) }, "WeeklyLessons", token);
             }
@@ -72,21 +72,24 @@ public sealed class CurriculumService(IDataStore store, TimeProvider clock)
         return await store.SaveAsync(() => ToDto(entry), "WeeklyLessons", token);
     }
 
-    public async Task<OperationResult<CurriculumEntryDto>> SetArchivedAsync(long id, int version, bool archived, CancellationToken token)
+    public Task<OperationResult<CurriculumEntryDto>> SetArchivedAsync(long id, int version, bool archived, CancellationToken token) =>
+        SetArchivedAsync(id, new ArchiveEntryCommand(version), archived, token);
+
+    public async Task<OperationResult<CurriculumEntryDto>> SetArchivedAsync(long id, ArchiveEntryCommand command, bool archived, CancellationToken token)
     {
+        ArgumentNullException.ThrowIfNull(command);
+        var version = command.Version;
         if (await FindAsync(id, token) is not { } entry)
             return OperationResult.Failure<CurriculumEntryDto>(ErrorCodes.NotFound);
         if (!entry.IsVersion(version))
             return OperationResult.Failure<CurriculumEntryDto>(ErrorCodes.Conflict);
-        if (archived && await references.ArchiveBlockedAsync(ReferenceKinds.CurriculumEntry, id, token) is { } inUse)
-            return OperationResult.Failure<CurriculumEntryDto>(inUse);
         // Restoring (also the undo of a cleared cell) needs the stage to be active.
         if (!archived && await store.AnyAsync(store.Query<Stage>().Where(stage => stage.Id == entry.StageId && stage.IsArchived), token))
             return OperationResult.Failure<CurriculumEntryDto>(ErrorCodes.StageArchived);
-        if (archived)
-            entry.Archive(clock.GetUtcNow());
-        else
-            entry.Restore();
+        if (archived && await ArchiveWorkloadAsync(entry, command.ConfirmWorkload, token) is { } inUse)
+            return OperationResult.Failure<CurriculumEntryDto>(inUse);
+        if (!archived)
+            await RestoreWorkloadAsync(entry, token);
         AuditTrail.Record(store, clock, archived ? "CurriculumEntryArchived" : "CurriculumEntryRestored", $"curriculum-entry:{id}", "Curriculum entry archive state changed.");
         return await store.SaveAsync(() => ToDto(entry), "WeeklyLessons", token);
     }
@@ -102,6 +105,37 @@ public sealed class CurriculumService(IDataStore store, TimeProvider clock)
         store.Remove(entry);
         AuditTrail.Record(store, clock, "CurriculumEntryDeleted", $"curriculum-entry:{id}", "Curriculum entry deleted.");
         return await store.SaveAsync(() => true, "WeeklyLessons", token);
+    }
+
+    /// <summary>
+    /// Archives the line, and its active assignments in the same moment when the owner confirmed; returns
+    /// <c>WORKLOAD_IN_USE</c> when the line has active assignments and the owner did not confirm.
+    /// </summary>
+    private async Task<string?> ArchiveWorkloadAsync(CurriculumEntry entry, bool confirmed, CancellationToken token)
+    {
+        var assignments = await store.ListAsync(store.Query<WorkloadAssignment>().Where(row => row.CurriculumEntryId == entry.Id && !row.IsArchived), token);
+        if (assignments.Count > 0 && !confirmed)
+            return ErrorCodes.WorkloadInUse;
+        var now = clock.GetUtcNow();
+        entry.Archive(now);
+        foreach (var assignment in assignments)
+            assignment.Archive(now);
+        if (assignments.Count > 0)
+            AuditTrail.Record(store, clock, "WorkloadArchivedWithLine", $"curriculum-entry:{entry.Id}", $"{assignments.Count} assignments archived with the line.");
+        return null;
+    }
+
+    /// <summary>Restoring a line brings back the assignments archived together with it, unless the cell was assigned again meanwhile.</summary>
+    private async Task RestoreWorkloadAsync(CurriculumEntry entry, CancellationToken token)
+    {
+        var archivedAt = entry.ArchivedAt;
+        entry.Restore();
+        if (archivedAt is null)
+            return;
+        var archived = await store.ListAsync(store.Query<WorkloadAssignment>().Where(row => row.CurriculumEntryId == entry.Id && row.IsArchived && row.ArchivedAt == archivedAt), token);
+        var taken = (await store.ListAsync(store.Query<WorkloadAssignment>().Where(row => row.CurriculumEntryId == entry.Id && !row.IsArchived).Select(row => row.SectionId), token)).ToHashSet();
+        foreach (var assignment in archived.Where(row => !taken.Contains(row.SectionId)))
+            assignment.Restore();
     }
 
     private Task<CurriculumEntry?> FindAsync(long id, CancellationToken token) =>

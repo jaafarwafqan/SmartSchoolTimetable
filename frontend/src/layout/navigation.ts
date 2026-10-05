@@ -37,6 +37,14 @@ export const navGroups: readonly NavGroup[] = [
     ],
   },
   {
+    root: "/teachers",
+    label: nav.teachers,
+    tabs: [
+      { to: "/teachers/list", label: nav.teachers },
+      { to: "/teachers/workload", label: nav.workload },
+    ],
+  },
+  {
     root: "/settings",
     label: nav.settings,
     tabs: [

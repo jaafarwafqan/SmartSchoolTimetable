@@ -13,7 +13,7 @@ const text = messages.school.references;
 const common = messages.school.common;
 
 /** Error codes the reference guard returns; the matching dialog lists the dependents instead of a bare error. */
-export const referenceErrorCodes: readonly string[] = ["RECORD_IN_USE", "CURRICULUM_IN_USE"];
+export const referenceErrorCodes: readonly string[] = ["RECORD_IN_USE", "CURRICULUM_IN_USE", "RESOURCE_IN_USE", "WORKLOAD_IN_USE"];
 
 export function isReferenceError(error: unknown): boolean {
   return error instanceof ApiRequestError && referenceErrorCodes.includes(error.code);
@@ -26,7 +26,7 @@ export function describeGroup(group: DependentGroup, action: "delete" | "archive
   const total = action === "archive" ? group.active : group.active + group.archived;
   const counted = group.kind === "curriculumEntry"
     ? `${format.count(total, "line")} ${text.inCurriculum}`
-    : format.count(total, group.kind);
+    : format.count(total, group.kind === "workloadAssignment" ? "assignment" : group.kind);
   // The server lists active dependents first, so an archive notice names only the active ones.
   const shown = group.samples.slice(0, total);
   const hidden = total - shown.length;
@@ -84,6 +84,27 @@ export function GuardedDeleteDialog({ kind, target, title, consequence, loading,
       {references.isPending && target !== null && <Alert tone="info" message={text.checking} />}
       {references.isError && <Alert tone="error" message={text.loadFailed} />}
       {report && <ReferencesNotice report={report} action="delete" />}
+    </ConfirmDialog>
+  );
+}
+
+type CascadeProps = { kind: ReferenceKind; target: Target | null; title: string; consequence: string; confirmLabel: string; loading: boolean; onConfirm: () => void; onCancel: () => void };
+
+/** Confirms an archive that takes its active dependents along (a curriculum line with its assignments). */
+export function CascadeConfirmDialog({ kind, target, title, consequence, confirmLabel, loading, onConfirm, onCancel }: CascadeProps) {
+  const format = useFormatter();
+  const references = useReferences(kind, target?.id ?? null);
+  const groups = references.data?.dependents.filter((group) => group.active > 0) ?? [];
+  return (
+    <ConfirmDialog open={target !== null} danger title={title} consequence={consequence} confirmLabel={confirmLabel}
+      confirmIcon={<Trash2 aria-hidden="true" size={20} />} loading={loading} confirmDisabled={!references.data} onConfirm={onConfirm} onCancel={onCancel}>
+      {references.isPending && target !== null && <Alert tone="info" message={text.checking} />}
+      {references.isError && <Alert tone="error" message={text.loadFailed} />}
+      {groups.length > 0 && (
+        <ul className="reference-list">
+          {groups.map((group) => <li key={group.kind}>{describeGroup(group, "archive", format)}</li>)}
+        </ul>
+      )}
     </ConfirmDialog>
   );
 }

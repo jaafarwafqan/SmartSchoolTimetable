@@ -13,7 +13,8 @@ export type CurriculumRow = { subjectId: number; subjectName: string; colorIndex
 export type CurriculumEntry = { id: number; stageId: number; subjectId: number; weeklyLessons: number; label: string | null; isArchived: boolean; version: number };
 /** `cleared`: the line a cell edit just cleared (archived), for the undo notice (Phase 3 §5.4). */
 export type CurriculumTable = { stages: CurriculumStage[]; rows: CurriculumRow[]; cleared?: CurriculumEntry | null };
-export type CellInput = { stageId: number; subjectId: number; label: string | null; weeklyLessons: number | null; entryId: number | null; version: number | null };
+/** `confirmWorkload`: clearing a line with teacher assignments archives them too (Phase 3 §5.4). */
+export type CellInput = { stageId: number; subjectId: number; label: string | null; weeklyLessons: number | null; entryId: number | null; version: number | null; confirmWorkload?: boolean };
 
 export type PlanAction = "create" | "exists" | "notApplicable" | "update" | "unchanged" | "ambiguous";
 export type CurriculumPlanLine = { stageId: number; stageName: string; subjectId: number; subjectName: string; label: string | null; weeklyLessons: number; action: PlanAction };
@@ -78,7 +79,7 @@ function useSetupMutation<TInput, TResult>(request: (input: TInput) => Promise<T
   return useMutation({
     mutationFn: request,
     onSuccess: async () => {
-      await Promise.all([refreshQueries(queryClient, [curriculumKey, stageCardsKey, ["stages"], ["sections"], ["subjects"], ["suggested-subjects"], ["daily-suggestion"]]), refreshSchoolData()]);
+      await Promise.all([refreshQueries(queryClient, [curriculumKey, stageCardsKey, ["stages"], ["sections"], ["subjects"], ["suggested-subjects"], ["daily-suggestion"], ["workload"]]), refreshSchoolData()]);
     },
   });
 }

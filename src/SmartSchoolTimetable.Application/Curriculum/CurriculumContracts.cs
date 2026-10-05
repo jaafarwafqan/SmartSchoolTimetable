@@ -18,7 +18,13 @@ public sealed record CurriculumTableDto(IReadOnlyList<CurriculumStageDto> Stages
 
 /// <param name="WeeklyLessons">Null clears the cell: the line is archived (soft delete, undo by restoring it) unless something depends on it.</param>
 /// <param name="EntryId">The entry shown in the cell, with its <paramref name="Version"/>; null to create a new entry.</param>
-public sealed record SetCurriculumCellCommand(long StageId, long SubjectId, string? Label, int? WeeklyLessons, long? EntryId, int? Version);
+/// <param name="ConfirmWorkload">Clearing a line that has teacher assignments archives them with it only when the
+/// owner confirmed (otherwise <c>WORKLOAD_IN_USE</c>, Phase 3 §5.4).</param>
+public sealed record SetCurriculumCellCommand(long StageId, long SubjectId, string? Label, int? WeeklyLessons, long? EntryId, int? Version, bool ConfirmWorkload = false);
+
+/// <param name="ConfirmWorkload">Archiving a line with active assignments archives them too, after the owner's
+/// confirmation (Phase 3 §2.3).</param>
+public sealed record ArchiveEntryCommand(int Version, bool ConfirmWorkload = false);
 
 public sealed record CurriculumEntryDto(long Id, long StageId, long SubjectId, int WeeklyLessons, string? Label, bool NeedsDoublePeriod, string? Notes, bool IsArchived, int Version, bool IsSuggested = false);
 

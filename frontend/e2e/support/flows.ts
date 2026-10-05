@@ -42,6 +42,7 @@ const tabGroups: Readonly<Record<string, string>> = {
   [nav.subjects]: nav.classes,
   [nav.curriculum]: nav.classes,
   [nav.resources]: nav.classes,
+  [nav.workload]: nav.teachers,
   [nav.schedulingProfile]: nav.settings,
 };
 

@@ -1,6 +1,8 @@
 using SmartSchoolTimetable.Domain.Curriculum;
 using SmartSchoolTimetable.Domain.SchoolSetup;
 using SmartSchoolTimetable.Domain.Subjects;
+using SmartSchoolTimetable.Domain.Teachers;
+using SmartSchoolTimetable.Domain.Workload;
 
 namespace SmartSchoolTimetable.Application.Common;
 
@@ -24,6 +26,7 @@ public static class DependentKinds
     public const string Section = "section";
     public const string CurriculumEntry = "curriculumEntry";
     public const string Subject = "subject";
+    public const string WorkloadAssignment = "workloadAssignment";
 }
 
 /// <summary>One kind of dependent record: how many are active and archived, and a few names to show.</summary>
@@ -45,8 +48,7 @@ public sealed record ReferenceReportDto(string Kind, long Id, IReadOnlyList<Depe
 /// The single place that answers which records depend on a subject, teacher, section, stage, shift, resource or
 /// curriculum entry (Phase 3 §5.3). Every delete and archive path asks it before changing anything; the preview
 /// endpoint returns the same report so the dialog lists the dependents before the owner confirms.
-/// Kinds with no dependents yet (teacher, section, curriculum entry, resource) gain them with the records that
-/// point at them (resources in 3B, workload assignments in 3C).
+/// Teachers, sections and curriculum lines are referenced by workload assignments (3C); resources by subjects (3B).
 /// </summary>
 public sealed class ReferenceGuard(IDataStore store)
 {
@@ -54,14 +56,16 @@ public sealed class ReferenceGuard(IDataStore store)
 
     public async Task<ReferenceReportDto?> InspectAsync(string kind, long id, CancellationToken token)
     {
-        var groups = kind switch
+        DependentGroupDto[]? groups = kind switch
         {
             ReferenceKinds.Stage => [await SectionsAsync(store.Read<Section>().Where(row => row.StageId == id), token),
                 await CurriculumAsync(store.Read<CurriculumEntry>().Where(row => row.StageId == id), token)],
             ReferenceKinds.Subject => [await CurriculumAsync(store.Read<CurriculumEntry>().Where(row => row.SubjectId == id), token)],
             ReferenceKinds.Shift => [await SectionsAsync(store.Read<Section>().Where(row => row.ShiftId == id), token)],
             ReferenceKinds.Resource => [await SubjectsAsync(store.Read<Subject>().Where(row => row.RequiredResourceId == id), token)],
-            ReferenceKinds.Teacher or ReferenceKinds.Section or ReferenceKinds.CurriculumEntry => Array.Empty<DependentGroupDto>(),
+            ReferenceKinds.Teacher => [await AssignmentsAsync(store.Read<WorkloadAssignment>().Where(row => row.TeacherId == id), token)],
+            ReferenceKinds.Section => [await AssignmentsAsync(store.Read<WorkloadAssignment>().Where(row => row.SectionId == id), token)],
+            ReferenceKinds.CurriculumEntry => [await AssignmentsAsync(store.Read<WorkloadAssignment>().Where(row => row.CurriculumEntryId == id), token)],
             _ => null,
         };
         return groups is null ? null : new ReferenceReportDto(kind, id, groups.Where(group => group.Active + group.Archived > 0).ToArray());
@@ -94,6 +98,21 @@ public sealed class ReferenceGuard(IDataStore store)
             orderby entry.IsArchived, stage.DisplayOrder, subject.NormalizedName
             select new NamedRow(stage.Name + " / " + subject.Name + (entry.Label == null ? "" : " (" + entry.Label + ")"), entry.IsArchived), token);
         return Group(DependentKinds.CurriculumEntry, rows, ErrorCodes.CurriculumInUse);
+    }
+
+    /// <summary>Workload assignments, named «المرحلة / الشعبة: المادة — المعلم».</summary>
+    private async Task<DependentGroupDto> AssignmentsAsync(IQueryable<WorkloadAssignment> assignments, CancellationToken token)
+    {
+        var rows = await store.ListAsync(
+            from assignment in assignments
+            join section in store.Read<Section>() on assignment.SectionId equals section.Id
+            join stage in store.Read<Stage>() on section.StageId equals stage.Id
+            join entry in store.Read<CurriculumEntry>() on assignment.CurriculumEntryId equals entry.Id
+            join subject in store.Read<Subject>() on entry.SubjectId equals subject.Id
+            join teacher in store.Read<Teacher>() on assignment.TeacherId equals teacher.Id
+            orderby assignment.IsArchived, stage.DisplayOrder, section.NormalizedLabel, subject.NormalizedName
+            select new NamedRow(stage.Name + " / " + section.Label + ": " + subject.Name + " — " + teacher.FullName, assignment.IsArchived), token);
+        return Group(DependentKinds.WorkloadAssignment, rows, ErrorCodes.WorkloadInUse);
     }
 
     private async Task<DependentGroupDto> SubjectsAsync(IQueryable<Subject> subjects, CancellationToken token)

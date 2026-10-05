@@ -73,4 +73,5 @@ public static class ErrorCodes
     public const string StageLessonsAboveShift = "STAGE_LESSONS_ABOVE_SHIFT";
     public const string DailyTotalAboveShift = "DAILY_TOTAL_ABOVE_SHIFT";
     public const string ResourceInUse = "RESOURCE_IN_USE";
+    public const string WorkloadInUse = "WORKLOAD_IN_USE";
 }

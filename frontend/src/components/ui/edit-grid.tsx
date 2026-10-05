@@ -10,11 +10,13 @@ type EditGridProps = {
 /**
  * Table of inputs edited cell by cell (spec 2.5 §3.3). Each input carries data-row and data-col; arrow keys and
  * Enter move between them. Right/left follow the reading direction, so in RTL ArrowLeft moves to the next column.
+ * Select cells (the workload matrix) keep up/down and Enter for choosing; left/right still move between cells.
  */
 export function EditGrid({ caption, className = "", children }: EditGridProps) {
   function onKeyDown(event: KeyboardEvent<HTMLTableElement>) {
     const target = event.target as HTMLElement;
     if (target.dataset.row === undefined || target.dataset.col === undefined) return;
+    if (target instanceof HTMLSelectElement && (event.key === "ArrowUp" || event.key === "ArrowDown" || event.key === "Enter")) return;
     const row = Number(target.dataset.row);
     const col = Number(target.dataset.col);
     const rtl = (target.closest("[dir]")?.getAttribute("dir") ?? "rtl") === "rtl";
@@ -27,11 +29,11 @@ export function EditGrid({ caption, className = "", children }: EditGridProps) {
     };
     const next = moves[event.key];
     if (!next) return;
-    const cell = event.currentTarget.querySelector<HTMLInputElement>(`input[data-row="${next[0]}"][data-col="${next[1]}"]`);
+    const cell = event.currentTarget.querySelector<HTMLInputElement | HTMLSelectElement>(`[data-row="${next[0]}"][data-col="${next[1]}"]`);
     if (!cell) return;
     event.preventDefault();
     cell.focus();
-    cell.select();
+    if (cell instanceof HTMLInputElement) cell.select();
   }
 
   return (

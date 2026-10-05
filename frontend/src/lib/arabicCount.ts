@@ -29,6 +29,7 @@ export const countNouns = {
   term: { one: "فصل واحد", dualNominative: "فصلان", dualOblique: "فصلين", plural: "فصول", singular: "فصل", accusative: "فصلاً" },
   minute: { one: "دقيقة واحدة", dualNominative: "دقيقتان", dualOblique: "دقيقتين", plural: "دقائق", singular: "دقيقة", accusative: "دقيقة" },
   change: { one: "تغيير واحد", dualNominative: "تغييران", dualOblique: "تغييرين", plural: "تغييرات", singular: "تغيير", accusative: "تغييراً" },
+  assignment: { one: "نصاب واحد", dualNominative: "نصابان", dualOblique: "نصابين", plural: "أنصبة", singular: "نصاب", accusative: "نصاباً" },
   line: { one: "بند واحد", dualNominative: "بندان", dualOblique: "بندين", plural: "بنود", singular: "بند", accusative: "بنداً" },
 } as const satisfies Record<string, CountForms>;
 

@@ -1,5 +1,7 @@
 import { ListPlus, UsersRound } from "lucide-react";
+import { LoadStatusBadge } from "../../components/LoadBar";
 import { useSubjects } from "../subjects/subjectsApi";
+import { useTeacherLoads } from "../workload/workloadApi";
 import { OrphanBlockedNotice } from "../timetable-structure/OrphanBlockedNotice";
 import { ArchiveBlockedDialog, GuardedDeleteDialog, isReferenceError } from "../../components/References";
 import { useState } from "react";
@@ -18,7 +20,7 @@ import { ExpandableRow } from "../../components/ui/expandable-row";
 import { Pagination } from "../../components/ui/pagination";
 import { messages } from "../../i18n/messages";
 import { PageHeader } from "../../layout/PageHeader";
-import { useFormatter } from "../../lib/schoolContext";
+import { useFormatter, useSchoolContext } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
 import { weekdayLabel } from "../timetable-structure/weekdays";
 import { BulkAddPanel } from "./BulkAddPanel";
@@ -41,6 +43,9 @@ export function TeachersPage() {
   const [archiveBlocked, setArchiveBlocked] = useState<Teacher | null>(null);
   const teachers = useTeachers({ ...filters, pageSize });
   const subjects = useSubjects({ search: "", page: 1, pageSize: 100, includeArchived: true });
+  const context = useSchoolContext();
+  const loads = useTeacherLoads(context.data?.currentYear?.id ?? null);
+  const loadOf = (id: number) => loads.data?.find((load) => load.teacherId === id);
   const subjectNames = new Map((subjects.data?.items ?? []).map((subject) => [subject.id, subject.name]));
   /** Up to three subject names, then how many more (Phase 3 §4 teacher card). */
   const specializationSummary = (ids: number[]) => {
@@ -118,6 +123,10 @@ export function TeachersPage() {
                   <span className="row-summary-muted">{teacher.shortName}</span>
                   {teacher.offDays.length > 0 && <Badge>{teacher.offDays.map(weekdayLabel).join("، ")}</Badge>}
                   <Badge>{text.limitsValue(limit(teacher.maxLessonsPerDay), limit(teacher.maxLessonsPerWeek))}</Badge>
+                  {loadOf(teacher.id) && (
+                    <Badge>{messages.school.workload.teacherCardLoad(format.number(loadOf(teacher.id)?.assignedLessons ?? 0), format.number(loadOf(teacher.id)?.limit ?? 0))}</Badge>
+                  )}
+                  {loadOf(teacher.id) && loadOf(teacher.id)?.status !== "within" && <LoadStatusBadge status={loadOf(teacher.id)?.status ?? "within"} />}
                   {teacher.specializationIds.length > 0 && subjects.isSuccess && (
                     <Badge tone="primary">{messages.school.specializations.summary(specializationSummary(teacher.specializationIds))}</Badge>
                   )}

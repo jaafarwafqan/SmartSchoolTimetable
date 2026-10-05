@@ -127,3 +127,7 @@ No implementation of domain logic; only specification and validation strategy.
 - **`Subject.RequiredResourceId`:** at most one resource; existence and active state are checked in Application.
 - **`Teacher.Specializations`:** owned `TeacherSpecialization(SubjectId)`, at most 30. `TeacherDetails.SpecializationIds` null keeps them; `AddSpecialization` adds one (no change when already present).
 - **`SchedulingProfile`:** one row; five `SchedulingRule(Key, Enabled, Weight 0–100)` in `SchedulingRuleKeys.Defaults` order. `Update` needs every key exactly once; `RestoreDefaults`; `ProfileVersion` and `Version` grow only on a real change.
+
+## Phase 3C: workload (ADR 0032)
+- **`WorkloadAssignment(SectionId, CurriculumEntryId, TeacherId)`:** `Reassign` (no change for the same teacher), `Archive`, `Restore`; lessons come from the line.
+- **`TeacherAvailability.Compute(slots, offDays, blocked, maxPerDay, maxPerWeek, released)`:** `Slots` (distinct `ShiftSlot(shift, day, lesson)` without off days and blocked lesson numbers), `ByDayLimit` (each day at most max per day), `Available` (also ≤ max per week; 0 when released). `SectionSlots(shift, days, lessonsOn)` lists a section's allowed slots.

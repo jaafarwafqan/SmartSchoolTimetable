@@ -7,7 +7,7 @@ using static SmartSchoolTimetable.Tests.ApiTestHelpers;
 namespace SmartSchoolTimetable.Tests.Phase3;
 
 /// <summary>
-/// No N+1 on the main list endpoints (Phase 3 §5.6): each runs the same number of SQL commands for a small school
+/// No N+1 on the main list endpoints (Phase 3 §5.6, extended in 3B/3C): each runs the same number of SQL commands for a small school
 /// and for one with several times more stages, sections, subjects, teachers and curriculum lines.
 /// </summary>
 public sealed class QueryCountTests
@@ -39,6 +39,7 @@ public sealed class QueryCountTests
             $"{school.Root}/stages/", $"{school.Root}/stages/{school.Stage.Id}/sections/", $"{school.Root}/shifts/",
             "/api/v1/subjects/", "/api/v1/teachers/", $"{school.Root}/stage-cards", $"{school.Root}/curriculum",
             "/api/v1/dashboard-summary/", $"/api/v1/references/stage/{school.Stage.Id}", "/api/v1/blocked-periods/orphans/",
+            "/api/v1/resources/", $"{school.Root}/workload/matrix", $"{school.Root}/workload/teachers",
         };
         await host.PostAsync("/api/v1/teachers/bulk", new { names = FirstTeacher }, school.Token);
         var small = await MeasureAsync(host, paths);
@@ -65,6 +66,10 @@ public sealed class QueryCountTests
         Assert.Equal(18, (await ReadAsync<List<StageCardDto>>(await host.Client.GetAsync($"{school.Root}/stage-cards"))).Sum(card => card.Sections.Count));
 
         Assert.Equal(13, (await ReadAsync<PagedResult<object>>(await host.Client.GetAsync("/api/v1/teachers/"))).Total);
+        // Every section of the first stage gets a class teacher, so the workload views have rows to load.
+        var teacherId = (await ReadAsync<PagedResult<Application.Teachers.TeacherDto>>(await host.Client.GetAsync("/api/v1/teachers/"))).Items[0].Id;
+        foreach (var section in (await ReadAsync<PagedResult<SectionDto>>(await host.Client.GetAsync($"{school.Root}/stages/{school.Stage.Id}/sections/"))).Items)
+            await host.PostAsync($"{school.Root}/workload/bulk/class-teacher", new { teacherId, sectionId = section.Id, entryIds = Array.Empty<long>(), overwrite = false }, school.Token);
 
         var large = await MeasureAsync(host, paths);
         Assert.All(small.Values, count => Assert.InRange(count, 1, 20));

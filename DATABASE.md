@@ -94,6 +94,11 @@ Migration `Phase3BResourcesProfile` (Phase 3B, ADR 0031) adds:
 - `TeacherSpecializations`: key (`TeacherId`, `SubjectId`); `SubjectId` indexed, `Cascade` from both the teacher and the subject (DECISIONS_PENDING #53).
 - `SchedulingProfile` (one row, Id = 1, `ProfileVersion`, `Version`) and `SchedulingProfileRules` (`ProfileId`, `Key` ≤ 40, unique per profile, `Enabled`, `Weight` check 0–100). The row is created at start-up when missing.
 
+Migration `Phase3CWorkload` (ADR 0032) adds `WorkloadAssignments`:
+- `SectionId`, `CurriculumEntryId`, `TeacherId` (all `Restrict`), `IsArchived`, `ArchivedAt`, `Version`;
+- unique (`SectionId`, `CurriculumEntryId`) where `IsArchived = 0`;
+- indexes on `CurriculumEntryId` and (`TeacherId`, `IsArchived`).
+
 Phase 3A added no schema change. Read-only list and report queries run without change tracking (DECISIONS_PENDING #52).
 
 ## Application data

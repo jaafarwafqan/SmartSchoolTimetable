@@ -70,6 +70,7 @@ public static class ApiErrorCodes
             [ErrorCodes.StageLessonsAboveShift] = StatusCodes.Status409Conflict,
             [ErrorCodes.DailyTotalAboveShift] = StatusCodes.Status409Conflict,
             [ErrorCodes.ResourceInUse] = StatusCodes.Status409Conflict,
+            [ErrorCodes.WorkloadInUse] = StatusCodes.Status409Conflict,
 
             [ErrorCodes.RecordInUse] = StatusCodes.Status409Conflict,
             [ErrorCodes.CurrentYearRequired] = StatusCodes.Status409Conflict,

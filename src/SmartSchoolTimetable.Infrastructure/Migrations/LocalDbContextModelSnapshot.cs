@@ -729,6 +729,45 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                     b.ToTable("Teachers", (string)null);
                 });
 
+            modelBuilder.Entity("SmartSchoolTimetable.Domain.Workload.WorkloadAssignment", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset?>("ArchivedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("CurriculumEntryId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("SectionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("TeacherId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CurriculumEntryId");
+
+                    b.HasIndex("SectionId", "CurriculumEntryId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_WorkloadAssignments_Active_Section_Entry")
+                        .HasFilter("\"IsArchived\" = 0");
+
+                    b.HasIndex("TeacherId", "IsArchived");
+
+                    b.ToTable("WorkloadAssignments", (string)null);
+                });
+
             modelBuilder.Entity("SmartSchoolTimetable.Domain.Curriculum.CurriculumEntry", b =>
                 {
                     b.HasOne("SmartSchoolTimetable.Domain.SchoolSetup.Stage", null)
@@ -1122,6 +1161,27 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                     b.Navigation("BlockedPeriods");
 
                     b.Navigation("Specializations");
+                });
+
+            modelBuilder.Entity("SmartSchoolTimetable.Domain.Workload.WorkloadAssignment", b =>
+                {
+                    b.HasOne("SmartSchoolTimetable.Domain.Curriculum.CurriculumEntry", null)
+                        .WithMany()
+                        .HasForeignKey("CurriculumEntryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SmartSchoolTimetable.Domain.SchoolSetup.Section", null)
+                        .WithMany()
+                        .HasForeignKey("SectionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SmartSchoolTimetable.Domain.Teachers.Teacher", null)
+                        .WithMany()
+                        .HasForeignKey("TeacherId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

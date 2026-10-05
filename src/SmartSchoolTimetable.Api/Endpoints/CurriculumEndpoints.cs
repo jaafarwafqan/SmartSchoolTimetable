@@ -55,8 +55,8 @@ public static class CurriculumEndpoints
             ApiResults.Ok(context, await service.UpdateEntryAsync(id, command, token)));
         entries.MapDelete("/{id:long}", async (long id, int version, HttpContext context, CurriculumService service, CancellationToken token) =>
             ApiResults.NoContent(context, await service.DeleteEntryAsync(id, version, token)));
-        entries.MapPost("/{id:long}/archive", async (long id, ArchiveCommand command, HttpContext context, CurriculumService service, CancellationToken token) =>
-            ApiResults.Ok(context, await service.SetArchivedAsync(id, command.Version, true, token)));
+        entries.MapPost("/{id:long}/archive", async (long id, ArchiveEntryCommand command, HttpContext context, CurriculumService service, CancellationToken token) =>
+            ApiResults.Ok(context, await service.SetArchivedAsync(id, command, true, token)));
         entries.MapPost("/{id:long}/restore", async (long id, ArchiveCommand command, HttpContext context, CurriculumService service, CancellationToken token) =>
             ApiResults.Ok(context, await service.SetArchivedAsync(id, command.Version, false, token)));
 

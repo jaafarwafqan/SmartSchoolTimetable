@@ -2,10 +2,11 @@ using SmartSchoolTimetable.Application.Common;
 using SmartSchoolTimetable.Application.Resources;
 using SmartSchoolTimetable.Application.Scheduling;
 using SmartSchoolTimetable.Application.Stages;
+using SmartSchoolTimetable.Application.Workload;
 
 namespace SmartSchoolTimetable.Api.Endpoints;
 
-/// <summary>Resources and the scheduling profile (Phase 3B).</summary>
+/// <summary>Resources and the scheduling profile (Phase 3B); workload assignments (Phase 3C).</summary>
 public static class Phase3Endpoints
 {
     public static IEndpointRouteBuilder MapResourcesEndpoints(this IEndpointRouteBuilder endpoints)
@@ -23,6 +24,30 @@ public static class Phase3Endpoints
             ApiResults.Ok(context, await service.SetArchivedAsync(id, command.Version, true, token)));
         resources.MapPost("/{id:long}/restore", async (long id, ArchiveCommand command, HttpContext context, ResourcesService service, CancellationToken token) =>
             ApiResults.Ok(context, await service.SetArchivedAsync(id, command.Version, false, token)));
+        return endpoints;
+    }
+
+    public static IEndpointRouteBuilder MapWorkloadEndpoints(this IEndpointRouteBuilder endpoints)
+    {
+        var workload = endpoints.MapOwnerGroup("/academic-years/{yearId:long}/workload");
+        workload.MapGet("/matrix", async (long yearId, long? stageId, HttpContext context, WorkloadService service, CancellationToken token) =>
+            ApiResults.Ok(context, await service.GetMatrixAsync(yearId, stageId, token)));
+        workload.MapGet("/teachers", async (long yearId, HttpContext context, WorkloadService service, CancellationToken token) =>
+            ApiResults.Ok(context, await service.GetTeacherLoadsAsync(yearId, token)));
+        workload.MapPut("/cell", async (long yearId, SetWorkloadCellCommand command, HttpContext context, WorkloadService service, CancellationToken token) =>
+            ApiResults.Ok(context, await service.SetCellAsync(yearId, command, token)));
+        foreach (var apply in new[] { false, true })
+        {
+            var suffix = apply ? string.Empty : "/preview";
+            workload.MapPost($"/bulk/across-stage{suffix}", async (long yearId, AssignAcrossStageCommand command, HttpContext context, WorkloadService service, CancellationToken token) =>
+                ApiResults.Ok(context, await service.AssignAcrossStageAsync(yearId, command, apply, token)));
+            workload.MapPost($"/bulk/class-teacher{suffix}", async (long yearId, ClassTeacherCommand command, HttpContext context, WorkloadService service, CancellationToken token) =>
+                ApiResults.Ok(context, await service.ClassTeacherAsync(yearId, command, apply, token)));
+            workload.MapPost($"/bulk/transfer{suffix}", async (long yearId, TransferWorkloadCommand command, HttpContext context, WorkloadService service, CancellationToken token) =>
+                ApiResults.Ok(context, await service.TransferAsync(yearId, command, apply, token)));
+            workload.MapPost($"/bulk/remove{suffix}", async (long yearId, RemoveWorkloadCommand command, HttpContext context, WorkloadService service, CancellationToken token) =>
+                ApiResults.Ok(context, await service.RemoveAsync(yearId, command, apply, token)));
+        }
         return endpoints;
     }
 

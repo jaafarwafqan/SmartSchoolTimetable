@@ -203,6 +203,25 @@ Curriculum cells and entries carry `isSuggested`. Audit events: `SuggestedCurric
 - **`GET /references/resource/{id}`** lists the subjects that require the resource (dependent kind `subject`).
 - Audit events: `ResourceCreated`, `ResourceUpdated`, `ResourceArchived`, `ResourceRestored`, `ResourceDeleted`, `TeacherSpecializationAdded`, `SchedulingProfileUpdated`, `SchedulingProfileDefaultsRestored`.
 
+### Phase 3C: workload assignments (ADR 0032)
+| Method | Route | Request | Success | Errors |
+|---|---|---|---|---|
+| GET | `/academic-years/{yearId}/workload/matrix?stageId=` | — | 200 `{ stages: [{ stageId, stageName, assignedCells, totalCells }], stage: { stageId, stageName, lines: [{ entryId, subjectId, subjectName, colorIndex, label, weeklyLessons }], sections: [{ sectionId, label, shiftName, assignedLines, totalLines, assignedLessons, totalLessons, cells: [{ entryId, assignmentId, teacherId, version, outsideSpecialization }] }] } }` (the first stage when `stageId` is omitted) | 401, 404 |
+| GET | `/academic-years/{yearId}/workload/teachers` | — | 200 `[{ teacherId, fullName, shortName, specializationIds, assignedLessons, maxPerWeek, available, limit, status: within\|near\|over, released, assignments: [...], version }]` | 401, 404 |
+| PUT | `/academic-years/{yearId}/workload/cell` | `{ sectionId, entryId, teacherId (null clears), assignmentId, version }` | 200 the stage matrix | 401, 403, 409 `CONFLICT`, 422 `SectionId`/`EntryId`/`TeacherId` `INVALID_OPTION` |
+| POST | `/academic-years/{yearId}/workload/bulk/across-stage[/preview]` | `{ teacherId, entryId, overwrite }` | 200 plan `{ lines: [{ sectionId, stageName, sectionLabel, entryId, subjectName, label, weeklyLessons, currentTeacher, newTeacher, action }], changes, loads: [{ teacherId, fullName, before, after, limit }] }` | 401, 403, 404, 422 |
+| POST | `/academic-years/{yearId}/workload/bulk/class-teacher[/preview]` | `{ teacherId, sectionId, entryIds ([] = every line), overwrite }` | 200 plan | 401, 403, 404, 422 |
+| POST | `/academic-years/{yearId}/workload/bulk/transfer[/preview]` | `{ fromTeacherId, toTeacherId }` | 200 plan (`transfer` lines) | 401, 403, 404, 422 `ToTeacherId` |
+| POST | `/academic-years/{yearId}/workload/bulk/remove[/preview]` | `{ teacherId }` | 200 plan (`remove` lines; archived) | 401, 403, 404, 422 |
+
+- Plan actions: `create`, `replace` (only with `overwrite`), `skip`, `unchanged`, `transfer`, `remove`. The applied plan equals its preview; applying again gives `changes: 0`.
+- **`409 WORKLOAD_IN_USE`:**
+  - archive or delete of a teacher or section with assignments;
+  - the section stepper removing a section with assignments;
+  - clearing a curriculum cell (`PUT …/curriculum/cell` with `weeklyLessons: null`) or archiving a line (`POST /curriculum-entries/{id}/archive`) with active assignments, unless `confirmWorkload: true`. With confirmation the assignments are archived with the line, and `POST /curriculum-entries/{id}/restore` restores them.
+- **`GET /references/{teacher|section|curriculumEntry}/{id}`** lists the assignments (dependent kind `workloadAssignment`, «المرحلة / الشعبة: المادة — المعلم»).
+- Audit events: `WorkloadAssigned`, `WorkloadReassigned`, `WorkloadCleared`, `WorkloadAssignedAcrossStage`, `WorkloadClassTeacher`, `WorkloadTransferred`, `WorkloadRemoved`, `WorkloadArchivedWithLine`.
+
 ### Subjects and the schedule grid (Phase 2, checkpoint 2D)
 | Method | Route | Request | Success | Endpoint-specific errors |
 |---|---|---|---|---|

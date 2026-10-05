@@ -7,7 +7,7 @@ import { teachers } from "./teachers";
 import { calendar } from "./calendar";
 import { curriculum, daily, stageCards, suggested, templates } from "./curriculum";
 import { wizard } from "./wizard";
-import { orphanOnSave, requiredResource, resources, schedulingProfile, specializations } from "./phase3";
+import { orphanOnSave, requiredResource, resources, schedulingProfile, specializations, workload } from "./phase3";
 
 export const school = {
   nav: {
@@ -24,6 +24,7 @@ export const school = {
     calendar: "التقويم الدراسي",
     settings: "الإعدادات",
     resources: "الموارد",
+    workload: "الأنصبة",
     settingsGeneral: "عام",
     schedulingProfile: "ملف الجدولة",
     setupWizard: "معالج الإعداد",
@@ -228,6 +229,7 @@ export const school = {
     removed: "أُزيلت الحصص المحجوبة الواقعة خارج الجدول.",
   },
   resources,
+  workload,
   requiredResource,
   specializations,
   orphanOnSave,

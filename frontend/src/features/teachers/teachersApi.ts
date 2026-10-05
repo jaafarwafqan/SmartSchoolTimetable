@@ -50,7 +50,8 @@ function useTeachersMutation<TInput, TResult>(request: (input: TInput) => Promis
   return useMutation({
     mutationFn: request,
     onSuccess: async () => {
-      await Promise.all([queryClient.invalidateQueries({ queryKey: teachersKey }), refreshSchoolData()]);
+      // Teacher limits and lists feed the workload loads (Phase 3C).
+      await Promise.all([queryClient.invalidateQueries({ queryKey: teachersKey }), queryClient.invalidateQueries({ queryKey: ["workload"] }), refreshSchoolData()]);
     },
   });
 }

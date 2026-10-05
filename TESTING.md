@@ -244,6 +244,18 @@ Suggested curriculum (`phase-2-5-curriculum`):
   - migration `Phase3BResourcesProfile` on a database at `Phase25SuggestedCurriculum` with an existing subject.
 - Vitest: `profileApi.test.ts` (weight choices in steps of five, keeping a saved odd value).
 - Playwright `phase3-resources-profile.spec.ts`: quick add of two resources (kind, capacity stepper); the subject's required-resource chooser and row badge; the delete dialog naming the subject with «حذف» disabled; the profile's weight change (version 2) and restore defaults (version 3); axe, no horizontal scroll, no overlapping text and screenshots at 375/768/1024/1440.
+### 3C - workload
+- .NET `Phase3/WorkloadTests`:
+  - domain: reassign, archive, restore;
+  - availability: shared slots counted once, two shifts separately; off day, blocked lesson, 5 a day and 20 a week give 23 / 20 / 20; released gives 0; a blocked lesson number blocks both shifts;
+  - API cells: assign, conflict for an empty cell assigned meanwhile, stale version, reassign outside the specialization (flagged), clear, invalid line/section, 401, 403;
+  - loads: 10 of 12 «ضمن الحد», 11 of 12 «قريب», 17 of 12 «تجاوز»;
+  - bulk: across the stage without overwrite (create + skip), the applied plan equals the preview, applying again changes nothing, overwrite replaces and moves Ali's load 5 → 0; class teacher; transfer (Ahmed 11 → 0, Ali 0 → 11); remove;
+  - protection: teacher and section archive/delete and the stepper refused with `WORKLOAD_IN_USE`, the report names «الأول المتوسط / ب: الرياضيات — أحمد علي حسن»; clearing a line needs `confirmWorkload`, archives its assignment, and the undo restores it; archiving a line through its endpoint follows the same rule;
+  - the filtered unique index: one active row per (section, line), archived rows allowed.
+- `QueryCountTests` now also covers resources, the workload matrix and the loads.
+- Vitest `features/workload/workload.test.tsx`: the teacher chooser (specialists, current teacher, «عرض الجميع»), shortage order and message, load bar width and meter values, the bulk plan view, counting «نصاب».
+- Playwright `phase3-workload.spec.ts`: assign in the matrix, «خارج التخصص» and «إضافة المادة لتخصصاته», completion «٢ من ٢», the shortage warning «المسند ١١، المتاح ١٠، يزيد ١», bulk class teacher with preview and confirmation, load bars by teacher, the teacher delete dialog naming «نصابان», clearing an assigned curriculum line with confirmation and undo; axe, no scroll, no overlap and screenshots at 375/768/1024/1440.
 
 ## Later-phase acceptance suites
 - Phase 4 infeasibility test must construct a conflict involving two teachers, a shared lab, and a blocked period; the diagnostic must identify the conflict groups and actionable correction, not merely report infeasible.

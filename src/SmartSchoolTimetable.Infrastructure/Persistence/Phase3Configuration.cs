@@ -1,7 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using SmartSchoolTimetable.Domain.Curriculum;
 using SmartSchoolTimetable.Domain.Resources;
 using SmartSchoolTimetable.Domain.Scheduling;
+using SmartSchoolTimetable.Domain.SchoolSetup;
+using SmartSchoolTimetable.Domain.Teachers;
+using SmartSchoolTimetable.Domain.Workload;
 
 namespace SmartSchoolTimetable.Infrastructure.Persistence;
 
@@ -44,5 +48,27 @@ internal sealed class SchedulingProfileConfiguration : IEntityTypeConfiguration<
             rule.HasIndex("ProfileId", nameof(SchedulingRule.Key)).IsUnique();
         });
         builder.Navigation(profile => profile.Rules).UsePropertyAccessMode(PropertyAccessMode.Field);
+    }
+}
+
+/// <summary>
+/// Workload assignments: one ACTIVE row per (section, curriculum line), enforced by a filtered unique index;
+/// archived rows keep history. Every reference is restricting: the reference guard explains refusals first.
+/// </summary>
+internal sealed class WorkloadAssignmentConfiguration : IEntityTypeConfiguration<WorkloadAssignment>
+{
+    public void Configure(EntityTypeBuilder<WorkloadAssignment> builder)
+    {
+        builder.ToTable("WorkloadAssignments");
+        builder.HasKey(assignment => assignment.Id);
+        builder.HasIndex(assignment => new { assignment.SectionId, assignment.CurriculumEntryId })
+            .IsUnique()
+            .HasFilter("\"IsArchived\" = 0")
+            .HasDatabaseName("IX_WorkloadAssignments_Active_Section_Entry");
+        builder.HasIndex(assignment => assignment.CurriculumEntryId);
+        builder.HasIndex(assignment => new { assignment.TeacherId, assignment.IsArchived });
+        builder.HasOne<Section>().WithMany().HasForeignKey(assignment => assignment.SectionId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<CurriculumEntry>().WithMany().HasForeignKey(assignment => assignment.CurriculumEntryId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Teacher>().WithMany().HasForeignKey(assignment => assignment.TeacherId).OnDelete(DeleteBehavior.Restrict);
     }
 }

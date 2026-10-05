@@ -44,7 +44,7 @@ function useSubjectsMutation<TInput, TResult>(request: (input: TInput) => Promis
     mutationFn: request,
     onSuccess: async () => {
       // The curriculum table and the subject suggestions list subjects too (fix B6: no reload needed).
-      await Promise.all([refreshQueries(queryClient, [subjectsKey, ["curriculum"], ["suggested-subjects"]]), refreshSchoolData()]);
+      await Promise.all([refreshQueries(queryClient, [subjectsKey, ["curriculum"], ["suggested-subjects"], ["workload"]]), refreshSchoolData()]);
     },
   });
 }
