@@ -49,6 +49,9 @@ public sealed partial class ErrorContractTests
         {
             if (Path.GetFileName(file) == "ErrorCodes.cs")
                 continue;
+            // The pre-solve finding codes have their own single definition site (FindingCodeContractTests checks it).
+            if (FindingCodeContractTests.IsDefinitionFile(file))
+                continue;
             scannedFiles++;
             var lines = File.ReadAllLines(file);
             for (var index = 0; index < lines.Length; index++)

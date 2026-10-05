@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { isolate } from "../../i18n/isolate";
 import { createFormatter } from "../../lib/format";
 import { findingMessage, groupFindings } from "./readinessPresentation";
-import type { ReadinessFinding } from "./readinessApi";
+import { messages } from "../../i18n/messages";
+import { findingCodes, type ReadinessFinding } from "./readinessApi";
 
 const format = createFormatter();
 
@@ -32,5 +33,18 @@ describe("readiness findings", () => {
   it("uses the exact physics requirement and shortage", () => {
     expect(findingMessage(finding({ entity: { kind: "subject", id: 8, name: "الفيزياء" }, code: "SUBJECT_SLOTS_SHORT", required: 7, available: 5, shortage: 2 }), format))
       .toBe(`${isolate("الفيزياء")}: المطلوب ٧، المسموح ٥، ينقص ٢.`);
+  });
+
+  it("has an Arabic message for every finding code and none extra", () => {
+    expect(Object.keys(messages.school.readiness.messages).sort()).toEqual([...findingCodes].sort());
+    for (const code of findingCodes) {
+      const text = findingMessage(finding({ code, entity: { kind: "teacher", id: 1, name: "س" }, details: ["الدوام الصباحي"] }), format);
+      expect(text).not.toBe(messages.school.readiness.unknownFinding);
+      expect(text).toMatch(/[\u0600-\u06FF]/);
+    }
+  });
+
+  it("falls back to a generic Arabic message for an unknown code", () => {
+    expect(findingMessage(finding({ code: "SOMETHING_NEW" }), format)).toBe(messages.school.readiness.unknownFinding);
   });
 });

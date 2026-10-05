@@ -202,9 +202,9 @@ public sealed class WorkloadService(IDataStore store, TimeProvider clock)
 
             if (chosen is null)
             {
-                var reason = specialists.Length == 0 ? "NO_SPECIALIST"
-                    : specialists.All(data.ReleasedForYear) ? "RELEASED"
-                    : "CAPACITY";
+                var reason = specialists.Length == 0 ? SuggestionReasons.NoSpecialist
+                    : specialists.All(data.ReleasedForYear) ? SuggestionReasons.Released
+                    : SuggestionReasons.Capacity;
                 unassigned.Add(new UnassignedSuggestionDto(section.Id, data.StageOf(section).Name, section.Label, entry.Id,
                     data.SubjectName(entry), entry.Label, entry.WeeklyLessons, reason));
                 continue;

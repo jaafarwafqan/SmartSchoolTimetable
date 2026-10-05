@@ -44,7 +44,7 @@ public sealed class AssignmentSuggesterTests
         Assert.Equal(preview.Assignments, applied.Assignments);
         var after = await ReadAsync<AssignmentSuggestionPlanDto>(await host.Client.GetAsync(path));
         Assert.Empty(after.Assignments);
-        Assert.All(after.Unassigned, line => Assert.Equal("NO_SPECIALIST", line.Reason));
+        Assert.All(after.Unassigned, line => Assert.Equal(SuggestionReasons.NoSpecialist, line.Reason));
     }
 
     [Fact]

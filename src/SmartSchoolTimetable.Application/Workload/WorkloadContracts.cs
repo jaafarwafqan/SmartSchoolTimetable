@@ -73,3 +73,11 @@ public sealed record SuggestionTeacherLoadDto(long TeacherId, string TeacherName
 
 public sealed record AssignmentSuggestionPlanDto(IReadOnlyList<SuggestedAssignmentDto> Assignments,
     IReadOnlyList<UnassignedSuggestionDto> Unassigned, IReadOnlyList<SuggestionTeacherLoadDto> Loads);
+
+/// <summary>Why the suggester left a line unassigned (values like the plan actions; the frontend shows them in Arabic).</summary>
+public static class SuggestionReasons
+{
+    public const string NoSpecialist = "noSpecialist";
+    public const string Released = "released";
+    public const string Capacity = "capacity";
+}

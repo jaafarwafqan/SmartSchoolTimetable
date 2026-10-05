@@ -152,9 +152,9 @@ export const workload = {
     loadLine: (teacher: string, before: string, after: string, limit: string) => `${isolate(teacher)}: ${before} ← ${after} (الحد ${limit})`,
     unassignedLine: (stage: string, section: string, subject: string, reason: string) => `${isolate(stage)} / ${isolate(section)}: ${isolate(subject)} — ${reason}`,
     reasons: {
-      NO_SPECIALIST: "لا يوجد معلم متخصص بهذه المادة.",
-      RELEASED: "المعلمون المتخصصون متفرغون طوال السنة.",
-      CAPACITY: "السعة المتبقية للمعلمين المتخصصين لا تكفي.",
+      noSpecialist: "لا يوجد معلم متخصص بهذه المادة.",
+      released: "المعلمون المتخصصون متفرغون طوال السنة.",
+      capacity: "السعة المتبقية للمعلمين المتخصصين لا تكفي.",
       fallback: "لا تتوفر سعة مناسبة.",
     },
   },

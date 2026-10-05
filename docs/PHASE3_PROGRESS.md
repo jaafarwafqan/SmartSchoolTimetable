@@ -4,10 +4,10 @@ Updated after every checkpoint (owner's Phase 3 prompt §0.3).
 
 | Item | State |
 |---|---|
-| Branch | `phase-3` (from `master` at `6b8d878` "Merge Phase 2.5"; nothing pushed or merged) |
+| Branch | `phase-3-finish` (from tag `phase-3-as-received` = `cbed0ce`, which holds the uncommitted 3D/3E work received from another agent; 3A–3C are on `phase-3`; nothing pushed or merged) |
 | Last green tag | `phase-3c` |
-| In progress | — |
-| Next | 3D: scheduling input + `InputHash`, pre-solve validator, «جاهزية الجدولة» screen, dashboard card, checklist step, property and performance tests |
+| In progress | Fix-and-finish instruction: B1–B5 failures, C verification, D (3E) |
+| Next | Tag `phase-3d` once 3D is green, then finish 3E (`phase-3e`, `phase-3-final`) |
 
 ## Checkpoints
 | Checkpoint | Tag | State |
@@ -15,8 +15,8 @@ Updated after every checkpoint (owner's Phase 3 prompt §0.3).
 | 3A hardening (§5) | `phase-3a` | done |
 | 3B specializations, resources, profile | `phase-3b` | done |
 | 3C workload assignments | `phase-3c` | done |
-| 3D scheduling input, hash, validator, readiness | `phase-3d` | not started |
-| 3E suggester, wizard step, demo data, E2E, docs | `phase-3e`, `phase-3-final` | not started |
+| 3D scheduling input, hash, validator, readiness | `phase-3d` | written (received in `cbed0ce`), not yet green: 2 .NET and 4 Playwright failures |
+| 3E suggester, wizard step, demo data, E2E, docs | `phase-3e`, `phase-3-final` | partly written (suggester, wizard step, readiness E2E); demo data, scenarios, owner script and report missing |
 
 ## 3A results
 - `dotnet build -c Release --no-incremental`: 0 warnings, 0 errors.
