@@ -82,6 +82,10 @@ Migration `Phase25CCurriculumTemplates` (2.5C) adds:
 - `Stages.TemplateKey` (≤ 40, nullable): the template grade and branch a stage came from.
 - `CurriculumEntries`: `StageId`, `SubjectId` (both `Restrict`), `WeeklyLessons` (check 1–15), `Label`, `NormalizedLabel`, `NeedsDoublePeriod`, `Notes`, `IsArchived`, `ArchivedAt`, `Version`. Indexed on (StageId, SubjectId) and SubjectId; deliberately **not unique** (ADR 0021).
 
+Migration `Phase25FixStageDayLessons` adds `StageDayLessons`:
+- `StageId`, `Day`, `Lessons` (check ≥ 1), unique per stage and day (ADR 0027).
+- A working day without a row inherits the shift's count, so existing data needs no change.
+
 ## Application data
 - School profile; teachers, subjects, resources, stages, sections, workload, shifts, bell times, calendar
 - Timetable versions and lessons

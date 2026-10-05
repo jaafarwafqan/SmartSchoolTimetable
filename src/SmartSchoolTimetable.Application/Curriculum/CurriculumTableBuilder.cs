@@ -31,7 +31,7 @@ internal static class CurriculumTableBuilder
             var capacities = sections.Where(section => section.StageId == stage.Id)
                 .GroupBy(section => section.ShiftId)
                 .Select(group => shifts.GetValueOrDefault(group.Key) is { } shift
-                    ? new ShiftCapacity(shift.Id, shift.Name, group.Count(), Section.WeeklyCapacity(week, shift))
+                    ? new ShiftCapacity(shift.Id, shift.Name, group.Count(), Section.WeeklyCapacity(week, shift, stage))
                     : null)
                 .OfType<ShiftCapacity>()
                 .OrderBy(capacity => capacity.ShiftName, StringComparer.Ordinal);

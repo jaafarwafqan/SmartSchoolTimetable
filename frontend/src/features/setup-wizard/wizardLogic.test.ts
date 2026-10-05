@@ -49,7 +49,7 @@ describe("wizard timing plan", () => {
       ],
       dayLessons: [{ day: 7, lessons: 3 }, { day: 4, lessons: 2 }],
     };
-    expect(planFromShift(shift)).toEqual({ presetKey: "", firstStartTime: "08:00", lessonCount: 3, lessonMinutes: 45, breaks: [{ afterLesson: 2, minutes: 15 }], dayLessons: { 4: 2 } });
+    expect(planFromShift(shift)).toEqual({ presetKey: "", firstStartTime: "08:00", lessonCount: 3, lessonMinutes: 45, breaks: [{ afterLesson: 2, minutes: 15 }], gapMinutes: 0, dayLessons: { 4: 2 } });
     expect(planFromShift({ ...shift, periods: [] })).toBeNull();
   });
 });

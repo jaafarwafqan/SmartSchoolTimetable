@@ -14,6 +14,7 @@ import { useFormFeedback } from "../../lib/useFormFeedback";
 import { useTemplateCatalog, type PeriodPreset } from "../curriculum/curriculumApi";
 import { useShifts, useWorkingWeek, type Period } from "../timetable-structure/scheduleApi";
 import { weekdayLabel, weekdaysFrom } from "../timetable-structure/weekdays";
+import { BreaksEditor, validBreaks } from "../timetable-structure/BreaksEditor";
 import { lessonMinuteChoices, lessonsOn, maxLessonsPerDay, planFromPreset, planFromShift, toShiftInput, weeklyLessons, type ShiftPlan } from "./timingPlan";
 import { WizardFooter } from "./WizardFrame";
 import { useSaveTimingStep, type SetupProgress } from "./wizardApi";
@@ -28,7 +29,7 @@ const kindsFor = (mode: SetupProgress["shiftMode"]): Kind[] => (mode === "dual" 
 function PeriodsPreview({ yearId, kind, plan }: { yearId: number; kind: Kind; plan: ShiftPlan }) {
   const format = useFormatter();
   const body = { firstStartTime: plan.firstStartTime, lessonMinutes: plan.lessonMinutes, lessonCount: plan.lessonCount, breakMinutes: 0, breakAfterLesson: null,
-    breaks: plan.breaks.filter((slot) => slot.afterLesson < plan.lessonCount) };
+    breaks: validBreaks(plan.lessonCount, plan.breaks), gapMinutes: plan.gapMinutes };
   const preview = useQuery({
     queryKey: ["wizard-periods", yearId, body],
     queryFn: () => apiRequest<{ periods: Period[] }>(`/api/v1/academic-years/${yearId}/shifts/generate-periods`, "POST", body),
@@ -47,8 +48,8 @@ function PeriodsPreview({ yearId, kind, plan }: { yearId: number; kind: Kind; pl
   );
 }
 
-function ShiftBlock({ kind, plan, days, presets, yearId, onChange }: {
-  kind: Kind; plan: ShiftPlan; days: number[]; presets: PeriodPreset[]; yearId: number | null; onChange: (plan: ShiftPlan) => void;
+function ShiftBlock({ kind, plan, days, presets, yearId, suggestedBreak, onChange }: {
+  kind: Kind; plan: ShiftPlan; days: number[]; presets: PeriodPreset[]; yearId: number | null; suggestedBreak: number; onChange: (plan: ShiftPlan) => void;
 }) {
   const format = useFormatter();
   const name = text.timing.shifts[kind];
@@ -56,7 +57,7 @@ function ShiftBlock({ kind, plan, days, presets, yearId, onChange }: {
     <section className="wizard-shift" aria-labelledby={`wizard-shift-${kind}`}>
       <h3 id={`wizard-shift-${kind}`}>{name}</h3>
       <div className="form-grid">
-        <Field id={`wizard-${kind}-preset`} label={text.timing.breakPattern}>
+        <Field id={`wizard-${kind}-preset`} label={messages.school.templates.presetsLabel}>
           <Select id={`wizard-${kind}-preset`} value={plan.presetKey}
             onChange={(event) => onChange({ ...planFromPreset(presets.find((item) => item.key === event.target.value), plan.firstStartTime), dayLessons: plan.dayLessons })}
             options={[...(plan.presetKey ? [] : [{ value: "", label: messages.school.templates.presetNone }]), ...presets.map((item) => ({ value: item.key, label: item.name }))]} />
@@ -72,6 +73,8 @@ function ShiftBlock({ kind, plan, days, presets, yearId, onChange }: {
             decreaseLabel={text.timing.lessonsDecrease(name)} increaseLabel={text.timing.lessonsIncrease(name)} onChange={(lessonCount) => onChange({ ...plan, lessonCount })} />
         </div>
       </div>
+      <BreaksEditor idPrefix={`wizard-${kind}`} lessonCount={plan.lessonCount} breaks={validBreaks(plan.lessonCount, plan.breaks)} gapMinutes={plan.gapMinutes}
+        suggestedMinutes={suggestedBreak} onChange={(breaks, gapMinutes) => onChange({ ...plan, breaks, gapMinutes })} />
       <details className="advanced-options">
         <summary>{text.timing.perDay}</summary>
         <ul className="day-lessons-list form-stack">
@@ -140,6 +143,7 @@ export function TimingStep({ progress, onBack, onDone }: { progress: SetupProgre
       {hasStoredPeriods && <Alert tone="info" message={text.timing.replaceNote} />}
       {kinds.map((kind) => (
         <ShiftBlock key={`wizard-shift-${kind}`} kind={kind} plan={planFor(kind)} days={days} presets={presets} yearId={yearId}
+          suggestedBreak={catalog.data?.breakDefaults.minutes[progress.schoolType] ?? 15}
           onChange={(plan) => setPlans((current) => ({ ...current, [kind]: plan }))} />
       ))}
       <WizardFooter step={3} pending={save.isPending} error={feedback.error} onBack={onBack}

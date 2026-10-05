@@ -9,8 +9,12 @@ import { Stepper } from "../../components/ui/stepper";
 import { messages } from "../../i18n/messages";
 import { useFormatter } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
-import { useSetSectionCount, useStageCards, type LabelStyle, type StageCard } from "../curriculum/curriculumApi";
-import { useShifts, type Shift } from "../timetable-structure/scheduleApi";
+import { RotateCcw } from "lucide-react";
+import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
+import { useSetSectionCount, useSetStageDayLessons, useStageCards, type LabelStyle, type StageCard } from "../curriculum/curriculumApi";
+import { useShifts, useWorkingWeek, type Shift } from "../timetable-structure/scheduleApi";
+import { weekdayLabel, weekdaysFrom } from "../timetable-structure/weekdays";
 
 const text = messages.school.stageCards;
 const maxSections = 30;
@@ -42,6 +46,66 @@ export function NewSectionOptions({ idPrefix, shifts, shiftId, style, onShift, o
 }
 
 /**
+ * The stage's own lessons per day (ADR 0027): one stepper sets every working day, «تعديل لكل يوم» sets single days.
+ * A count never exceeds what the stage's shift teaches that day; days equal to the shift are not stored (inherit).
+ */
+function StageLessons({ yearId, card, shifts, days, onSaved, onError }: {
+  yearId: number; card: StageCard; shifts: Shift[]; days: number[]; onSaved: (stage: string) => void; onError: (reason: unknown) => void;
+}) {
+  const format = useFormatter();
+  const save = useSetStageDayLessons(yearId);
+  const name = card.stage.name;
+  const sectionShifts = new Set(card.sections.map((section) => section.shiftId));
+  const pool = shifts.filter((shift) => sectionShifts.has(shift.id));
+  const relevant = pool.length > 0 ? pool : shifts;
+  const shiftOn = (day: number) => Math.max(0, ...relevant.map((shift) => shift.dayLessons.find((entry) => entry.day === day)?.lessons ?? shift.lessonCount));
+  const own = new Map(card.stage.dayLessons.map((entry) => [entry.day, entry.lessons]));
+  const valueOn = (day: number) => Math.min(own.get(day) ?? shiftOn(day), shiftOn(day));
+  const maxDaily = Math.max(0, ...days.map(shiftOn));
+  const values = days.map(valueOn);
+  const daily = values.length > 0 ? Math.max(...values) : 0;
+  const custom = card.stage.dayLessons.length > 0;
+  if (maxDaily === 0 || card.stage.isArchived) return null;
+
+  function send(next: (day: number) => number) {
+    const dayLessons = days.filter((day) => next(day) !== shiftOn(day)).map((day) => ({ day, lessons: next(day) }));
+    save.mutate({ stageId: card.stage.id, dayLessons, version: card.stage.version }, { onSuccess: () => onSaved(name), onError });
+  }
+
+  return (
+    <div className="stage-lessons">
+      <div className="stage-lessons-head">
+        <span className="stepper-caption" aria-hidden="true">{text.dailyLessons}</span>
+        <Badge tone={custom ? "primary" : "neutral"}>{custom ? text.ownCounts : text.inherits}</Badge>
+      </div>
+      <Stepper id={`stage-lessons-${card.stage.id}`} label={text.dailyLessonsFor(name)} value={daily} min={1} max={maxDaily} format={format.number}
+        decreaseLabel={text.dailyDecrease(name)} increaseLabel={text.dailyIncrease(name)} disabled={save.isPending}
+        onChange={(lessons) => send((day) => Math.min(lessons, shiftOn(day)))} />
+      <details className="advanced-options">
+        <summary>{text.perDay}</summary>
+        <ul className="day-lessons-list">
+          {days.map((day) => (
+            <li key={`stage-${card.stage.id}-day-${day}`}>
+              <span className="day-lessons-day">{weekdayLabel(day)}</span>
+              <Stepper id={`stage-${card.stage.id}-day-${day}`} label={text.dayLessonsFor(name, weekdayLabel(day))} value={valueOn(day)} min={1} max={shiftOn(day)}
+                format={format.number} decreaseLabel={text.dayDecrease(name, weekdayLabel(day))} increaseLabel={text.dayIncrease(name, weekdayLabel(day))}
+                disabled={save.isPending || shiftOn(day) === 0}
+                onChange={(lessons) => send((current) => (current === day ? lessons : valueOn(current)))} />
+            </li>
+          ))}
+        </ul>
+      </details>
+      {custom && (
+        <Button variant="ghost" size="sm" icon={<RotateCcw aria-hidden="true" size={16} />} loading={save.isPending}
+          onClick={() => save.mutate({ stageId: card.stage.id, dayLessons: [], version: card.stage.version }, { onSuccess: () => onSaved(name), onError })}>
+          {text.resetToShift}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/**
  * Stage cards (spec 2.5 §3.4, §6): every stage with a section stepper and its section chips. Adding names the
  * new sections automatically; removing always takes the LAST section and is confirmed first.
  */
@@ -50,6 +114,8 @@ export function StageCardsPanel({ yearId }: { yearId: number }) {
   const feedback = useFormFeedback();
   const cards = useStageCards(yearId);
   const shifts = useShifts(yearId);
+  const week = useWorkingWeek();
+  const days = weekdaysFrom(week.data?.weekStartDay ?? 7).filter((day) => (week.data?.days ?? []).includes(day));
   const setCount = useSetSectionCount(yearId);
   const [shiftChoice, setShiftChoice] = useState<number | null>(null);
   const [style, setStyle] = useState<LabelStyle>("arabic");
@@ -111,6 +177,8 @@ export function StageCardsPanel({ yearId }: { yearId: number }) {
                   ))}
                 </ul>
               )}
+              <StageLessons yearId={yearId} card={card} shifts={shiftList} days={days}
+                onSaved={(stage) => feedback.showSuccess(text.lessonsSaved(stage))} onError={feedback.showError} />
               {capacities.map(([id, capacity]) => (
                 <p key={`capacity-${card.stage.id}-${id}`} className="stage-card-capacity">{text.capacity(format.count(capacity, "lesson"), shiftName(id))}</p>
               ))}

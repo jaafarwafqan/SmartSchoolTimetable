@@ -75,7 +75,9 @@ test("curriculum table, wizard layout, subject chips, counts and month names", a
   await page.getByRole("button", { name: templates.undo }).click();
   await expect(chips.locator(".subject-chip", { hasText: "الكيمياء" })).toBeVisible();
 
-  // B7: the counted message agrees with the number of subjects added.
+  // B7: the counted message agrees with the number of subjects added. «الكيمياء» is also a suggestion: wait until the
+  // restored subject has left the suggestions before counting them.
+  await expect(page.locator(".subject-chips ~ fieldset").getByText("الكيمياء", { exact: true })).toHaveCount(0);
   const suggestionCount = await page.locator(".subject-chips ~ fieldset input[type=checkbox]").count();
   expect(suggestionCount).toBeGreaterThan(2);
   await page.getByRole("button", { name: templates.preview }).first().click();

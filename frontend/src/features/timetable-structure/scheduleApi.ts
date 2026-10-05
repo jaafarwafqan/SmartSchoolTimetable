@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../../api";
+import { refreshQueries } from "../../lib/refreshQueries";
 import { useRefreshSchoolData } from "../../lib/schoolContext";
 import type { Paged } from "../academic-years/yearsApi";
 
@@ -35,6 +36,8 @@ export type GenerateInput = {
   breakAfterLesson: number | null;
   /** Several breaks (period presets); when set, the single break fields are ignored by the server. */
   breaks?: { afterLesson: number; minutes: number }[];
+  /** Minutes between lessons without a break between them (ADR 0026). */
+  gapMinutes?: number;
 };
 
 export const shiftsKey = ["shifts"] as const;
@@ -71,7 +74,8 @@ function useStructureMutation<TInput, TResult>(request: (input: TInput) => Promi
   return useMutation({
     mutationFn: request,
     onSuccess: async () => {
-      await Promise.all([queryClient.invalidateQueries({ queryKey: key }), queryClient.invalidateQueries({ queryKey: gridKey }), refreshSchoolData()]);
+      // Timing changes move capacities: refresh the stage cards, sections and curriculum totals too.
+      await Promise.all([refreshQueries(queryClient, [key, gridKey, ["stage-cards"], ["sections"], ["curriculum"]]), refreshSchoolData()]);
     },
   });
 }
@@ -93,9 +97,19 @@ export function useSavePeriods(yearId: number) {
     apiRequest<Shift>(`${shiftsPath(yearId)}/${shiftId}/periods`, "PUT", { periods, version }), shiftsKey);
 }
 
+export type StageLessonsImpact = { stageId: number; stageName: string; day: number; stageLessons: number; shiftLessons: number };
+
 export function useSaveDayLessons(yearId: number) {
-  return useStructureMutation(({ shiftId, dayLessons, version }: { shiftId: number; dayLessons: DayLessons[]; version: number }) =>
-    apiRequest<Shift>(`${shiftsPath(yearId)}/${shiftId}/day-lessons`, "PUT", { dayLessons, version }), shiftsKey);
+  return useStructureMutation(({ shiftId, dayLessons, version, confirmStageChanges = false }: { shiftId: number; dayLessons: DayLessons[]; version: number; confirmStageChanges?: boolean }) =>
+    apiRequest<Shift>(`${shiftsPath(yearId)}/${shiftId}/day-lessons`, "PUT", { dayLessons, version, confirmStageChanges }), shiftsKey);
+}
+
+/** Stages whose own count would be above the shortened shift (ADR 0027); nothing is saved. */
+export function usePreviewDayLessons(yearId: number) {
+  return useMutation({
+    mutationFn: ({ shiftId, dayLessons, version }: { shiftId: number; dayLessons: DayLessons[]; version: number }) =>
+      apiRequest<StageLessonsImpact[]>(`${shiftsPath(yearId)}/${shiftId}/day-lessons/impact`, "POST", { dayLessons, version }),
+  });
 }
 
 export function useGeneratePeriods(yearId: number) {

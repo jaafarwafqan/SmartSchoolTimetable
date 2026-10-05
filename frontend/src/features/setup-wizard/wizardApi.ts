@@ -21,6 +21,7 @@ export type WizardShiftInput = {
   lessonMinutes: number;
   lessonCount: number;
   breaks: BreakSlot[];
+  gapMinutes: number;
   dayLessons: DayLessons[];
 };
 export type WizardTimingInput = { days: number[]; weekStartDay: number; shifts: WizardShiftInput[] };
@@ -51,7 +52,8 @@ export function useSetupReview(enabled: boolean) {
 /** A wizard step can change any screen's data, so every cached query is refreshed after it. */
 function useWizardMutation<TInput, TResult>(request: (input: TInput) => Promise<TResult>) {
   const queryClient = useQueryClient();
-  return useMutation({ mutationFn: request, onSuccess: () => queryClient.invalidateQueries() });
+  // Cancel first: an in-flight first load would otherwise be reused and land with stale data (see refreshQueries).
+  return useMutation({ mutationFn: request, onSuccess: async () => { await queryClient.cancelQueries(); await queryClient.invalidateQueries(); } });
 }
 
 export function useSaveSchoolStep() {

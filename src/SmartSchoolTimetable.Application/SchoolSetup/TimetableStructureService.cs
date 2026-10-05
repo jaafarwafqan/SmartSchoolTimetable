@@ -81,8 +81,50 @@ public sealed class TimetableStructureService(IDataStore store, TimeProvider clo
         var counts = (command.DayLessons ?? []).Select(entry => new DayLessons(entry.Day, entry.Lessons)).ToArray();
         if (StoreSaving.TryDomain<ShiftDto>(() => shift.SetDayLessons(counts, days)) is { } invalid)
             return invalid;
+        // ADR 0027: a stage may teach fewer lessons than its shift, never more. Lowering the shift below a stage's
+        // own count needs the owner's confirmation (after the impact preview); then those counts are lowered too.
+        var impact = await StageImpactAsync(shift, days, token);
+        if (impact.Count > 0 && !command.ConfirmStageChanges)
+            return OperationResult.Failure<ShiftDto>(ErrorCodes.StageLessonsAboveShift);
+        foreach (var (stage, entries) in impact.GroupBy(item => item.Stage).Select(group => (group.Key, group.ToArray())))
+        {
+            foreach (var entry in entries)
+                stage.ClampDayLessons(entry.Day, entry.ShiftLessons);
+            AuditTrail.Record(store, clock, "StageDayLessonsLowered", $"stage:{stage.Id}", "Stage lessons lowered to the shortened shift.");
+        }
         AuditTrail.Record(store, clock, "ShiftDayLessonsUpdated", $"shift:{id}", "Lessons per day updated.");
         return await store.SaveAsync(() => ToDto(shift, days), "DayLessons", token);
+    }
+
+    /// <summary>Which stages would teach more than the shift after the proposed per-day counts (nothing is saved).</summary>
+    public async Task<OperationResult<IReadOnlyList<StageLessonsImpactDto>>> PreviewDayLessonsAsync(long yearId, long id, SetDayLessonsCommand command, CancellationToken token)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        if (await FindShiftAsync(yearId, id, token) is not { } shift)
+            return OperationResult.Failure<IReadOnlyList<StageLessonsImpactDto>>(ErrorCodes.NotFound);
+        var days = await WorkingDaysAsync(token);
+        var proposed = (command.DayLessons ?? []).Select(entry => new DayLessons(entry.Day, entry.Lessons)).ToArray();
+        // The preview applies the counts to a detached copy so the tracked shift is never changed.
+        var copy = shift.CopyTo(shift.AcademicYearId);
+        if (StoreSaving.TryDomain<IReadOnlyList<StageLessonsImpactDto>>(() => copy.SetDayLessons(proposed, days)) is { } invalid)
+            return invalid;
+        var impact = await StageImpactAsync(copy, days, token, shift.Id);
+        return OperationResult.Success<IReadOnlyList<StageLessonsImpactDto>>(impact
+            .Select(item => new StageLessonsImpactDto(item.Stage.Id, item.Stage.Name, item.Day, item.StageLessons, item.ShiftLessons)).ToArray());
+    }
+
+    private sealed record StageImpact(Stage Stage, int Day, int StageLessons, int ShiftLessons);
+
+    private async Task<List<StageImpact>> StageImpactAsync(Shift shift, IReadOnlyCollection<int> days, CancellationToken token, long? shiftId = null)
+    {
+        var id = shiftId ?? shift.Id;
+        var stageIds = await store.ListAsync(store.Query<Section>().Where(section => section.ShiftId == id && !section.IsArchived).Select(section => section.StageId).Distinct(), token);
+        var stages = await store.ListAsync(store.Query<Stage>().Where(stage => stageIds.Contains(stage.Id)), token);
+        return stages
+            .SelectMany(stage => stage.DayLessonCounts.Where(entry => days.Contains(entry.Day) && entry.Lessons > shift.LessonsOn(entry.Day))
+                .Select(entry => new StageImpact(stage, entry.Day, entry.Lessons, shift.LessonsOn(entry.Day))))
+            .OrderBy(item => item.Stage.DisplayOrder).ThenBy(item => item.Day)
+            .ToList();
     }
 
     public async Task<OperationResult<ShiftDto>> ReplacePeriodsAsync(long yearId, long id, ReplacePeriodsCommand command, CancellationToken token)
@@ -121,9 +163,10 @@ public sealed class TimetableStructureService(IDataStore store, TimeProvider clo
         if (errors.Any) return OperationResult.Invalid<GeneratedPeriodsDto>(errors.Errors);
         try
         {
-            var drafts = PeriodGenerator.Generate(command.Breaks is { } breaks
+            var plan = command.Breaks is { } breaks
                 ? new PeriodPlan(start, command.LessonMinutes, command.LessonCount, breaks.Select(slot => new BreakSlot(slot.AfterLesson, slot.Minutes)).ToArray())
-                : new PeriodPlan(start, command.LessonMinutes, command.LessonCount, command.BreakMinutes, command.BreakAfterLesson));
+                : new PeriodPlan(start, command.LessonMinutes, command.LessonCount, command.BreakMinutes, command.BreakAfterLesson);
+            var drafts = PeriodGenerator.Generate(plan with { GapMinutes = command.GapMinutes });
             return OperationResult.Success(new GeneratedPeriodsDto(drafts.Select((period, index) => ToDto(new LessonPeriod(index + 1, period))).ToArray()));
         }
         catch (DomainValidationException error) { return OperationResult.FromDomain<GeneratedPeriodsDto>(error); }

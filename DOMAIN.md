@@ -104,3 +104,10 @@ No implementation of domain logic; only specification and validation strategy.
 - **`SectionLabels`:** أ، ب، ج، د، هـ، و، ز، ح، ط، ي … then أ1، ب1 …; or numbers; or Latin A–Z then A1. `Next` skips labels already used.
 - **`Stage.TemplateKey`:** the template grade (and branch) a stage came from, used to match it again.
 - **`PeriodPlan`** takes a list of `BreakSlot(AfterLesson, Minutes)`; the single-break constructor is kept.
+
+## Phase 2.5 fixes 2
+- **Breaks (ADR 0026):** `PeriodPlan` takes up to three `BreakSlot(AfterLesson, Minutes)` and a `GapMinutes` (0–30) between lessons that have no break between them.
+- **Lessons per stage (ADR 0027):** `Stage.DayLessonCounts`, `SetDayLessons(counts, workingDays, maxOnDay)`, `LessonsOn(day, shift)` = `min(own ?? shift, shift)`, and `ClampDayLessons`.
+  - `Section.WeeklyCapacity(week, shift, stage)` sums the stage's days.
+  - The shift stays the bell schedule; blocked-period grids remain per shift.
+  - **Rule:** a section only uses the first N lessons of its day; Phase 3 and the solver must respect it.

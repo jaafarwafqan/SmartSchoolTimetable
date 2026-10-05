@@ -8,6 +8,8 @@ export type ShiftPlan = {
   lessonCount: number;
   lessonMinutes: number;
   breaks: BreakSlot[];
+  /** Minutes between two lessons without a break between them (ADR 0026). */
+  gapMinutes: number;
   /** Lessons per working day; a missing day teaches the full count. */
   dayLessons: Record<number, number>;
 };
@@ -28,6 +30,7 @@ export function planFromPreset(preset: PeriodPreset | undefined, firstStartTime:
     lessonCount: preset?.lessonCount ?? 6,
     lessonMinutes: preset?.lessonMinutes ?? 45,
     breaks: preset?.breaks ?? [],
+    gapMinutes: 0,
     dayLessons: {},
   };
 }
@@ -39,16 +42,23 @@ export function planFromShift(shift: Shift): ShiftPlan | null {
   if (lessons.length === 0) return null;
   const breaks: BreakSlot[] = [];
   let taught = 0;
-  for (const period of periods) {
-    if (period.kind === "lesson") taught++;
-    else if (taught > 0) breaks.push({ afterLesson: taught, minutes: toMinutes(period.endTime) - toMinutes(period.startTime) });
-  }
+  let gapMinutes = 0;
+  periods.forEach((period, index) => {
+    if (period.kind === "lesson") {
+      taught++;
+      const previous = periods[index - 1];
+      if (previous?.kind === "lesson" && gapMinutes === 0) gapMinutes = Math.max(0, toMinutes(period.startTime) - toMinutes(previous.endTime));
+    } else if (taught > 0) {
+      breaks.push({ afterLesson: taught, minutes: toMinutes(period.endTime) - toMinutes(period.startTime) });
+    }
+  });
   return {
     presetKey: "",
     firstStartTime: periods[0].startTime,
     lessonCount: lessons.length,
     lessonMinutes: toMinutes(lessons[0].endTime) - toMinutes(lessons[0].startTime),
     breaks,
+    gapMinutes,
     dayLessons: Object.fromEntries(shift.dayLessons.filter((day) => day.lessons !== lessons.length).map((day) => [day.day, day.lessons])),
   };
 }
@@ -69,6 +79,7 @@ export function toShiftInput(kind: "morning" | "evening", plan: ShiftPlan, days:
     lessonMinutes: plan.lessonMinutes,
     lessonCount: plan.lessonCount,
     breaks: plan.breaks.filter((slot) => slot.afterLesson < plan.lessonCount),
+    gapMinutes: plan.gapMinutes,
     dayLessons: days.map((day) => ({ day, lessons: lessonsOn(plan, day) })),
   };
 }

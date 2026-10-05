@@ -1,13 +1,15 @@
-import { Save } from "lucide-react";
+import { ArrowDownToLine, Save } from "lucide-react";
+import { useState } from "react";
 import { ConflictAlert } from "../../components/ConflictAlert";
 import { Alert } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
+import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { Stepper } from "../../components/ui/stepper";
 import { messages } from "../../i18n/messages";
 import { useFormatter } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
 import { useSyncedState } from "../../lib/useSyncedState";
-import { useSaveDayLessons, type DayLessons, type Shift } from "./scheduleApi";
+import { usePreviewDayLessons, useSaveDayLessons, type DayLessons, type Shift, type StageLessonsImpact } from "./scheduleApi";
 import { weekdayLabel } from "./weekdays";
 
 const text = messages.school.scheduleStructure;
@@ -22,6 +24,8 @@ export function DayLessonsEditor({ yearId, shift, onSaved, onReload }: DayLesson
   const format = useFormatter();
   const feedback = useFormFeedback();
   const save = useSaveDayLessons(yearId);
+  const preview = usePreviewDayLessons(yearId);
+  const [impact, setImpact] = useState<StageLessonsImpact[] | null>(null);
   const [counts, setCounts] = useSyncedState<DayLessons[]>(() => shift.dayLessons, shift.version);
   const total = counts.reduce((sum, day) => sum + day.lessons, 0);
   if (shift.lessonCount === 0) return null;
@@ -52,14 +56,34 @@ export function DayLessonsEditor({ yearId, shift, onSaved, onReload }: DayLesson
       </ul>
       <p className="day-lessons-total">{text.weeklyTotal(format.count(total, "lesson"))}</p>
       <div className="form-actions">
-        <Button icon={<Save aria-hidden="true" size={20} />} loading={save.isPending} disabled={feedback.conflict}
+        <Button icon={<Save aria-hidden="true" size={20} />} loading={save.isPending || preview.isPending} disabled={feedback.conflict}
           onClick={() => {
             feedback.reset();
-            save.mutate({ shiftId: shift.id, dayLessons: counts, version: shift.version }, { onSuccess: onSaved, onError: feedback.showError });
+            // ADR 0027: lowering below a stage's own count is shown and confirmed first.
+            preview.mutate({ shiftId: shift.id, dayLessons: counts, version: shift.version }, {
+              onSuccess: (affected) => affected.length > 0
+                ? setImpact(affected)
+                : save.mutate({ shiftId: shift.id, dayLessons: counts, version: shift.version }, { onSuccess: onSaved, onError: feedback.showError }),
+              onError: feedback.showError,
+            });
           }}>
           {text.saveDayLessons}
         </Button>
       </div>
+      <ConfirmDialog
+        open={impact !== null}
+        title={text.stageImpact.title}
+        consequence={[text.stageImpact.consequence, ...(impact ?? []).map((item) =>
+          text.stageImpact.line(item.stageName, weekdayLabel(item.day), format.number(item.stageLessons), format.number(item.shiftLessons)))].join(" ")}
+        confirmLabel={text.stageImpact.confirm}
+        confirmIcon={<ArrowDownToLine aria-hidden="true" size={20} />}
+        loading={save.isPending}
+        onCancel={() => setImpact(null)}
+        onConfirm={() => save.mutate({ shiftId: shift.id, dayLessons: counts, version: shift.version, confirmStageChanges: true }, {
+          onSuccess: () => { setImpact(null); onSaved(); },
+          onError: (reason) => { setImpact(null); feedback.showError(reason); },
+        })}
+      />
     </section>
   );
 }

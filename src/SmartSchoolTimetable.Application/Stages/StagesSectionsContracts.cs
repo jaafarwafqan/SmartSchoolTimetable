@@ -1,6 +1,12 @@
+using SmartSchoolTimetable.Application.SchoolSetup;
+
 namespace SmartSchoolTimetable.Application.Stages;
 
-public sealed record StageDto(long Id, long AcademicYearId, string Name, int DisplayOrder, string? TemplateKey, bool IsArchived, DateTimeOffset? ArchivedAt, int Version);
+/// <param name="DayLessons">The stage's own lessons per day (ADR 0027); a working day not listed uses the shift's count.</param>
+public sealed record StageDto(long Id, long AcademicYearId, string Name, int DisplayOrder, string? TemplateKey, IReadOnlyList<DayLessonsDto> DayLessons, bool IsArchived, DateTimeOffset? ArchivedAt, int Version);
+
+/// <param name="DayLessons">Lessons per working day; an empty list returns every day to the shift's count.</param>
+public sealed record SetStageDayLessonsCommand(IReadOnlyList<DayLessonsDto>? DayLessons, int Version);
 
 /// <param name="TemplateKey">Set by templates and the wizard (e.g. "preparatory-4-scientific"); null for typed stages.</param>
 public sealed record SaveStageCommand(string? Name, int DisplayOrder, int Version, string? TemplateKey = null);

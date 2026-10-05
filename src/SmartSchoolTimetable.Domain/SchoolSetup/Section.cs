@@ -58,6 +58,10 @@ public sealed class Section : VersionedEntity
     public static int WeeklyCapacity(WorkingWeek? week, Shift? shift) =>
         week is null || shift is null ? 0 : shift.WeeklyLessons(week.Days);
 
+    /// <summary>Weekly capacity with the stage's own lessons per day (ADR 0027): never above the shift's.</summary>
+    public static int WeeklyCapacity(WorkingWeek? week, Shift? shift, Stage? stage) =>
+        week is null || shift is null ? 0 : stage is null ? shift.WeeklyLessons(week.Days) : stage.WeeklyLessons(week.Days, shift);
+
     public Section CopyTo(long stageId, long shiftId)
     {
         var copy = Create(stageId, shiftId, Label, StudentCount);

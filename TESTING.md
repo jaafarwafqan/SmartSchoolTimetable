@@ -181,6 +181,21 @@ Fixes `phase-2-5-fix1` (owner findings B1–B8):
   - B8: Iraqi month names on the year step and the years list;
   - a self-test showing the overlap guard rejects the old stacked-totals markup.
 
+Fixes `phase-2-5-fix2` (M1, M2):
+- .NET (133): `Phase25/StageLessonsAndBreaksTests.cs`:
+  - break durations and the gap (exact times), at most three breaks, gap range, suggested defaults;
+  - stage lessons: inheritance, capping by the shift, validation codes, clamping, copy, reset;
+  - routes: stage lessons per day (wrong token, out of range, version conflict, not found), section and curriculum capacity per stage, shift-shortening impact, refusal without confirmation and lowering with it;
+  - the migration upgrading an existing database from `Phase25CCurriculumTemplates`.
+- Vitest (73): `features/timetable-structure/breaks.test.ts` (positions, at most three, durations and the gap read back per shift).
+- Playwright (8): `phase25-model.spec.ts`:
+  - the breaks editor changes the live preview (duration, an added break, the gap), and the saved breaks have the exact times;
+  - a stage with fewer daily lessons gets a smaller capacity, while the other stage keeps the shift's;
+  - per-day editing on the card; curriculum headers and totals per stage;
+  - the shorten-shift confirmation with the affected stage;
+  - axe and the overlap guard.
+- Flake fixed: adding a subject while the curriculum's first load was in flight left the table stale; mutations now cancel then refresh (decision #38), and the spec passed 8 runs in a row.
+
 ## Later-phase acceptance suites
 - Phase 4 infeasibility test must construct a conflict involving two teachers, a shared lab, and a blocked period; the diagnostic must identify the conflict groups and actionable correction, not merely report infeasible.
 - Large solver-risk comparison uses the same independently verified feasible 40-section/54-teacher workload and records status, first-solution/total time, objective/bound, memory method, and independently checked hard constraints for baseline, two-stage, decomposition, and hints.

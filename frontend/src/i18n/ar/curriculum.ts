@@ -19,6 +19,18 @@ export const stageCards = {
   remove: "إزالة الشعبة",
   noShift: "أضف وردية لهذه السنة أولاً من شاشة الدوام والحصص.",
   sectionsList: (stage: string) => `شعب ${isolate(stage)}`,
+  dailyLessons: "عدد الحصص اليومية",
+  dailyLessonsFor: (stage: string) => `عدد الحصص اليومية في ${isolate(stage)}`,
+  dailyDecrease: (stage: string) => `إنقاص الحصص اليومية في ${isolate(stage)}`,
+  dailyIncrease: (stage: string) => `زيادة الحصص اليومية في ${isolate(stage)}`,
+  perDay: "تعديل لكل يوم",
+  dayLessonsFor: (stage: string, day: string) => `حصص يوم ${day} في ${isolate(stage)}`,
+  dayDecrease: (stage: string, day: string) => `إنقاص حصص يوم ${day} في ${isolate(stage)}`,
+  dayIncrease: (stage: string, day: string) => `زيادة حصص يوم ${day} في ${isolate(stage)}`,
+  inherits: "مثل الدوام",
+  ownCounts: "عدد خاص بالمرحلة",
+  resetToShift: "إرجاع إلى عدد الدوام",
+  lessonsSaved: (stage: string) => `تم حفظ حصص ${isolate(stage)}.`,
 } as const;
 
 export const templates = {
@@ -63,9 +75,6 @@ export const templates = {
   selectAll: "تحديد الكل",
   presetsLabel: "قالب جاهز للحصص",
   presetNone: "بدون قالب",
-  presetBreaks: (list: string) => `الاستراحات في هذا القالب: ${list}. يمكنك تعديل الحصص الناتجة قبل الحفظ.`,
-  presetBreak: (after: string, duration: string) => `بعد الحصة ${after} لمدة ${duration}`,
-  listSeparator: "، ",
 } as const;
 
 export const curriculum = {

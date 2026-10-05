@@ -16,11 +16,15 @@ public sealed record PeriodPresetTemplate(string Key, string Name, string FirstS
 
 public sealed record WorkingDayPresetTemplate(string Key, string Name, IReadOnlyList<int> Days, int WeekStart, bool IsDefault);
 
+/// <summary>Suggested break length per school type (minutes); a suggestion, never an official number.</summary>
+public sealed record BreakDefaultsTemplate(IReadOnlyDictionary<string, int> Minutes);
+
 public sealed record TemplateCatalogDto(
     IReadOnlyList<BranchTemplate> Branches,
     IReadOnlyList<GradeTemplate> Grades,
     IReadOnlyList<PeriodPresetTemplate> PeriodPresets,
-    IReadOnlyList<WorkingDayPresetTemplate> WorkingDayPresets);
+    IReadOnlyList<WorkingDayPresetTemplate> WorkingDayPresets,
+    BreakDefaultsTemplate BreakDefaults);
 
 /// <summary>
 /// Data-driven setup templates (spec 2.5 §4.1), embedded JSON resources: Iraqi stages per school type with
@@ -33,7 +37,7 @@ public sealed class TemplateCatalog
 
     private sealed record StagesFile(IReadOnlyList<BranchTemplate> Branches, IReadOnlyList<GradeTemplate> Grades);
     private sealed record SubjectsFile(IReadOnlyList<SubjectGroupTemplate> Groups);
-    private sealed record PresetsFile(IReadOnlyList<PeriodPresetTemplate> Periods, IReadOnlyList<WorkingDayPresetTemplate> WorkingDays);
+    private sealed record PresetsFile(IReadOnlyList<PeriodPresetTemplate> Periods, IReadOnlyList<WorkingDayPresetTemplate> WorkingDays, BreakDefaultsTemplate BreakDefaults);
 
     private TemplateCatalog(StagesFile stages, SubjectsFile subjects, PresetsFile presets)
     {
@@ -42,6 +46,7 @@ public sealed class TemplateCatalog
         SubjectGroups = subjects.Groups;
         PeriodPresets = presets.Periods;
         WorkingDayPresets = presets.WorkingDays;
+        BreakDefaults = presets.BreakDefaults;
     }
 
     public static TemplateCatalog Current => Instance.Value;
@@ -51,8 +56,9 @@ public sealed class TemplateCatalog
     public IReadOnlyList<SubjectGroupTemplate> SubjectGroups { get; }
     public IReadOnlyList<PeriodPresetTemplate> PeriodPresets { get; }
     public IReadOnlyList<WorkingDayPresetTemplate> WorkingDayPresets { get; }
+    public BreakDefaultsTemplate BreakDefaults { get; }
 
-    public TemplateCatalogDto ToDto() => new(Branches, Grades, PeriodPresets, WorkingDayPresets);
+    public TemplateCatalogDto ToDto() => new(Branches, Grades, PeriodPresets, WorkingDayPresets, BreakDefaults);
 
     /// <summary>Grades of a school type in display order (ثانوية = متوسطة + إعدادية).</summary>
     public IReadOnlyList<GradeTemplate> GradesFor(SchoolType schoolType)

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../../api";
+import { refreshQueries } from "../../lib/refreshQueries";
 import { useRefreshSchoolData } from "../../lib/schoolContext";
 import type { Section, Stage } from "../stages-sections/stagesApi";
 
@@ -26,7 +27,9 @@ export type GradeTemplate = { key: string; name: string; branchStem: string | nu
 export type BreakSlot = { afterLesson: number; minutes: number };
 export type PeriodPreset = { key: string; name: string; firstStart: string; lessonMinutes: number; lessonCount: number; breaks: BreakSlot[] };
 export type WorkingDayPreset = { key: string; name: string; days: number[]; weekStart: number; isDefault: boolean };
-export type TemplateCatalog = { branches: BranchTemplate[]; grades: GradeTemplate[]; periodPresets: PeriodPreset[]; workingDayPresets: WorkingDayPreset[] };
+/** Suggested break length per school type (minutes); a suggestion only (ADR 0026). */
+export type BreakDefaults = { minutes: Record<string, number> };
+export type TemplateCatalog = { branches: BranchTemplate[]; grades: GradeTemplate[]; periodPresets: PeriodPreset[]; workingDayPresets: WorkingDayPreset[]; breakDefaults: BreakDefaults };
 export type StageTemplateGrade = { gradeKey: string; branches: string[]; sections: number; shiftId: number | null; labelStyle: LabelStyle };
 export type StageTemplateInput = { schoolType: string; grades: StageTemplateGrade[] };
 export type StagePlanLine = { key: string; name: string; action: PlanAction; existingSections: number; sectionsToAdd: number };
@@ -72,11 +75,7 @@ function useSetupMutation<TInput, TResult>(request: (input: TInput) => Promise<T
   return useMutation({
     mutationFn: request,
     onSuccess: async () => {
-      await Promise.all(
-        [curriculumKey, stageCardsKey, ["stages"], ["sections"], ["subjects"], ["suggested-subjects"]]
-          .map((queryKey) => queryClient.invalidateQueries({ queryKey }))
-          .concat(refreshSchoolData()),
-      );
+      await Promise.all([refreshQueries(queryClient, [curriculumKey, stageCardsKey, ["stages"], ["sections"], ["subjects"], ["suggested-subjects"]]), refreshSchoolData()]);
     },
   });
 }
@@ -106,6 +105,11 @@ export function useStageTemplate(yearId: number) {
 
 export function useSubjectTemplate() {
   return usePlan<{ names: string[] }, SubjectPlan>(() => "/api/v1/templates/subjects");
+}
+
+export function useSetStageDayLessons(yearId: number) {
+  return useSetupMutation(({ stageId, dayLessons, version }: { stageId: number; dayLessons: { day: number; lessons: number }[]; version: number }) =>
+    apiRequest<Stage>(`${yearPath(yearId)}/stages/${stageId}/day-lessons`, "PUT", { dayLessons, version }));
 }
 
 export function useSetSectionCount(yearId: number) {

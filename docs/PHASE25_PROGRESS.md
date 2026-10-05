@@ -4,7 +4,7 @@ Updated after every commit. A new session reads this file first, then `docs/PHAS
 
 - **Branch:** `phase-2-5`, created from `master` at `0c1824a` ("Merge Phase 2"). Never commit to `master`.
 - **Last green tag:** `phase-2-5d`.
-- **In progress:** owner fixes. `phase-2-5-fix1` (B1–B8) is done; next is `phase-2-5-fix2` (M1 break editor, M2 per-stage lessons, M3 done in fix1), then 2.5E.
+- **In progress:** 2.5E. The owner fixes `phase-2-5-fix1` (B1–B8) and `phase-2-5-fix2` (M1–M3) are done.
 
 ## Baseline (2026-10-04, before any change)
 - Build: 0 warnings.

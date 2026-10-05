@@ -5,9 +5,15 @@ namespace SmartSchoolTimetable.Domain.SchoolSetup;
 /// <summary>A break of <paramref name="Minutes"/> that follows lesson <paramref name="AfterLesson"/>.</summary>
 public sealed record BreakSlot(int AfterLesson, int Minutes);
 
-/// <summary>Input of the "Generate periods" helper (spec 2.5, presets in spec 2.5 §4.1).</summary>
+/// <summary>
+/// Input of the "Generate periods" helper (spec 2.5 §4.1; break model ADR 0026): up to three breaks, each with its
+/// own position and duration, and an optional short gap between consecutive lessons (0 by default).
+/// </summary>
 public sealed record PeriodPlan(TimeOnly FirstStartTime, int LessonMinutes, int LessonCount, IReadOnlyList<BreakSlot> Breaks)
 {
+    /// <summary>Minutes between two lessons that are not separated by a break (0 = back to back).</summary>
+    public int GapMinutes { get; init; }
+
     /// <summary>The Phase 2 form: at most one break.</summary>
     public PeriodPlan(TimeOnly firstStartTime, int lessonMinutes, int lessonCount, int breakMinutes, int? breakAfterLesson)
         : this(firstStartTime, lessonMinutes, lessonCount, breakAfterLesson is { } after ? [new BreakSlot(after, breakMinutes)] : [])
@@ -26,6 +32,8 @@ public static class PeriodGenerator
     public const int MaxLessonMinutes = 120;
     public const int MinBreakMinutes = 5;
     public const int MaxBreakMinutes = 120;
+    public const int MaxBreaks = 3;
+    public const int MaxGapMinutes = 30;
 
     public static IReadOnlyList<PeriodDraft> Generate(PeriodPlan plan)
     {
@@ -37,9 +45,12 @@ public static class PeriodGenerator
             .When(breaks.Any(slot => slot.Minutes is < MinBreakMinutes or > MaxBreakMinutes), "BreakMinutes", DomainErrorCode.OutOfRange)
             .When(breaks.Any(slot => slot.AfterLesson < 1 || slot.AfterLesson >= plan.LessonCount), "BreakAfterLesson", DomainErrorCode.OutOfRange)
             .When(breaks.GroupBy(slot => slot.AfterLesson).Any(group => group.Count() > 1), "BreakAfterLesson", DomainErrorCode.Duplicate)
+            .When(breaks.Count > MaxBreaks, "Breaks", DomainErrorCode.OutOfRange)
+            .When(plan.GapMinutes is < 0 or > MaxGapMinutes, nameof(plan.GapMinutes), DomainErrorCode.OutOfRange)
             .ThrowIfAny();
 
-        var totalMinutes = plan.LessonCount * plan.LessonMinutes + breaks.Sum(slot => slot.Minutes);
+        var gaps = Enumerable.Range(1, plan.LessonCount - 1).Count(lesson => breaks.All(slot => slot.AfterLesson != lesson));
+        var totalMinutes = plan.LessonCount * plan.LessonMinutes + breaks.Sum(slot => slot.Minutes) + gaps * plan.GapMinutes;
         var dayEnd = plan.FirstStartTime.ToTimeSpan() + TimeSpan.FromMinutes(totalMinutes);
         if (dayEnd > TimeSpan.FromHours(24) - TimeSpan.FromMinutes(1))
             throw new DomainValidationException(nameof(plan.LessonCount), DomainErrorCode.InvalidTimeRange);
@@ -56,6 +67,10 @@ public static class PeriodGenerator
                 end = start.AddMinutes(pause.Minutes);
                 rows.Add(new PeriodDraft(PeriodKind.Break, start, end, StartBell: false, EndBell: false));
                 start = end;
+            }
+            else if (lesson < plan.LessonCount)
+            {
+                start = start.AddMinutes(plan.GapMinutes);
             }
         }
         return rows;

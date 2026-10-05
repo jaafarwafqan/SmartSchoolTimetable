@@ -67,6 +67,7 @@ public static class ApiErrorCodes
             [ErrorCodes.NoCurrentYear] = StatusCodes.Status409Conflict,
             [ErrorCodes.ShiftModeInUse] = StatusCodes.Status409Conflict,
             [ErrorCodes.CurriculumInUse] = StatusCodes.Status409Conflict,
+            [ErrorCodes.StageLessonsAboveShift] = StatusCodes.Status409Conflict,
 
             [ErrorCodes.RecordInUse] = StatusCodes.Status409Conflict,
             [ErrorCodes.CurrentYearRequired] = StatusCodes.Status409Conflict,

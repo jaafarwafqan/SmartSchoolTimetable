@@ -8,9 +8,10 @@ import { Dialog } from "../../components/ui/dialog";
 import { Field } from "../../components/ui/field";
 import { Select } from "../../components/ui/select";
 import { messages } from "../../i18n/messages";
-import { useFormatter } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
 import { useTemplateCatalog } from "../curriculum/curriculumApi";
+import { useSchoolProfile } from "../school-profile/profileApi";
+import { BreaksEditor, validBreaks, type BreakSlot } from "./BreaksEditor";
 import { useGeneratePeriods, type Period } from "./scheduleApi";
 
 const text = messages.school.scheduleStructure;
@@ -25,17 +26,34 @@ type GeneratePeriodsDialogProps = {
   onGenerated: (periods: Period[]) => void;
 };
 
-/** "Generate periods" helper (spec 2.5): the server builds an editable list; nothing is saved here. */
+/**
+ * "Generate periods" helper (spec 2.5; break model ADR 0026): lessons, then up to three editable breaks and an
+ * optional gap. A preset only fills the values. The server builds an editable list; nothing is saved here.
+ */
 export function GeneratePeriodsDialog({ open, yearId, defaultStart, onClose, onGenerated }: GeneratePeriodsDialogProps) {
   const formId = useId();
   const feedback = useFormFeedback();
   const generate = useGeneratePeriods(yearId);
-  const format = useFormatter();
-  const presets = useTemplateCatalog().data?.periodPresets ?? [];
+  const catalog = useTemplateCatalog().data;
+  const schoolType = useSchoolProfile().data?.schoolType ?? "other";
+  const suggestedBreak = catalog?.breakDefaults.minutes[schoolType] ?? 15;
+  const presets = catalog?.periodPresets ?? [];
   const [presetKey, setPresetKey] = useState("");
+  const [lessonCount, setLessonCount] = useState("7");
+  const [breaks, setBreaks] = useState<BreakSlot[]>([{ afterLesson: 4, minutes: 15 }]);
+  const [gapMinutes, setGapMinutes] = useState(0);
   const preset = presets.find((item) => item.key === presetKey) ?? null;
-  const multipleBreaks = preset !== null && preset.breaks.length > 1;
-  const firstBreak = preset?.breaks[0];
+  const lessons = Math.max(1, Math.min(12, Number(lessonCount) || 1));
+
+  function choosePreset(key: string) {
+    setPresetKey(key);
+    feedback.reset();
+    const chosen = presets.find((item) => item.key === key);
+    if (!chosen) return;
+    setLessonCount(String(chosen.lessonCount));
+    setBreaks(chosen.breaks);
+    setGapMinutes(0);
+  }
 
   function close() {
     feedback.reset();
@@ -46,15 +64,14 @@ export function GeneratePeriodsDialog({ open, yearId, defaultStart, onClose, onG
     event.preventDefault();
     feedback.reset();
     const form = new FormData(event.currentTarget);
-    const number = (name: string) => Number(form.get(name) || 0);
-    const breakAfter = String(form.get("breakAfterLesson") ?? "").trim();
     generate.mutate({
       firstStartTime: String(form.get("firstStartTime") ?? ""),
-      lessonMinutes: number("lessonMinutes"),
-      lessonCount: number("lessonCount"),
-      breakMinutes: number("breakMinutes"),
-      breakAfterLesson: breakAfter ? Number(breakAfter) : null,
-      breaks: multipleBreaks ? preset.breaks : undefined,
+      lessonMinutes: Number(form.get("lessonMinutes") || 0),
+      lessonCount: Number(lessonCount || 0),
+      breakMinutes: 0,
+      breakAfterLesson: null,
+      breaks: validBreaks(lessons, breaks),
+      gapMinutes,
     }, {
       onSuccess: (result) => { feedback.reset(); onGenerated(result.periods); },
       onError: feedback.showError,
@@ -76,28 +93,19 @@ export function GeneratePeriodsDialog({ open, yearId, defaultStart, onClose, onG
     >
       <form id={formId} ref={feedback.formRef} className="form-stack dialog-form" noValidate onSubmit={submit} onInput={feedback.clearFieldFromEvent}>
         <Alert tone="error" message={feedback.error} />
-        {presets.length > 0 && (
-          <Field id="periodPreset" label={presetText.presetsLabel}>
-            <Select id="periodPreset" value={presetKey} onChange={(event) => { setPresetKey(event.target.value); feedback.reset(); }}
-              options={[{ value: "", label: presetText.presetNone }, ...presets.map((item) => ({ value: item.key, label: item.name }))]} />
-          </Field>
-        )}
-        {multipleBreaks && (
-          <p className="card-note">{presetText.presetBreaks(preset.breaks
-            .map((slot) => presetText.presetBreak(format.number(slot.afterLesson), format.count(slot.minutes, "minute")))
-            .join(presetText.listSeparator))}</p>
-        )}
         <div className="form-grid" key={`preset-${presetKey}`}>
-          <TimeField id="firstStartTime" label={text.firstStart} defaultValue={preset?.firstStart ?? defaultStart} required field="FirstStartTime" errors={feedback.fieldErrors} />
-          <TextField id="lessonCount" type="number" min={1} max={12} label={text.lessonCount} defaultValue={String(preset?.lessonCount ?? 7)} required field="LessonCount" errors={feedback.fieldErrors} />
-          <TextField id="lessonMinutes" type="number" min={10} max={120} label={text.lessonDuration} defaultValue={String(preset?.lessonMinutes ?? 45)} required field="LessonMinutes" errors={feedback.fieldErrors} />
-          {!multipleBreaks && (
-            <>
-              <TextField id="breakAfterLesson" type="number" min={1} max={11} label={text.breakAfter} defaultValue={String(firstBreak?.afterLesson ?? 4)} field="BreakAfterLesson" errors={feedback.fieldErrors} />
-              <TextField id="breakMinutes" type="number" min={5} max={120} label={text.breakDuration} defaultValue={String(firstBreak?.minutes ?? 15)} field="BreakMinutes" errors={feedback.fieldErrors} />
-            </>
+          {presets.length > 0 && (
+            <Field id="periodPreset" label={presetText.presetsLabel}>
+              <Select id="periodPreset" value={presetKey} onChange={(event) => choosePreset(event.target.value)}
+                options={[{ value: "", label: presetText.presetNone }, ...presets.map((item) => ({ value: item.key, label: item.name }))]} />
+            </Field>
           )}
+          <TimeField id="firstStartTime" label={text.firstStart} defaultValue={preset?.firstStart ?? defaultStart} required field="FirstStartTime" errors={feedback.fieldErrors} />
+          <TextField id="lessonCount" type="number" min={1} max={12} label={text.lessonCount} value={lessonCount} onChange={(event) => setLessonCount(event.target.value)} required field="LessonCount" errors={feedback.fieldErrors} />
+          <TextField id="lessonMinutes" type="number" min={10} max={120} label={text.lessonDuration} defaultValue={String(preset?.lessonMinutes ?? 45)} required field="LessonMinutes" errors={feedback.fieldErrors} />
         </div>
+        <BreaksEditor idPrefix="generator" lessonCount={lessons} breaks={validBreaks(lessons, breaks)} gapMinutes={gapMinutes} suggestedMinutes={suggestedBreak}
+          onChange={(next, gap) => { setBreaks(next); setGapMinutes(gap); }} />
       </form>
     </Dialog>
   );

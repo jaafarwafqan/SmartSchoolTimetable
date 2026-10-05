@@ -127,6 +127,16 @@ internal sealed class StageConfiguration : IEntityTypeConfiguration<Stage>
         builder.HasIndex(stage => new { stage.AcademicYearId, stage.NormalizedName }).IsUnique();
         builder.HasIndex(stage => new { stage.AcademicYearId, stage.DisplayOrder });
         builder.HasOne<AcademicYear>().WithMany().HasForeignKey(stage => stage.AcademicYearId).OnDelete(DeleteBehavior.Cascade);
+        // ADR 0027: the stage's own lessons per working day; a day without a row inherits the shift's count.
+        builder.OwnsMany(stage => stage.DayLessonCounts, day =>
+        {
+            day.ToTable("StageDayLessons", table => table.HasCheckConstraint("CK_StageDayLessons_Lessons", "\"Lessons\" >= 1"));
+            day.WithOwner().HasForeignKey("StageId");
+            day.Property<long>("Id").ValueGeneratedOnAdd();
+            day.HasKey("Id");
+            day.HasIndex("StageId", nameof(DayLessons.Day)).IsUnique();
+        });
+        builder.Navigation(stage => stage.DayLessonCounts).HasField("_dayLessons").UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }
 

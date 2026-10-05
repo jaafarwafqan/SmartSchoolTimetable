@@ -34,6 +34,10 @@
       "breaks": [{ "afterLesson": 3, "minutes": 10 }]
     }
   ],
+  "breakDefaults": {
+    "comment": "SUGGESTED break lengths per school type, not official values; 15 minutes everywhere until the owner supplies real ones.",
+    "minutes": { "primary": 15, "intermediate": 15, "preparatory": 15, "secondary": 15, "other": 15 }
+  },
   "workingDays": [
     { "key": "sun-thu", "name": "من الأحد إلى الخميس", "days": [7, 1, 2, 3, 4], "weekStart": 7, "isDefault": true },
     { "key": "sat-thu", "name": "من السبت إلى الخميس", "days": [6, 7, 1, 2, 3, 4], "weekStart": 6, "isDefault": false }

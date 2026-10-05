@@ -22,7 +22,8 @@ public sealed record WizardShiftInput(
     int LessonMinutes,
     int LessonCount,
     IReadOnlyList<BreakSlotDto>? Breaks,
-    IReadOnlyList<DayLessonsDto>? DayLessons);
+    IReadOnlyList<DayLessonsDto>? DayLessons,
+    int GapMinutes = 0);
 
 public sealed record WizardTimingCommand(IReadOnlyList<int>? Days, int WeekStartDay, IReadOnlyList<WizardShiftInput>? Shifts);
 
@@ -120,7 +121,7 @@ public sealed class SetupWizardService(
             {
                 var shift = shifts.Single(item => item.Kind == input.Kind);
                 var periods = SetupTransaction.Require(TimetableStructureService.Generate(new GeneratePeriodsCommand(
-                    input.FirstStartTime, input.LessonMinutes, input.LessonCount, 0, null, input.Breaks ?? [])));
+                    input.FirstStartTime, input.LessonMinutes, input.LessonCount, 0, null, input.Breaks ?? [], input.GapMinutes)));
                 shift = SetupTransaction.Require(await structure.ReplacePeriodsAsync(year.Id, shift.Id, new ReplacePeriodsCommand(
                     periods.Periods.Select(period => new PeriodInput(period.Kind, period.StartTime, period.EndTime, period.StartBell, period.EndBell)).ToArray(),
                     shift.Version), token));

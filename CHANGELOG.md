@@ -1,6 +1,18 @@
 # Changelog
 
 ## [Unreleased]
+### Phase 2.5 fixes 2 - owner model changes M1–M3 (tag `phase-2-5-fix2`)
+- **M1 editable breaks (ADR 0026):** up to three breaks per shift, each with its own position and duration, plus an optional gap between lessons.
+  - Presets only fill the values; the suggested length per school type is 15 minutes, clearly marked as a suggestion.
+  - Wizard step 3 and the periods generator share `BreaksEditor`; the morning and evening shifts are independent.
+- **M2 lessons per day per stage (ADR 0027):** «عدد الحصص اليومية» with «تعديل لكل يوم» on each stage card (wizard step 4 and the stages screen).
+  - Capacity of sections, stage cards, curriculum totals, the dashboard and the review use the stage's own counts.
+  - Shortening a shift below a stage is previewed and confirmed.
+  - Migration `Phase25FixStageDayLessons`; new code `STAGE_LESSONS_ABOVE_SHIFT`.
+- **M3:** each stage's weekly capacity under its name in the curriculum header (done in fix 1).
+- **Stale data fix:** mutation hooks cancel in-flight reads before refreshing them.
+- **Tests:** .NET 133, Vitest 73, Playwright 8.
+
 ### Phase 2.5 fixes 1 - owner findings B1–B8 (tag `phase-2-5-fix1`)
 - **B1:** curriculum totals are one compact `<tfoot>` cell per stage column, with planned out of capacity and a status chip. The old cells were turned into grids and stacked into one column.
 - **B2:** curriculum header: full stage names that wrap, the weekly capacity under each name (M3), sticky header and subject column with opaque backgrounds, compact 3rem inputs. A shared rule had made every `th` stick to the top.

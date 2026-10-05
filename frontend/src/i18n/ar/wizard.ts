@@ -57,7 +57,6 @@ export const wizard = {
     days: "أيام الدوام",
     customDays: "أيام مخصصة",
     shifts: { morning: "الدوام الصباحي", evening: "الدوام المسائي" },
-    breakPattern: "نمط الاستراحات",
     firstStart: (shift: string) => `بداية أول حصة في ${isolate(shift)}`,
     lessons: (shift: string) => `عدد الحصص اليومية في ${isolate(shift)}`,
     lessonsDecrease: (shift: string) => `إنقاص حصص ${isolate(shift)}`,

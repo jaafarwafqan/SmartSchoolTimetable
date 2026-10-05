@@ -1,5 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../../api";
+import { refreshQueries } from "../../lib/refreshQueries";
 import { useRefreshSchoolData } from "../../lib/schoolContext";
 import type { Paged } from "../academic-years/yearsApi";
 import type { BlockedSlot } from "../timetable-structure/scheduleApi";
@@ -41,12 +42,7 @@ function useSubjectsMutation<TInput, TResult>(request: (input: TInput) => Promis
     mutationFn: request,
     onSuccess: async () => {
       // The curriculum table and the subject suggestions list subjects too (fix B6: no reload needed).
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: subjectsKey }),
-        queryClient.invalidateQueries({ queryKey: ["curriculum"] }),
-        queryClient.invalidateQueries({ queryKey: ["suggested-subjects"] }),
-        refreshSchoolData(),
-      ]);
+      await Promise.all([refreshQueries(queryClient, [subjectsKey, ["curriculum"], ["suggested-subjects"]]), refreshSchoolData()]);
     },
   });
 }
