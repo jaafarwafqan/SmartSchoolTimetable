@@ -1,3 +1,4 @@
+import { OrphanBlockedNotice } from "./OrphanBlockedNotice";
 import { Alert } from "../../components/ui/alert";
 import { Card } from "../../components/ui/card";
 import { messages } from "../../i18n/messages";
@@ -20,6 +21,7 @@ export function ScheduleStructurePage() {
   return (
     <div className="page">
       <PageHeader title={text.title} description={text.description} />
+      <OrphanBlockedNotice />
       {(week.isError || bells.isError || choice.years.isError) && <Alert tone="error" message={messages.school.common.loadFailed} />}
       {week.data && <WorkingDaysCard week={week.data} onReload={() => void week.refetch()} />}
       <ShiftModeCard />

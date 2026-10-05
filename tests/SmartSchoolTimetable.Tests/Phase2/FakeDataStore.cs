@@ -17,6 +17,8 @@ internal sealed class FakeDataStore : IDataStore
 
     public IQueryable<T> Query<T>() where T : class => SetFor(typeof(T)).OfType<T>().AsQueryable();
 
+    public IQueryable<T> Read<T>() where T : class => Query<T>();
+
     public void Add<T>(T entity) where T : class => SetFor(typeof(T)).Add(entity);
 
     public void Remove<T>(T entity) where T : class => SetFor(typeof(T)).Remove(entity);

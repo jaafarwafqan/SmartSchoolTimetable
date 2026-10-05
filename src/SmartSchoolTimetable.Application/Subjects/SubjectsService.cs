@@ -12,10 +12,12 @@ namespace SmartSchoolTimetable.Application.Subjects;
 /// </summary>
 public sealed class SubjectsService(IDataStore store, TimeProvider clock)
 {
+    private readonly ReferenceGuard references = new(store);
+
     public async Task<PagedResult<SubjectDto>> ListAsync(ListQuery query, CancellationToken token)
     {
         ArgumentNullException.ThrowIfNull(query);
-        var rows = store.Query<Subject>();
+        var rows = store.Read<Subject>();
         if (!query.WithArchived)
             rows = rows.Where(row => !row.IsArchived);
         var search = query.NormalizedSearch;
@@ -74,8 +76,8 @@ public sealed class SubjectsService(IDataStore store, TimeProvider clock)
             return OperationResult.Failure<SubjectDto>(ErrorCodes.NotFound);
         if (!subject.IsVersion(version))
             return OperationResult.Failure<SubjectDto>(ErrorCodes.Conflict);
-        if (archived && await store.AnyAsync(store.Query<CurriculumEntry>().Where(entry => entry.SubjectId == id && !entry.IsArchived), token))
-            return OperationResult.Failure<SubjectDto>(ErrorCodes.CurriculumInUse);
+        if (archived && await references.ArchiveBlockedAsync(ReferenceKinds.Subject, id, token) is { } inUse)
+            return OperationResult.Failure<SubjectDto>(inUse);
         if (archived)
             subject.Archive(clock.GetUtcNow());
         else
@@ -90,8 +92,8 @@ public sealed class SubjectsService(IDataStore store, TimeProvider clock)
             return OperationResult.Failure<bool>(ErrorCodes.NotFound);
         if (!subject.IsVersion(version))
             return OperationResult.Failure<bool>(ErrorCodes.Conflict);
-        if (await store.AnyAsync(store.Query<CurriculumEntry>().Where(entry => entry.SubjectId == id), token))
-            return OperationResult.Failure<bool>(ErrorCodes.CurriculumInUse);
+        if (await references.DeleteBlockedAsync(ReferenceKinds.Subject, id, token) is { } inUse)
+            return OperationResult.Failure<bool>(inUse);
         store.Remove(subject);
         AuditTrail.Record(store, clock, "SubjectDeleted", $"subject:{id}", "Subject deleted.");
         return await store.SaveAsync(() => true, "Name", token);

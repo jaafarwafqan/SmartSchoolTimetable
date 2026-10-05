@@ -49,6 +49,21 @@ public sealed class Subject : VersionedEntity
     public DateTimeOffset? ArchivedAt { get; private set; }
     public IReadOnlyList<BlockedPeriod> BlockedPeriods => _blockedPeriods;
 
+    /// <summary>
+    /// Removes blocked slots that fall outside the grid (after working days, shifts or lessons per day shrank,
+    /// Phase 3 §5.5) and returns them; the owner confirms this from a preview first.
+    /// </summary>
+    public IReadOnlyList<BlockedPeriod> DropBlockedOutside(ScheduleGrid grid)
+    {
+        ArgumentNullException.ThrowIfNull(grid);
+        var orphans = _blockedPeriods.Where(period => !grid.Contains(period)).ToArray();
+        if (orphans.Length == 0)
+            return orphans;
+        _blockedPeriods.RemoveAll(period => !grid.Contains(period));
+        Touch();
+        return orphans;
+    }
+
     public static Subject Create(SubjectDetails details, ScheduleGrid grid)
     {
         var subject = new Subject();

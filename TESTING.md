@@ -225,6 +225,15 @@ Suggested curriculum (`phase-2-5-curriculum`):
   - (f) an edited value stays, and the reset restores it after a before/after confirmation;
   - (g) axe, no horizontal page scroll and no overlapping text at 375, 768, 1024 and 1440px.
 
+## Phase 3 test inventory (updated per checkpoint)
+### 3A - hardening
+- .NET (`Phase3/`):
+  - `ReferenceProtectionTests`: the stage report (2 sections and 1 line, names, blocking codes); stage archive/delete refused with `RECORD_IN_USE`; subject archive/delete refused with `CURRICULUM_IN_USE`; after the line is archived the subject can be archived but still not deleted; a shift used by sections cannot be deleted; unreferenced kinds report nothing and delete normally; an unknown kind is 404; the preview needs the owner session.
+  - `CurriculumClearUndoTests`: clearing a cell archives the line and returns it; the subject's report shows it as archived history; restoring brings the value back.
+  - `OrphanBlockedPeriodsTests`: lowering lessons per day from 6 to 4 reports exactly the teacher's 2 and the subject's 1 orphan slots, removes nothing by itself, refuses a stale version, cleans only the confirmed teacher (version + 1) and leaves the subject's orphan.
+  - `QueryCountTests`: ten list and report endpoints run the same number of SQL commands (counted by `QueryCounter`, a `DbCommandInterceptor` in `TestHost`) for a school with 1 stage and one with 3 stages, 18 sections, 9 subjects, 13 teachers and 25 lines.
+- Vitest: `components/References.test.tsx` (dependent wording with `arabicCount`: delete counts archived ones, archive names only active ones, hidden names are counted).
+
 ## Later-phase acceptance suites
 - Phase 4 infeasibility test must construct a conflict involving two teachers, a shared lab, and a blocked period; the diagnostic must identify the conflict groups and actionable correction, not merely report infeasible.
 - Large solver-risk comparison uses the same independently verified feasible 40-section/54-teacher workload and records status, first-solution/total time, objective/bound, memory method, and independently checked hard constraints for baseline, two-stage, decomposition, and hints.

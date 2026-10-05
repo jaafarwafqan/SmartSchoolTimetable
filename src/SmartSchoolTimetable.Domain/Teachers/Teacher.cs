@@ -54,6 +54,21 @@ public sealed class Teacher : VersionedEntity
     public bool IsArchived { get; private set; }
     public DateTimeOffset? ArchivedAt { get; private set; }
     public IReadOnlyList<BlockedPeriod> BlockedPeriods => _blockedPeriods;
+
+    /// <summary>
+    /// Removes blocked slots that fall outside the grid (after working days, shifts or lessons per day shrank,
+    /// Phase 3 §5.5) and returns them; the owner confirms this from a preview first.
+    /// </summary>
+    public IReadOnlyList<BlockedPeriod> DropBlockedOutside(ScheduleGrid grid)
+    {
+        ArgumentNullException.ThrowIfNull(grid);
+        var orphans = _blockedPeriods.Where(period => !grid.Contains(period)).ToArray();
+        if (orphans.Length == 0)
+            return orphans;
+        _blockedPeriods.RemoveAll(period => !grid.Contains(period));
+        Touch();
+        return orphans;
+    }
     public IReadOnlyList<int> OffDays => Enumerable.Range(1, 7).Where(day => (OffDaysMask & (1 << (day - 1))) != 0).ToArray();
 
     public static Teacher Create(TeacherDetails details, ScheduleGrid grid)

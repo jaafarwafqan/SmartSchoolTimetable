@@ -10,7 +10,9 @@ export type CurriculumStage = { id: number; name: string; plannedLessons: number
 /** `isSuggested`: the value came from the suggested template and was not edited since («مقترح»). */
 export type CurriculumCell = { stageId: number; entryId: number | null; weeklyLessons: number | null; version: number | null; duplicates: number; isSuggested: boolean };
 export type CurriculumRow = { subjectId: number; subjectName: string; colorIndex: number; label: string | null; cells: CurriculumCell[] };
-export type CurriculumTable = { stages: CurriculumStage[]; rows: CurriculumRow[] };
+export type CurriculumEntry = { id: number; stageId: number; subjectId: number; weeklyLessons: number; label: string | null; isArchived: boolean; version: number };
+/** `cleared`: the line a cell edit just cleared (archived), for the undo notice (Phase 3 §5.4). */
+export type CurriculumTable = { stages: CurriculumStage[]; rows: CurriculumRow[]; cleared?: CurriculumEntry | null };
 export type CellInput = { stageId: number; subjectId: number; label: string | null; weeklyLessons: number | null; entryId: number | null; version: number | null };
 
 export type PlanAction = "create" | "exists" | "notApplicable" | "update" | "unchanged" | "ambiguous";
@@ -83,6 +85,11 @@ function useSetupMutation<TInput, TResult>(request: (input: TInput) => Promise<T
 
 export function useSetCell(yearId: number) {
   return useSetupMutation((input: CellInput) => apiRequest<CurriculumTable>(`${yearPath(yearId)}/curriculum/cell`, "PUT", input));
+}
+
+/** Undo of a cleared cell: restores the archived line with the version the clear returned. */
+export function useRestoreEntry() {
+  return useSetupMutation((entry: CurriculumEntry) => apiRequest<CurriculumEntry>(`/api/v1/curriculum-entries/${entry.id}/restore`, "POST", { version: entry.version }));
 }
 
 /** Preview (no change) or apply; previews skip the refresh because nothing was saved. */

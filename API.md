@@ -174,6 +174,17 @@ Each step is one transaction through the normal services, and records the step i
 
 Curriculum cells and entries carry `isSuggested`. Audit events: `SuggestedCurriculumApplied`, `SuggestedCurriculumStageReset`, `StageDayLessonsSuggested`.
 
+### Phase 3A: reference protection, soft clear, orphan blocked periods
+| Method | Route | Request | Success | Errors |
+|---|---|---|---|---|
+| GET | `/references/{kind}/{id}` | `kind`: `subject`, `teacher`, `section`, `stage`, `shift`, `resource`, `curriculumEntry` | 200 `{ kind, id, dependents: [{ kind: section\|curriculumEntry, active, archived, samples (≤ 5 names), errorCode }], archiveBlockedBy, deleteBlockedBy }` | 401, 404 (unknown kind) |
+| GET | `/blocked-periods/orphans/` | — | 200 `{ owners: [{ kind: teacher\|subject, id, name, version, periods: [{ day, lessonNumber }] }], total }` | 401 |
+| POST | `/blocked-periods/orphans/clean` | `{ owners: [{ kind, id, version }] }` | 200 the remaining report; removes orphan slots only from the listed records | 401, 403, 404, 409 `CONFLICT` |
+
+- **Every delete and archive** of a stage, section, subject, teacher, shift and curriculum line asks the reference guard first. Archive is refused while an active dependent exists, delete while any dependent exists: `409 RECORD_IN_USE` (sections) or `409 CURRICULUM_IN_USE` (curriculum lines).
+- **`PUT /academic-years/{yearId}/curriculum/cell` with `weeklyLessons: null`** archives the line instead of deleting it. The table response carries it as `cleared` (`{ id, version, … }`); undo is `POST /curriculum-entries/{id}/restore` with that version (`409 STAGE_ARCHIVED` when the stage was archived meanwhile).
+- Audit events: `CurriculumEntryCleared`, `OrphanBlockedPeriodsRemoved`.
+
 ### Subjects and the schedule grid (Phase 2, checkpoint 2D)
 | Method | Route | Request | Success | Endpoint-specific errors |
 |---|---|---|---|---|

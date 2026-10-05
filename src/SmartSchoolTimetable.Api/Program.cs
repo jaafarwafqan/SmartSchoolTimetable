@@ -78,6 +78,7 @@ builder.Services.AddScoped<SchoolProfileService>();
 builder.Services.AddScoped<SchoolContextService>();
 builder.Services.AddScoped<AcademicYearService>();
 builder.Services.AddScoped<TimetableStructureService>();
+builder.Services.AddScoped<OrphanBlockedPeriodsService>();
 builder.Services.AddScoped<StagesSectionsService>();
 builder.Services.AddScoped<SubjectsService>();
 builder.Services.AddScoped<TeachersService>();
@@ -93,6 +94,7 @@ builder.Services.AddScoped<SuggestedCurriculumService>();
 builder.Services.AddScoped<DailySuggestionService>();
 builder.Services.AddScoped<IYearStructure, YearStructureService>();
 builder.Services.AddScoped<DashboardService>();
+builder.Services.AddScoped<SmartSchoolTimetable.Application.Common.ReferenceGuard>();
 builder.Services.AddLocalInfrastructure(
     databasePath,
     builder.Environment.IsEnvironment("Testing"));
@@ -118,6 +120,7 @@ app.MapTeachersEndpoints();
 app.MapCalendarEndpoints();
 app.MapSetupEndpoints();
 app.MapCurriculumEndpoints();
+app.MapReferencesEndpoints();
 app.MapFallback(async (HttpContext context) =>
 {
     if (context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))

@@ -23,6 +23,9 @@ dotnet run --project .\src\SmartSchoolTimetable.Api\SmartSchoolTimetable.Api.csp
 
 The frontend test command runs Vitest and Playwright; install Chromium once with the preceding command. While the final command is running, open <http://127.0.0.1:5080/>. The app is available only over loopback HTTP.
 
+### Dependency audit
+`npm.cmd --prefix .\frontend run audit:prod` checks only the production dependencies (the code shipped to the browser) and fails on any high-severity finding. `npm.cmd --prefix .\frontend audit` also lists development tools; the current development-only finding (`braces` through stylelint) is explained in `docs/DECISIONS_PENDING.md` #44.
+
 ### Phase 2.5 owner test
 Follow `docs/OWNER_TEST_SCRIPT_PHASE25.md` on a separate test database (`$env:Database__Path`). The results are in `docs/PHASE25_REPORT.md`.
 

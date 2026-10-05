@@ -1,4 +1,6 @@
-import { BookOpen, Trash2 } from "lucide-react";
+import { BookOpen } from "lucide-react";
+import { OrphanBlockedNotice } from "../timetable-structure/OrphanBlockedNotice";
+import { ArchiveBlockedDialog, GuardedDeleteDialog, isReferenceError } from "../../components/References";
 import { useRef, useState } from "react";
 import { ConflictAlert } from "../../components/ConflictAlert";
 import { InlineAddForm } from "../../components/InlineAddForm";
@@ -9,7 +11,6 @@ import { Alert } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Card } from "../../components/ui/card";
 import { Checkbox } from "../../components/ui/checkbox";
-import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { EmptyState } from "../../components/ui/empty-state";
 import { ExpandableRow } from "../../components/ui/expandable-row";
 import { Pagination } from "../../components/ui/pagination";
@@ -36,6 +37,7 @@ export function SubjectsPage() {
   const [includeArchived, setIncludeArchived] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<Subject | null>(null);
+  const [archiveBlocked, setArchiveBlocked] = useState<Subject | null>(null);
   const subjects = useSubjects({ search, page, pageSize, includeArchived });
   const action = useSubjectAction();
   const create = useSaveSubject();
@@ -57,13 +59,15 @@ export function SubjectsPage() {
     feedback.reset();
     action.mutate({ subject, action: subject.isArchived ? "restore" : "archive" }, {
       onSuccess: () => feedback.showSuccess(subject.isArchived ? text.restored : text.archived),
-      onError: feedback.showError,
+      // A refused archive lists what still depends on the record instead of a bare error.
+      onError: (error) => isReferenceError(error) ? setArchiveBlocked(subject) : feedback.showError(error),
     });
   }
 
   return (
     <div className="page">
       <PageHeader title={text.title} description={text.description} />
+      <OrphanBlockedNotice />
       <Card className="page-card">
         <Alert tone="success" message={addFeedback.success} />
         <Alert tone="error" message={addFeedback.error} />
@@ -106,13 +110,11 @@ export function SubjectsPage() {
         </ul>
         {subjects.data && <Pagination page={page} pageSize={pageSize} total={subjects.data.total} format={format} onPage={setPage} />}
       </Card>
-      <ConfirmDialog
-        open={deleting !== null}
-        danger
+      <GuardedDeleteDialog
+        kind="subject"
+        target={deleting && { id: deleting.id, name: deleting.name }}
         title={text.deleteTitle}
         consequence={text.deleteConsequence}
-        confirmLabel={common.delete}
-        confirmIcon={<Trash2 aria-hidden="true" size={20} />}
         loading={action.isPending}
         onCancel={() => setDeleting(null)}
         onConfirm={() => deleting && action.mutate({ subject: deleting, action: "delete" }, {
@@ -121,6 +123,8 @@ export function SubjectsPage() {
           onSettled: () => setDeleting(null),
         })}
       />
+      <ArchiveBlockedDialog kind="subject" target={archiveBlocked && { id: archiveBlocked.id, name: archiveBlocked.name }}
+        onClose={() => setArchiveBlocked(null)} />
     </div>
   );
 }

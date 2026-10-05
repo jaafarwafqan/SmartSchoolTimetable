@@ -569,3 +569,11 @@
     color: var(--color-ink);
   }
 }
+
+/* Dependent records listed in a delete/archive dialog (Phase 3 §5.3). */
+.reference-list {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+  display: grid;
+  gap: 0.25rem;
+}

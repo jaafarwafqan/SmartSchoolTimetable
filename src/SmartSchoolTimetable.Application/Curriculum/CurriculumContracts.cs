@@ -13,9 +13,10 @@ public sealed record CurriculumCellDto(long StageId, long? EntryId, int? WeeklyL
 /// <param name="Label">Null for the subject's main row; a repeated entry has its own label (e.g. "قواعد").</param>
 public sealed record CurriculumRowDto(long SubjectId, string SubjectName, int ColorIndex, string? Label, IReadOnlyList<CurriculumCellDto> Cells);
 
-public sealed record CurriculumTableDto(IReadOnlyList<CurriculumStageDto> Stages, IReadOnlyList<CurriculumRowDto> Rows);
+/// <param name="Cleared">The line a cell edit just cleared (soft-deleted, Phase 3 §5.4), so the screen can offer an undo.</param>
+public sealed record CurriculumTableDto(IReadOnlyList<CurriculumStageDto> Stages, IReadOnlyList<CurriculumRowDto> Rows, CurriculumEntryDto? Cleared = null);
 
-/// <param name="WeeklyLessons">Null clears the cell (the entry is deleted; nothing references entries before Phase 3).</param>
+/// <param name="WeeklyLessons">Null clears the cell: the line is archived (soft delete, undo by restoring it) unless something depends on it.</param>
 /// <param name="EntryId">The entry shown in the cell, with its <paramref name="Version"/>; null to create a new entry.</param>
 public sealed record SetCurriculumCellCommand(long StageId, long SubjectId, string? Label, int? WeeklyLessons, long? EntryId, int? Version);
 

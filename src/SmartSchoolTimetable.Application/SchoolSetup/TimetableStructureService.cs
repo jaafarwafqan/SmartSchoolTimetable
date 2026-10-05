@@ -7,9 +7,11 @@ namespace SmartSchoolTimetable.Application.SchoolSetup;
 
 public sealed class TimetableStructureService(IDataStore store, TimeProvider clock)
 {
+    private readonly ReferenceGuard references = new(store);
+
     public async Task<PagedResult<ShiftDto>> ListShiftsAsync(long yearId, ListQuery query, CancellationToken token)
     {
-        var shifts = store.Query<Shift>().Where(item => item.AcademicYearId == yearId);
+        var shifts = store.Read<Shift>().Where(item => item.AcademicYearId == yearId);
         if (query.NormalizedSearch.Length > 0)
             shifts = shifts.Where(item => item.NormalizedName.Contains(query.NormalizedSearch));
         shifts = query.SortKey("order") switch
@@ -62,8 +64,8 @@ public sealed class TimetableStructureService(IDataStore store, TimeProvider clo
             return OperationResult.Failure<bool>(ErrorCodes.NotFound);
         if (!shift.IsVersion(version))
             return OperationResult.Failure<bool>(ErrorCodes.Conflict);
-        if (await store.AnyAsync(store.Query<Section>().Where(section => section.ShiftId == id), token))
-            return OperationResult.Failure<bool>(ErrorCodes.RecordInUse);
+        if (await references.DeleteBlockedAsync(ReferenceKinds.Shift, id, token) is { } inUse)
+            return OperationResult.Failure<bool>(inUse);
         store.Remove(shift);
         AuditTrail.Record(store, clock, "ShiftDeleted", $"shift:{id}", "Shift deleted.");
         return await store.SaveAsync(() => true, "Name", token);

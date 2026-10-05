@@ -1,8 +1,9 @@
-import { BookOpen, Layers3 } from "lucide-react";
-import type { ReactNode } from "react";
+import { BookOpen, Layers3, Undo2 } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ConflictAlert } from "../../components/ConflictAlert";
 import { Alert } from "../../components/ui/alert";
+import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { EmptyState } from "../../components/ui/empty-state";
 import { Spinner } from "../../components/ui/spinner";
@@ -13,7 +14,7 @@ import { useFormFeedback } from "../../lib/useFormFeedback";
 import { useYearChoice, YearPicker } from "../academic-years/YearPicker";
 import { CurriculumGrid, maxLessons, minLessons } from "./CurriculumGrid";
 import { AddRepeatForm, CopyCurriculumTool, SetAcrossTool } from "./CurriculumHelpers";
-import { useCurriculum, useSetCell, useSuggestedPreview } from "./curriculumApi";
+import { useCurriculum, useRestoreEntry, useSetCell, useSuggestedPreview, type CurriculumEntry } from "./curriculumApi";
 import { DailySuggestionPanel } from "./DailySuggestionPanel";
 import { SuggestedCurriculumPanel } from "./SuggestedCurriculumPanel";
 import { SubjectTemplatePanel } from "./SubjectTemplatePanel";
@@ -26,6 +27,9 @@ export function CurriculumEditor({ yearId, children }: { yearId: number; childre
   const feedback = useFormFeedback();
   const table = useCurriculum(yearId);
   const save = useSetCell(yearId);
+  const restore = useRestoreEntry();
+  /** The line the last edit cleared, with its names for the undo notice. */
+  const [cleared, setCleared] = useState<{ entry: CurriculumEntry; line: string; stage: string } | null>(null);
   const data = table.data;
   const suggestion = useSuggestedPreview(yearId, []);
   const reviewStageIds = new Set((suggestion.data?.stages ?? []).filter((stage) => stage.needsReview).map((stage) => stage.stageId));
@@ -39,7 +43,19 @@ export function CurriculumEditor({ yearId, children }: { yearId: number; childre
         {data && data.stages.length > 0 && <SuggestedCurriculumPanel yearId={yearId} />}
         {table.isError && <Alert tone="error" message={messages.school.common.loadFailed} />}
         {feedback.conflict && <ConflictAlert onReload={() => { feedback.reset(); void table.refetch(); }} loading={table.isFetching} />}
-        <Alert tone="success" message={feedback.success} />
+        {cleared ? (
+          <Alert tone="success" message={text.cellCleared(cleared.line, cleared.stage)}>
+            <span>
+              <Button variant="secondary" icon={<Undo2 aria-hidden="true" size={20} />} loading={restore.isPending}
+                onClick={() => restore.mutate(cleared.entry, {
+                  onSuccess: () => { setCleared(null); feedback.showSuccess(text.clearUndone); },
+                  onError: (reason) => { setCleared(null); feedback.showError(reason); },
+                })}>
+                {text.undoClear}
+              </Button>
+            </span>
+          </Alert>
+        ) : <Alert tone="success" message={feedback.success} />}
         <Alert tone="error" message={feedback.error} />
         {table.isPending && <Spinner label={messages.app.loadingContent} />}
         {data && data.stages.length === 0 && (
@@ -55,8 +71,16 @@ export function CurriculumEditor({ yearId, children }: { yearId: number; childre
             onSave={(input, done) => {
               feedback.reset();
               save.mutate(input, {
-                onSuccess: () => { feedback.showSuccess(text.saved); done(true); },
-                onError: (reason) => { feedback.showError(reason); done(false); },
+                onSuccess: (result) => {
+                  const row = result.cleared ? data.rows.find((item) => item.subjectId === input.subjectId && item.label === input.label) : undefined;
+                  const stage = result.cleared ? data.stages.find((item) => item.id === input.stageId) : undefined;
+                  setCleared(result.cleared && row && stage
+                    ? { entry: result.cleared, line: row.label ? `${row.subjectName} - ${row.label}` : row.subjectName, stage: stage.name }
+                    : null);
+                  feedback.showSuccess(text.saved);
+                  done(true);
+                },
+                onError: (reason) => { setCleared(null); feedback.showError(reason); done(false); },
               });
             }} />
         )}

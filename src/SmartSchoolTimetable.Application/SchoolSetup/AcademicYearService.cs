@@ -11,7 +11,7 @@ public sealed class AcademicYearService(IDataStore store, TimeProvider clock, IY
     public async Task<PagedResult<AcademicYearDto>> ListAsync(ListQuery query, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(query);
-        var years = store.Query<AcademicYear>();
+        var years = store.Read<AcademicYear>();
         var search = query.NormalizedSearch;
         if (search.Length > 0)
             years = years.Where(year => year.NormalizedLabel.Contains(search));

@@ -28,20 +28,20 @@ public sealed class DashboardService(IDataStore store)
 {
     public async Task<DashboardSummaryDto> GetSummaryAsync(CancellationToken cancellationToken)
     {
-        var profile = await store.FirstOrDefaultAsync(store.Query<SchoolProfile>(), cancellationToken);
+        var profile = await store.FirstOrDefaultAsync(store.Read<SchoolProfile>(), cancellationToken);
         var currentYear = await SchoolContextService.CurrentYearAsync(store, cancellationToken);
-        var years = await store.CountAsync(store.Query<AcademicYear>(), cancellationToken);
-        var week = await store.FirstOrDefaultAsync(store.Query<WorkingWeek>(), cancellationToken);
-        var subjects = await store.CountAsync(store.Query<Subject>().Where(row => !row.IsArchived), cancellationToken);
-        var teachers = await store.CountAsync(store.Query<Teacher>().Where(row => !row.IsArchived), cancellationToken);
+        var years = await store.CountAsync(store.Read<AcademicYear>(), cancellationToken);
+        var week = await store.FirstOrDefaultAsync(store.Read<WorkingWeek>(), cancellationToken);
+        var subjects = await store.CountAsync(store.Read<Subject>().Where(row => !row.IsArchived), cancellationToken);
+        var teachers = await store.CountAsync(store.Read<Teacher>().Where(row => !row.IsArchived), cancellationToken);
 
         var yearId = currentYear?.Id ?? 0;
-        var shifts = await store.ListAsync(store.Query<Shift>().Where(row => row.AcademicYearId == yearId), cancellationToken);
+        var shifts = await store.ListAsync(store.Read<Shift>().Where(row => row.AcademicYearId == yearId), cancellationToken);
         var stages = (await store.ListAsync(
-            store.Query<Stage>().Where(row => row.AcademicYearId == yearId && !row.IsArchived), cancellationToken)).ToDictionary(row => row.Id);
+            store.Read<Stage>().Where(row => row.AcademicYearId == yearId && !row.IsArchived), cancellationToken)).ToDictionary(row => row.Id);
         var stageIds = stages.Keys.ToList();
         var sections = await store.ListAsync(
-            store.Query<Section>().Where(row => !row.IsArchived && stageIds.Contains(row.StageId)), cancellationToken);
+            store.Read<Section>().Where(row => !row.IsArchived && stageIds.Contains(row.StageId)), cancellationToken);
         var shiftById = shifts.ToDictionary(shift => shift.Id);
         var capacityGaps = sections.Count(section => Section.WeeklyCapacity(week, shiftById.GetValueOrDefault(section.ShiftId), stages.GetValueOrDefault(section.StageId)) == 0);
 
@@ -64,7 +64,7 @@ public sealed class DashboardService(IDataStore store)
             new("teachers", teachers > 0),
         };
         var curriculum = await CurriculumTableBuilder.BuildAsync(store, yearId, cancellationToken);
-        var progress = await store.FirstOrDefaultAsync(store.Query<SetupProgress>(), cancellationToken);
+        var progress = await store.FirstOrDefaultAsync(store.Read<SetupProgress>(), cancellationToken);
         return new DashboardSummaryDto(counts, checklist, curriculum.Stages, progress?.IsFinished == true);
     }
 }

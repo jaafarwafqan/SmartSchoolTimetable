@@ -1,6 +1,21 @@
 # Changelog
 
 ## [Unreleased]
+### Phase 3A - hardening (tag `phase-3a`)
+- **Build output is no longer tracked:** `src/SmartSchoolTimetable.Api/wwwroot/` is ignored and removed from the index (the build regenerates it). A new `.gitattributes` normalizes line endings and marks binary files.
+- **Reference protection** (DECISIONS_PENDING #48):
+  - One `ReferenceGuard` answers what depends on a stage, section, subject, teacher, shift, resource or curriculum line. Every delete and archive path uses it.
+  - `GET /references/{kind}/{id}` previews the dependents.
+  - The delete dialogs list them in Arabic and keep «حذف» disabled while anything depends on the record. A refused archive opens a dialog that lists the active dependents.
+- **Clearing a curriculum cell is a soft delete** with «تراجع عن الإفراغ» (#49, replaces #25).
+- **Orphan blocked periods** (#50): after the working days or lessons per day shrink, the timing, teachers and subjects screens show how many blocked periods fall outside the grid. «مراجعة الحصص المحجوبة» lists them per teacher and subject and removes them only after confirmation.
+- **Reads:**
+  - list and report queries run without change tracking (#52);
+  - a query-count test proves ten list endpoints run a constant number of SQL commands as the data grows;
+  - record lists stay paged (#51).
+- **README** documents `npm run audit:prod`.
+- Cherry-picked the npm audit decision (#44) onto `phase-3`.
+- **Tests:** .NET 158, Vitest 76, Playwright 13; Release build 0 warnings.
 ### Phase 2.5 suggested Iraqi curriculum (tag `phase-2-5-curriculum`)
 - **«تعبئة المنهج المقترح»** in the curriculum tab and wizard step 5 (ADR 0028, 0029).
   - Uses the owner's suggested weekly lessons for primary, intermediate and preparatory stages; unverified, labelled «مقترح» with a provenance banner.

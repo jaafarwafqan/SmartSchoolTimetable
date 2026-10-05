@@ -11,6 +11,8 @@ namespace SmartSchoolTimetable.Application.Curriculum;
 /// </summary>
 public sealed class CurriculumService(IDataStore store, TimeProvider clock)
 {
+    private readonly ReferenceGuard references = new(store);
+
     public Task<CurriculumTableDto> GetTableAsync(long yearId, CancellationToken token) => CurriculumTableBuilder.BuildAsync(store, yearId, token);
 
     public async Task<OperationResult<CurriculumTableDto>> SetCellAsync(long yearId, SetCurriculumCellCommand command, CancellationToken token)
@@ -31,8 +33,13 @@ public sealed class CurriculumService(IDataStore store, TimeProvider clock)
                 return OperationResult.Failure<CurriculumTableDto>(ErrorCodes.Conflict);
             if (command.WeeklyLessons is null)
             {
-                store.Remove(entry);
-                AuditTrail.Record(store, clock, "CurriculumEntryDeleted", $"curriculum-entry:{entryId}", "Curriculum cell cleared.");
+                // Clearing is a soft delete (Phase 3 §5.4): the line is archived, the response carries it for the undo
+                // notice, and the reference guard refuses while anything depends on the line.
+                if (await references.ArchiveBlockedAsync(ReferenceKinds.CurriculumEntry, entryId, token) is { } inUse)
+                    return OperationResult.Failure<CurriculumTableDto>(inUse);
+                entry.Archive(clock.GetUtcNow());
+                AuditTrail.Record(store, clock, "CurriculumEntryCleared", $"curriculum-entry:{entryId}", "Curriculum cell cleared (line archived).");
+                return await store.SaveAsync(async ct => await GetTableAsync(yearId, ct) with { Cleared = ToDto(entry) }, "WeeklyLessons", token);
             }
             else
             {
@@ -71,6 +78,11 @@ public sealed class CurriculumService(IDataStore store, TimeProvider clock)
             return OperationResult.Failure<CurriculumEntryDto>(ErrorCodes.NotFound);
         if (!entry.IsVersion(version))
             return OperationResult.Failure<CurriculumEntryDto>(ErrorCodes.Conflict);
+        if (archived && await references.ArchiveBlockedAsync(ReferenceKinds.CurriculumEntry, id, token) is { } inUse)
+            return OperationResult.Failure<CurriculumEntryDto>(inUse);
+        // Restoring (also the undo of a cleared cell) needs the stage to be active.
+        if (!archived && await store.AnyAsync(store.Query<Stage>().Where(stage => stage.Id == entry.StageId && stage.IsArchived), token))
+            return OperationResult.Failure<CurriculumEntryDto>(ErrorCodes.StageArchived);
         if (archived)
             entry.Archive(clock.GetUtcNow());
         else
@@ -85,6 +97,8 @@ public sealed class CurriculumService(IDataStore store, TimeProvider clock)
             return OperationResult.Failure<bool>(ErrorCodes.NotFound);
         if (!entry.IsVersion(version))
             return OperationResult.Failure<bool>(ErrorCodes.Conflict);
+        if (await references.DeleteBlockedAsync(ReferenceKinds.CurriculumEntry, id, token) is { } inUse)
+            return OperationResult.Failure<bool>(inUse);
         store.Remove(entry);
         AuditTrail.Record(store, clock, "CurriculumEntryDeleted", $"curriculum-entry:{id}", "Curriculum entry deleted.");
         return await store.SaveAsync(() => true, "WeeklyLessons", token);

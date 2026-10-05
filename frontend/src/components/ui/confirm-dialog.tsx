@@ -13,6 +13,10 @@ type ConfirmDialogProps = {
   confirmIcon: ReactNode;
   danger?: boolean;
   loading?: boolean;
+  /** The action cannot run (for example, other records still depend on the target). */
+  confirmDisabled?: boolean;
+  /** Extra content under the consequence, such as the list of dependent records. */
+  children?: ReactNode;
   onConfirm: () => void;
   onCancel: () => void;
 };
@@ -25,6 +29,8 @@ export function ConfirmDialog({
   confirmIcon,
   danger = false,
   loading = false,
+  confirmDisabled = false,
+  children,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -36,7 +42,7 @@ export function ConfirmDialog({
       onClose={onCancel}
       footer={(
         <>
-          <Button variant={danger ? "danger" : "primary"} icon={confirmIcon} loading={loading} onClick={onConfirm}>
+          <Button variant={danger ? "danger" : "primary"} icon={confirmIcon} loading={loading} disabled={confirmDisabled} onClick={onConfirm}>
             {confirmLabel}
           </Button>
           <Button variant="secondary" icon={<X aria-hidden="true" size={20} />} onClick={onCancel}>
@@ -44,6 +50,8 @@ export function ConfirmDialog({
           </Button>
         </>
       )}
-    />
+    >
+      {children}
+    </Dialog>
   );
 }

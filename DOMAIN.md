@@ -116,3 +116,8 @@ No implementation of domain logic; only specification and validation strategy.
 - **`CurriculumEntry.IsSuggested`:** `CreateSuggested`, `ResetToSuggestion`; cleared by every owner edit (ADR 0029).
 - **`DailyDistribution.Suggest(total, days in week order, maxOnDay)`:** even split, extra lessons on the earlier days, capped per day; problems `NoCurriculum`, `BelowWorkingDays`, `AboveShiftCapacity` (ADR 0030).
 - **`Stage.ApplySuggestedDayLessons` / `DayLessonsSuggested`:** counts from the suggestion; any owner edit clears the flag, and later suggestions skip such stages.
+
+## Phase 3A: protection and hardening
+- **Reference guard (`Application/Common/ReferenceGuard`):** the one place that answers which records depend on a subject, teacher, section, stage, shift, resource or curriculum line. Dependents today: a stage has sections and curriculum lines; a subject has curriculum lines; a shift has sections. Archive needs no active dependent, delete no dependent at all (DECISIONS_PENDING #48).
+- **Clearing a curriculum cell** archives the line; restoring it is the undo (#49).
+- **`Teacher.DropBlockedOutside(grid)` / `Subject.DropBlockedOutside(grid)`:** remove the blocked slots outside the current `ScheduleGrid` and return them; the version is bumped only when something was removed. Used only after the owner confirms the orphan preview (#50).

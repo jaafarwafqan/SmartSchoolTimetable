@@ -15,12 +15,12 @@ public sealed class StageCardsService(IDataStore store, TimeProvider clock)
     public async Task<IReadOnlyList<StageCardDto>> ListAsync(long yearId, bool includeArchived, CancellationToken token)
     {
         var stages = await store.ListAsync(
-            store.Query<Stage>().Where(stage => stage.AcademicYearId == yearId && (includeArchived || !stage.IsArchived))
+            store.Read<Stage>().Where(stage => stage.AcademicYearId == yearId && (includeArchived || !stage.IsArchived))
                 .OrderBy(stage => stage.DisplayOrder).ThenBy(stage => stage.NormalizedName),
             token);
         var stageIds = stages.Select(stage => stage.Id).ToArray();
         var sections = await store.ListAsync(
-            store.Query<Section>().Where(section => stageIds.Contains(section.StageId) && (includeArchived || !section.IsArchived)).OrderBy(section => section.Id),
+            store.Read<Section>().Where(section => stageIds.Contains(section.StageId) && (includeArchived || !section.IsArchived)).OrderBy(section => section.Id),
             token);
         var mapper = await SectionMapper.LoadAsync(store, sections, token);
         return stages

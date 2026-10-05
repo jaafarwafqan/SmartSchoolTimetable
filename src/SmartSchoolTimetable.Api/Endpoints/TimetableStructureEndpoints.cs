@@ -17,6 +17,10 @@ public static class TimetableStructureEndpoints
         shifts.MapPut("/{id:long}/day-lessons", async (long yearId, long id, SetDayLessonsCommand command, HttpContext context, TimetableStructureService service, CancellationToken token) => ApiResults.Ok(context, await service.SetDayLessonsAsync(yearId, id, command, token)));
         shifts.MapPut("/{id:long}/periods", async (long yearId, long id, ReplacePeriodsCommand command, HttpContext context, TimetableStructureService service, CancellationToken token) => ApiResults.Ok(context, await service.ReplacePeriodsAsync(yearId, id, command, token)));
 
+        var orphans = endpoints.MapOwnerGroup("/blocked-periods/orphans");
+        orphans.MapGet("/", async (OrphanBlockedPeriodsService service, CancellationToken token) => Results.Ok(await service.GetAsync(token)));
+        orphans.MapPost("/clean", async (CleanOrphanBlockedPeriodsCommand command, HttpContext context, OrphanBlockedPeriodsService service, CancellationToken token) =>
+            ApiResults.Ok(context, await service.CleanAsync(command, token)));
         endpoints.MapOwnerGroup("/schedule-grid").MapGet("/", async (TimetableStructureService service, CancellationToken token) => Results.Ok(await service.GetGridAsync(token)));
 
         var workingWeek = endpoints.MapOwnerGroup("/working-days");

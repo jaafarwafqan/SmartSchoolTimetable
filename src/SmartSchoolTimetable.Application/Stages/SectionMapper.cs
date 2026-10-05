@@ -8,11 +8,11 @@ internal sealed class SectionMapper(WorkingWeek? week, IReadOnlyDictionary<long,
 {
     public static async Task<SectionMapper> LoadAsync(IDataStore store, IReadOnlyCollection<Section> sections, CancellationToken token)
     {
-        var week = await store.FirstOrDefaultAsync(store.Query<WorkingWeek>(), token);
+        var week = await store.FirstOrDefaultAsync(store.Read<WorkingWeek>(), token);
         var shiftIds = sections.Select(section => section.ShiftId).Distinct().ToArray();
-        var shifts = await store.ListAsync(store.Query<Shift>().Where(shift => shiftIds.Contains(shift.Id)), token);
+        var shifts = await store.ListAsync(store.Read<Shift>().Where(shift => shiftIds.Contains(shift.Id)), token);
         var stageIds = sections.Select(section => section.StageId).Distinct().ToArray();
-        var stages = await store.ListAsync(store.Query<Stage>().Where(stage => stageIds.Contains(stage.Id)), token);
+        var stages = await store.ListAsync(store.Read<Stage>().Where(stage => stageIds.Contains(stage.Id)), token);
         return new SectionMapper(week, shifts.ToDictionary(shift => shift.Id), stages.ToDictionary(stage => stage.Id));
     }
 

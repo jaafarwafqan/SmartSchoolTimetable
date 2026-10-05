@@ -11,10 +11,12 @@ namespace SmartSchoolTimetable.Application.Teachers;
 /// </summary>
 public sealed class TeachersService(IDataStore store, TimeProvider clock)
 {
+    private readonly ReferenceGuard references = new(store);
+
     public async Task<PagedResult<TeacherDto>> ListAsync(ListQuery query, bool? released, CancellationToken token)
     {
         ArgumentNullException.ThrowIfNull(query);
-        var rows = store.Query<Teacher>();
+        var rows = store.Read<Teacher>();
         if (!query.WithArchived)
             rows = rows.Where(row => !row.IsArchived);
         if (released is { } onlyReleased)
@@ -79,6 +81,8 @@ public sealed class TeachersService(IDataStore store, TimeProvider clock)
             return OperationResult.Failure<TeacherDto>(ErrorCodes.NotFound);
         if (!teacher.IsVersion(version))
             return OperationResult.Failure<TeacherDto>(ErrorCodes.Conflict);
+        if (archived && await references.ArchiveBlockedAsync(ReferenceKinds.Teacher, id, token) is { } inUse)
+            return OperationResult.Failure<TeacherDto>(inUse);
         if (archived)
             teacher.Archive(clock.GetUtcNow());
         else
@@ -93,6 +97,8 @@ public sealed class TeachersService(IDataStore store, TimeProvider clock)
             return OperationResult.Failure<bool>(ErrorCodes.NotFound);
         if (!teacher.IsVersion(version))
             return OperationResult.Failure<bool>(ErrorCodes.Conflict);
+        if (await references.DeleteBlockedAsync(ReferenceKinds.Teacher, id, token) is { } inUse)
+            return OperationResult.Failure<bool>(inUse);
         store.Remove(teacher);
         AuditTrail.Record(store, clock, "TeacherDeleted", $"teacher:{id}", "Teacher deleted.");
         return await store.SaveAsync(() => true, "ShortName", token);
