@@ -9,12 +9,12 @@ namespace SmartSchoolTimetable.Tests.Phase3;
 
 public sealed class AssignmentSuggesterTests
 {
-    private static async Task<TeacherDto> AddTeacherAsync(TestHost host, ReferenceProtectionTests.School school, string fullName, string shortName)
+    private static async Task<TeacherDto> AddTeacherAsync(TestHost host, ReferenceProtectionTests.School school, string fullName, string shortName, int maxPerWeek = 12)
     {
         return await ReadAsync<TeacherDto>(await host.PostAsync("/api/v1/teachers/", new
         {
             fullName, shortName, offDays = Array.Empty<int>(), blockedPeriods = Array.Empty<object>(), fullyReleased = false,
-            maxLessonsPerDay = (int?)null, maxLessonsPerWeek = 12, notes = (string?)null, version = 0,
+            maxLessonsPerDay = (int?)null, maxLessonsPerWeek = maxPerWeek, notes = (string?)null, version = 0,
             specializationIds = new[] { school.Subject.Id },
         }, school.Token));
     }
@@ -64,5 +64,18 @@ public sealed class AssignmentSuggesterTests
         var matrix = await ReadAsync<WorkloadMatrixDto>(await host.Client.GetAsync($"{school.Root}/workload/matrix"));
         Assert.Equal(teacher.Id, matrix.Stage!.Sections.Single(section => section.SectionId == sections[0].Id).Cells.Single().TeacherId);
         Assert.Equal(teacher.Id, matrix.Stage.Sections.Single(section => section.SectionId == sections[1].Id).Cells.Single().TeacherId);
+    }
+
+    [Fact]
+    public async Task TheSuggesterNeverGoesAboveATeachersLimit()
+    {
+        // One specialist with 7 lessons a week; two sections need 5 each: only one fits, the other is reported.
+        await using var host = new TestHost();
+        var school = await ReferenceProtectionTests.SeedAsync(host);
+        var teacher = await AddTeacherAsync(host, school, "أحمد علي حسن", "أحمد", maxPerWeek: 7);
+        var preview = await ReadAsync<AssignmentSuggestionPlanDto>(await host.Client.GetAsync($"{school.Root}/workload/suggestions/preview"));
+        Assert.Equal(teacher.Id, Assert.Single(preview.Assignments).TeacherId);
+        Assert.Equal(SuggestionReasons.Capacity, Assert.Single(preview.Unassigned).Reason);
+        Assert.Equal((0, 5, 7), (preview.Loads.Single().Before, preview.Loads.Single().After, preview.Loads.Single().Limit));
     }
 }

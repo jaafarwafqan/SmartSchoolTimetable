@@ -178,8 +178,11 @@ public sealed class ValidatorPropertyTests
     [Property(MaxTest = Runs)]
     public bool ARandomValidTimetableGivesNoError(PositiveInt seed)
     {
-        var report = PreSolveValidator.Validate(Generate(seed.Get).Input);
-        return report.Errors == 0 && report.Ready;
+        var input = Generate(seed.Get).Input;
+        var report = PreSolveValidator.Validate(input);
+        // Generated double lines are placed in real consecutive pairs, so even the «دروس مزدوجة» mode finds no error.
+        var doubles = PreSolveValidator.Validate(input, new ValidatorOptions(DoublePeriodsRequired: true));
+        return report.Errors == 0 && report.Ready && doubles.Errors == 0;
     }
 
     [Property(MaxTest = Runs)]
@@ -210,6 +213,7 @@ public sealed class ValidatorPropertyTests
         Assert.Contains(inputs, input => input.Sections.Count >= 6);
         Assert.Contains(inputs, input => input.Lines.Any(line => line.NeedsDoublePeriod));
         Assert.Contains(inputs, input => input.Resources.Count > 0);
+        Assert.Contains(inputs, input => input.Sections.Any(section => section.AllowedByDay.Select(day => day.Lessons).Distinct().Count() > 1)); // per-stage day counts
         Assert.Contains(inputs, input => input.Teachers.Any(teacher => teacher.OffDays.Count > 0 && teacher.Blocked.Count > 0 && teacher.MaxPerDay is not null));
         Assert.All(inputs, input => Assert.Equal(input.Sections.Sum(section => input.Lines.Count(line => line.StageId == section.StageId)), input.Assignments.Count));
     }

@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SmartSchoolTimetable.Application.Common;
 using SmartSchoolTimetable.Application.Dashboard;
 using SmartSchoolTimetable.Application.Scheduling;
+using SmartSchoolTimetable.Application.SchoolSetup;
 using SmartSchoolTimetable.Application.Stages;
 using SmartSchoolTimetable.Application.Subjects;
 using SmartSchoolTimetable.Application.Teachers;
@@ -16,7 +17,7 @@ using static SmartSchoolTimetable.Tests.ApiTestHelpers;
 
 namespace SmartSchoolTimetable.Tests.Phase3;
 
-public sealed class ReadinessTests
+public sealed class ReadinessTests(Xunit.Abstractions.ITestOutputHelper output)
 {
     [Fact]
     public async Task ReadinessRequiresAuthenticationAndUsesThePersistedWorkload()
@@ -52,6 +53,54 @@ public sealed class ReadinessTests
         Assert.Equal((2, 2, 2), (after.Sections, after.Lines, after.Assigned));
         var dashboard = await ReadAsync<DashboardSummaryDto>(await host.Client.GetAsync("/api/v1/dashboard-summary/"));
         Assert.True(dashboard.Checklist.Single(item => item.Key == "workload").Done);
+    }
+
+    [Fact]
+    public async Task ReadinessAndSuggestionsFollowTheLocalRequestRules()
+    {
+        await using var host = new TestHost();
+        var school = await ReferenceProtectionTests.SeedAsync(host);
+        var path = $"{school.Root}/readiness/";
+
+        using var foreignOrigin = new HttpRequestMessage(HttpMethod.Get, path);
+        foreignOrigin.Headers.TryAddWithoutValidation("Origin", "http://evil.example");
+        var refused = await host.Client.SendAsync(foreignOrigin);
+        Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
+        Assert.False(refused.Headers.Contains("Access-Control-Allow-Origin"));
+
+        using var foreignHost = new HttpRequestMessage(HttpMethod.Get, path);
+        foreignHost.Headers.Host = "127.0.0.1.attacker.example:5080";
+        Assert.Equal(HttpStatusCode.BadRequest, (await host.Client.SendAsync(foreignHost)).StatusCode);
+
+        using var anonymous = host.CreateClientWithoutCookies();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync($"{path}?doublePeriods=true")).StatusCode);
+
+        // A state-changing Phase 3 request without the per-launch token is refused before it runs.
+        var withoutToken = await host.PostAsync($"{school.Root}/workload/suggestions/apply", new { confirm = true }, "wrong-token");
+        Assert.Equal(HttpStatusCode.Forbidden, withoutToken.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await host.Client.GetAsync(path)).StatusCode);
+    }
+
+    [Fact]
+    public async Task TheDoubleLessonModeTurnsAnImpossibleDoubleIntoAnError()
+    {
+        await using var host = new TestHost();
+        var school = await ReferenceProtectionTests.SeedAsync(host); // الأول المتوسط (أ، ب), الرياضيات 5 lessons, 6 a day
+        // Only lesson 1 of each day is allowed: no two consecutive lessons, so no double can be placed.
+        var blocked = InputFactory.Week.SelectMany(day => Enumerable.Range(2, 5).Select(lesson => new BlockedPeriodDto(day, lesson))).ToArray();
+        await ReadAsync<SubjectDto>(await host.PutAsync($"/api/v1/subjects/{school.Subject.Id}", new SaveSubjectCommand(
+            school.Subject.Name, school.Subject.ColorIndex, school.Subject.Priority, true, false, false, true, blocked, null, school.Subject.Version), school.Token));
+        var path = $"{school.Root}/readiness/";
+
+        var standard = await ReadAsync<ReadinessDto>(await host.Client.GetAsync(path));
+        var warning = Assert.Single(standard.Findings, finding => finding.Code == FindingCodes.DoublePeriodImpossible && finding.Related[0].Name.EndsWith('أ'));
+        Assert.Equal((2, 0, "warning"), (warning.Required!.Value, warning.Available!.Value, warning.Severity));
+
+        var doubles = await ReadAsync<ReadinessDto>(await host.Client.GetAsync($"{path}?doublePeriods=true"));
+        var error = Assert.Single(doubles.Findings, finding => finding.Code == FindingCodes.DoublePeriodImpossible && finding.Related[0].Name.EndsWith('أ'));
+        Assert.Equal("error", error.Severity);
+        Assert.False(doubles.Ready);
+        Assert.Equal(standard.InputHash, doubles.InputHash); // the mode checks the same data
     }
 
     [Fact]
@@ -111,6 +160,7 @@ public sealed class ReadinessTests
         Assert.Equal((40, 18, 360), (input.Sections.Count, input.Lines.Count, input.Assignments.Count));
         Assert.Equal(64, hash.Length);
         Assert.True(report.Ready);
+        output.WriteLine($"40 sections × 9 subjects: SQLite snapshot + hash + validation took {timer.ElapsedMilliseconds} ms.");
         Assert.True(timer.Elapsed < TimeSpan.FromSeconds(1), $"SQLite snapshot, hash and validation took {timer.ElapsedMilliseconds} ms.");
     }
 }
