@@ -4,7 +4,7 @@ import { isolate } from "../isolate";
 
 export const wizard = {
   title: "معالج إعداد المدرسة",
-  description: "سبع خطوات قصيرة. تُحفظ كل خطوة عند الانتقال إلى التالية، ويمكنك العودة لاحقاً من حيث توقفت.",
+  description: "ثماني خطوات قصيرة. تُحفظ كل خطوة عند الانتقال إلى التالية، ويمكنك العودة لاحقاً من حيث توقفت.",
   progressLabel: "خطوات الإعداد",
   stepOf: (current: string, total: string) => `الخطوة ${current} من ${total}`,
   steps: {
@@ -14,7 +14,8 @@ export const wizard = {
     4: "الصفوف والشعب",
     5: "المواد والمنهج",
     6: "المعلمون",
-    7: "المراجعة",
+    7: "الأنصبة",
+    8: "المراجعة",
   },
   stepDone: "مكتملة",
   stepSkipped: "متخطاة",
@@ -82,6 +83,9 @@ export const wizard = {
   teachers: {
     note: "الصق أسماء المعلمين، اسماً في كل سطر. هذه الخطوة اختيارية ويمكن تخطيها.",
     saved: (teachers: string) => `تمت إضافة ${teachers}.`,
+  },
+  workload: {
+    counts: (assigned: string, total: string) => `المعيّن ${assigned} من إجمالي ${total}. يمكنك اقتراح توزيع الأنصبة أو المتابعة لاحقاً.`,
   },
   review: {
     counts: "ملخص الإعداد",

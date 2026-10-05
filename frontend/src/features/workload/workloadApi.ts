@@ -31,6 +31,10 @@ export type PlanAction = "create" | "replace" | "skip" | "unchanged" | "transfer
 export type WorkloadPlanLine = { sectionId: number; stageName: string; sectionLabel: string; entryId: number; subjectName: string; label: string | null; weeklyLessons: number; currentTeacher: string | null; newTeacher: string | null; action: PlanAction };
 export type TeacherLoadChange = { teacherId: number; fullName: string; before: number; after: number; limit: number };
 export type WorkloadPlan = { lines: WorkloadPlanLine[]; changes: number; loads: TeacherLoadChange[] };
+export type SuggestedAssignment = { sectionId: number; stageName: string; sectionLabel: string; entryId: number; subjectName: string; label: string | null; weeklyLessons: number; teacherId: number; teacherName: string };
+export type UnassignedSuggestion = { sectionId: number; stageName: string; sectionLabel: string; entryId: number; subjectName: string; label: string | null; weeklyLessons: number; reason: string };
+export type SuggestionTeacherLoad = { teacherId: number; teacherName: string; before: number; after: number; limit: number };
+export type AssignmentSuggestionPlan = { assignments: SuggestedAssignment[]; unassigned: UnassignedSuggestion[]; loads: SuggestionTeacherLoad[] };
 
 export type BulkKind = "across-stage" | "class-teacher" | "transfer" | "remove";
 export type BulkInput =
@@ -64,7 +68,7 @@ function useWorkloadMutation<TInput, TResult>(request: (input: TInput) => Promis
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: request,
-    onSuccess: async () => { await refreshQueries(queryClient, [workloadKey, ["teachers"], ["references"]]); },
+    onSuccess: async () => { await refreshQueries(queryClient, [workloadKey, ["teachers"], ["references"], ["dashboard"]]); },
   });
 }
 
@@ -81,6 +85,14 @@ export function useAddSpecialization() {
 export function useBulkPlan(yearId: number) {
   const preview = useMutation({ mutationFn: (input: BulkInput) => apiRequest<WorkloadPlan>(`${workloadPath(yearId)}/bulk/${input.kind}/preview`, "POST", input.body) });
   const apply = useWorkloadMutation((input: BulkInput) => apiRequest<WorkloadPlan>(`${workloadPath(yearId)}/bulk/${input.kind}`, "POST", input.body));
+  return { preview, apply };
+}
+
+export function useAssignmentSuggestions(yearId: number) {
+  const preview = useMutation({
+    mutationFn: () => apiRequest<AssignmentSuggestionPlan>(`${workloadPath(yearId)}/suggestions/preview`),
+  });
+  const apply = useWorkloadMutation(() => apiRequest<AssignmentSuggestionPlan>(`${workloadPath(yearId)}/suggestions/apply`, "POST", { confirm: true }));
   return { preview, apply };
 }
 

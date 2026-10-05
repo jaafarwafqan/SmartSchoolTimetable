@@ -28,7 +28,7 @@ test.describe.configure({ mode: "serial" });
 test.beforeAll(async ({ browser }) => { await server.start(browser, "phase25-scenarios"); });
 test.afterAll(async () => { await server.stop(); });
 
-const stepTitle = (page: Page, step: 1 | 2 | 3 | 4 | 5 | 6 | 7) => page.getByRole("heading", { level: 2, name: wizard.steps[step] });
+const stepTitle = (page: Page, step: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8) => page.getByRole("heading", { level: 2, name: wizard.steps[step] });
 
 test("scenario (b): a dual-shift ثانوية with branches through the wizard", async ({ page }) => {
   // A fixed date keeps the proposed year (and the screenshots) stable.

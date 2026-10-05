@@ -226,6 +226,13 @@ Records are added by choosing and by quick add, not by long forms. Each pattern 
 - **No side drawers or sheets** anywhere. The ESLint rule `design-system/no-drawers` and the test `styles/noDrawers.test.ts` fail if one is introduced (ADR 0024).
 - `/design` shows every pattern (section «أنماط الإضافة والتعديل»).
 
+## 16. Scheduling and readiness
+
+- The workload matrix is a scannable table: sections are rows, curriculum lines are columns, and each cell uses a native keyboard-operable teacher chooser. Unassigned cells show an icon and text, never color alone. Specialization filtering and «عرض الجميع» are visible in the cell interaction.
+- Teacher load uses the shared `LoadBar` with its accessible meter value and `LoadStatusBadge` with icon + text. Assigned, limit and available numbers remain visible next to the bar; overload fills the meter without changing its dimensions.
+- Readiness is an unframed report with a status banner, error/warning counts, a small LTR hash and check time, and findings grouped by entity. Each finding states measured numbers, explanation and actionable Arabic links. `error` blocks generation; `warning` does not. The development-only `/design` guide demonstrates the matrix, load bar and a grouped finding.
+- Keep cards for the report summary and individual entity groups only. Use logical CSS and shared `DataTable`, `Badge`, `Alert`, `LoadBar`, and icon + Arabic label controls. Validate at 375/768/1024/1440 px for axe, horizontal scrolling and text overlap.
+
 ## 15. Dates, times and left-to-right runs
 
 - **`DateField`:** day / month / year segments, in that order.

@@ -11,6 +11,7 @@ import { useYearChoice, YearPicker } from "../academic-years/YearPicker";
 import { BulkActions } from "./BulkActions";
 import { TeacherLoads } from "./TeacherLoads";
 import { WorkloadMatrix } from "./WorkloadMatrix";
+import { AssignmentSuggester } from "./AssignmentSuggester";
 import { overloaded, useTeacherLoads, useWorkloadMatrix, type TeacherLoad } from "./workloadApi";
 
 const text = messages.school.workload;
@@ -61,7 +62,10 @@ export function WorkloadPage() {
             {loads.data && view === "byTeacher" && <TeacherLoads loads={loads.data} />}
           </Card>
           {loads.data && summary.data && summary.data.stages.length > 0 && (
-            <BulkActions yearId={choice.yearId} loads={teacherLoads} stages={summary.data.stages} />
+            <>
+              <AssignmentSuggester yearId={choice.yearId} />
+              <BulkActions yearId={choice.yearId} loads={teacherLoads} stages={summary.data.stages} />
+            </>
           )}
         </>
       )}

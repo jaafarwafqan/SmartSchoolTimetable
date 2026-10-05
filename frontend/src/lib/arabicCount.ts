@@ -31,6 +31,9 @@ export const countNouns = {
   change: { one: "تغيير واحد", dualNominative: "تغييران", dualOblique: "تغييرين", plural: "تغييرات", singular: "تغيير", accusative: "تغييراً" },
   assignment: { one: "نصاب واحد", dualNominative: "نصابان", dualOblique: "نصابين", plural: "أنصبة", singular: "نصاب", accusative: "نصاباً" },
   line: { one: "بند واحد", dualNominative: "بندان", dualOblique: "بندين", plural: "بنود", singular: "بند", accusative: "بنداً" },
+  error: { one: "خطأ واحد", dualNominative: "خطان", dualOblique: "خطأين", plural: "أخطاء", singular: "خطأ", accusative: "خطأ" },
+  warning: { one: "ملاحظة واحدة", dualNominative: "ملاحظتان", dualOblique: "ملاحظتين", plural: "ملاحظات", singular: "ملاحظة", accusative: "ملاحظة" },
+  pair: { one: "زوج واحد", dualNominative: "زوجان", dualOblique: "زوجين", plural: "أزواج", singular: "زوج", accusative: "زوجاً" },
 } as const satisfies Record<string, CountForms>;
 
 export type CountNoun = keyof typeof countNouns;

@@ -6,7 +6,7 @@ import { Spinner } from "../../components/ui/spinner";
 import { messages } from "../../i18n/messages";
 import { PageHeader } from "../../layout/PageHeader";
 import { useFormatter } from "../../lib/schoolContext";
-import { CurriculumStep, ReviewStep, StagesStep, TeachersStep } from "./DataSteps";
+import { CurriculumStep, ReviewStep, StagesStep, TeachersStep, WorkloadStep } from "./DataSteps";
 import { SchoolStep } from "./SchoolStep";
 import { TimingStep } from "./TimingStep";
 import { WizardProgress, wizardSteps, type WizardStep } from "./WizardFrame";
@@ -58,7 +58,8 @@ export function SetupWizardPage() {
             {step === 4 && <StagesStep progress={data} onBack={back} onDone={done} />}
             {step === 5 && <CurriculumStep progress={data} onBack={back} onDone={done} />}
             {step === 6 && <TeachersStep progress={data} onBack={back} onDone={done} />}
-            {step === 7 && <ReviewStep progress={data} onBack={back} onFinished={() => navigate("/", { replace: true, state: { setupFinished: true } })} />}
+            {step === 7 && <WorkloadStep progress={data} onBack={back} onDone={done} />}
+            {step === 8 && <ReviewStep progress={data} onBack={back} onFinished={() => navigate("/", { replace: true, state: { setupFinished: true } })} />}
           </Card>
         </div>
       )}

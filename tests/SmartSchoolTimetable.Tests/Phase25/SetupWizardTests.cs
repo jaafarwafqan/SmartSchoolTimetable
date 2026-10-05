@@ -112,7 +112,7 @@ public sealed class SetupWizardTests
         Assert.False(dashboard.SetupFinished);
         Assert.Equal(6, dashboard.Curriculum[0].PlannedLessons);
         var progress = await ReadAsync<SetupProgressDto>(await host.Client.GetAsync("/api/v1/setup-progress/"));
-        await ReadAsync<SetupProgressDto>(await host.PutAsync("/api/v1/setup-progress/", new { currentStep = 7, completedSteps = progress.CompletedSteps, skippedSteps = TeachersStep, isFinished = true, version = progress.Version }, token));
+        await ReadAsync<SetupProgressDto>(await host.PutAsync("/api/v1/setup-progress/", new { currentStep = 8, completedSteps = progress.CompletedSteps, skippedSteps = TeachersStep, isFinished = true, version = progress.Version }, token));
         Assert.True((await ReadAsync<DashboardSummaryDto>(await host.Client.GetAsync("/api/v1/dashboard-summary/"))).SetupFinished);
     }
 }

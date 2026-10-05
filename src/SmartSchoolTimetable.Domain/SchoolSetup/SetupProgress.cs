@@ -11,7 +11,7 @@ public sealed class SetupProgress : VersionedEntity
 {
     public const long SingletonId = 1;
     public const int FirstStep = 1;
-    public const int LastStep = 7;
+    public const int LastStep = 8;
 
     private SetupProgress()
     {

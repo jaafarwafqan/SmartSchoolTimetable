@@ -7,7 +7,7 @@ import { teachers } from "./teachers";
 import { calendar } from "./calendar";
 import { curriculum, daily, stageCards, suggested, templates } from "./curriculum";
 import { wizard } from "./wizard";
-import { orphanOnSave, requiredResource, resources, schedulingProfile, specializations, workload } from "./phase3";
+import { orphanOnSave, readiness, requiredResource, resources, schedulingProfile, specializations, workload } from "./phase3";
 
 export const school = {
   nav: {
@@ -69,6 +69,7 @@ export const school = {
       stagesSections: "إضافة المراحل والشعب",
       subjects: "إضافة المواد",
       teachers: "إضافة المعلمين",
+      workload: "تعيين المعلمين على المنهج",
     },
   },
   profile: {
@@ -230,6 +231,7 @@ export const school = {
   },
   resources,
   workload,
+  readiness,
   requiredResource,
   specializations,
   orphanOnSave,

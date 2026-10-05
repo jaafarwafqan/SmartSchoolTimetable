@@ -99,6 +99,8 @@ Migration `Phase3CWorkload` (ADR 0032) adds `WorkloadAssignments`:
 - unique (`SectionId`, `CurriculumEntryId`) where `IsArchived = 0`;
 - indexes on `CurriculumEntryId` and (`TeacherId`, `IsArchived`).
 
+Phase 3D (ADRs 0034–0035) adds no database tables or migration. `SchedulingInput` is a canonical in-memory snapshot assembled from versioned school records; `InputHash` is computed from its scheduling-relevant values and returned with readiness. Phase 4 persists the hash with each generated timetable version, not as mutable school state.
+
 Phase 3A added no schema change. Read-only list and report queries run without change tracking (DECISIONS_PENDING #52).
 
 ## Application data

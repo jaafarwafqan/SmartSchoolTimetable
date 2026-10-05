@@ -117,9 +117,12 @@ Fixes data-entry weight before Phase 3. The full specification is in `docs/PHASE
 - Teacher availability, subject allowed slots, required resources, and impossible block combinations are validated before generation.
 - Soft-rule weights/defaults are persisted and validated; hard constraints cannot be configured away.
 - Tests cover valid cases and measured boundary/shortage cases against SQLite.
+- Phase 3D builds a deterministic, serializable `SchedulingInput` snapshot with canonical `InputHash`; the pure validator and «جاهزية الجدولة» report run before solver invocation. Phase 4 consumes this exact contract and persists its hash.
+- The validator is deliberately conservative: only proven upper-bound violations are errors; uncertain combinations remain warnings. It does not claim complete constraint solving.
 
 ## Phase 4 - Local CP-SAT generation
 - C# Google.OrTools, local background generation service, progress, cancellation, deterministic mode, and infeasibility diagnostics.
+- The solver adapter consumes Phase 3's `SchedulingInput` and `InputHash`; it does not rebuild input from database records. Queueing, progress, cancellation, placement and solver conflict diagnostics remain Phase 4.
 - No generation worker container, remote queue, or PostgreSQL advisory lock.
 
 ### Phase 4 open risk and mandatory investigation gate

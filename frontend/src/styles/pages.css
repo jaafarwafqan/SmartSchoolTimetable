@@ -120,6 +120,87 @@
   font-variant-numeric: tabular-nums;
 }
 
+.readiness-card,
+.readiness-summary,
+.readiness-group {
+  align-content: start;
+}
+
+.readiness-status {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin: 0;
+}
+
+.readiness-status.is-ready {
+  color: var(--color-success);
+}
+
+.readiness-status.has-errors {
+  color: var(--color-danger);
+}
+
+.readiness-counts,
+.readiness-meta,
+.readiness-group-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.readiness-meta {
+  margin: 0;
+  color: var(--color-ink-subtle);
+  font-size: var(--text-sm);
+}
+
+.readiness-meta [dir="ltr"] {
+  overflow-wrap: anywhere;
+}
+
+.readiness-findings {
+  display: grid;
+  gap: 1rem;
+}
+
+.readiness-findings > h2,
+.readiness-group-heading h3 {
+  margin: 0;
+}
+
+.readiness-group-heading h3 {
+  font-size: var(--text-lg);
+}
+
+.readiness-total-shortage {
+  margin: 0;
+  font-weight: 700;
+}
+
+.readiness-finding-list {
+  display: grid;
+  gap: 0.875rem;
+  margin: 0;
+  padding-inline-start: 1.25rem;
+}
+
+.readiness-finding-list li {
+  display: grid;
+  justify-items: start;
+  gap: 0.375rem;
+}
+
+.readiness-finding-list p {
+  margin: 0;
+}
+
+.readiness-related {
+  color: var(--color-ink-subtle);
+}
+
 /* ---------- School profile ---------- */
 .profile-layout {
   display: grid;

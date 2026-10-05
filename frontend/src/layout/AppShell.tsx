@@ -20,6 +20,7 @@ import { legacyRedirects, navGroups } from "./navigation";
 import { ResourcesPage } from "../features/resources/ResourcesPage";
 import { WorkloadPage } from "../features/workload/WorkloadPage";
 import { SchedulingProfilePage } from "../features/scheduling-profile/SchedulingProfilePage";
+import { ReadinessPage } from "../features/readiness/ReadinessPage";
 import { NotFoundPage } from "./NotFoundPage";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
@@ -67,6 +68,7 @@ export function AppShell({ bootstrap }: { bootstrap: Bootstrap }) {
             <Route path="/classes/resources" element={<ResourcesPage />} />
             <Route path="/teachers/list" element={<TeachersPage />} />
             <Route path="/teachers/workload" element={<WorkloadPage />} />
+            <Route path="/readiness" element={<ReadinessPage />} />
             <Route path="/setup" element={<SetupWizardPage />} />
             <Route path="/settings/general" element={<SettingsScreen bootstrap={bootstrap} />} />
             <Route path="/settings/scheduling" element={<SchedulingProfilePage />} />

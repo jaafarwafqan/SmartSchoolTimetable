@@ -1,6 +1,6 @@
 # SmartSchoolTimetable
 
-Single-user, offline-first school timetable application for one local school and one owner account. The browser UI is served by the ASP.NET Core app, which binds only to `127.0.0.1`. Phase 1.4 (design system adoption, tag `phase-1.4`) is complete. Phase 2 checkpoints 2A–2C are implemented on `phase-2`; checkpoints 2D–2F remain (see [DELIVERY_PLAN.md](./DELIVERY_PLAN.md)). The owner merges after acceptance.
+Single-user, offline-first school timetable application for one local school and one owner account. The browser UI is served by the ASP.NET Core app, which binds only to `127.0.0.1`. Phases 0–2.5 and Phase 3A–3C are tagged; Phase 3D is in progress on `phase-3`. The owner merges after acceptance.
 
 ## Stack and environment
 - .NET SDK 9.0.318 and Node.js v24.18.0 are available in the current development environment. Node/npm are required for the React build and frontend tests.
@@ -28,6 +28,9 @@ The frontend test command runs Vitest and Playwright; install Chromium once with
 
 ### Phase 2.5 owner test
 Follow `docs/OWNER_TEST_SCRIPT_PHASE25.md` on a separate test database (`$env:Database__Path`). The results are in `docs/PHASE25_REPORT.md`.
+
+### Phase 3 readiness check
+After setup, open «جاهزية الجدولة» from the dashboard card or `/readiness`. The report uses the current academic year and the real saved curriculum, teacher assignments, availability and resources. It is a conservative preflight; timetable generation and CP-SAT remain Phase 4.
 
 ### Database reset and first-run setup
 Stop the running app before resetting. From the repository root, run:

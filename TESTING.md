@@ -256,6 +256,14 @@ Suggested curriculum (`phase-2-5-curriculum`):
 - `QueryCountTests` now also covers resources, the workload matrix and the loads.
 - Vitest `features/workload/workload.test.tsx`: the teacher chooser (specialists, current teacher, «عرض الجميع»), shortage order and message, load bar width and meter values, the bulk plan view, counting «نصاب».
 - Playwright `phase3-workload.spec.ts`: assign in the matrix, «خارج التخصص» and «إضافة المادة لتخصصاته», completion «٢ من ٢», the shortage warning «المسند ١١، المتاح ١٠، يزيد ١», bulk class teacher with preview and confirmation, load bars by teacher, the teacher delete dialog naming «نصابان», clearing an assigned curriculum line with confirmation and undo; axe, no scroll, no overlap and screenshots at 375/768/1024/1440.
+### 3D - scheduling input and readiness
+- .NET `Phase3/PreSolveValidatorTests`: exact 28/25/3 teacher and 7/5/2 physics bounds; unassigned grouping; section stage-day capacity; off days, blocked periods, release and daily/weekly limits; assignment intersections; per-shift resource capacity; double periods; consistency warnings; empty-stage reporting; deterministic hash ordering and scheduling-relevant changes.
+- .NET `Phase3/ValidatorPropertyTests`: 300 generated feasible schools must have zero errors; 300 known teacher-limit reductions must identify only that teacher with the exact shortage. Seeds are deterministic.
+- .NET `Phase3/ReadinessTests`: unauthenticated API rejection; a persisted unassigned workload appears in the report and becomes ready after class-teacher assignment; checklist completion is based on active assignments; a 40-section × 9-line snapshot/hash/validate benchmark must finish below one second.
+- `QueryCountTests` includes readiness and compares the number of SQL commands for small and larger schools.
+- Vitest `features/readiness/readinessPresentation.test.ts`: exact teacher/physics Arabic numbers, grouping by entity and no double-counting overload shortage. `lib/arabicCount.test.ts` covers error, warning and pair forms and guards against manual counted-noun strings.
+- Playwright `phase3-readiness.spec.ts`: real dashboard readiness card and unassigned-line finding; exact section-capacity warning; axe; no horizontal scroll and text overlap at 375/768/1024/1440; reference screenshots viewed before acceptance.
+- `SchedulingSection` adds the matrix, load bar/status, and readiness finding to the development-only `/design` guide.
 
 ## Later-phase acceptance suites
 - Phase 4 infeasibility test must construct a conflict involving two teachers, a shared lab, and a blocked period; the diagnostic must identify the conflict groups and actionable correction, not merely report infeasible.

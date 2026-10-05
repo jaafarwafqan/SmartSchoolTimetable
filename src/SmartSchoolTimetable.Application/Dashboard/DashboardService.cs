@@ -4,6 +4,8 @@ using SmartSchoolTimetable.Application.SchoolSetup;
 using SmartSchoolTimetable.Domain.SchoolSetup;
 using SmartSchoolTimetable.Domain.Subjects;
 using SmartSchoolTimetable.Domain.Teachers;
+using SmartSchoolTimetable.Domain.Curriculum;
+using SmartSchoolTimetable.Domain.Workload;
 
 namespace SmartSchoolTimetable.Application.Dashboard;
 
@@ -42,6 +44,13 @@ public sealed class DashboardService(IDataStore store)
         var stageIds = stages.Keys.ToList();
         var sections = await store.ListAsync(
             store.Read<Section>().Where(row => !row.IsArchived && stageIds.Contains(row.StageId)), cancellationToken);
+        var sectionIds = sections.Select(section => section.Id).ToArray();
+        var curriculumEntries = await store.ListAsync(
+            store.Read<CurriculumEntry>().Where(row => !row.IsArchived && stageIds.Contains(row.StageId)), cancellationToken);
+        var entryIds = curriculumEntries.Select(entry => entry.Id).ToArray();
+        var assignments = await store.CountAsync(store.Read<WorkloadAssignment>()
+            .Where(row => !row.IsArchived && sectionIds.Contains(row.SectionId) && entryIds.Contains(row.CurriculumEntryId)), cancellationToken);
+        var workloadCells = sections.Sum(section => curriculumEntries.Count(entry => entry.StageId == section.StageId));
         var shiftById = shifts.ToDictionary(shift => shift.Id);
         var capacityGaps = sections.Count(section => Section.WeeklyCapacity(week, shiftById.GetValueOrDefault(section.ShiftId), stages.GetValueOrDefault(section.StageId)) == 0);
 
@@ -62,6 +71,7 @@ public sealed class DashboardService(IDataStore store)
             new("stagesSections", stageIds.Count > 0 && sections.Count > 0),
             new("subjects", subjects > 0),
             new("teachers", teachers > 0),
+            new("workload", workloadCells > 0 && assignments == workloadCells),
         };
         var curriculum = await CurriculumTableBuilder.BuildAsync(store, yearId, cancellationToken);
         var progress = await store.FirstOrDefaultAsync(store.Read<SetupProgress>(), cancellationToken);

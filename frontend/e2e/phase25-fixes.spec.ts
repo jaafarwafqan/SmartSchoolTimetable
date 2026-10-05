@@ -14,7 +14,7 @@ const wizard = school.wizard;
 const curriculum = school.curriculum;
 const templates = school.templates;
 const arab = (value: number) => formatNumber(value, "arab");
-const stepOrder = ["المدرسة", "السنة الدراسية", "الدوام", "الصفوف والشعب", "المواد والمنهج", "المعلمون", "المراجعة"];
+const stepOrder = ["المدرسة", "السنة الدراسية", "الدوام", "الصفوف والشعب", "المواد والمنهج", "المعلمون", "الأنصبة", "المراجعة"];
 
 test.describe.configure({ mode: "serial" });
 test.beforeAll(async ({ browser }) => { await server.start(browser, "phase25-fixes"); });

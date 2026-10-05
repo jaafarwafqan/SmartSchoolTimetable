@@ -1,6 +1,13 @@
 # Changelog
 
 ## [Unreleased]
+### Phase 3D - scheduling input and pre-solve readiness (checkpoint in progress)
+- Added the serializable `SchedulingInput`, canonical SHA-256 `InputHash`, pure conservative pre-solve validator and authenticated readiness API.
+- Added «جاهزية الجدولة» with grouped findings, numeric Arabic messages, actionable links, refresh, hash/time and the live dashboard readiness card.
+- Added the dashboard checklist step «تعيين المعلمين على المنهج», computed from active curriculum lines and assignments.
+- Added FsCheck soundness properties, 40-section performance coverage, readiness API/query-count tests, Vitest presentation tests and a Playwright/axe/responsive scenario.
+- Documented ADRs 0033–0035 and the Phase 4 input boundary. No solver or generation functionality was added.
+
 ### Phase 3C - workload assignments (tag `phase-3c`)
 - **«الأنصبة»** tab next to «المعلمون» (ADR 0032, #59).
   - **«حسب الشعبة»:** a matrix per stage (sections × curriculum lines) with a teacher chooser in each cell. The chooser lists the subject's specialists, or everyone with «عرض الجميع», and shows each teacher's load.

@@ -147,6 +147,79 @@ public sealed class WorkloadService(IDataStore store, TimeProvider clock)
         }, token);
     }
 
+    public async Task<OperationResult<AssignmentSuggestionPlanDto>> SuggestAssignmentsAsync(long yearId, bool apply, bool confirm, CancellationToken token)
+    {
+        if (apply && !confirm)
+            return OperationResult.Invalid<AssignmentSuggestionPlanDto>(nameof(ConfirmSuggestionsCommand.Confirm), ErrorCodes.Required);
+        if (await WorkloadData.LoadAsync(store, yearId, forUpdate: apply, token) is not { } data)
+            return OperationResult.Failure<AssignmentSuggestionPlanDto>(ErrorCodes.NotFound);
+        var plan = PlanSuggestions(data);
+        if (!apply || plan.Assignments.Count == 0)
+            return OperationResult.Success(plan);
+
+        foreach (var suggestion in plan.Assignments)
+            store.Add(WorkloadAssignment.Create(suggestion.SectionId, suggestion.EntryId, suggestion.TeacherId));
+        AuditTrail.Record(store, clock, "WorkloadAssignmentsSuggested", $"academic-year:{yearId}", $"{plan.Assignments.Count} workload assignments suggested.");
+        return await store.SaveAsync(() => plan, "Confirm", token);
+    }
+
+    private static AssignmentSuggestionPlanDto PlanSuggestions(WorkloadData data)
+    {
+        var teachers = data.Teachers.Values.Where(teacher => !teacher.IsArchived).OrderBy(teacher => teacher.NormalizedFullName, StringComparer.Ordinal).ToArray();
+        var assignments = data.Assignments.Where(row => !row.IsArchived).ToArray();
+        var currentLoads = teachers.ToDictionary(teacher => teacher.Id, teacher => data.AssignedLessons(teacher.Id));
+        var limits = teachers.ToDictionary(teacher => teacher.Id, teacher => data.AvailabilityOf(teacher, assignments.Where(row => row.TeacherId == teacher.Id)).Available);
+        var assigned = assignments.Select(row => (row.SectionId, row.CurriculumEntryId)).ToHashSet();
+        var candidates = data.Sections
+            .SelectMany(section => data.EntriesOf(section.StageId).Where(entry => !assigned.Contains((section.Id, entry.Id)))
+                .Select(entry => (Section: section, Entry: entry)))
+            .OrderBy(item => data.Stages.ToList().FindIndex(stage => stage.Id == item.Section.StageId))
+            .ThenBy(item => item.Section.NormalizedLabel, StringComparer.Ordinal)
+            .ThenBy(item => data.Subjects[item.Entry.SubjectId].NormalizedName, StringComparer.Ordinal)
+            .ThenBy(item => item.Entry.NormalizedLabel, StringComparer.Ordinal)
+            .ThenBy(item => item.Entry.Id)
+            .ToArray();
+        var suggestions = new List<SuggestedAssignmentDto>();
+        var unassigned = new List<UnassignedSuggestionDto>();
+        var projected = teachers.ToDictionary(teacher => teacher.Id, teacher => currentLoads[teacher.Id]);
+
+        foreach (var candidate in candidates)
+        {
+            var section = candidate.Section;
+            var entry = candidate.Entry;
+            var subject = data.Subjects[entry.SubjectId];
+            var specialists = teachers.Where(teacher => teacher.Specializations.Any(item => item.SubjectId == subject.Id)).ToArray();
+            var feasible = specialists.Where(teacher =>
+                !data.ReleasedForYear(teacher) && limits[teacher.Id] - projected[teacher.Id] >= entry.WeeklyLessons).ToArray();
+            var chosen = feasible.OrderBy(teacher => teacher, Comparer<Teacher>.Create((first, second) =>
+            {
+                var firstLimit = Math.Max(1, limits[first.Id]);
+                var secondLimit = Math.Max(1, limits[second.Id]);
+                var balance = (long)(projected[first.Id] + entry.WeeklyLessons) * secondLimit
+                    - (long)(projected[second.Id] + entry.WeeklyLessons) * firstLimit;
+                return balance != 0 ? balance.CompareTo(0) : StringComparer.Ordinal.Compare(first.NormalizedFullName, second.NormalizedFullName);
+            })).FirstOrDefault();
+
+            if (chosen is null)
+            {
+                var reason = specialists.Length == 0 ? "NO_SPECIALIST"
+                    : specialists.All(data.ReleasedForYear) ? "RELEASED"
+                    : "CAPACITY";
+                unassigned.Add(new UnassignedSuggestionDto(section.Id, data.StageOf(section).Name, section.Label, entry.Id,
+                    data.SubjectName(entry), entry.Label, entry.WeeklyLessons, reason));
+                continue;
+            }
+
+            projected[chosen.Id] += entry.WeeklyLessons;
+            suggestions.Add(new SuggestedAssignmentDto(section.Id, data.StageOf(section).Name, section.Label, entry.Id,
+                data.SubjectName(entry), entry.Label, entry.WeeklyLessons, chosen.Id, chosen.FullName));
+        }
+
+        var loads = suggestions.Select(item => item.TeacherId).Distinct().OrderBy(id => teachers.First(teacher => teacher.Id == id).NormalizedFullName, StringComparer.Ordinal)
+            .Select(id => new SuggestionTeacherLoadDto(id, teachers.First(teacher => teacher.Id == id).FullName, currentLoads[id], projected[id], limits[id])).ToArray();
+        return new AssignmentSuggestionPlanDto(suggestions, unassigned, loads);
+    }
+
     private sealed record Change(WorkloadAssignment? Current, Section Section, CurriculumEntry Entry, long? Before, long? After, string Action);
 
     /// <summary>One cell of a bulk assignment: create, replace (only when overwriting), skip or unchanged.</summary>

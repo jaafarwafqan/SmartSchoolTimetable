@@ -40,6 +40,7 @@ public sealed class QueryCountTests
             "/api/v1/subjects/", "/api/v1/teachers/", $"{school.Root}/stage-cards", $"{school.Root}/curriculum",
             "/api/v1/dashboard-summary/", $"/api/v1/references/stage/{school.Stage.Id}", "/api/v1/blocked-periods/orphans/",
             "/api/v1/resources/", $"{school.Root}/workload/matrix", $"{school.Root}/workload/teachers",
+            $"{school.Root}/readiness/",
         };
         await host.PostAsync("/api/v1/teachers/bulk", new { names = FirstTeacher }, school.Token);
         var small = await MeasureAsync(host, paths);

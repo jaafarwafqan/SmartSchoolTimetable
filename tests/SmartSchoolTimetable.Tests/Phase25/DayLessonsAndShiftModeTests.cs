@@ -76,7 +76,7 @@ public sealed class DayLessonsAndShiftModeTests
         Assert.Equal([6], progress.SkippedSteps); // step 2 is done, so it is no longer skipped
         Assert.Equal(3, progress.CurrentStep);
         Assert.Equal(["CurrentStep", "CompletedSteps", "SkippedSteps"],
-            Assert.Throws<DomainValidationException>(() => progress.Record(8, [0], [9], false, DateTimeOffset.UnixEpoch)).Errors.Select(error => error.Field));
+            Assert.Throws<DomainValidationException>(() => progress.Record(9, [0], [9], false, DateTimeOffset.UnixEpoch)).Errors.Select(error => error.Field));
 
         var profile = SchoolProfile.CreateDefault(DateTimeOffset.UnixEpoch);
         profile.SetStudyType(StudyType.Dual, DateTimeOffset.UnixEpoch);

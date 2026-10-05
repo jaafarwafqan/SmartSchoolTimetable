@@ -97,6 +97,7 @@ builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Resources.ResourcesService>();
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Scheduling.SchedulingProfileService>();
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Workload.WorkloadService>();
+builder.Services.AddScoped<SmartSchoolTimetable.Application.Scheduling.ReadinessService>();
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Common.ReferenceGuard>();
 builder.Services.AddLocalInfrastructure(
     databasePath,
@@ -127,6 +128,7 @@ app.MapReferencesEndpoints();
 app.MapResourcesEndpoints();
 app.MapSchedulingProfileEndpoints();
 app.MapWorkloadEndpoints();
+app.MapReadinessEndpoints();
 app.MapFallback(async (HttpContext context) =>
 {
     if (context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))

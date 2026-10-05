@@ -222,6 +222,13 @@ Curriculum cells and entries carry `isSuggested`. Audit events: `SuggestedCurric
 - **`GET /references/{teacher|section|curriculumEntry}/{id}`** lists the assignments (dependent kind `workloadAssignment`, «المرحلة / الشعبة: المادة — المعلم»).
 - Audit events: `WorkloadAssigned`, `WorkloadReassigned`, `WorkloadCleared`, `WorkloadAssignedAcrossStage`, `WorkloadClassTeacher`, `WorkloadTransferred`, `WorkloadRemoved`, `WorkloadArchivedWithLine`.
 
+### Phase 3D: scheduling input and pre-solve readiness (ADRs 0034–0035)
+| Method | Route | Request | Success | Errors |
+|---|---|---|---|---|
+| GET | `/academic-years/{yearId}/readiness` | — | 200 `{ ready, errors, warnings, findings: [{ code, severity, entity, related, required, available, shortage, details, fixes }], inputHash, checkedAt, sections, lines, assigned, teachers }` | 401, 404 |
+
+`ready` is true exactly when there are no error-severity findings. The endpoint builds the immutable `SchedulingInput` consumed by Phase 4, hashes it using canonical JSON, and validates it without running a solver. `inputHash` is lowercase SHA-256. Finding codes are stable identifiers; `severity` is `error` or `warning`; the client renders Arabic text and fix links. The read-only call has a fixed query count.
+
 ### Subjects and the schedule grid (Phase 2, checkpoint 2D)
 | Method | Route | Request | Success | Endpoint-specific errors |
 |---|---|---|---|---|

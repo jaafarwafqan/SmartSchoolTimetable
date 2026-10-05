@@ -60,3 +60,16 @@ public sealed record TeacherLoadChangeDto(long TeacherId, string FullName, int B
 
 /// <param name="Changes">Lines that would change (create, replace, transfer, remove).</param>
 public sealed record WorkloadPlanDto(IReadOnlyList<WorkloadPlanLineDto> Lines, int Changes, IReadOnlyList<TeacherLoadChangeDto> Loads);
+
+public sealed record ConfirmSuggestionsCommand(bool Confirm);
+
+public sealed record SuggestedAssignmentDto(long SectionId, string StageName, string SectionLabel, long EntryId, string SubjectName, string? Label,
+    int WeeklyLessons, long TeacherId, string TeacherName);
+
+public sealed record UnassignedSuggestionDto(long SectionId, string StageName, string SectionLabel, long EntryId, string SubjectName, string? Label,
+    int WeeklyLessons, string Reason);
+
+public sealed record SuggestionTeacherLoadDto(long TeacherId, string TeacherName, int Before, int After, int Limit);
+
+public sealed record AssignmentSuggestionPlanDto(IReadOnlyList<SuggestedAssignmentDto> Assignments,
+    IReadOnlyList<UnassignedSuggestionDto> Unassigned, IReadOnlyList<SuggestionTeacherLoadDto> Loads);

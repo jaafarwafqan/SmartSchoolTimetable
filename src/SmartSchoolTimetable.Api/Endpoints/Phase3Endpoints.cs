@@ -36,6 +36,10 @@ public static class Phase3Endpoints
             ApiResults.Ok(context, await service.GetTeacherLoadsAsync(yearId, token)));
         workload.MapPut("/cell", async (long yearId, SetWorkloadCellCommand command, HttpContext context, WorkloadService service, CancellationToken token) =>
             ApiResults.Ok(context, await service.SetCellAsync(yearId, command, token)));
+        workload.MapGet("/suggestions/preview", async (long yearId, HttpContext context, WorkloadService service, CancellationToken token) =>
+            ApiResults.Ok(context, await service.SuggestAssignmentsAsync(yearId, apply: false, confirm: false, token)));
+        workload.MapPost("/suggestions/apply", async (long yearId, ConfirmSuggestionsCommand command, HttpContext context, WorkloadService service, CancellationToken token) =>
+            ApiResults.Ok(context, await service.SuggestAssignmentsAsync(yearId, apply: true, command.Confirm, token)));
         foreach (var apply in new[] { false, true })
         {
             var suffix = apply ? string.Empty : "/preview";
@@ -48,6 +52,13 @@ public static class Phase3Endpoints
             workload.MapPost($"/bulk/remove{suffix}", async (long yearId, RemoveWorkloadCommand command, HttpContext context, WorkloadService service, CancellationToken token) =>
                 ApiResults.Ok(context, await service.RemoveAsync(yearId, command, apply, token)));
         }
+        return endpoints;
+    }
+
+    public static IEndpointRouteBuilder MapReadinessEndpoints(this IEndpointRouteBuilder endpoints)
+    {
+        endpoints.MapOwnerGroup("/academic-years/{yearId:long}/readiness").MapGet("/", async (long yearId, HttpContext context, ReadinessService service, CancellationToken token) =>
+            ApiResults.Ok(context, await service.CheckAsync(yearId, token)));
         return endpoints;
     }
 
