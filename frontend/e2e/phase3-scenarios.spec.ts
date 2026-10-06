@@ -98,7 +98,8 @@ test("(h) intermediate: the suggester assigns twelve sections; its preview equal
       schoolType: "intermediate", shiftMode: "morning",
       grades: ["intermediate-1", "intermediate-2", "intermediate-3"].map((gradeKey) => ({ gradeKey, sections: 4 })),
     });
-    await api(page, server.baseUrl, "POST", `/academic-years/${yearId}/curriculum/suggested`, { optionalSubjects: [], confirm: true });
+    // الحاسوب is optional in the official plan (ADR 0036); «التربية الفنية» is created as «التربية الفنية والنشيد».
+    await api(page, server.baseUrl, "POST", `/academic-years/${yearId}/curriculum/suggested`, { optionalSubjects: ["الحاسوب"], confirm: true });
     const ids = await subjects(page, server.baseUrl);
     const of = (...names: string[]) => names.map((name) => ids.get(name)!);
     const specialists: Array<[string, number[]]> = [
@@ -108,8 +109,9 @@ test("(h) intermediate: the suggester assigns twelve sections; its preview equal
       ["مصطفى كريم عباس", of("الكيمياء", "الفيزياء", "الأحياء")], ["آمنة كاظم عبيد", of("الكيمياء", "الفيزياء", "الأحياء")],
       ["كرار فلاح مهدي", of("الكيمياء", "الفيزياء", "الأحياء")],
       ["محمد جواد كاظم", of("الاجتماعيات", "التربية الإسلامية")], ["سارة عادل حسن", of("الاجتماعيات", "التربية الإسلامية")],
-      ["عباس حميد ياسين", of("الحاسوب", "التربية الأخلاقية", "التربية الفنية", "التربية الرياضية")],
-      ["إيمان صادق حسون", of("الحاسوب", "التربية الأخلاقية", "التربية الفنية", "التربية الرياضية")],
+      ["عباس حميد ياسين", of("الحاسوب", "التربية الأخلاقية", "التربية الفنية والنشيد", "التربية الرياضية")],
+      ["إيمان صادق حسون", of("الحاسوب", "التربية الأخلاقية", "التربية الفنية والنشيد", "التربية الرياضية")],
+      ["علي حسين جابر", of("الاجتماعيات")], // the official plan has 4 social-studies lessons in every grade
     ];
     const created = [];
     for (const [name, subjectIds] of specialists) created.push(await teacher(page, server.baseUrl, name, subjectIds));

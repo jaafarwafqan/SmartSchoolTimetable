@@ -113,6 +113,7 @@ No implementation of domain logic; only specification and validation strategy.
   - **Rule:** a section only uses the first N lessons of its day; Phase 3 and the solver must respect it.
 
 ## Phase 2.5 suggested curriculum
+- **Template (ADR 0036):** the official plan 2026-2027. Each row is mandatory or optional. An optional row is either counted in the official total (`inStatedTotal`: اللغة الكردية) or added on top of it (اللغة الفرنسية، الحاسوب، منهج جرائم حزب البعث). `OfficialTotal()` sums the counted rows, and `Total(chosen)` sums the mandatory rows plus the chosen optional ones.
 - **`CurriculumEntry.IsSuggested`:** `CreateSuggested`, `ResetToSuggestion`; cleared by every owner edit (ADR 0029).
 - **`DailyDistribution.Suggest(total, days in week order, maxOnDay)`:** even split, extra lessons on the earlier days, capped per day; problems `NoCurriculum`, `BelowWorkingDays`, `AboveShiftCapacity` (ADR 0030).
 - **`Stage.ApplySuggestedDayLessons` / `DayLessonsSuggested`:** counts from the suggestion; any owner edit clears the flag, and later suggestions skip such stages.

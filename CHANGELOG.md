@@ -1,6 +1,16 @@
 # Changelog
 
 ## [Unreleased]
+### Phase 2.5 - official study plan 2026-2027 (branch `phase-2-5-official-curriculum`)
+- **The curriculum template is now the Ministry's official plan 2026-2027** (`iraq-curriculum.official-2026-2027.json`, template version 2; ADR 0036). It replaces the unverified `iraq-curriculum.suggested.json`.
+- **Optional subjects** start unticked and are never created unless ticked: اللغة الكردية (counted in the official total), اللغة الفرنسية, الحاسوب and منهج جرائم حزب البعث (added on top).
+- **Preview** shows «المجموع الرسمي» and «المحسوب للمواد المفعّلة» for each stage, the source's review note (الرابع الابتدائي 31 against 30; الرابع العلمي and حزب البعث), and the fixed source line. None of these block applying.
+- **Aliases** fold «اللغة العربية (قراءتي)», «التربية الفنية», «مبادئ الاقتصاد», … into one subject. Subjects are created under the canonical name, so a K-12 school gets one «التربية الفنية والنشيد», not two.
+- **API:** the plan gains `templateVersion`, and `provenance` is an object. Subject lines gain `inStatedTotal` and `note`, stage lines gain `officialTotal` and `verificationNote`, and entry lines gain `inStatedTotal` and `note`.
+- **Tests:** template totals against the printed plan, Kurdish on/off, apply twice, unticked optional not created; Playwright: preview → French and computing ticked → apply → rows in the curriculum tab.
+- Test data follows the heavier official loads: `phase3-scenarios` (h) ticks الحاسوب, uses «التربية الفنية والنشيد» and adds a third الاجتماعيات teacher (4 lessons per intermediate grade). The curriculum, wizard step 5 and suggester screenshots were re-baselined after viewing them.
+- Open questions: DECISIONS_PENDING #66–#68.
+
 ### Phase 3E - suggester, wizard step, demo data, scenarios (tags `phase-3e`, `phase-3-final`)
 - **«اقتراح توزيع الأنصبة»:** a deterministic suggester for unassigned lines only (specialists, the lowest load share, never above the limit). Preview first, then a centred confirmation; the applied result equals the preview and existing assignments never change.
 - **Wizard step 7 «الأنصبة»** (eight steps). Data migration `Phase3EWorkloadWizardStep` moves a saved review step; `Down` restores it.

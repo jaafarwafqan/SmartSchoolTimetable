@@ -15,44 +15,80 @@ using static SmartSchoolTimetable.Tests.ApiTestHelpers;
 
 namespace SmartSchoolTimetable.Tests.Phase25;
 
-/// <summary>The owner's suggested Iraqi curriculum (ADR 0028–0030): data, matching, apply rules and the daily distribution.</summary>
+/// <summary>The official Iraqi study plan 2026-2027 (ADR 0028–0030): data, matching, apply rules and the daily distribution.</summary>
 public sealed class SuggestedCurriculumTests
 {
     private static readonly int[] SundayToThursday = [7, 1, 2, 3, 4];
     private static readonly int[] SaturdayToThursday = [6, 7, 1, 2, 3, 4];
     private static readonly string[] French = ["اللغة الفرنسية"];
+    private static readonly string[] Kurdish = ["اللغة الكردية"];
+    private static readonly string[] KurdishAndFrench = ["اللغة الكردية", "اللغة الفرنسية"];
     private static readonly string[] BothBranches = ["scientific", "literary"];
     private static readonly string[] NoBranches = [];
     private static readonly long[] UnknownStage = [999L];
     private static readonly int[] NothingPlanned = [0, 0, 0, 0, 0, 0];
-    private static readonly int[] PrimaryTotals = [28, 28, 27, 29, 30, 30];
-    private static readonly int[] SecondaryWithFrench = [33, 33, 34, 28, 25];
-    private static readonly string[] LiteraryStages = ["الرابع الأدبي", "الخامس الأدبي", "السادس الأدبي"];
+    private static readonly int[] PrimaryTotals = [30, 30, 30, 31, 30, 31];
+    private static readonly int[] SecondaryDefault = [30, 30, 30, 28, 28];
 
-    /// <summary>Section 5 of the owner's instruction: totals computed from the rows (all, without optional).</summary>
-    private static readonly (string Stage, int All, int WithoutOptional)[] ExpectedTotals =
+    private static readonly int[] SecondaryWithKurdishAndFrench = [32, 32, 32, 32, 32];
+    private static readonly int[] FourthAndFifthOfficial = [30, 30, 30, 31];
+    private static readonly int[] FourthAndFifthWithoutKurdish = [28, 28, 29, 30];
+    private static readonly string[] ReviewStages = ["الرابع الابتدائي", "الرابع العلمي"];
+    private static readonly string[] OptionalSubjects = ["الحاسوب", "اللغة الفرنسية", "اللغة الكردية", "منهج جرائم حزب البعث"];
+    private static readonly string[] AddedOnTop = ["الحاسوب", "اللغة الفرنسية", "منهج جرائم حزب البعث"];
+    private static readonly HashSet<string> NoneChosen = [];
+    private static readonly HashSet<string> AllOptional = [.. OptionalSubjects];
+
+    /// <summary>The printed total of each stage in the official plan 2026-2027.</summary>
+    private static readonly (string Stage, int Stated)[] PrintedTotals =
     [
-        ("الأول الابتدائي", 28, 28), ("الثاني الابتدائي", 28, 28), ("الثالث الابتدائي", 27, 27),
-        ("الرابع الابتدائي", 29, 29), ("الخامس الابتدائي", 30, 30), ("السادس الابتدائي", 30, 30),
-        ("الأول المتوسط", 33, 30), ("الثاني المتوسط", 33, 30), ("الثالث المتوسط", 34, 31),
-        ("الرابع العلمي", 30, 28), ("الخامس العلمي", 31, 30), ("السادس العلمي", 33, 33),
-        ("الرابع الأدبي", 27, 25), ("الخامس الأدبي", 30, 29), ("السادس الأدبي", 30, 30),
+        ("الأول الابتدائي", 30), ("الثاني الابتدائي", 30), ("الثالث الابتدائي", 30),
+        ("الرابع الابتدائي", 30), ("الخامس الابتدائي", 30), ("السادس الابتدائي", 31),
+        ("الأول المتوسط", 30), ("الثاني المتوسط", 30), ("الثالث المتوسط", 30),
+        ("الرابع العلمي", 30), ("الخامس العلمي", 30), ("السادس العلمي", 33),
+        ("الرابع الأدبي", 30), ("الخامس الأدبي", 31), ("السادس الأدبي", 31),
     ];
 
     [Fact]
-    public void TheTemplateMatchesTheStagesAndTheExpectedTotals()
+    public void TheOfficialTemplateTotalsMatchThePrintedPlan()
     {
         var template = SuggestedCurriculumTemplate.Current;
-        Assert.Equal(1, template.Version);
-        Assert.Contains("NOT verified", template.Provenance, StringComparison.Ordinal);
-        Assert.Equal(ExpectedTotals.Select(item => (item.Stage, item.All, item.WithoutOptional)),
-            template.Stages.Select(stage => (stage.Name, stage.Total(includeOptional: true), stage.Total(includeOptional: false))));
-        Assert.All(template.Stages, stage => Assert.Equal((stage.ComputedTotal, stage.ComputedTotalWithoutOptional), (stage.Total(true), stage.Total(false))));
+        Assert.Equal(2, template.Version);
+        Assert.Equal("official", template.Provenance.Status);
+        Assert.Contains("2026-2027", template.Provenance.Source, StringComparison.Ordinal);
+        Assert.Equal(PrintedTotals, template.Stages.Select(stage => (stage.Name, stage.StatedTotal)));
         Assert.All(template.Stages.SelectMany(stage => stage.Entries), entry => Assert.InRange(entry.Lessons, CurriculumEntry.MinWeeklyLessons, CurriculumEntry.MaxWeeklyLessons));
 
-        // Exactly the three literary stages: their stated total matches neither computed total.
-        Assert.Equal(LiteraryStages, template.Stages.Where(stage => stage.NeedsReview).Select(stage => stage.Name));
-        Assert.All(template.Stages, stage => Assert.Equal(stage.NeedsReview, stage.StatedTotal != stage.Total(true) && stage.StatedTotal != stage.Total(false)));
+        // Mandatory rows + Kurdish (optional but counted) = the printed total, except الرابع الابتدائي: 31 against 30.
+        foreach (var stage in template.Stages)
+        {
+            var counted = stage.Entries.Where(entry => !entry.Optional || entry.Subject == "اللغة الكردية").Sum(entry => entry.Lessons);
+            Assert.Equal(counted, stage.OfficialTotal());
+            Assert.Equal(counted, stage.ComputedTotal);
+            if (stage.Name == "الرابع الابتدائي")
+            {
+                Assert.Equal((31, 30), (counted, stage.StatedTotal));
+                Assert.True(stage.NeedsReview);
+                Assert.False(stage.TotalMatchesPrinted);
+                Assert.False(string.IsNullOrWhiteSpace(stage.VerificationNote));
+            }
+            else
+            {
+                Assert.Equal(stage.StatedTotal, counted);
+                Assert.True(stage.TotalMatchesPrinted);
+            }
+        }
+        // Flagged: الرابع الابتدائي (total) and الرابع العلمي (does منهج جرائم حزب البعث apply to the fifth too?).
+        Assert.Equal(ReviewStages, template.Stages.Where(stage => stage.NeedsReview).Select(stage => stage.Name));
+        Assert.All(template.Stages.Where(stage => stage.NeedsReview), stage => Assert.False(string.IsNullOrWhiteSpace(stage.VerificationNote)));
+
+        // Optional rows: Kurdish counts in the official total; French, computing and حزب البعث are added on top of it.
+        var optional = template.Stages.SelectMany(stage => stage.Entries).Where(entry => entry.Optional).ToArray();
+        Assert.Equal(OptionalSubjects, optional.Select(entry => entry.Subject).Distinct().Order());
+        Assert.All(optional, entry => Assert.Equal(entry.Subject == "اللغة الكردية", entry.CountsInStatedTotal));
+        Assert.Equal(AddedOnTop, optional.Where(entry => entry.InStatedTotal == false).Select(entry => entry.Subject).Distinct().Order());
+        Assert.All(template.Stages, stage => Assert.Equal(stage.Total(NoneChosen) + stage.Entries.Where(entry => entry.Optional).Sum(entry => entry.Lessons), stage.Total(AllOptional)));
+        Assert.All(template.Stages.SelectMany(stage => stage.Entries).Where(entry => !entry.Optional), entry => Assert.True(entry.CountsInStatedTotal));
 
         // Every stage name is a stage the stage templates produce (primary 6, intermediate 3, preparatory 3 × 2 branches).
         var catalog = TemplateCatalog.Current;
@@ -62,11 +98,14 @@ public sealed class SuggestedCurriculumTests
         Assert.All(template.Stages, stage => Assert.Contains(stage.Name, templateStageNames));
         Assert.Equal(15, template.Stages.Count);
 
-        // Optional subjects: Kurdish (fourth and fifth, both branches) and French (all intermediate grades).
-        Assert.Equal(["اللغة الفرنسية", "اللغة الكردية"], template.Stages.SelectMany(stage => stage.Entries).Where(entry => entry.Optional).Select(entry => entry.Subject).Distinct().Order());
-        Assert.True(template.SameSubject("اللغة الإنكليزية", "اللغة الإنجليزية"));
-        Assert.True(template.SameSubject("الجغرافية", "الجغرافيا"));
-        Assert.True(template.SameSubject("التربية الفنية والنشيد", "التربية الفنية و النشيد"));
+        // Aliases fold the plan's spellings into one subject.
+        Assert.True(template.SameSubject("اللغة الإنكليزية", "اللغة الانجليزية"));
+        Assert.True(template.SameSubject("اللغة العربية", "اللغة العربية (قراءتي)"));
+        Assert.True(template.SameSubject("اللغة العربية", "قراءتي"));
+        Assert.True(template.SameSubject("التربية الفنية والنشيد", "التربية الفنية"));
+        Assert.True(template.SameSubject("الاجتماع", "علم الاجتماع"));
+        Assert.True(template.SameSubject("الاقتصاد", "مبادئ الاقتصاد"));
+        Assert.Equal("اللغة العربية", template.Canonical("اللغة العربية (قراءتي)"));
         Assert.False(template.SameSubject("الجغرافية", "التاريخ"));
         Assert.Null(template.Canonical("مادة غير موجودة"));
     }
@@ -151,9 +190,15 @@ public sealed class SuggestedCurriculumTests
         await ReadAsync<SubjectDto>(await host.PostAsync("/api/v1/subjects/", new { name = "اللغة الإنجليزية", colorIndex = 0, priority = 0, distributionEnabled = true, version = 0 }, token));
 
         var preview = await ReadAsync<SuggestedCurriculumPlanDto>(await host.PostAsync($"{root}/curriculum/suggested/preview", new { }, token));
-        Assert.Contains("NOT verified", preview.Provenance, StringComparison.Ordinal);
+        Assert.Equal((2, "official"), (preview.TemplateVersion, preview.Provenance.Status));
         Assert.Equal((false, "exists", "اللغة الإنجليزية"), preview.Subjects.Where(line => line.Name == "اللغة الإنكليزية").Select(line => (line.Optional, line.Action, line.ExistingName)).Single());
-        Assert.Equal([28, 28, 27, 29, 30, 30], preview.Stages.Select(stage => stage.ResultingTotal));
+        Assert.Equal(PrimaryTotals, preview.Stages.Select(stage => stage.ResultingTotal));
+        Assert.Equal([false, false, false, true, false, false], preview.Stages.Select(stage => stage.NeedsReview));
+        Assert.Equal((30, 31), (preview.Stages[3].StatedTotal, preview.Stages[3].OfficialTotal));
+        Assert.NotNull(preview.Stages[3].VerificationNote);
+        // «اللغة العربية (قراءتي)» and «اللغة العربية» are one subject, as are «التربية الفنية والنشيد» and its alias.
+        Assert.Single(preview.Subjects, line => line.Name == "اللغة العربية");
+        Assert.DoesNotContain(preview.Subjects, line => line.Name == "اللغة العربية (قراءتي)");
         Assert.Equal(NothingPlanned, await PlannedAsync(host, root)); // preview saves nothing
 
         var applied = await ReadAsync<SuggestedCurriculumPlanDto>(await host.PostAsync($"{root}/curriculum/suggested", new { }, token));
@@ -161,6 +206,8 @@ public sealed class SuggestedCurriculumTests
         Assert.Equal(PrimaryTotals, await PlannedAsync(host, root));
         var subjects = await ReadAsync<PagedResult<SubjectDto>>(await host.Client.GetAsync("/api/v1/subjects/?pageSize=100"));
         Assert.Single(subjects.Items, subject => subject.Name.Contains("نجليزية", StringComparison.Ordinal) || subject.Name.Contains("نكليزية", StringComparison.Ordinal));
+        Assert.Single(subjects.Items, subject => subject.Name.Contains("العربية", StringComparison.Ordinal));
+        Assert.Equal(9, subjects.Items.Count); // primary: 9 distinct subjects, no optional ones
         Assert.All(subjects.Items, subject => Assert.Equal(3, subject.Priority));
 
         // Apply twice = no change.
@@ -183,12 +230,12 @@ public sealed class SuggestedCurriculumTests
         await ReadAsync<SuggestedCurriculumPlanDto>(await host.PostAsync(resetPath, new { confirm = true }, token));
         var reset = (await ReadAsync<CurriculumTableDto>(await host.Client.GetAsync($"{root}/curriculum"))).Rows.SelectMany(row => row.Cells).Single(item => item.EntryId == cell.EntryId);
         Assert.True(reset.IsSuggested);
-        Assert.Equal(28, (await PlannedAsync(host, root))[0]);
+        Assert.Equal(30, (await PlannedAsync(host, root))[0]);
         Assert.Equal(HttpStatusCode.NotFound, (await host.PostAsync($"{root}/curriculum/suggested/stages/999/reset/preview", new { }, token)).StatusCode);
 
-        // Daily suggestion: 28 → 6,6,6,5,5; applied, every stage matches its capacity; manual counts are never overwritten.
+        // Daily suggestion: 30 → 6,6,6,6,6; applied, every stage matches its capacity; manual counts are never overwritten.
         var daily = await ReadAsync<DailySuggestionDto>(await host.Client.GetAsync($"{root}/daily-suggestion"));
-        Assert.Equal([6, 6, 6, 5, 5], daily.Stages[0].Suggested.Select(day => day.Lessons));
+        Assert.Equal([6, 6, 6, 6, 6], daily.Stages[0].Suggested.Select(day => day.Lessons));
         Assert.All(daily.Stages, stage => Assert.Equal("apply", stage.Status));
         await ReadAsync<DailySuggestionDto>(await host.PostAsync($"{root}/daily-suggestion", new { stageIds = daily.Stages.Select(stage => stage.StageId) }, token));
         var totals = (await ReadAsync<CurriculumTableDto>(await host.Client.GetAsync($"{root}/curriculum"))).Stages.Select(stage => stage.Totals.Single().Status);
@@ -197,18 +244,18 @@ public sealed class SuggestedCurriculumTests
         Assert.All(daily.Stages, stage => Assert.Equal("same", stage.Status));
 
         var cards = await ReadAsync<List<StageCardDto>>(await host.Client.GetAsync($"{root}/stage-cards"));
-        await ReadAsync<StageDto>(await host.PutAsync($"{root}/stages/{cards[1].Stage.Id}/day-lessons", new { dayLessons = SundayToThursday.Select(day => new { day, lessons = 6 }), version = cards[1].Stage.Version }, token));
+        await ReadAsync<StageDto>(await host.PutAsync($"{root}/stages/{cards[1].Stage.Id}/day-lessons", new { dayLessons = SundayToThursday.Select(day => new { day, lessons = 7 }), version = cards[1].Stage.Version }, token));
         daily = await ReadAsync<DailySuggestionDto>(await host.Client.GetAsync($"{root}/daily-suggestion"));
         Assert.Equal("manual", daily.Stages[1].Status);
         await ReadAsync<DailySuggestionDto>(await host.PostAsync($"{root}/daily-suggestion", new { stageIds = new[] { cards[1].Stage.Id } }, token));
-        Assert.Equal(30, (await ReadAsync<List<StageCardDto>>(await host.Client.GetAsync($"{root}/stage-cards")))[1].Sections[0].WeeklyCapacity); // unchanged
+        Assert.Equal(35, (await ReadAsync<List<StageCardDto>>(await host.Client.GetAsync($"{root}/stage-cards")))[1].Sections[0].WeeklyCapacity); // unchanged
 
         // A curriculum change after a suggestion shows "a new suggestion is available"; a total above the shift is refused.
         var first = (await ReadAsync<CurriculumTableDto>(await host.Client.GetAsync($"{root}/curriculum")));
         var subjectId = first.Rows[0].SubjectId;
         await ReadAsync<CurriculumTableDto>(await host.PutAsync($"{root}/curriculum/cell", new { stageId = first.Stages[0].Id, subjectId, label = "إضافي", weeklyLessons = 8 }, token));
         daily = await ReadAsync<DailySuggestionDto>(await host.Client.GetAsync($"{root}/daily-suggestion"));
-        Assert.Equal(("aboveCapacity", 36, 35), (daily.Stages[0].Status, daily.Stages[0].WeeklyTotal, daily.Stages[0].Capacity));
+        Assert.Equal(("aboveCapacity", 38, 35), (daily.Stages[0].Status, daily.Stages[0].WeeklyTotal, daily.Stages[0].Capacity));
         await AssertApiErrorAsync(await host.PostAsync($"{root}/daily-suggestion", new { stageIds = new[] { first.Stages[0].Id } }, token), "DAILY_TOTAL_ABOVE_SHIFT");
         await ReadAsync<CurriculumTableDto>(await host.PutAsync($"{root}/curriculum/cell", new { stageId = first.Stages[2].Id, subjectId, label = "إضافي", weeklyLessons = 1 }, token));
         daily = await ReadAsync<DailySuggestionDto>(await host.Client.GetAsync($"{root}/daily-suggestion"));
@@ -222,25 +269,59 @@ public sealed class SuggestedCurriculumTests
         var (host, token, root, _, shifts) = await SchoolAsync("secondary", "dual",
             [("intermediate-1", NoBranches), ("intermediate-2", NoBranches), ("intermediate-3", NoBranches), ("preparatory-4", BothBranches)]);
         await using var _ = host;
-        // French unchecked by default: 30/30/31; checked: 33/33/34. Kurdish stays out unless chosen.
+        // Every optional subject unchecked by default: Kurdish (counted in the official 30) leaves the fourth grades at 28.
         var preview = await ReadAsync<SuggestedCurriculumPlanDto>(await host.PostAsync($"{root}/curriculum/suggested/preview", new { }, token));
-        Assert.Equal([30, 30, 31, 28, 25], preview.Stages.Select(stage => stage.ResultingTotal));
-        Assert.Equal([false, false, false, false, true], preview.Stages.Select(stage => stage.NeedsReview));
-        Assert.Contains(preview.Subjects, line => line is { Name: "اللغة الفرنسية", Optional: true, Included: false });
+        Assert.Equal(SecondaryDefault, preview.Stages.Select(stage => stage.ResultingTotal));
+        Assert.All(preview.Stages, stage => Assert.Equal((30, 30), (stage.StatedTotal, stage.OfficialTotal)));
+        Assert.Equal([false, false, false, true, false], preview.Stages.Select(stage => stage.NeedsReview));
+        Assert.Equal(OptionalSubjects, preview.OptionalSubjects.Order());
+        Assert.Contains(preview.Subjects, line => line is { Name: "اللغة الفرنسية", Optional: true, Included: false, InStatedTotal: false });
+        Assert.Contains(preview.Subjects, line => line is { Name: "اللغة الكردية", Optional: true, Included: false, InStatedTotal: true });
         Assert.Contains(preview.Stages[0].Entries, line => line is { Subject: "اللغة الفرنسية", Action: "skipped" });
         var withFrench = await ReadAsync<SuggestedCurriculumPlanDto>(await host.PostAsync($"{root}/curriculum/suggested/preview", new { optionalSubjects = French }, token));
-        Assert.Equal([33, 33, 34], withFrench.Stages.Take(3).Select(stage => stage.ResultingTotal));
+        Assert.Equal([32, 32, 32], withFrench.Stages.Take(3).Select(stage => stage.ResultingTotal));
         await ReadAsync<SuggestedCurriculumPlanDto>(await host.PostAsync($"{root}/curriculum/suggested", new { }, token));
-        await ReadAsync<SuggestedCurriculumPlanDto>(await host.PostAsync($"{root}/curriculum/suggested", new { optionalSubjects = French }, token)); // adds French only
-        Assert.Equal(SecondaryWithFrench, await PlannedAsync(host, root));
+        Assert.Equal(SecondaryDefault, await PlannedAsync(host, root));
+        var names = (await ReadAsync<PagedResult<SubjectDto>>(await host.Client.GetAsync("/api/v1/subjects/?pageSize=100"))).Items.Select(subject => subject.Name).ToArray();
+        Assert.All(OptionalSubjects, subject => Assert.DoesNotContain(subject, names)); // an unchecked optional subject is never created
+        await ReadAsync<SuggestedCurriculumPlanDto>(await host.PostAsync($"{root}/curriculum/suggested", new { optionalSubjects = KurdishAndFrench }, token)); // adds Kurdish and French only
+        Assert.Equal(SecondaryWithKurdishAndFrench, await PlannedAsync(host, root));
 
         // A stage with sections in both shifts must fit the smaller one (morning 7, evening 6 → 30 a week).
         var cards = await ReadAsync<List<StageCardDto>>(await host.Client.GetAsync($"{root}/stage-cards"));
         var evening = shifts.Single(shift => shift.Kind == "evening");
         await ReadAsync<StageCardDto>(await host.PutAsync($"{root}/stage-cards/{cards[0].Stage.Id}/section-count", new { count = 2, shiftId = evening.Id }, token));
         var daily = await ReadAsync<DailySuggestionDto>(await host.Client.GetAsync($"{root}/daily-suggestion"));
-        Assert.Equal((30, "aboveCapacity"), (daily.Stages[0].Capacity, daily.Stages[0].Status)); // 33 lessons with French
+        Assert.Equal((30, "aboveCapacity"), (daily.Stages[0].Capacity, daily.Stages[0].Status)); // 32 lessons with French
         Assert.Equal((35, "apply"), (daily.Stages[1].Capacity, daily.Stages[1].Status));
+    }
+
+    [Fact]
+    public async Task KurdishIsOptionalButCountsInTheOfficialTotal()
+    {
+        var (host, token, root, _, _) = await SchoolAsync("secondary", "morning", [("preparatory-4", BothBranches), ("preparatory-5", BothBranches)]);
+        await using var _ = host;
+        // Off (default): the fourth grades 28 and the fifth 29/30 against the official 30/30/30/31.
+        var off = await ReadAsync<SuggestedCurriculumPlanDto>(await host.PostAsync($"{root}/curriculum/suggested/preview", new { }, token));
+        Assert.Equal(FourthAndFifthOfficial, off.Stages.Select(stage => stage.StatedTotal));
+        Assert.Equal(FourthAndFifthWithoutKurdish, off.Stages.Select(stage => stage.SuggestedTotal));
+        Assert.All(off.Stages, stage => Assert.Contains(stage.Entries, line => line is { Subject: "اللغة الكردية", Action: "skipped", InStatedTotal: true }));
+        var on = await ReadAsync<SuggestedCurriculumPlanDto>(await host.PostAsync($"{root}/curriculum/suggested/preview", new { optionalSubjects = Kurdish }, token));
+        Assert.Equal(on.Stages.Select(stage => stage.StatedTotal), on.Stages.Select(stage => stage.SuggestedTotal)); // on: exactly the official total
+        Assert.Equal(on.Stages.Select(stage => stage.StatedTotal), on.Stages.Select(stage => stage.ResultingTotal));
+
+        await ReadAsync<SuggestedCurriculumPlanDto>(await host.PostAsync($"{root}/curriculum/suggested", new { }, token));
+        Assert.Equal(FourthAndFifthWithoutKurdish, await PlannedAsync(host, root));
+        var applied = await ReadAsync<SuggestedCurriculumPlanDto>(await host.PostAsync($"{root}/curriculum/suggested", new { optionalSubjects = Kurdish }, token));
+        Assert.Equal(1 + 4, applied.Changes); // the subject once, one line per stage
+        Assert.Equal(FourthAndFifthOfficial, await PlannedAsync(host, root));
+        Assert.Equal(0, (await ReadAsync<SuggestedCurriculumPlanDto>(await host.PostAsync($"{root}/curriculum/suggested", new { optionalSubjects = Kurdish }, token))).Changes);
+        var subjects = (await ReadAsync<PagedResult<SubjectDto>>(await host.Client.GetAsync("/api/v1/subjects/?pageSize=100"))).Items;
+        Assert.Single(subjects, subject => subject.Name == "اللغة الكردية");
+        Assert.Equal(subjects.Count, subjects.Select(subject => subject.Name).Distinct().Count());
+        // Unticking later never deletes what was applied (non-destructive).
+        await ReadAsync<SuggestedCurriculumPlanDto>(await host.PostAsync($"{root}/curriculum/suggested", new { }, token));
+        Assert.Equal(FourthAndFifthOfficial, await PlannedAsync(host, root));
     }
 
     [Fact]

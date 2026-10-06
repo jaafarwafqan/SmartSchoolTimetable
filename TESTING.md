@@ -225,6 +225,14 @@ Suggested curriculum (`phase-2-5-curriculum`):
   - (f) an edited value stays, and the reset restores it after a before/after confirmation;
   - (g) axe, no horizontal page scroll and no overlapping text at 375, 768, 1024 and 1440px.
 
+Official study plan 2026-2027 (`phase-2-5-official-curriculum`, ADR 0036) replaces the numbers above:
+- .NET `Phase25/SuggestedCurriculumTests.cs`:
+  - `TheOfficialTemplateTotalsMatchThePrintedPlan`: version 2, `status: official`; for every stage the mandatory rows plus Kurdish equal the printed total, except الرابع الابتدائي (31 against 30, `needsReview`, a verification note); exactly الرابع الابتدائي and الرابع العلمي flagged; Kurdish counted, French/computing/حزب البعث on top; the aliases.
+  - primary apply: totals 30/30/30/31/30/31; one «اللغة العربية» for «(قراءتي)» and the plain spelling; nine subjects; apply twice = 0 changes.
+  - `OptionalSubjectsAndReviewWarningsFollowTheSchool`: default 30/30/30/28/28, an unticked optional subject is never created; Kurdish and French ticked 32 each.
+  - `KurdishIsOptionalButCountsInTheOfficialTotal`: fourth/fifth grades 28/28/29/30 unticked, exactly the printed 30/30/30/31 ticked; one Kurdish subject; a third apply changes nothing; unticking never deletes.
+- Playwright `phase25-curriculum.spec.ts`: (a) الرابع الابتدائي review note and totals; (b) French and computing ticked → 34/34/32 and both rows in the curriculum tab, with axe; (c) the الرابع العلمي question, Kurdish ticked → 30; (d) seven stages "مطابق" (السادس العلمي 33 and السادس الأدبي 31 above the evening 30).
+
 ## Phase 3 test inventory (updated per checkpoint)
 ### 3A - hardening
 - .NET (`Phase3/`):

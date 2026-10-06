@@ -471,6 +471,26 @@
   font-weight: 600;
 }
 
+.suggested-totals {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--color-ink-muted);
+}
+
+.suggested-note {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-ink);
+}
+
+.optional-subject {
+  display: grid;
+  gap: 0.125rem;
+}
+
 .daily-days {
   display: grid;
   gap: 0.25rem;

@@ -86,7 +86,7 @@ Migration `Phase25FixStageDayLessons` adds `StageDayLessons`:
 - `StageId`, `Day`, `Lessons` (check ≥ 1), unique per stage and day (ADR 0027).
 - A working day without a row inherits the shift's count, so existing data needs no change.
 
-Migration `Phase25SuggestedCurriculum` adds `CurriculumEntries.IsSuggested` and `Stages.DayLessonsSuggested` (both boolean, default false; ADR 0029, 0030). The suggested curriculum itself is embedded data (`Application/Templates/iraq-curriculum.suggested.json`), not a table.
+Migration `Phase25SuggestedCurriculum` adds `CurriculumEntries.IsSuggested` and `Stages.DayLessonsSuggested` (both boolean, default false; ADR 0029, 0030). The curriculum template itself is embedded data (`Application/Templates/iraq-curriculum.official-2026-2027.json`, the official plan 2026-2027; ADR 0036), not a table. No migration was needed to replace it.
 
 Migration `Phase3BResourcesProfile` (Phase 3B, ADR 0031) adds:
 - `Resources`: `Name`, `NormalizedName` (unique), `Kind` (check 1–4), `Capacity` (check 1–20), `Notes`, `IsArchived` (indexed), `ArchivedAt`, `Version`.

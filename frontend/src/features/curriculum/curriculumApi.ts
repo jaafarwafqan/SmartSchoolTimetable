@@ -126,11 +126,14 @@ export function useSetSectionCount(yearId: number) {
     apiRequest<StageCard>(`${yearPath(yearId)}/stage-cards/${stageId}/section-count`, "PUT", input));
 }
 
-// Suggested Iraqi curriculum (ADR 0028, 0029) and the daily distribution (ADR 0030).
-export type SuggestedEntryLine = { subject: string; lessons: number; action: "create" | "exists" | "update" | "unchanged" | "skipped"; optional: boolean; currentLessons: number | null };
-export type SuggestedStage = { stageId: number; stageName: string; needsReview: boolean; statedTotal: number; suggestedTotal: number; currentTotal: number; resultingTotal: number; entries: SuggestedEntryLine[] };
-export type SuggestedSubjectLine = { name: string; action: "create" | "exists"; existingName: string | null; optional: boolean; included: boolean };
-export type SuggestedPlan = { provenance: string; subjects: SuggestedSubjectLine[]; stages: SuggestedStage[]; optionalSubjects: string[]; changes: number };
+// The official Iraqi study plan 2026-2027 (ADR 0028, 0029) and the daily distribution (ADR 0030).
+// `note` and `verificationNote` are Arabic data from the template, shown as-is.
+export type SuggestedEntryLine = { subject: string; lessons: number; action: "create" | "exists" | "update" | "unchanged" | "skipped"; optional: boolean; currentLessons: number | null; inStatedTotal: boolean; note: string | null };
+/** `statedTotal`: printed in the plan; `officialTotal`: its counted rows; `suggestedTotal`: the enabled rows. */
+export type SuggestedStage = { stageId: number; stageName: string; needsReview: boolean; statedTotal: number; officialTotal: number; suggestedTotal: number; currentTotal: number; resultingTotal: number; verificationNote: string | null; entries: SuggestedEntryLine[] };
+export type SuggestedSubjectLine = { name: string; action: "create" | "exists"; existingName: string | null; optional: boolean; included: boolean; inStatedTotal: boolean; note: string | null };
+export type CurriculumProvenance = { source: string; status: string; transcribedBy: string | null };
+export type SuggestedPlan = { templateVersion: number; provenance: CurriculumProvenance; subjects: SuggestedSubjectLine[]; stages: SuggestedStage[]; optionalSubjects: string[]; changes: number };
 export type SuggestedInput = { optionalSubjects: string[]; confirm?: boolean };
 export type DailyStatus = "apply" | "same" | "manual" | "aboveCapacity" | "belowDays" | "noCurriculum";
 export type DailyStage = { stageId: number; stageName: string; weeklyTotal: number; capacity: number; suggested: DayLessonsEntry[]; current: DayLessonsEntry[]; status: DailyStatus; changedSinceSuggestion: boolean; version: number };

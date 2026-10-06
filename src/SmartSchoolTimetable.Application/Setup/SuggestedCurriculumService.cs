@@ -7,36 +7,46 @@ using SmartSchoolTimetable.Domain.Text;
 
 namespace SmartSchoolTimetable.Application.Setup;
 
-/// <param name="OptionalSubjects">Optional subjects to include (اللغة الكردية، اللغة الفرنسية); none by default.</param>
+/// <param name="OptionalSubjects">Optional subjects to include (اللغة الكردية، اللغة الفرنسية، الحاسوب، منهج جرائم حزب البعث); none by default.</param>
 public sealed record SuggestedCurriculumCommand(IReadOnlyList<string>? OptionalSubjects, bool Confirm = false);
 
+/// <param name="Name">The template's canonical name (aliases folded: التربية الفنية is التربية الفنية والنشيد).</param>
 /// <param name="Action">create (new subject) or exists (matched, possibly through an alias: <paramref name="ExistingName"/>).</param>
-public sealed record SuggestedSubjectLineDto(string Name, string Action, string? ExistingName, bool Optional, bool Included);
+/// <param name="InStatedTotal">Optional subjects only: counted in the official total (Kurdish) or added on top of it.</param>
+/// <param name="Note">The template's remark for the subject (Arabic data), if any.</param>
+public sealed record SuggestedSubjectLineDto(string Name, string Action, string? ExistingName, bool Optional, bool Included, bool InStatedTotal, string? Note);
 
 /// <param name="Action">create, exists (the stage already has this subject; never changed), update/unchanged (stage reset only), skipped (optional, not chosen).</param>
-public sealed record SuggestedEntryLineDto(string Subject, int Lessons, string Action, bool Optional, int? CurrentLessons);
+public sealed record SuggestedEntryLineDto(string Subject, int Lessons, string Action, bool Optional, int? CurrentLessons, bool InStatedTotal, string? Note);
 
-/// <param name="SuggestedTotal">Sum of the included rows (computed; the source's stated total is not trusted).</param>
+/// <param name="StatedTotal">The total printed in the official plan.</param>
+/// <param name="OfficialTotal">Sum of the rows counted in the official total (mandatory + Kurdish); differs from
+/// <paramref name="StatedTotal"/> only where the source itself does (الرابع الابتدائي: 31 against 30).</param>
+/// <param name="SuggestedTotal">Sum of the enabled rows (mandatory + chosen optional).</param>
 /// <param name="ResultingTotal">The stage's planned lessons after applying.</param>
+/// <param name="VerificationNote">The source's question for the owner (Arabic data), shown but never blocking.</param>
 public sealed record SuggestedStageDto(
     long StageId,
     string StageName,
     bool NeedsReview,
     int StatedTotal,
+    int OfficialTotal,
     int SuggestedTotal,
     int CurrentTotal,
     int ResultingTotal,
+    string? VerificationNote,
     IReadOnlyList<SuggestedEntryLineDto> Entries);
 
 public sealed record SuggestedCurriculumPlanDto(
-    string Provenance,
+    int TemplateVersion,
+    CurriculumProvenance Provenance,
     IReadOnlyList<SuggestedSubjectLineDto> Subjects,
     IReadOnlyList<SuggestedStageDto> Stages,
     IReadOnlyList<string> OptionalSubjects,
     int Changes);
 
 /// <summary>
-/// "تعبئة المنهج المقترح" (ADR 0028, 0029): fills the curriculum of the school's existing stages from the suggested
+/// "تعبئة المنهج" (ADR 0028, 0029): fills the curriculum of the school's existing stages from the official 2026-2027
 /// template. Preview first; apply only ADDS missing subjects and missing (stage, subject) lines, marked «مقترح»; it never
 /// overwrites a value or deletes anything, so running it twice changes nothing. Subjects are matched through aliases
 /// and Arabic normalization (اللغة الإنجليزية is اللغة الإنكليزية), never duplicated. The per-stage reset changes values
@@ -137,39 +147,41 @@ public sealed class SuggestedCurriculumService(IDataStore store, SubjectsService
             var added = 0;
             foreach (var entry in template.Entries)
             {
-                var included = !entry.Optional || context.Chosen.Contains(entry.Subject);
+                var included = IsIncluded(entry, context.Chosen);
                 var subject = Match(context.Subjects, entry.Subject);
-                subjectLines.TryAdd(entry.Subject, new SuggestedSubjectLineDto(entry.Subject, subject is null ? "create" : "exists", subject?.Name, entry.Optional, included));
-                if (included && !subjectLines[entry.Subject].Included)
-                    subjectLines[entry.Subject] = subjectLines[entry.Subject] with { Included = true };
+                var name = CanonicalName(entry.Subject);
+                var inTotal = entry.CountsInStatedTotal;
+                subjectLines.TryAdd(name, new SuggestedSubjectLineDto(name, subject is null ? "create" : "exists", subject?.Name, entry.Optional, included, inTotal, entry.Note));
+                if (included && !subjectLines[name].Included)
+                    subjectLines[name] = subjectLines[name] with { Included = true };
                 if (!included)
                 {
-                    lines.Add(new SuggestedEntryLineDto(entry.Subject, entry.Lessons, "skipped", entry.Optional, null));
+                    lines.Add(new SuggestedEntryLineDto(entry.Subject, entry.Lessons, "skipped", entry.Optional, null, inTotal, entry.Note));
                     continue;
                 }
                 if (resetStageId is null)
                 {
                     var existing = subject is null ? null : context.Entries.Where(line => line.StageId == stage.Id && line.SubjectId == subject.Id).ToArray();
                     var exists = existing is { Length: > 0 };
-                    lines.Add(new SuggestedEntryLineDto(entry.Subject, entry.Lessons, exists ? "exists" : "create", entry.Optional, exists ? existing!.Sum(line => line.WeeklyLessons) : null));
+                    lines.Add(new SuggestedEntryLineDto(entry.Subject, entry.Lessons, exists ? "exists" : "create", entry.Optional, exists ? existing!.Sum(line => line.WeeklyLessons) : null, inTotal, entry.Note));
                     if (!exists) added += entry.Lessons;
                 }
                 else
                 {
                     var main = subject is null ? null : MainLine(context.Entries, stage.Id, subject.Id);
                     var action = main is null ? "create" : main.WeeklyLessons == entry.Lessons && main.IsSuggested ? "unchanged" : "update";
-                    lines.Add(new SuggestedEntryLineDto(entry.Subject, entry.Lessons, action, entry.Optional, main?.WeeklyLessons));
+                    lines.Add(new SuggestedEntryLineDto(entry.Subject, entry.Lessons, action, entry.Optional, main?.WeeklyLessons, inTotal, entry.Note));
                     added += entry.Lessons - (main?.WeeklyLessons ?? 0);
                 }
             }
-            stageLines.Add(new SuggestedStageDto(stage.Id, stage.Name, template.NeedsReview, template.StatedTotal,
-                Included(template, context.Chosen).Sum(entry => entry.Lessons), current, current + added, lines));
+            stageLines.Add(new SuggestedStageDto(stage.Id, stage.Name, template.NeedsReview, template.StatedTotal, template.OfficialTotal(),
+                template.Total(context.Chosen), current, current + added, template.VerificationNote, lines));
         }
         var neededSubjects = subjectLines.Values.Where(line => line.Included).ToArray();
         var changes = neededSubjects.Count(line => line.Action == "create")
             + stageLines.Sum(stage => stage.Entries.Count(line => line.Action is "create" or "update"));
-        var optional = Template.Stages.SelectMany(stage => stage.Entries).Where(entry => entry.Optional).Select(entry => entry.Subject).Distinct().ToArray();
-        return new SuggestedCurriculumPlanDto(Template.Provenance, subjectLines.Values.ToArray(), stageLines, optional, changes);
+        var optional = Template.Stages.SelectMany(stage => stage.Entries).Where(entry => entry.Optional).Select(entry => CanonicalName(entry.Subject)).Distinct().ToArray();
+        return new SuggestedCurriculumPlanDto(Template.Version, Template.Provenance, subjectLines.Values.ToArray(), stageLines, optional, changes);
     }
 
     private async Task<int> CreateSubjectsAsync(SuggestedCurriculumPlanDto plan, CancellationToken token)
@@ -197,7 +209,13 @@ public sealed class SuggestedCurriculumService(IDataStore store, SubjectsService
     }
 
     private static IEnumerable<SuggestedEntryTemplate> Included(SuggestedStageTemplate template, IReadOnlySet<string> chosen) =>
-        template.Entries.Where(entry => !entry.Optional || chosen.Contains(entry.Subject));
+        template.Entries.Where(entry => IsIncluded(entry, chosen));
+
+    /// <summary>Mandatory rows always; optional rows only when the owner ticked them (all unticked by default).</summary>
+    private static bool IsIncluded(SuggestedEntryTemplate entry, IReadOnlySet<string> chosen) =>
+        !entry.Optional || chosen.Contains(CanonicalName(entry.Subject));
+
+    private static string CanonicalName(string templateSubject) => Template.Canonical(templateSubject) ?? templateSubject;
 
     private static Subject? Match(IReadOnlyList<Subject> subjects, string templateSubject) =>
         subjects.FirstOrDefault(subject => Template.SameSubject(templateSubject, subject.Name))

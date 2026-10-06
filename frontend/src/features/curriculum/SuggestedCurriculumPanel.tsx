@@ -24,9 +24,9 @@ export function ReviewWarning({ short = false }: { short?: boolean }) {
 }
 
 /**
- * "تعبئة المنهج المقترح" (ADR 0028, 0029): a preview of what the owner's suggested curriculum adds to the school's
- * existing stages (matched subjects, optional subjects unchecked, review warnings, resulting totals), then an
- * idempotent, non-destructive apply. Each stage can be reset to the suggestion after a before/after confirmation.
+ * "تعبئة المنهج" (ADR 0028, 0029): a preview of what the official study plan 2026-2027 adds to the school's existing
+ * stages (matched subjects, optional subjects unchecked, official against enabled totals, the source's review notes),
+ * then an idempotent, non-destructive apply. Each stage can be reset to the plan after a before/after confirmation.
  */
 export function SuggestedCurriculumPanel({ yearId, open = false }: { yearId: number; open?: boolean }) {
   const { count, number } = useFormatter();
@@ -59,6 +59,7 @@ export function SuggestedCurriculumPanel({ yearId, open = false }: { yearId: num
   }
 
   const resetLines = resetting?.plan.stages[0]?.entries.filter((line) => line.action === "update" || line.action === "create") ?? [];
+  const optionalLine = (subject: string) => plan?.subjects.find((line) => line.name === subject);
 
   return (
     <details className="advanced-options tool-panel suggested-panel" open={open || undefined}>
@@ -73,8 +74,11 @@ export function SuggestedCurriculumPanel({ yearId, open = false }: { yearId: num
         {plan && plan.optionalSubjects.length > 0 && (
           <fieldset className="choice-group">
             <legend>{text.optional}</legend>
-            {plan.optionalSubjects.map((subject) => (
-              <Checkbox key={`optional-${subject}`} checked={optional.has(subject)} onChange={() => toggle(subject)}>{subject}</Checkbox>
+            {plan.optionalSubjects.map((subject, index) => (
+              <div key={`optional-${subject}`} className="optional-subject">
+                <Checkbox checked={optional.has(subject)} onChange={() => toggle(subject)} aria-describedby={`optional-note-${index}`}>{subject}</Checkbox>
+                <span id={`optional-note-${index}`} className="card-note">{optionalLine(subject)?.inStatedTotal ? text.optionalCounted : text.optionalExtra}</span>
+              </div>
             ))}
           </fieldset>
         )}
@@ -102,7 +106,13 @@ export function SuggestedCurriculumPanel({ yearId, open = false }: { yearId: num
                 <li key={`suggested-stage-${stage.stageId}`} className="suggested-stage">
                   <span className="suggested-stage-line">{text.stageLine(stage.stageName, count(stage.currentTotal, "lesson"), count(stage.resultingTotal, "lesson"))}</span>
                   {toAdd(stage) > 0 && <span className="card-note">{text.entriesToAdd(count(toAdd(stage), "line"))}</span>}
+                  <span className="suggested-totals">
+                    <span>{text.officialTotal(count(stage.statedTotal, "lesson"))}</span>
+                    <span>{text.enabledTotal(count(stage.suggestedTotal, "lesson"))}</span>
+                  </span>
                   {stage.needsReview && <ReviewWarning />}
+                  {stage.verificationNote && <p className="suggested-note">{stage.verificationNote}</p>}
+                  {stage.suggestedTotal !== stage.officialTotal && <p className="suggested-note">{text.totalDiffers}</p>}
                   <Button variant="ghost" size="sm" icon={<RotateCcw aria-hidden="true" size={16} />} loading={resetPreview.isPending && resetPreview.variables?.stageId === stage.stageId}
                     onClick={() => startReset(stage)}>{text.reset}</Button>
                 </li>
