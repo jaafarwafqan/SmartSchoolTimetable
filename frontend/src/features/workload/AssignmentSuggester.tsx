@@ -67,7 +67,8 @@ export function AssignmentSuggester({ yearId, embedded = false }: { yearId: numb
   const content = (
     <>
       <div>
-        <h2 id="assignment-suggester-title">{text.title}</h2>
+        {/* Inside the wizard the step title is the h2, so the suggester is a sub-section. */}
+        {embedded ? <h3 id="assignment-suggester-title">{text.title}</h3> : <h2 id="assignment-suggester-title">{text.title}</h2>}
         <p className="card-note">{text.description}</p>
       </div>
       <div className="form-actions">

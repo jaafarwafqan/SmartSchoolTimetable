@@ -133,7 +133,8 @@ export async function expectNoSeriousA11yViolations(page: Page, screen: string):
 }
 
 /** Screenshot checks at the four reference widths, also asserting no horizontal page scroll. */
-export async function expectBreakpointScreenshots(page: Page, name: string): Promise<void> {
+/** `mask` hides values that change on every run (for example the server's check time). */
+export async function expectBreakpointScreenshots(page: Page, name: string, mask: Locator[] = []): Promise<void> {
   for (const width of breakpoints) {
     await page.setViewportSize({ width, height: 900 });
     await page.evaluate(async () => {
@@ -142,7 +143,7 @@ export async function expectBreakpointScreenshots(page: Page, name: string): Pro
     });
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow, `${name} scrolls horizontally at ${width}px`).toBeLessThanOrEqual(0);
-    await expect(page).toHaveScreenshot(`${name}-${width}.png`, { fullPage: true });
+    await expect(page).toHaveScreenshot(`${name}-${width}.png`, { fullPage: true, mask });
   }
   await page.setViewportSize({ width: 1280, height: 900 });
 }

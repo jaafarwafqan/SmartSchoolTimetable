@@ -109,12 +109,13 @@ test("scenario (b): a dual-shift ثانوية with branches through the wizard",
   await ux.act(page.getByRole("button", { name: wizard.skip }));
   await expect(stepTitle(page, 7)).toBeVisible();
   await expectNoSeriousA11yViolations(page, "scenario b step 7");
+  await expectBreakpointScreenshots(page, "wizard-step-7");
   await ux.act(page.getByRole("button", { name: wizard.skip }));
   await expect(stepTitle(page, 8)).toBeVisible();
   await expect(page.locator(".count-item", { hasText: wizard.review.shifts })).toContainText(arab(2));
   await expect(page.locator(".count-item", { hasText: wizard.review.sections })).toContainText(arab(9));
   await expectNoLatinText(page, "scenario b review", ["owner"]);
-  await expectBreakpointScreenshots(page, "wizard-step-7");
+  await expectBreakpointScreenshots(page, "wizard-step-8");
   await ux.act(page.getByRole("button", { name: wizard.finish }));
   await expect(page.getByRole("heading", { name: school.nav.dashboard, level: 1 })).toBeVisible();
   ux.report();

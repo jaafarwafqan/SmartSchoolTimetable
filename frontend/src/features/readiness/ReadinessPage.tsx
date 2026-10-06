@@ -75,7 +75,7 @@ export function ReadinessPage() {
                     <span>{messages.school.dashboard.openStep}</span><ExternalLink aria-hidden="true" size={16} />
                   </Link>
                 </div>
-                {group.shortage > 0 && <p className="readiness-total-shortage">{format.count(group.shortage, "lesson")}</p>}
+                {group.shortage > 0 && <p className="readiness-total-shortage">{text.groupShortage(format.count(group.shortage, "lesson"))}</p>}
                 <ul className="readiness-finding-list">
                   {group.findings.map((finding, index) => (
                     <li key={`${finding.code}-${index}`}>

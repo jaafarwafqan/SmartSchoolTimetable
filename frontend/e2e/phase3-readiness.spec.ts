@@ -46,7 +46,7 @@ test("(3D) dashboard and readiness report show the real unassigned-line finding"
       await expectNoTextOverlap(page.locator("main"), `readiness report at ${width}px`);
     }
     await page.setViewportSize({ width: 1280, height: 900 });
-    await expectBreakpointScreenshots(page, "phase3-readiness");
+    await expectBreakpointScreenshots(page, "phase3-readiness", [page.locator(".readiness-meta")]); // run time and hash change
   } finally {
     await server.stop();
   }

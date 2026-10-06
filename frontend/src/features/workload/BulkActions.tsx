@@ -129,8 +129,12 @@ export function BulkActions({ yearId, loads, stages }: { yearId: number; loads: 
   const [remove, setRemove] = useState<number | null>(null);
   const acrossMatrix = useWorkloadMatrix(acrossStage === null ? null : yearId, acrossStage);
   const classMatrix = useWorkloadMatrix(classStage === null ? null : yearId, classStage);
-  const lines = acrossStage === null ? [] : acrossMatrix.data?.stage?.lines ?? [];
-  const sections = classStage === null ? [] : classMatrix.data?.stage?.sections ?? [];
+  // Only the chosen stage's options: while another stage loads, the query keeps the previous stage's data, and a
+  // quick choice would otherwise pick a section or line of the wrong stage.
+  const acrossLoaded = acrossMatrix.data?.stage?.stageId === acrossStage ? acrossMatrix.data.stage : null;
+  const classLoaded = classMatrix.data?.stage?.stageId === classStage ? classMatrix.data.stage : null;
+  const lines = acrossLoaded?.lines ?? [];
+  const sections = classLoaded?.sections ?? [];
   const format = useFormatter();
 
   return (
