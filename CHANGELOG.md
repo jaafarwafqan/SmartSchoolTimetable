@@ -1,7 +1,19 @@
 # Changelog
 
 ## [Unreleased]
-### Phase 3D - scheduling input and pre-solve readiness (checkpoint in progress)
+### Phase 3E - suggester, wizard step, demo data, scenarios (tags `phase-3e`, `phase-3-final`)
+- **«اقتراح توزيع الأنصبة»:** a deterministic suggester for unassigned lines only (specialists, the lowest load share, never above the limit). Preview first, then a centred confirmation; the applied result equals the preview and existing assignments never change.
+- **Wizard step 7 «الأنصبة»** (eight steps). Data migration `Phase3EWorkloadWizardStep` moves a saved review step; `Down` restores it.
+- **Demo data:** about 20 sample teachers with specializations and constraints, a sports field (capacity 2) and a computer lab (capacity 1), assignments made by the suggester, so every checklist item is done and the school is ready. `--with-problems` leaves an overloaded teacher, physics with too few allowed slots and a field shortage.
+- **Readiness screen:** a group's lesson shortage now has a label («النقص: …»). **Bulk actions** offer only the chosen stage's sections and lines while another stage loads. The suggester heading is an `h3` inside the wizard.
+- **Playwright scenarios (a)–(h)** on temporary databases (`phase3-scenarios.spec.ts`, plus `phase3-readiness` and `phase3-workload`), with axe, no horizontal scroll and no text overlap at four widths; screenshots viewed before acceptance; the check time and hash are masked.
+- **UX metric** (scenario a, 12-section primary school): 0 typed, 26 chosen, 37 commands to assign every line.
+- `/design` scheduling components rendered by a Vitest test. Docs: DOMAIN, DATABASE, API, DESIGN_SYSTEM, DELIVERY_PLAN, TESTING, README, `docs/OWNER_TEST_SCRIPT_PHASE3.md`, `docs/PHASE3_REPORT.md`.
+
+### Phase 3D - scheduling input and pre-solve readiness (tag `phase-3d`)
+- **Phase 3 finish fixes:** finding codes declared once in `FindingCodes` with a contract test (B1); exact wizard locators (B3); the Phase 2 checklist test completes the workload step (B4); the workload matrix screenshot re-baselined after viewing it (B5).
+- **Double-period severity** follows the generation mode: a warning by default, an error with `?doublePeriods=true` (DECISIONS_PENDING #65).
+- **Verification:** 18 mutation checks, all caught; hash, migration and readiness security tests; the 40-section check in about 40 ms.
 - Added the serializable `SchedulingInput`, canonical SHA-256 `InputHash`, pure conservative pre-solve validator and authenticated readiness API.
 - Added «جاهزية الجدولة» with grouped findings, numeric Arabic messages, actionable links, refresh, hash/time and the live dashboard readiness card.
 - Added the dashboard checklist step «تعيين المعلمين على المنهج», computed from active curriculum lines and assignments.

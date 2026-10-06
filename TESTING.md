@@ -264,6 +264,19 @@ Suggested curriculum (`phase-2-5-curriculum`):
 - Vitest `features/readiness/readinessPresentation.test.ts`: exact teacher/physics Arabic numbers, grouping by entity and no double-counting overload shortage. `lib/arabicCount.test.ts` covers error, warning and pair forms and guards against manual counted-noun strings.
 - Playwright `phase3-readiness.spec.ts`: real dashboard readiness card and unassigned-line finding; exact section-capacity warning; axe; no horizontal scroll and text overlap at 375/768/1024/1440; reference screenshots viewed before acceptance.
 - `SchedulingSection` adds the matrix, load bar/status, and readiness finding to the development-only `/design` guide.
+### Phase 3 finish (`phase-3-finish`: 3D fixes and verification, 3E)
+- .NET `Phase3/FindingCodeContractTests`: every `FindingCodes` constant is in `All` exactly once; every code has Arabic text and a TypeScript union member in the frontend; no finding-code literal outside `FindingCodes.cs`. `ErrorContractTests` is unchanged and treats `FindingCodes.cs` as a definition site.
+- .NET `Phase3/PreSolveValidatorTests`: double periods in both modes (warning by default, error with `DoublePeriodsRequired`); the readiness API with `doublePeriods=true`.
+- .NET `Phase3/ValidatorPropertyTests`: also the double-lesson mode on valid timetables (zero errors) and per-stage day counts that differ between days.
+- .NET `Phase3/SchedulingInputHashTests`: reading order and names never change the hash on generated schools; lesson counts, blocked periods, teacher limits, resource capacity, profile weights and assignments do.
+- .NET `Phase3/WizardStepMigrationTests`: finished wizard, wizard in the middle, no progress row, `Down` restores the seven-step masks and keeps the review undone.
+- .NET `Phase3/AssignmentSuggesterTests`: the preview is deterministic, balanced, within limits and equal to the applied result; existing assignments never change; no teacher above the limit (reason `capacity`).
+- .NET `Phase3/ReadinessTests`: foreign Origin 403, foreign Host 400, no session 401, suggestion apply without the launch token 403; the 40-section test prints its timing.
+- .NET `CalendarAndDemoDataTests`: the default demo completes every checklist item and is ready; `--with-problems` shows the three readiness errors.
+- Mutation checks: `docs/phase3-mutation-checks.py` applies 18 mutants one at a time to the working copy, runs the tests and always restores the file (never committed). All 18 are caught.
+- Vitest: `features/readiness/readinessPresentation.test.ts` (every code has Arabic text, the unknown-code fallback, the double-period note), `features/design-guide/SchedulingSection.test.tsx` (the style-guide matrix, load bar and finding render).
+- Playwright `phase3-scenarios.spec.ts`: (a) a 12-section primary school assigned with the class-teacher bulk action, then ready; (h) a 12-section intermediate school assigned by the suggester (preview = applied, existing kept); (c) a resource shortage fixed by raising the capacity; (d) protection of subject, section and stage with the dependents listed; (f) orphan blocked periods previewed, then removed. (b) 28/25 and (g) readiness + dashboard are in `phase3-readiness.spec.ts`, (e) undo in `phase3-workload.spec.ts`. Wizard step 7 «الأنصبة» has screenshots in `phase25-scenarios.spec.ts`. The report's check time and hash are masked in screenshots.
+- Final Phase 3 run: Release build 0 warnings; .NET 214; Vitest 91; Playwright 21; coverage Domain 97.3%, Application 95.4% of lines.
 
 ## Later-phase acceptance suites
 - Phase 4 infeasibility test must construct a conflict involving two teachers, a shared lab, and a blocked period; the diagnostic must identify the conflict groups and actionable correction, not merely report infeasible.

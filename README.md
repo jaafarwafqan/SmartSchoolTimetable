@@ -1,6 +1,6 @@
 # SmartSchoolTimetable
 
-Single-user, offline-first school timetable application for one local school and one owner account. The browser UI is served by the ASP.NET Core app, which binds only to `127.0.0.1`. Phases 0–2.5 and Phase 3A–3C are tagged; Phase 3D is in progress on `phase-3`. The owner merges after acceptance.
+Single-user, offline-first school timetable application for one local school and one owner account. The browser UI is served by the ASP.NET Core app, which binds only to `127.0.0.1`. Phases 0–2.5 and Phase 3 (3A–3E, `phase-3-final`) are tagged; Phase 3D/3E are on `phase-3-finish`. The owner merges after acceptance.
 
 ## Stack and environment
 - .NET SDK 9.0.318 and Node.js v24.18.0 are available in the current development environment. Node/npm are required for the React build and frontend tests.
@@ -30,7 +30,7 @@ The frontend test command runs Vitest and Playwright; install Chromium once with
 Follow `docs/OWNER_TEST_SCRIPT_PHASE25.md` on a separate test database (`$env:Database__Path`). The results are in `docs/PHASE25_REPORT.md`.
 
 ### Phase 3 readiness check
-After setup, open «جاهزية الجدولة» from the dashboard card or `/readiness`. The report uses the current academic year and the real saved curriculum, teacher assignments, availability and resources. It is a conservative preflight; timetable generation and CP-SAT remain Phase 4.
+After setup, open «جاهزية الجدولة» from the dashboard card or `/readiness`. The report uses the current academic year and the real saved curriculum, teacher assignments, availability and resources. It is a conservative preflight; timetable generation and CP-SAT remain Phase 4. The manual test script is [docs/OWNER_TEST_SCRIPT_PHASE3.md](./docs/OWNER_TEST_SCRIPT_PHASE3.md).
 
 ### Database reset and first-run setup
 Stop the running app before resetting. From the repository root, run:
@@ -60,6 +60,7 @@ Create a fictional sample school in a NEW file. The command refuses an existing 
 ```powershell
 dotnet run --project .\src\SmartSchoolTimetable.Api\SmartSchoolTimetable.Api.csproj --configuration Release --no-build -- --seed-demo-data "$env:TEMP\sst-demo\demo.db"
 # optional: add --dual-shift for a morning and an evening shift
+# optional: add --with-problems for an overloaded teacher, a subject with too few slots and a resource shortage
 ```
 
 Then run the app against it. The first start asks you to create the owner account for the demo database:

@@ -1,6 +1,6 @@
 # ADR 0033: Property-based validation tests
 
-- Status: Accepted for Phase 3D tests only; FsCheck does not enter the shipped application.
+- Status: Accepted for Phase 3D tests only; FsCheck does not enter the shipped application. Checked against the code in the Phase 3 finish (300 runs per property, `ValidatorPropertyTests.Runs`).
 - Date: 2026-10-05
 
 ## Context

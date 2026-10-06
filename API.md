@@ -225,9 +225,28 @@ Curriculum cells and entries carry `isSuggested`. Audit events: `SuggestedCurric
 ### Phase 3D: scheduling input and pre-solve readiness (ADRs 0034–0035)
 | Method | Route | Request | Success | Errors |
 |---|---|---|---|---|
-| GET | `/academic-years/{yearId}/readiness` | — | 200 `{ ready, errors, warnings, findings: [{ code, severity, entity, related, required, available, shortage, details, fixes }], inputHash, checkedAt, sections, lines, assigned, teachers }` | 401, 404 |
+| GET | `/academic-years/{yearId}/readiness?doublePeriods=` | — | 200 `{ ready, errors, warnings, findings: [{ code, severity, entity, related, required, available, shortage, details, fixes }], inputHash, checkedAt, sections, lines, assigned, teachers }` | 401, 403 (foreign Origin), 400 (foreign Host), 404 |
 
-`ready` is true exactly when there are no error-severity findings. The endpoint builds the immutable `SchedulingInput` consumed by Phase 4, hashes it using canonical JSON, and validates it without running a solver. `inputHash` is lowercase SHA-256. Finding codes are stable identifiers; `severity` is `error` or `warning`; the client renders Arabic text and fix links. The read-only call has a fixed query count.
+`ready` is true exactly when there are no error-severity findings. The endpoint builds the immutable `SchedulingInput` consumed by Phase 4, hashes it using canonical JSON, and validates it without running a solver. `inputHash` is lowercase SHA-256. `severity` is `error` or `warning`; the client renders Arabic text and fix links. The read-only call has a fixed query count.
+
+`doublePeriods=true` checks the «دروس مزدوجة» generation mode (`ValidatorOptions.DoublePeriodsRequired`): `DOUBLE_PERIOD_IMPOSSIBLE` is then an error. Without it (the standard mode) the same finding is a warning (DECISIONS_PENDING #65, ADR 0035).
+
+**Finding codes** are not HTTP error codes. They are declared once in `Application/Scheduling/FindingCodes.cs` and listed in `FindingCodes.All`; `FindingCodeContractTests` checks that each has Arabic text in `frontend/src/i18n/ar/phase3.ts` and a member of the TypeScript union, and that no literal appears elsewhere in the backend. An unknown code shows a generic Arabic message.
+
+| Code | Severity |
+|---|---|
+| `NOTHING_TO_SCHEDULE`, `UNASSIGNED_LINES`, `SECTION_OVER_CAPACITY`, `TEACHER_OVERLOAD`, `TEACHER_RELEASED_ASSIGNED`, `TEACHER_ARCHIVED_ASSIGNED`, `SUBJECT_SLOTS_SHORT`, `ASSIGNMENT_INFEASIBLE`, `RESOURCE_OVER_CAPACITY` | error |
+| `SHIFT_WITHOUT_PERIODS` | error when a section of that shift has curriculum lines; otherwise warning |
+| `DOUBLE_PERIOD_IMPOSSIBLE` | warning; error with `doublePeriods=true` |
+| `SECTION_UNDER_CAPACITY`, `TEACHER_PARTIAL_RELEASE`, `RESOURCE_ARCHIVED`, `DOUBLE_PERIOD_TIGHT`, `ORPHAN_BLOCKED_PERIODS`, `DISTRIBUTION_DISABLED_IN_CURRICULUM`, `STAGE_WITHOUT_CURRICULUM`, `TEACHER_SHIFT_OVERLAP` | warning |
+
+### Phase 3E: assignment suggester and wizard step
+| Method | Route | Request | Success | Errors |
+|---|---|---|---|---|
+| GET | `/academic-years/{yearId}/workload/suggestions/preview` | — | 200 `{ assignments: [{ sectionId, stageName, sectionLabel, entryId, subjectName, label, weeklyLessons, teacherId, teacherName }], unassigned: [{ …, reason: noSpecialist\|released\|capacity }], loads: [{ teacherId, teacherName, before, after, limit }] }` | 401, 404 |
+| POST | `/academic-years/{yearId}/workload/suggestions/apply` | `{ confirm: true }` | 200 the applied plan (equal to the preview for the same data) | 401, 403, 404, 422 `Confirm` `REQUIRED` |
+
+The suggester is deterministic: it fills only lines with no active assignment, never changes an existing one, picks the specialist of the subject whose load after the line is the smallest share of their limit (ties by name), and never goes above a teacher's limit (`capacity`) or assigns a fully released teacher (`released`). The setup wizard has eight steps; step 7 «الأنصبة» shows the assigned-line count and the suggester. Migration `Phase3EWorkloadWizardStep` moves a saved review step (bit 128) to bit 256.
 
 ### Subjects and the schedule grid (Phase 2, checkpoint 2D)
 | Method | Route | Request | Success | Endpoint-specific errors |

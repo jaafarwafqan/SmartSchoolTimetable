@@ -119,6 +119,8 @@ Fixes data-entry weight before Phase 3. The full specification is in `docs/PHASE
 - Tests cover valid cases and measured boundary/shortage cases against SQLite.
 - Phase 3D builds a deterministic, serializable `SchedulingInput` snapshot with canonical `InputHash`; the pure validator and «جاهزية الجدولة» report run before solver invocation. Phase 4 consumes this exact contract and persists its hash.
 - The validator is deliberately conservative: only proven upper-bound violations are errors; uncertain combinations remain warnings. It does not claim complete constraint solving.
+- Phase 4 calls the validator with `ValidatorOptions.DoublePeriodsRequired = true` when the owner generates in the «دروس مزدوجة» mode, so an impossible double period blocks only that mode (DECISIONS_PENDING #65).
+- Phase 3E: the deterministic assignment suggester, wizard step «الأنصبة», demo data with every checklist item done (and `--with-problems`), Playwright scenarios (a)–(h). Tags `phase-3d`, `phase-3e`, `phase-3-final`.
 
 ## Phase 4 - Local CP-SAT generation
 - C# Google.OrTools, local background generation service, progress, cancellation, deterministic mode, and infeasibility diagnostics.

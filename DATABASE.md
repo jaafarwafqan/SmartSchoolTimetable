@@ -101,6 +101,8 @@ Migration `Phase3CWorkload` (ADR 0032) adds `WorkloadAssignments`:
 
 Phase 3D (ADRs 0034–0035) adds no database tables or migration. `SchedulingInput` is a canonical in-memory snapshot assembled from versioned school records; `InputHash` is computed from its scheduling-relevant values and returned with readiness. Phase 4 persists the hash with each generated timetable version, not as mutable school state.
 
+Migration `Phase3EWorkloadWizardStep` (Phase 3E) is a data-only migration: the setup wizard gained step 7 «الأنصبة», so a saved review step moves from bit 128 to bit 256 in `CompletedMask` and `SkippedMask`, and `CurrentStep` 7 becomes 8. `Down` clears bits 128 and 256 and moves 256 back to 128. Tested on a finished wizard, one in the middle, a database without a progress row, and `Down` (`WizardStepMigrationTests`).
+
 Phase 3A added no schema change. Read-only list and report queries run without change tracking (DECISIONS_PENDING #52).
 
 ## Application data

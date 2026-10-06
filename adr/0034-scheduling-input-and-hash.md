@@ -1,6 +1,6 @@
 # ADR 0034: Scheduling input contract and hash
 
-- Status: Accepted for Phase 3D.
+- Status: Accepted for Phase 3D. Checked against the code in the Phase 3 finish (`SchedulingInput.CurrentFormatVersion` = 1; `SchedulingInputHashTests`).
 - Date: 2026-10-05
 
 ## Context
