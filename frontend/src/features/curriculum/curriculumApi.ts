@@ -33,7 +33,9 @@ export type PeriodPreset = { key: string; name: string; firstStart: string; less
 export type WorkingDayPreset = { key: string; name: string; days: number[]; weekStart: number; isDefault: boolean };
 /** Suggested break length per school type (minutes); a suggestion only (ADR 0026). */
 export type BreakDefaults = { minutes: Record<string, number> };
-export type TemplateCatalog = { branches: BranchTemplate[]; grades: GradeTemplate[]; periodPresets: PeriodPreset[]; workingDayPresets: WorkingDayPreset[]; breakDefaults: BreakDefaults };
+/** A stage's totals in the official plan: the printed total and the total with every optional subject ticked. */
+export type OfficialStageTotal = { key: string; name: string; schoolTypes: string[]; officialTotal: number; allOptionalTotal: number };
+export type TemplateCatalog = { branches: BranchTemplate[]; grades: GradeTemplate[]; periodPresets: PeriodPreset[]; workingDayPresets: WorkingDayPreset[]; breakDefaults: BreakDefaults; officialStages: OfficialStageTotal[] };
 export type StageTemplateGrade = { gradeKey: string; branches: string[]; sections: number; shiftId: number | null; labelStyle: LabelStyle };
 export type StageTemplateInput = { schoolType: string; grades: StageTemplateGrade[] };
 export type StagePlanLine = { key: string; name: string; action: PlanAction; existingSections: number; sectionsToAdd: number };
@@ -139,11 +141,15 @@ export function useSetSectionCount(yearId: number) {
 // `note` and `verificationNote` are Arabic data from the template, shown as-is.
 export type SuggestedEntryLine = { subject: string; lessons: number; action: "create" | "exists" | "update" | "unchanged" | "skipped"; optional: boolean; currentLessons: number | null; inStatedTotal: boolean; note: string | null };
 /** `statedTotal`: printed in the plan; `officialTotal`: its counted rows; `suggestedTotal`: the enabled rows. */
-export type SuggestedStage = { stageId: number; stageName: string; needsReview: boolean; statedTotal: number; officialTotal: number; suggestedTotal: number; currentTotal: number; resultingTotal: number; verificationNote: string | null; entries: SuggestedEntryLine[] };
+/** `weeklyCapacity`: the most lessons a week the stage's shift(s) allow; `workingDays`: the number of working days. */
+export type SuggestedStage = { stageId: number; stageName: string; needsReview: boolean; statedTotal: number; officialTotal: number; suggestedTotal: number; currentTotal: number; resultingTotal: number; verificationNote: string | null; entries: SuggestedEntryLine[]; weeklyCapacity: number; workingDays: number };
+/** A stage the template cannot match by key or name; `templateStage` is the owner's choice in this request. */
+export type UnmatchedStage = { stageId: number; stageName: string; templateStage: string | null };
+export type StageMatch = { stageId: number; templateStage: string };
 export type SuggestedSubjectLine = { name: string; action: "create" | "exists"; existingName: string | null; optional: boolean; included: boolean; inStatedTotal: boolean; note: string | null };
 export type CurriculumProvenance = { source: string; status: string; transcribedBy: string | null };
-export type SuggestedPlan = { templateVersion: number; provenance: CurriculumProvenance; subjects: SuggestedSubjectLine[]; stages: SuggestedStage[]; optionalSubjects: string[]; changes: number };
-export type SuggestedInput = { optionalSubjects: string[]; confirm?: boolean };
+export type SuggestedPlan = { templateVersion: number; provenance: CurriculumProvenance; subjects: SuggestedSubjectLine[]; stages: SuggestedStage[]; optionalSubjects: string[]; changes: number; unmatchedStages: UnmatchedStage[]; templateStages: string[] };
+export type SuggestedInput = { optionalSubjects: string[]; stageMatches?: StageMatch[]; confirm?: boolean };
 export type DailyStatus = "apply" | "same" | "manual" | "aboveCapacity" | "belowDays" | "noCurriculum";
 export type DailyStage = { stageId: number; stageName: string; weeklyTotal: number; capacity: number; suggested: DayLessonsEntry[]; current: DayLessonsEntry[]; status: DailyStatus; changedSinceSuggestion: boolean; version: number };
 type DayLessonsEntry = { day: number; lessons: number };
@@ -151,10 +157,10 @@ type DayLessonsEntry = { day: number; lessons: number };
 const suggestedPath = (yearId: number) => `${yearPath(yearId)}/curriculum/suggested`;
 
 /** The suggestion for the current choices; also tells which stages need review (used by the table header). */
-export function useSuggestedPreview(yearId: number, optionalSubjects: readonly string[]) {
+export function useSuggestedPreview(yearId: number, optionalSubjects: readonly string[], stageMatches: readonly StageMatch[] = []) {
   return useQuery({
-    queryKey: [...curriculumKey, "suggested", yearId, [...optionalSubjects].sort()],
-    queryFn: () => apiRequest<SuggestedPlan>(`${suggestedPath(yearId)}/preview`, "POST", { optionalSubjects }),
+    queryKey: [...curriculumKey, "suggested", yearId, [...optionalSubjects].sort(), stageMatches],
+    queryFn: () => apiRequest<SuggestedPlan>(`${suggestedPath(yearId)}/preview`, "POST", { optionalSubjects, stageMatches }),
   });
 }
 

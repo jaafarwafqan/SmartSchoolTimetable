@@ -167,6 +167,12 @@ export const suggested = {
   resetConfirm: "إعادة المقترح",
   resetDone: (stage: string) => `أُعيدت قيم ${isolate(stage)} إلى المقترح.`,
   empty: "—",
+  unmatchedTitle: "مراحل لا يوجد لها قالب رسمي",
+  unmatchedHint: "لم نجد هذه المراحل في الخطة الرسمية. اختر من القائمة المرحلة الرسمية التي تتبعها كل مرحلة لتُعبّأ مثلها، أو اتركها دون مطابقة.",
+  unmatchedChoice: (stage: string) => `المرحلة الرسمية المطابقة لـ${isolate(stage)}`,
+  unmatchedNone: "دون مطابقة",
+  capacityAfter: (total: string, daily: string) => `بعد التفعيل يصبح مجموع المرحلة ${total} وتحتاج ${daily} يومياً.`,
+  capacityAbove: (capacity: string) => `يتجاوز سعة الدوام الحالي (${capacity} أسبوعياً). لن يمنعك هذا من التطبيق؛ عدّل الدوام أو المنهج لاحقاً.`,
 } as const;
 
 export const daily = {

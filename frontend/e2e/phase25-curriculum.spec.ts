@@ -1,7 +1,7 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { messages } from "../src/i18n/messages";
 import { formatNumber } from "../src/lib/format";
-import { prepareSchool } from "./support/api";
+import { api, prepareSchool } from "./support/api";
 import { ApiServer } from "./support/apiServer";
 import { breakpoints, expectNoPageScrollX, expectNoSeriousA11yViolations, expectNoTextOverlap, goToSection, setupOwner } from "./support/flows";
 
@@ -140,6 +140,48 @@ test("(c) preparatory with both branches: no review questions, حزب البعث
     await applySuggested(page);
     await expect(page.locator(".curriculum-table thead .review-warning")).toHaveCount(0);
     await expectNoSeriousA11yViolations(page, "official plan without review warnings");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("(h) a stage without a template is matched from a list; optional subjects say what capacity they need", async ({ browser, page }) => {
+  const server = new ApiServer();
+  await server.start(browser, "curriculum-h");
+  try {
+    await setupOwner(page, server.baseUrl, "owner", "Curriculum-Owner-1");
+    const { yearId } = await prepareSchool(page, server.baseUrl, { schoolType: "preparatory", shiftMode: "morning", grades: [{ gradeKey: "preparatory-6", branches: ["scientific"], sections: 1 }] });
+    await api(page, server.baseUrl, "POST", `/academic-years/${yearId}/stages/`, { name: "صف الموهوبين", displayOrder: 90, version: 0 });
+    await goToSection(page, school.nav.curriculum);
+    await openPanel(page);
+
+    // Listed under «مراحل لا يوجد لها قالب رسمي»; the official stage is chosen from a list, never typed.
+    const unmatched = panel(page).locator(".suggested-unmatched");
+    await expect(unmatched.getByRole("heading", { name: suggested.unmatchedTitle })).toBeVisible();
+    await expect(panel(page).locator(".suggested-stage", { hasText: "صف الموهوبين" })).toHaveCount(0);
+    await unmatched.getByLabel(suggested.unmatchedChoice("صف الموهوبين")).selectOption("الخامس العلمي");
+    const gifted = panel(page).locator(".suggested-stage", { hasText: "صف الموهوبين" });
+    await expect(gifted).toContainText(suggested.officialTotal("٣٠ حصة"));
+
+    // French and computing: السادس العلمي 33 → 37, 8 lessons a day, above the 7 × 5 = 35 shift; applying is still allowed.
+    await panel(page).getByRole("checkbox", { name: "اللغة الفرنسية" }).check();
+    await panel(page).getByRole("checkbox", { name: "الحاسوب" }).check();
+    const sixth = panel(page).locator(".suggested-stage", { hasText: "السادس العلمي" });
+    await expect(sixth.locator(".capacity-note")).toContainText(suggested.capacityAfter("٣٧ حصة", "٨ حصص"));
+    await expect(sixth.locator(".capacity-note")).toContainText(suggested.capacityAbove("٣٥ حصة"));
+    await expect(gifted.locator(".capacity-note")).toContainText(suggested.capacityAfter("٣٣ حصة", "٧ حصص"));
+    await expect(gifted.locator(".capacity-note.is-above")).toHaveCount(0);
+    await expectNoSeriousA11yViolations(page, "unmatched stage and capacity notes");
+    for (const width of breakpoints) {
+      await page.setViewportSize({ width, height: 900 });
+      await expectNoPageScrollX(page, `unmatched stage at ${width}px`);
+      await expectNoTextOverlap(panel(page), `suggested panel with an unmatched stage at ${width}px`);
+    }
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await applySuggested(page);
+    await expect(totals(page)).toHaveCount(2);
+    await expect(totals(page).nth(1)).toContainText(arab(33)); // the matched stage, applied (no sections yet)
+    await expect(totals(page).nth(1)).toContainText(curriculum.noSections);
   } finally {
     await server.stop();
   }

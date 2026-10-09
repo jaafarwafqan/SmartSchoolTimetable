@@ -17,12 +17,18 @@ public sealed record WorkingDayPresetTemplate(string Key, string Name, IReadOnly
 /// <summary>Suggested break length per school type (minutes); a suggestion, never an official number.</summary>
 public sealed record BreakDefaultsTemplate(IReadOnlyDictionary<string, int> Minutes);
 
+/// <summary>A stage's weekly totals in the official template, for capacity notices before any stage exists.</summary>
+/// <param name="OfficialTotal">The printed official total.</param>
+/// <param name="AllOptionalTotal">Mandatory rows plus every optional subject of the stage.</param>
+public sealed record OfficialStageTotalTemplate(string Key, string Name, IReadOnlyList<string> SchoolTypes, int OfficialTotal, int AllOptionalTotal);
+
 public sealed record TemplateCatalogDto(
     IReadOnlyList<BranchTemplate> Branches,
     IReadOnlyList<GradeTemplate> Grades,
     IReadOnlyList<PeriodPresetTemplate> PeriodPresets,
     IReadOnlyList<WorkingDayPresetTemplate> WorkingDayPresets,
-    BreakDefaultsTemplate BreakDefaults);
+    BreakDefaultsTemplate BreakDefaults,
+    IReadOnlyList<OfficialStageTotalTemplate> OfficialStages);
 
 /// <summary>
 /// Data-driven setup templates (spec 2.5 §4.1), embedded JSON resources: Iraqi stages per school type with
@@ -54,7 +60,25 @@ public sealed class TemplateCatalog
     public IReadOnlyList<WorkingDayPresetTemplate> WorkingDayPresets { get; }
     public BreakDefaultsTemplate BreakDefaults { get; }
 
-    public TemplateCatalogDto ToDto() => new(Branches, Grades, PeriodPresets, WorkingDayPresets, BreakDefaults);
+    public TemplateCatalogDto ToDto() => new(Branches, Grades, PeriodPresets, WorkingDayPresets, BreakDefaults, OfficialStageTotals());
+
+    /// <summary>Every template stage (grades × branches) with its official totals, in display order.</summary>
+    private OfficialStageTotalTemplate[] OfficialStageTotals()
+    {
+        var official = SuggestedCurriculumTemplate.Current;
+        var result = new List<OfficialStageTotalTemplate>();
+        foreach (var grade in Grades)
+        {
+            foreach (var (key, name) in grade.BranchStem is null ? [Stage(grade, null)] : Branches.Select(branch => Stage(grade, branch)))
+            {
+                if (official.StageForKey(key) is not { } stage)
+                    continue;
+                var all = stage.Entries.Select(entry => entry.Subject).ToHashSet(StringComparer.Ordinal);
+                result.Add(new OfficialStageTotalTemplate(key, name, grade.SchoolTypes, stage.StatedTotal, stage.Total(all)));
+            }
+        }
+        return [.. result];
+    }
 
     /// <summary>Grades of a school type in display order (ثانوية = متوسطة + إعدادية).</summary>
     public IReadOnlyList<GradeTemplate> GradesFor(SchoolType schoolType)

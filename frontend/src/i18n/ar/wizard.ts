@@ -71,6 +71,11 @@ export const wizard = {
     from: "من",
     to: "إلى",
     weekly: (lessons: string) => `مجموع الحصص الأسبوعية: ${lessons}`,
+    optionalTitle: "أثر المواد الاختيارية على هذا الدوام",
+    optionalLine: (stage: string, total: string, daily: string) => `${isolate(stage)}: بعد تفعيل كل موادها الاختيارية يصبح مجموع المرحلة ${total} وتحتاج ${daily} يومياً.`,
+    optionalAbove: (capacity: string) => `يتجاوز سعة هذا الدوام (${capacity} أسبوعياً).`,
+    optionalAboveCount: (stages: string) => `${stages} تتجاوز سعة هذا الدوام إذا فُعّلت موادها الاختيارية. هذا تنبيه فقط ولا يمنع الحفظ؛ المواد الاختيارية غير مفعّلة افتراضياً.`,
+    optionalFits: "كل المراحل تتسع في هذا الدوام حتى مع تفعيل كل المواد الاختيارية.",
     replaceNote: "حفظ هذه الخطوة يستبدل جدول الحصص الحالي للدوام بالقيم الظاهرة هنا.",
   },
   stages: {

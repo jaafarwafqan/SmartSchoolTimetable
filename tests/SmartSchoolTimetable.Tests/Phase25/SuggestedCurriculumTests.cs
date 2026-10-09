@@ -26,6 +26,8 @@ public sealed class SuggestedCurriculumTests
     private static readonly string[] BothBranches = ["scientific", "literary"];
     private static readonly string[] NoBranches = [];
     private static readonly string[] Scientific = ["scientific"];
+    private static readonly string[] FrenchAndComputing = ["اللغة الفرنسية", "الحاسوب"];
+    private static readonly int[] ThirtyEach = [30, 30];
     private static readonly string[] FourthScientificMandatory =
         ["التربية الإسلامية", "اللغة العربية", "اللغة الإنكليزية", "الرياضيات", "الكيمياء", "الفيزياء", "الأحياء", "التربية الفنية والنشيد", "التربية الرياضية"];
     private static readonly long[] UnknownStage = [999L];
@@ -328,6 +330,49 @@ public sealed class SuggestedCurriculumTests
         suggested = await ReadAsync<List<string>>(await host.Client.GetAsync($"{root}/templates/suggested-subjects"));
         Assert.Contains("التربية الأخلاقية", suggested); // الأول المتوسط
         Assert.DoesNotContain(suggested, name => OptionalSubjects.Contains(name));
+    }
+
+    [Fact]
+    public async Task StagesWithoutATemplateAreListedAndMatchedFromTheList()
+    {
+        var (host, token, root, _, _) = await SchoolAsync("primary", "morning", [("primary-1", NoBranches)]);
+        await using var _ = host;
+        var custom = await ReadAsync<StageDto>(await host.PostAsync($"{root}/stages/", new { name = "صف الموهوبين", displayOrder = 9, version = 0 }, token));
+        var preview = await ReadAsync<SuggestedCurriculumPlanDto>(await host.PostAsync($"{root}/curriculum/suggested/preview", new { }, token));
+        Assert.Equal([(custom.Id, "صف الموهوبين", (string?)null)], preview.UnmatchedStages.Select(stage => (stage.StageId, stage.StageName, stage.TemplateStage)));
+        Assert.Equal(15, preview.TemplateStages.Count);
+        Assert.DoesNotContain(preview.Stages, stage => stage.StageId == custom.Id);
+
+        // Matched to an official stage chosen from the list: it is planned like that stage and stays listed with the choice.
+        var match = new[] { new { stageId = custom.Id, templateStage = "الثاني الابتدائي" } };
+        var matched = await ReadAsync<SuggestedCurriculumPlanDto>(await host.PostAsync($"{root}/curriculum/suggested/preview", new { stageMatches = match }, token));
+        Assert.Equal(30, matched.Stages.Single(stage => stage.StageId == custom.Id).ResultingTotal);
+        Assert.Equal("الثاني الابتدائي", matched.UnmatchedStages.Single().TemplateStage);
+        await ReadAsync<SuggestedCurriculumPlanDto>(await host.PostAsync($"{root}/curriculum/suggested", new { stageMatches = match }, token));
+        Assert.Equal(ThirtyEach, await PlannedAsync(host, root));
+
+        // Only official names, only stages the template cannot match itself, once each.
+        var stages = await ReadAsync<CurriculumTableDto>(await host.Client.GetAsync($"{root}/curriculum"));
+        var first = stages.Stages.Single(stage => stage.Id != custom.Id).Id;
+        foreach (var invalid in new object[]
+        {
+            new[] { new { stageId = custom.Id, templateStage = "صف غير موجود" } },
+            new[] { new { stageId = first, templateStage = "الثاني الابتدائي" } },
+            new[] { new { stageId = 999L, templateStage = "الثاني الابتدائي" } },
+            new[] { new { stageId = custom.Id, templateStage = "الثاني الابتدائي" }, new { stageId = custom.Id, templateStage = "الأول الابتدائي" } },
+        })
+            Assert.Contains((await AssertApiErrorAsync(await host.PostAsync($"{root}/curriculum/suggested/preview", new { stageMatches = invalid }, token), "VALIDATION_FAILED")).Errors, issue => issue.Field == "StageMatches");
+    }
+
+    [Fact]
+    public async Task PreviewTellsTheCapacityTheOptionalSubjectsNeed()
+    {
+        var (host, token, root, _, _) = await SchoolAsync("secondary", "morning", [("preparatory-6", Scientific)]);
+        await using var _ = host;
+        // 7 lessons × 5 days = 35; السادس العلمي 33, with French and computing 37 (8 a day): above the current shift.
+        var plan = await ReadAsync<SuggestedCurriculumPlanDto>(await host.PostAsync($"{root}/curriculum/suggested/preview", new { optionalSubjects = FrenchAndComputing }, token));
+        var sixth = plan.Stages.Single();
+        Assert.Equal((33, 37, 35, 5), (sixth.StatedTotal, sixth.ResultingTotal, sixth.WeeklyCapacity, sixth.WorkingDays));
     }
 
     [Fact]

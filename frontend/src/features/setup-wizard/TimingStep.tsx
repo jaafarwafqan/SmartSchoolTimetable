@@ -11,7 +11,7 @@ import { DataTable } from "../../components/ui/table";
 import { messages } from "../../i18n/messages";
 import { useFormatter, useSchoolContext } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
-import { useTemplateCatalog, type PeriodPreset } from "../curriculum/curriculumApi";
+import { useTemplateCatalog, type OfficialStageTotal, type PeriodPreset } from "../curriculum/curriculumApi";
 import { useShifts, useWorkingWeek, type Period } from "../timetable-structure/scheduleApi";
 import { weekdayLabel, weekdaysFrom } from "../timetable-structure/weekdays";
 import { BreaksEditor, validBreaks } from "../timetable-structure/BreaksEditor";
@@ -48,8 +48,35 @@ function PeriodsPreview({ yearId, kind, plan }: { yearId: number; kind: Kind; pl
   );
 }
 
-function ShiftBlock({ kind, plan, days, presets, yearId, suggestedBreak, onChange }: {
-  kind: Kind; plan: ShiftPlan; days: number[]; presets: PeriodPreset[]; yearId: number | null; suggestedBreak: number; onChange: (plan: ShiftPlan) => void;
+/**
+ * A notice that never blocks: for the school type's stages with optional subjects, the total once they are all ticked
+ * and the lessons a day it needs; stages above this shift's weekly lessons are named.
+ */
+function OptionalCapacity({ kind, stages, capacity, days }: { kind: Kind; stages: OfficialStageTotal[]; capacity: number; days: number }) {
+  const format = useFormatter();
+  const withOptional = stages.filter((stage) => stage.allOptionalTotal > stage.officialTotal);
+  if (withOptional.length === 0 || days === 0) return null;
+  const above = withOptional.filter((stage) => stage.allOptionalTotal > capacity);
+  return (
+    <div className="form-stack optional-capacity">
+      <Alert tone={above.length > 0 ? "warning" : "info"} message={above.length > 0 ? text.timing.optionalAboveCount(format.count(above.length, "stage")) : text.timing.optionalFits} />
+      <details className="advanced-options">
+        <summary>{text.timing.optionalTitle}</summary>
+        <ul className="optional-capacity-list">
+          {withOptional.map((stage) => (
+            <li key={`${kind}-optional-${stage.key}`} className={stage.allOptionalTotal > capacity ? "is-above" : undefined}>
+              {text.timing.optionalLine(stage.name, format.count(stage.allOptionalTotal, "lesson"), format.count(Math.ceil(stage.allOptionalTotal / days), "lesson"))}
+              {stage.allOptionalTotal > capacity && ` ${text.timing.optionalAbove(format.count(capacity, "lesson"))}`}
+            </li>
+          ))}
+        </ul>
+      </details>
+    </div>
+  );
+}
+
+function ShiftBlock({ kind, plan, days, presets, yearId, suggestedBreak, officialStages, onChange }: {
+  kind: Kind; plan: ShiftPlan; days: number[]; presets: PeriodPreset[]; yearId: number | null; suggestedBreak: number; officialStages: OfficialStageTotal[]; onChange: (plan: ShiftPlan) => void;
 }) {
   const format = useFormatter();
   const name = text.timing.shifts[kind];
@@ -89,6 +116,7 @@ function ShiftBlock({ kind, plan, days, presets, yearId, suggestedBreak, onChang
         </ul>
       </details>
       <p className="card-note">{text.timing.weekly(format.number(weeklyLessons(plan, days)))}</p>
+      <OptionalCapacity kind={kind} stages={officialStages} capacity={weeklyLessons(plan, days)} days={days.length} />
       {yearId !== null && <PeriodsPreview yearId={yearId} kind={kind} plan={plan} />}
     </section>
   );
@@ -144,6 +172,7 @@ export function TimingStep({ progress, onBack, onDone }: { progress: SetupProgre
       {kinds.map((kind) => (
         <ShiftBlock key={`wizard-shift-${kind}`} kind={kind} plan={planFor(kind)} days={days} presets={presets} yearId={yearId}
           suggestedBreak={catalog.data?.breakDefaults.minutes[progress.schoolType] ?? 15}
+          officialStages={(catalog.data?.officialStages ?? []).filter((stage) => stage.schoolTypes.includes(progress.schoolType))}
           onChange={(plan) => setPlans((current) => ({ ...current, [kind]: plan }))} />
       ))}
       <WizardFooter step={3} pending={save.isPending} error={feedback.error} onBack={onBack}

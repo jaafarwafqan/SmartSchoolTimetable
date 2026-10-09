@@ -1,14 +1,16 @@
-import { Check, CircleAlert, ClipboardList, RotateCcw } from "lucide-react";
+import { Check, CircleAlert, ClipboardList, RotateCcw, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { Alert } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Checkbox } from "../../components/ui/checkbox";
+import { Field } from "../../components/ui/field";
+import { Select } from "../../components/ui/select";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { messages } from "../../i18n/messages";
 import { useFormatter } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
-import { useApplySuggested, usePreviewStageReset, useResetStage, useSuggestedPreview, type SuggestedPlan, type SuggestedStage } from "./curriculumApi";
+import { useApplySuggested, usePreviewStageReset, useResetStage, useSuggestedPreview, type StageMatch, type SuggestedPlan, type SuggestedStage } from "./curriculumApi";
 
 const text = messages.school.suggested;
 
@@ -23,6 +25,25 @@ export function ReviewWarning({ short = false }: { short?: boolean }) {
   );
 }
 
+/** Capacity after the chosen optional subjects: the stage total, lessons a day it needs, and whether the shift holds it. */
+function CapacityNote({ stage }: { stage: SuggestedStage }) {
+  const { count } = useFormatter();
+  const optionalChosen = stage.entries.some((line) => line.optional && line.action !== "skipped");
+  const above = stage.weeklyCapacity > 0 && stage.resultingTotal > stage.weeklyCapacity;
+  if (!optionalChosen && !above) return null;
+  const daily = stage.workingDays > 0 ? Math.ceil(stage.resultingTotal / stage.workingDays) : 0;
+  return (
+    <p className={`suggested-note capacity-note${above ? " is-above" : ""}`}>
+      {above && <TriangleAlert aria-hidden="true" size={14} />}
+      <span>
+        {optionalChosen && text.capacityAfter(count(stage.resultingTotal, "lesson"), count(daily, "lesson"))}
+        {optionalChosen && above && " "}
+        {above && text.capacityAbove(count(stage.weeklyCapacity, "lesson"))}
+      </span>
+    </p>
+  );
+}
+
 /**
  * "تعبئة المنهج" (ADR 0028, 0029): a preview of what the official study plan 2026-2027 adds to the school's existing
  * stages (matched subjects, optional subjects unchecked, official against enabled totals, the source's review notes),
@@ -32,8 +53,10 @@ export function SuggestedCurriculumPanel({ yearId, open = false }: { yearId: num
   const { count, number } = useFormatter();
   const feedback = useFormFeedback();
   const [optional, setOptional] = useState<ReadonlySet<string>>(new Set());
+  const [matches, setMatches] = useState<Readonly<Record<number, string>>>({});
   const chosen = [...optional];
-  const preview = useSuggestedPreview(yearId, chosen);
+  const stageMatches: StageMatch[] = Object.entries(matches).map(([stageId, templateStage]) => ({ stageId: Number(stageId), templateStage }));
+  const preview = useSuggestedPreview(yearId, chosen, stageMatches);
   const apply = useApplySuggested(yearId);
   const resetPreview = usePreviewStageReset(yearId);
   const reset = useResetStage(yearId);
@@ -50,9 +73,19 @@ export function SuggestedCurriculumPanel({ yearId, open = false }: { yearId: num
     feedback.reset();
   }
 
+  function match(stageId: number, templateStage: string) {
+    setMatches((current) => {
+      const next = { ...current };
+      if (templateStage) next[stageId] = templateStage;
+      else delete next[stageId];
+      return next;
+    });
+    feedback.reset();
+  }
+
   function startReset(stage: SuggestedStage) {
     feedback.reset();
-    resetPreview.mutate({ stageId: stage.stageId, optionalSubjects: chosen }, {
+    resetPreview.mutate({ stageId: stage.stageId, optionalSubjects: chosen, stageMatches }, {
       onSuccess: (result) => setResetting({ stage, plan: result }),
       onError: feedback.showError,
     });
@@ -85,6 +118,22 @@ export function SuggestedCurriculumPanel({ yearId, open = false }: { yearId: num
         {preview.isError && <Alert tone="error" message={messages.school.common.loadFailed} />}
         <Alert tone="success" message={feedback.success} />
         <Alert tone="error" message={feedback.error} />
+        {plan && plan.unmatchedStages.length > 0 && (
+          <section aria-labelledby="suggested-unmatched-title" className="suggested-unmatched">
+            <h4 id="suggested-unmatched-title">{text.unmatchedTitle}</h4>
+            <p className="card-note">{text.unmatchedHint}</p>
+            <ul className="suggested-unmatched-list">
+              {plan.unmatchedStages.map((stage) => (
+                <li key={`unmatched-${stage.stageId}`}>
+                  <Field id={`unmatched-${stage.stageId}`} label={text.unmatchedChoice(stage.stageName)}>
+                    <Select id={`unmatched-${stage.stageId}`} value={matches[stage.stageId] ?? ""} onChange={(event) => match(stage.stageId, event.target.value)}
+                      options={[{ value: "", label: text.unmatchedNone }, ...plan.templateStages.map((name) => ({ value: name, label: name }))]} />
+                  </Field>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         {plan && plan.stages.length === 0 && <Alert tone="info" message={text.noStages} />}
         {plan && plan.stages.length > 0 && (
           <>
@@ -113,6 +162,7 @@ export function SuggestedCurriculumPanel({ yearId, open = false }: { yearId: num
                   {stage.needsReview && <ReviewWarning />}
                   {stage.verificationNote && <p className="suggested-note">{stage.verificationNote}</p>}
                   {stage.suggestedTotal !== stage.officialTotal && <p className="suggested-note">{text.totalDiffers}</p>}
+                  <CapacityNote stage={stage} />
                   <Button variant="ghost" size="sm" icon={<RotateCcw aria-hidden="true" size={16} />} loading={resetPreview.isPending && resetPreview.variables?.stageId === stage.stageId}
                     onClick={() => startReset(stage)}>{text.reset}</Button>
                 </li>
@@ -121,7 +171,7 @@ export function SuggestedCurriculumPanel({ yearId, open = false }: { yearId: num
             {plan.changes === 0 ? <p className="card-note">{text.nothing}</p> : (
               <div className="form-actions">
                 <Button icon={<Check aria-hidden="true" size={20} />} loading={apply.isPending}
-                  onClick={() => { feedback.reset(); apply.mutate({ optionalSubjects: chosen }, { onSuccess: (result) => feedback.showSuccess(text.applied(number(result.changes))), onError: feedback.showError }); }}>
+                  onClick={() => { feedback.reset(); apply.mutate({ optionalSubjects: chosen, stageMatches }, { onSuccess: (result) => feedback.showSuccess(text.applied(number(result.changes))), onError: feedback.showError }); }}>
                   {text.apply}
                 </Button>
               </div>
@@ -141,7 +191,7 @@ export function SuggestedCurriculumPanel({ yearId, open = false }: { yearId: num
         onConfirm={() => {
           if (!resetting || resetLines.length === 0) { setResetting(null); return; }
           const stage = resetting.stage;
-          reset.mutate({ stageId: stage.stageId, optionalSubjects: chosen }, {
+          reset.mutate({ stageId: stage.stageId, optionalSubjects: chosen, stageMatches }, {
             onSuccess: () => { setResetting(null); feedback.showSuccess(text.resetDone(stage.stageName)); },
             onError: (reason) => { setResetting(null); feedback.showError(reason); },
           });

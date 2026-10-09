@@ -67,6 +67,8 @@ test("scenario (b): a dual-shift ثانوية with branches through the wizard",
   await ux.choose(evening.getByRole("button", { name: school.scheduleStructure.decreaseFor(school.scheduleStructure.days.thursday) }));
   await expect(evening.getByText(wizard.timing.weekly(arab(29)))).toBeVisible();
   await expect(blocks.nth(0).getByText(wizard.timing.weekly(arab(35)))).toBeVisible();
+  // A notice, never a block: with every optional subject, السادس العلمي (37) and الخامس الأدبي (36) exceed 35.
+  await expect(blocks.nth(0).getByRole("status").filter({ hasText: wizard.timing.optionalAboveCount("مرحلتان") })).toBeVisible();
   await expectNoSeriousA11yViolations(page, "scenario b step 3");
   await expectBreakpointScreenshots(page, "wizard-step-3");
   await next();

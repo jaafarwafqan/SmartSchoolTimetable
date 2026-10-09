@@ -95,6 +95,13 @@ public sealed class CurriculumDomainTests
         Assert.Null(official.StageForKey("unknown"));
         Assert.Null(official.StageForKey("preparatory-4")); // a branch grade alone is not a stage
 
+        // The catalog carries each stage's official total and its total with every optional subject (السادس العلمي 33 → 37).
+        var totals = catalog.ToDto().OfficialStages;
+        Assert.Equal(stageKeys, totals.Select(stage => stage.Key));
+        Assert.Equal((33, 37), totals.Where(stage => stage.Key == "preparatory-6-scientific").Select(stage => (stage.OfficialTotal, stage.AllOptionalTotal)).Single());
+        Assert.Equal((31, 31), totals.Where(stage => stage.Key == "primary-6").Select(stage => (stage.OfficialTotal, stage.AllOptionalTotal)).Single());
+        Assert.All(totals, stage => Assert.NotEmpty(stage.SchoolTypes));
+
         // Every period preset generates a valid day; working-day presets have exactly one default.
         Assert.All(catalog.PeriodPresets, preset =>
         {
