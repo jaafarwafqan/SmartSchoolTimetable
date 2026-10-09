@@ -14,7 +14,7 @@ import { useFormFeedback } from "../../lib/useFormFeedback";
 import { useTemplateCatalog, type OfficialStageTotal, type PeriodPreset } from "../curriculum/curriculumApi";
 import { useShifts, useWorkingWeek, type Period } from "../timetable-structure/scheduleApi";
 import { weekdayLabel, weekdaysFrom } from "../timetable-structure/weekdays";
-import { BreaksEditor, validBreaks } from "../timetable-structure/BreaksEditor";
+import { breakIssues, BreaksEditor, validBreaks } from "../timetable-structure/BreaksEditor";
 import { lessonMinuteChoices, lessonsOn, maxLessonsPerDay, planFromPreset, planFromShift, toShiftInput, weeklyLessons, type ShiftPlan } from "./timingPlan";
 import { WizardFooter } from "./WizardFrame";
 import { useSaveTimingStep, type SetupProgress } from "./wizardApi";
@@ -100,7 +100,8 @@ function ShiftBlock({ kind, plan, days, presets, yearId, suggestedBreak, officia
             decreaseLabel={text.timing.lessonsDecrease(name)} increaseLabel={text.timing.lessonsIncrease(name)} onChange={(lessonCount) => onChange({ ...plan, lessonCount })} />
         </div>
       </div>
-      <BreaksEditor idPrefix={`wizard-${kind}`} lessonCount={plan.lessonCount} breaks={validBreaks(plan.lessonCount, plan.breaks)} gapMinutes={plan.gapMinutes}
+      <BreaksEditor idPrefix={`wizard-${kind}`} lessonCount={plan.lessonCount} breaks={plan.breaks} gapMinutes={plan.gapMinutes}
+        firstStartTime={plan.firstStartTime} lessonMinutes={plan.lessonMinutes}
         suggestedMinutes={suggestedBreak} onChange={(breaks, gapMinutes) => onChange({ ...plan, breaks, gapMinutes })} />
       <details className="advanced-options">
         <summary>{text.timing.perDay}</summary>
@@ -178,6 +179,10 @@ export function TimingStep({ progress, onBack, onDone }: { progress: SetupProgre
       <WizardFooter step={3} pending={save.isPending} error={feedback.error} onBack={onBack}
         onNext={() => {
           feedback.reset();
+          if (kinds.some((kind) => breakIssues(planFor(kind).lessonCount, planFor(kind).breaks).some((issue) => issue !== null))) {
+            feedback.setError(messages.school.scheduleStructure.breaks.blocked);
+            return;
+          }
           save.mutate(
             { days, weekStartDay: chosenPreset?.weekStart ?? weekStart, shifts: kinds.map((kind) => toShiftInput(kind, planFor(kind), days)) },
             { onSuccess: onDone, onError: feedback.showError },

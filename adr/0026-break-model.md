@@ -18,3 +18,10 @@ The period presets ("استراحة واحدة بعد الحصة الثالثة"
 ## Consequences
 - The API generator command and the wizard timing step accept `breaks` and `gapMinutes`.
 - How to change: limits in `PeriodGenerator` (`MaxBreaks`, `MaxGapMinutes`); defaults in `Setup/Templates/presets.json`.
+
+## Amendment R2 (2026-10-09, owner requirement)
+- No cap on the number of breaks: a break may follow any lesson 1..N−1, at most one per gap. `PeriodGenerator.MaxBreaks` and the `Breaks` count check were removed.
+- Durations: 1–120 minutes in the domain (`MinBreakMinutes` was 5, now 1). The editor offers 1–60 with a stepper and quick picks of 5/10/15/20/30 minutes; the old duration list `[5, 10, 15, 20, 25, 30, 40, 45, 60]` is gone.
+- `Shift.MaxRows` is `2 × MaxLessons − 1` (23, was 20), so a break can follow every lesson but the last.
+- The editor shows every break with its 12-hour clock time. A break after the last lesson or a second break in one gap is shown with an Arabic message and blocks «التالي» and «إنشاء القائمة»; it is no longer dropped silently.
+- Old saved periods and the presets give exactly the same rows (`FlexibleBreaksTests.OldPlansGiveExactlyTheSameRows`). No schema change, so no migration.

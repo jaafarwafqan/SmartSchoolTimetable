@@ -425,6 +425,120 @@
   min-inline-size: 0;
 }
 
+/* R2: each break is a compact card: position | duration on the first line, quick picks + delete, then the clock. */
+.breaks-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.375rem 0.75rem;
+  padding: 0.5rem 0.625rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.breaks-row.has-issue {
+  border-color: var(--color-danger);
+}
+
+.breaks-row > .breaks-duration {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.breaks-row-actions,
+.breaks-row > .ui-field-error {
+  grid-column: 1 / -1;
+}
+
+.breaks-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem 0.75rem;
+}
+
+.breaks-row-actions > .breaks-clock {
+  margin-inline-start: auto;
+}
+
+.breaks-suggested {
+  color: var(--color-ink-subtle);
+  font-size: var(--text-sm);
+  font-weight: 400;
+}
+
+.ui-chip-caption {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+@media (width < 480px) {
+  .breaks-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .breaks-row > .breaks-duration {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
+.breaks-clock {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.breaks-row > .ui-field-error {
+  margin: 0;
+}
+
+.ui-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.ui-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-block-size: 2rem;
+  min-inline-size: 2.5rem;
+  justify-content: center;
+  padding-inline: 0.625rem;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.ui-chip:hover {
+  background: color-mix(in srgb, var(--color-primary-soft) 55%, var(--color-surface));
+}
+
+.ui-chip.is-pressed {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+  color: var(--color-primary-ink);
+  font-weight: 600;
+}
+
+.ui-chip:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+@media (pointer: coarse) {
+  .ui-chip {
+    min-block-size: var(--touch-target-min);
+  }
+}
+
 /* Suggested curriculum (ADR 0028–0030): «مقترح» marks, review warnings and the daily distribution. */
 .suggested-mark {
   display: block;

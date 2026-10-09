@@ -54,7 +54,8 @@ public sealed class Shift : VersionedEntity
     public const int NameMaxLength = 50;
     public const int MaxDisplayOrder = 99;
     public const int MaxLessons = 12;
-    public const int MaxRows = 20;
+    /// <summary>Lessons plus a break in every gap between them (R2: a break may follow any lesson but the last).</summary>
+    public const int MaxRows = MaxLessons * 2 - 1;
 
     private readonly List<LessonPeriod> _periods = [];
     private readonly List<DayLessons> _dayLessonOverrides = [];

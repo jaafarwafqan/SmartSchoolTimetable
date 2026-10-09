@@ -96,8 +96,8 @@ export async function expectCenteredDialog(page: Page, dialog: Locator, name: st
     expect(box.width, `${name} width`).toBeGreaterThanOrEqual(32 * 16 - 1);
     expect(box.width, `${name} width`).toBeLessThanOrEqual(40 * 16 + 1);
   }
-  const scrolls = await dialog.evaluate((element) => element.scrollHeight > element.clientHeight + 1);
-  expect(scrolls, `${name} scrolls inside at 1280x720`).toBe(false);
+  const [scrollHeight, clientHeight] = await dialog.evaluate((element) => [element.scrollHeight, element.clientHeight]);
+  expect(scrollHeight > clientHeight + 1, `${name} scrolls inside at 1280x720 (content ${scrollHeight}px, visible ${clientHeight}px)`).toBe(false);
   if (viewport) await page.setViewportSize(viewport);
 }
 

@@ -1,6 +1,17 @@
 # Changelog
 
 ## [Unreleased]
+### Phase 4 follow-up R1–R2 (branch `phase-4g`)
+- **R1 12-hour time:**
+  - `lib/time.ts` (single formatter, «٨:٠٠ ص»/«١:٣٠ م») and `Clock12` for Excel.
+  - `TimeField` rebuilt as hour, minute and ص/م selects.
+  - Excel lesson headers carry times.
+  - Playwright checks that no 24-hour time appears on the timing step or the viewers.
+- **R2 flexible breaks:**
+  - Any number of breaks (one per gap), 1–60 minutes in the editor (stepper and quick picks), 1–120 on the server.
+  - The 3-break cap, the 5-minute minimum, the 20-row limit and the duration whitelist are gone.
+  - Clock time per break; Arabic messages for a duplicate gap or a break after the last lesson.
+  - ADR 0026 amended. No migration.
 ### Phase 4 (MVP delivery, branch `phase-4`)
 - **M1 `phase-4a` scheduler:**
   - Google OR-Tools CP-SAT 9.15.6755, in Infrastructure only (ADR 0037).

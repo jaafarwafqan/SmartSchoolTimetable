@@ -156,7 +156,7 @@ Each step is one transaction through the normal services, and records the step i
 ### Phase 2.5 fixes 2: breaks and lessons per stage
 | Method | Route | Request | Success | Errors |
 |---|---|---|---|---|
-| POST | `/academic-years/{yearId}/shifts/generate-periods` | also `breaks` (up to 3 × `{ afterLesson, minutes }`) and `gapMinutes` (0–30) | 200 generated periods | 422 `Breaks`, `GapMinutes`, `BreakAfterLesson`, `BreakMinutes` |
+| POST | `/academic-years/{yearId}/shifts/generate-periods` | also `breaks` (any number, one per gap: `{ afterLesson: 1..N−1, minutes: 1–120 }`) and `gapMinutes` (0–30) | 200 generated periods | 422 `Breaks`, `GapMinutes`, `BreakAfterLesson`, `BreakMinutes` |
 | PUT | `/academic-years/{yearId}/stages/{id}/day-lessons` | `{ dayLessons: [{ day, lessons }], version }`; an empty list inherits the shift | 200 stage; stages now carry `dayLessons` | 401, 403, 404, 409 `CONFLICT`, 409 `STAGE_ARCHIVED`, 422 `DayLessons` (`INVALID_OPTION`, `DUPLICATE_NAME`, `VALUE_OUT_OF_RANGE`) |
 | POST | `/academic-years/{yearId}/shifts/{id}/day-lessons/impact` | `{ dayLessons, version }` | 200 `[{ stageId, stageName, day, stageLessons, shiftLessons }]`; nothing is saved | 401, 404, 422 |
 | PUT | `/academic-years/{yearId}/shifts/{id}/day-lessons` | also `confirmStageChanges` (default false) | 200 shift; with confirmation, the affected stages are lowered | 409 `STAGE_LESSONS_ABOVE_SHIFT` when stages would exceed the shift without confirmation |
