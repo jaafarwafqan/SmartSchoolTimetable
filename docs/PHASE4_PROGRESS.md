@@ -3,7 +3,7 @@
 - Branch: `phase-4`, from `phase-2-5-template-update` (contains `phase-3-final`). Nothing pushed or merged.
 - Scope: PHASE_4_MVP_PROMPT, which takes precedence over PHASE_4_PROMPT.
 - Baseline before Phase 4: build 0 warnings; 229/229 .NET tests.
-- Last green tag: `phase-4f`.
+- Last green tag: `phase-4f`; the report is `phase-4-final` (docs/PHASE4_REPORT.md).
 
 | Milestone | Tag | State |
 |---|---|---|
