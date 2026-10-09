@@ -75,4 +75,12 @@ public static class ErrorCodes
     public const string DailyTotalAboveShift = "DAILY_TOTAL_ABOVE_SHIFT";
     public const string ResourceInUse = "RESOURCE_IN_USE";
     public const string WorkloadInUse = "WORKLOAD_IN_USE";
+
+    // Phase 4: generation, timetables, backup.
+    public const string SolverUnavailable = "SOLVER_UNAVAILABLE";
+    public const string SolverFailed = "SOLVER_FAILED";
+    public const string GenerationActive = "GENERATION_ACTIVE";
+    public const string GenerationNotReady = "GENERATION_NOT_READY";
+    public const string TimetableVerificationFailed = "TIMETABLE_VERIFICATION_FAILED";
+    public const string TimetableHasViolations = "TIMETABLE_HAS_VIOLATIONS";
 }

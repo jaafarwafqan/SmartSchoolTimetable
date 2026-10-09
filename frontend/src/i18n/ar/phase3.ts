@@ -228,5 +228,7 @@ export const readiness = {
     addPeriods: "أوقات الدوام والحصص",
     enableDistribution: "إعداد المادة",
     fillCurriculum: "المنهج الدراسي",
+    raiseTimeLimit: "زيادة مهلة التوليد",
+    reviewWarnings: "مراجعة تنبيهات الجاهزية",
   },
 } as const;

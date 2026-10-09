@@ -142,7 +142,7 @@ All UI is built from `frontend/src/components/ui/*`. Raw `<button>`, `<input>`, 
 ### 6.6 Navigation and layout
 - Right-hand sidebar (RTL) with icon + label; collapsible to icons with tooltips. Top bar holds the school name, current academic year/term, and user menu (settings, lock, logout).
 - On screens below 768px the navigation opens in the page flow under the top bar (no overlay, no side drawer: section 14 and ADR 0024), and the weekly grid becomes a day view.
-- Five sidebar items; screens of a group are tabs under the page title (route tabs, `aria-current="page"`). Breadcrumbs: dashboard › group › screen.
+- Six sidebar items. Phase 4 added «الجدول», with the tabs «التوليد» and «الجداول» (DECISIONS_PENDING #76). Screens of a group are tabs under the page title (route tabs, `aria-current="page"`). Breadcrumbs: dashboard › group › screen.
 - Breadcrumbs for nested screens. The current page is marked with `aria-current="page"`.
 
 ---

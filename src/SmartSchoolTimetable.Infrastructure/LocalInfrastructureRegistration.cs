@@ -3,9 +3,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using SmartSchoolTimetable.Application;
 using SmartSchoolTimetable.Application.Common;
+using SmartSchoolTimetable.Application.Generation;
 using SmartSchoolTimetable.Domain.Scheduling;
 using SmartSchoolTimetable.Domain.SchoolSetup;
 using SmartSchoolTimetable.Infrastructure.Persistence;
+using SmartSchoolTimetable.Infrastructure.Solver;
 
 namespace SmartSchoolTimetable.Infrastructure;
 
@@ -38,6 +40,8 @@ public static class LocalInfrastructureRegistration
         services.AddSingleton<ICredentialHasher, Pbkdf2CredentialHasher>();
         services.AddSingleton<ILocalSessionStore, LocalSessionStore>();
         services.AddSingleton<ILoginDelay>(skipLoginDelay ? new NoLoginDelay() : new RealLoginDelay());
+        services.AddSingleton<ISolver, CpSatSolver>();
+        services.AddSingleton<ISolverInfo, OrToolsInfo>();
         return services;
     }
 

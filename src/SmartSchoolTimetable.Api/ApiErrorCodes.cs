@@ -73,6 +73,13 @@ public static class ApiErrorCodes
             [ErrorCodes.ResourceInUse] = StatusCodes.Status409Conflict,
             [ErrorCodes.WorkloadInUse] = StatusCodes.Status409Conflict,
 
+            [ErrorCodes.GenerationActive] = StatusCodes.Status409Conflict,
+            [ErrorCodes.GenerationNotReady] = StatusCodes.Status409Conflict,
+            [ErrorCodes.SolverUnavailable] = StatusCodes.Status503ServiceUnavailable,
+            [ErrorCodes.SolverFailed] = StatusCodes.Status500InternalServerError,
+            [ErrorCodes.TimetableVerificationFailed] = StatusCodes.Status500InternalServerError,
+            [ErrorCodes.TimetableHasViolations] = StatusCodes.Status422UnprocessableEntity,
+
             [ErrorCodes.RecordInUse] = StatusCodes.Status409Conflict,
             [ErrorCodes.CurrentYearRequired] = StatusCodes.Status409Conflict,
             [ErrorCodes.PayloadTooLarge] = StatusCodes.Status413PayloadTooLarge,

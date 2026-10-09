@@ -33,6 +33,10 @@ export const countNouns = {
   line: { one: "بند واحد", dualNominative: "بندان", dualOblique: "بندين", plural: "بنود", singular: "بند", accusative: "بنداً" },
   error: { one: "خطأ واحد", dualNominative: "خطآن", dualOblique: "خطأين", plural: "أخطاء", singular: "خطأ", accusative: "خطأً" },
   warning: { one: "ملاحظة واحدة", dualNominative: "ملاحظتان", dualOblique: "ملاحظتين", plural: "ملاحظات", singular: "ملاحظة", accusative: "ملاحظة" },
+  second: { one: "ثانية واحدة", dualNominative: "ثانيتان", dualOblique: "ثانيتين", plural: "ثوانٍ", singular: "ثانية", accusative: "ثانية" },
+  improvement: { one: "تحسين واحد", dualNominative: "تحسينان", dualOblique: "تحسينين", plural: "تحسينات", singular: "تحسين", accusative: "تحسيناً" },
+  version: { one: "إصدار واحد", dualNominative: "إصداران", dualOblique: "إصدارين", plural: "إصدارات", singular: "إصدار", accusative: "إصداراً" },
+  conflict: { one: "تعارض واحد", dualNominative: "تعارضان", dualOblique: "تعارضين", plural: "تعارضات", singular: "تعارض", accusative: "تعارضاً" },
   pair: { one: "زوج واحد", dualNominative: "زوجان", dualOblique: "زوجين", plural: "أزواج", singular: "زوج", accusative: "زوجاً" },
 } as const satisfies Record<string, CountForms>;
 

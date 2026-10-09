@@ -8,6 +8,7 @@ import { calendar } from "./calendar";
 import { curriculum, daily, stageCards, suggested, templates } from "./curriculum";
 import { wizard } from "./wizard";
 import { orphanOnSave, readiness, requiredResource, resources, schedulingProfile, specializations, workload } from "./phase3";
+import { generation, timetable, violations } from "./phase4";
 
 export const school = {
   nav: {
@@ -27,6 +28,9 @@ export const school = {
     workload: "الأنصبة",
     settingsGeneral: "عام",
     schedulingProfile: "ملف الجدولة",
+    timetable: "الجدول",
+    generate: "التوليد",
+    timetables: "الجداول",
     setupWizard: "معالج الإعداد",
     sidebarLabel: "القائمة الجانبية",
     collapse: "طي القائمة",
@@ -249,4 +253,7 @@ export const school = {
   wizard,
   suggested,
   daily,
+  generation,
+  timetable,
+  violations,
 } as const;

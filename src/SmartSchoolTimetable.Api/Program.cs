@@ -83,12 +83,27 @@ builder.Services.AddScoped<SmartSchoolTimetable.Application.Scheduling.Schedulin
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Workload.WorkloadService>();
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Scheduling.ReadinessService>();
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Common.ReferenceGuard>();
+builder.Services.AddSingleton<SmartSchoolTimetable.Application.Generation.GenerationRegistry>();
+builder.Services.AddScoped<SmartSchoolTimetable.Application.Generation.GenerationService>();
+builder.Services.AddScoped<SmartSchoolTimetable.Application.Generation.TimetableService>();
+builder.Services.AddHostedService<GenerationWorker>();
 builder.Services.AddLocalInfrastructure(
     databasePath,
     builder.Environment.IsEnvironment("Testing"));
 
 var app = builder.Build();
 await LocalInfrastructureRegistration.InitializeLocalDatabaseAsync(app.Services);
+await using (var startupScope = app.Services.CreateAsyncScope())
+{
+    // Runs left active by a closed or crashed app are marked Interrupted (Phase 4 §6).
+    var interrupted = await startupScope.ServiceProvider.GetRequiredService<SmartSchoolTimetable.Application.Generation.GenerationService>()
+        .RecoverInterruptedAsync(CancellationToken.None);
+    if (interrupted > 0)
+        LocalLog.GenerationsInterrupted(app.Logger, interrupted);
+}
+// Solver self-check: a missing native library disables generation with an Arabic error instead of a crash.
+if (!app.Services.GetRequiredService<SmartSchoolTimetable.Application.Generation.ISolverInfo>().Available)
+    LocalLog.SolverUnavailable(app.Logger);
 
 app.UseExceptionHandler();
 app.UseMiddleware<UnifiedApiErrorMiddleware>();
@@ -113,6 +128,8 @@ app.MapResourcesEndpoints();
 app.MapSchedulingProfileEndpoints();
 app.MapWorkloadEndpoints();
 app.MapReadinessEndpoints();
+app.MapGenerationEndpoints();
+app.MapTimetableEndpoints();
 app.MapFallback(async (HttpContext context) =>
 {
     if (context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))

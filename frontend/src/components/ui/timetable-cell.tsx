@@ -38,7 +38,7 @@ export function TimetableCell({ subject, teacher, color, state = "normal", descr
   const colorClass = filled && color ? subjectColorClasses[color] : state === "blocked" ? "" : "is-empty";
   const classes = ["ui-tt-cell", `is-${state}`, colorClass].filter(Boolean).join(" ");
   return (
-    <div className={classes} tabIndex={0} aria-label={description} title={description}>
+    <div className={classes} role="group" tabIndex={0} aria-label={description} title={description}>
       {state === "blocked" && <Ban className="ui-tt-icon" aria-hidden="true" size={20} strokeWidth={2} />}
       {filled && (
         <>

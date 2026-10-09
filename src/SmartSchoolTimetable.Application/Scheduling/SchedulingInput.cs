@@ -33,7 +33,8 @@ public sealed record SubjectInput(
     bool Heavy,
     bool RequiresDoublePeriod,
     long? RequiredResourceId,
-    IReadOnlyList<SlotRef> Blocked);
+    IReadOnlyList<SlotRef> Blocked,
+    [property: NotHashed] int ColorIndex = 1);
 
 /// <summary>A curriculum line of a stage: every section of the stage takes it.</summary>
 public sealed record LineInput(long Id, long StageId, long SubjectId, [property: NotHashed] string? Label, int WeeklyLessons, bool NeedsDoublePeriod);
@@ -42,6 +43,7 @@ public sealed record AssignmentInput([property: NotHashed] long Id, long Section
 
 /// <param name="Released">Fully released for the whole year (no lessons possible).</param>
 /// <param name="PartiallyReleased">Released for part of the year only (a warning).</param>
+/// <param name="ShortName">Shown in timetable cells (display only, not hashed).</param>
 public sealed record TeacherInput(
     long Id,
     [property: NotHashed] string Name,
@@ -52,7 +54,8 @@ public sealed record TeacherInput(
     IReadOnlyList<SlotRef> Blocked,
     int? MaxPerDay,
     int? MaxPerWeek,
-    IReadOnlyList<long> SpecializationIds);
+    IReadOnlyList<long> SpecializationIds,
+    [property: NotHashed] string? ShortName = null);
 
 public sealed record ResourceInput(long Id, [property: NotHashed] string Name, string Kind, int Capacity, bool IsArchived);
 

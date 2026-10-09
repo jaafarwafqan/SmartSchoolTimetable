@@ -21,6 +21,8 @@ import { ResourcesPage } from "../features/resources/ResourcesPage";
 import { WorkloadPage } from "../features/workload/WorkloadPage";
 import { SchedulingProfilePage } from "../features/scheduling-profile/SchedulingProfilePage";
 import { ReadinessPage } from "../features/readiness/ReadinessPage";
+import { GenerationPage } from "../features/generation/GenerationPage";
+import { TimetablePage } from "../features/timetable/TimetablePage";
 import { NotFoundPage } from "./NotFoundPage";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
@@ -69,6 +71,8 @@ export function AppShell({ bootstrap }: { bootstrap: Bootstrap }) {
             <Route path="/teachers/list" element={<TeachersPage />} />
             <Route path="/teachers/workload" element={<WorkloadPage />} />
             <Route path="/readiness" element={<ReadinessPage />} />
+            <Route path="/timetable/generate" element={<GenerationPage />} />
+            <Route path="/timetable/view" element={<TimetablePage />} />
             <Route path="/setup" element={<SetupWizardPage />} />
             <Route path="/settings/general" element={<SettingsScreen bootstrap={bootstrap} />} />
             <Route path="/settings/scheduling" element={<SchedulingProfilePage />} />

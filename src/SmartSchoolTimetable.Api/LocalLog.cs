@@ -11,4 +11,13 @@ internal static partial class LocalLog
 
     [LoggerMessage(EventId = 1003, Level = LogLevel.Error, Message = "Unhandled API failure. CorrelationId: {CorrelationId}")]
     public static partial void UnhandledApiFailure(ILogger logger, string correlationId);
+
+    [LoggerMessage(EventId = 1101, Level = LogLevel.Error, Message = "Timetable generation run {RunId} failed.")]
+    public static partial void GenerationFailed(ILogger logger, long runId, Exception exception);
+
+    [LoggerMessage(EventId = 1102, Level = LogLevel.Warning, Message = "{Count} generation runs left active by the previous start were marked interrupted.")]
+    public static partial void GenerationsInterrupted(ILogger logger, int count);
+
+    [LoggerMessage(EventId = 1103, Level = LogLevel.Warning, Message = "The solver engine did not load; generation is unavailable.")]
+    public static partial void SolverUnavailable(ILogger logger);
 }

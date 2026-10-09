@@ -1,6 +1,38 @@
 # Changelog
 
 ## [Unreleased]
+### Phase 4 (MVP delivery, branch `phase-4`)
+- **M1 `phase-4a` scheduler:**
+  - Google OR-Tools CP-SAT 9.15.6755, in Infrastructure only (ADR 0037).
+  - The neutral `ISolver` contract in `Application/Generation`.
+  - Hard rules H1–H10 and soft rules S1–S5 with the profile weights (docs/SOLVER.md, ADR 0038).
+  - The independent `TimetableVerifier` and the `TimetableScorer` (ADR 0039).
+  - Infeasibility cores, shrunk by deletion, with relaxation hints and Arabic-renderable findings (ADR 0040).
+  - Real progress events, cancellation that keeps the best timetable, and a deterministic mode.
+  - Tests: one per hard rule, one per soft rule, the verifier catalogue, diagnostics scenarios (a)–(d), and FsCheck completeness and soundness on random valid timetables.
+  - Gate measured in docs/PERFORMANCE.md: 12/20 first timetable in ≤ 1.80 s and 24/40 in ≤ 3.20 s, default settings, verified.
+- **M2 `phase-4b` saving and the «التوليد» screen:**
+  - Migration `Phase4Generation` adds `GenerationRuns`, `TimetableVersions` and `TimetableLessons`.
+  - A background worker with one active run (database check), polling for progress, a «إيقاف» button, and start-up recovery to «انقطع».
+  - Endpoints under `/api/v1/generation` and `/api/v1/academic-years/{id}/generation`, with codes `SOLVER_UNAVAILABLE`, `SOLVER_FAILED`, `GENERATION_ACTIVE`, `GENERATION_NOT_READY` and `TIMETABLE_VERIFICATION_FAILED`.
+  - The screen shows readiness, options, a real progress stepper, the result with its score breakdown, and diagnostics with links.
+  - A sixth sidebar item «الجدول» (DECISIONS_PENDING #76).
+- **M3 `phase-4c` the «الجداول» viewer:**
+  - Versions list; by-section, by-teacher and master grids from each version's own input snapshot.
+  - A `TimetableGrid` UI primitive with keyboard navigation.
+  - «اعتماد هذا الإصدار», with one approved version per year (filtered unique index).
+  - The scheduling input carries the subject colour and the teacher short name as non-hashed display fields.
+- **M4 manual edit:**
+  - «تعديل يدوي» on the section view: move a lesson to a free slot or swap two lessons, by click, by Enter on a cell, or from a slot list.
+  - Each step is checked at once by the independent verifier (`POST /timetables/{id}/check`); conflicts are shown on the grid and as an Arabic list.
+  - Undo and redo within the session.
+  - Saving (`POST /timetables/{id}/edits`) creates a new version linked to its parent, with an audit entry. It is refused with `TIMETABLE_HAS_VIOLATIONS` (422) while any hard rule is broken.
+- **Tags:** M1–M4 were built and verified together on one working tree, so they are one commit tagged `phase-4d`; there are no separate `phase-4a`–`phase-4c` tags.
+- **Tests:**
+  - .NET: 284 passed, 4 performance tests skipped by default.
+  - Vitest: 97.
+  - Playwright: 23 existing, plus the Phase 4 scenario (generate, read three ways, approve, edit with a conflict, undo).
+  - Screenshots changed only by the new sidebar item, which I confirmed by pixel counts and by viewing the images. They were re-baselined.
 ### Phase 2.5 - template update with the owner's decisions (branch `phase-2-5-template-update`)
 - **Official template updated by the owner (#66–#68 decided):** الرابع الابتدائي totals 30 (الاجتماعيات 2, with a note); منهج جرائم حزب البعث moved from the fourth grades to الخامس العلمي/الخامس الأدبي (optional, one lesson, on top). Every stage now matches its printed total and no stage carries a review note; `needsReview`/`verificationNote` support stays.
 - **Demo data generator removed (owner decision):** `Infrastructure/DemoData/` (DemoCatalog, DemoDataSeeder, DemoSchool) and the `--seed-demo-data`/`--dual-shift`/`--with-problems` command are gone; its three tests were removed and `Phase2/CalendarAndDemoDataTests.cs` became `CalendarTests.cs` (calendar tests only). Tests build synthetic data inside the test projects. README, DOMAIN, DATABASE and the owner test scripts say so.
