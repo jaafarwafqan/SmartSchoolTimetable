@@ -99,6 +99,18 @@ public sealed class SuggestedCurriculumTemplate
         return names.Select(name => Stages.FirstOrDefault(item => ArabicText.Normalize(item.Name) == ArabicText.Normalize(name))).FirstOrDefault(item => item is not null);
     }
 
+    /// <summary>The template stage for a stage-template key (e.g. <c>preparatory-4-scientific</c>), or null.</summary>
+    public SuggestedStageTemplate? StageForKey(string key) =>
+        TemplateNameFor(key) is { } name ? Stages.FirstOrDefault(item => ArabicText.Normalize(item.Name) == ArabicText.Normalize(name)) : null;
+
+    /// <summary>The suggested subjects of a stage: its mandatory rows under their canonical names, in template order.
+    /// Optional subjects stay out until the owner ticks them in «تعبئة المنهج».</summary>
+    public IReadOnlyList<string> MandatorySubjects(SuggestedStageTemplate stage)
+    {
+        ArgumentNullException.ThrowIfNull(stage);
+        return stage.Entries.Where(entry => !entry.Optional).Select(entry => Canonical(entry.Subject) ?? entry.Subject).Distinct(StringComparer.Ordinal).ToArray();
+    }
+
     private static string? TemplateNameFor(string key)
     {
         var catalog = TemplateCatalog.Current;

@@ -120,15 +120,21 @@ public sealed class SetupTemplatesService(IDataStore store, StagesSectionsServic
         }, token);
     }
 
-    /// <summary>Suggested subject names for the year's template stages (or the school type when none), in template order.</summary>
+    /// <summary>Suggested subject names: the mandatory subjects of the official template for the year's stages that
+    /// match it (or for the school type when none does), canonical names, in template order. One source: the official
+    /// curriculum template.</summary>
     public async Task<IReadOnlyList<string>> SuggestedSubjectsAsync(long yearId, CancellationToken token)
     {
-        var catalog = TemplateCatalog.Current;
-        var keys = (await store.ListAsync(store.Query<Stage>().Where(stage => stage.AcademicYearId == yearId && !stage.IsArchived && stage.TemplateKey != null)
-            .OrderBy(stage => stage.DisplayOrder).Select(stage => stage.TemplateKey!), token)).ToList();
-        if (keys.Count == 0 && await store.FirstOrDefaultAsync(store.Query<SchoolProfile>(), token) is { } profile)
-            keys = catalog.GradesFor(profile.SchoolType).Select(grade => grade.Key).ToList();
-        return keys.SelectMany(catalog.SubjectsFor).Distinct(StringComparer.Ordinal).ToArray();
+        var template = SuggestedCurriculumTemplate.Current;
+        var stages = await store.ListAsync(store.Query<Stage>().Where(stage => stage.AcademicYearId == yearId && !stage.IsArchived)
+            .OrderBy(stage => stage.DisplayOrder).ThenBy(stage => stage.NormalizedName), token);
+        var templates = stages.Select(template.StageFor).OfType<SuggestedStageTemplate>().ToList();
+        if (templates.Count == 0 && await store.FirstOrDefaultAsync(store.Query<SchoolProfile>(), token) is { } profile)
+        {
+            var ofType = TemplateCatalog.Current.StageKeysFor(profile.SchoolType).Select(template.StageForKey).OfType<SuggestedStageTemplate>().ToHashSet();
+            templates = template.Stages.Where(ofType.Contains).ToList();
+        }
+        return templates.SelectMany(template.MandatorySubjects).Distinct(StringComparer.Ordinal).ToArray();
     }
 
     private async Task<List<StagePlan>> PlanStagesAsync(long yearId, SchoolType schoolType, IReadOnlyList<StageTemplateGradeInput> grades, CancellationToken token)

@@ -77,15 +77,23 @@ public sealed class CurriculumDomainTests
         Assert.Equal(("intermediate-1", "الأول المتوسط"), TemplateCatalog.Stage(catalog.Grade("intermediate-1")!, catalog.Branch("literary")));
         Assert.Null(catalog.Grade("unknown"));
 
-        // Every subject group points at real grades, every grade has suggestions, and branch stages fall back to the grade.
+        // One source for suggested subjects: every stage key has an official template stage, whose suggested subjects
+        // are exactly its mandatory rows (canonical names); optional subjects stay out until ticked.
+        var official = SuggestedCurriculumTemplate.Current;
         var stageKeys = catalog.Grades.SelectMany(grade => grade.BranchStem is null
             ? [grade.Key]
-            : catalog.Branches.Select(branch => TemplateCatalog.Stage(grade, branch).Key).Prepend(grade.Key)).ToHashSet();
-        Assert.All(catalog.SubjectGroups.SelectMany(group => group.Stages), key => Assert.Contains(key, stageKeys));
-        Assert.All(catalog.Grades, grade => Assert.NotEmpty(catalog.SubjectsFor(grade.Key)));
-        Assert.NotEqual(catalog.SubjectsFor("preparatory-4-literary"), catalog.SubjectsFor("preparatory-4-scientific"));
-        Assert.Empty(catalog.SubjectsFor("unknown"));
-        Assert.DoesNotContain(typeof(SubjectGroupTemplate).GetProperties(), property => property.PropertyType == typeof(int));
+            : catalog.Branches.Select(branch => TemplateCatalog.Stage(grade, branch).Key)).ToArray();
+        Assert.Equal(15, stageKeys.Length);
+        foreach (var key in stageKeys)
+        {
+            var stage = official.StageForKey(key);
+            Assert.NotNull(stage);
+            Assert.Equal(stage.Entries.Where(entry => !entry.Optional).Select(entry => official.Canonical(entry.Subject)).Distinct(), official.MandatorySubjects(stage));
+        }
+        Assert.NotEqual(official.MandatorySubjects(official.StageForKey("preparatory-4-literary")!), official.MandatorySubjects(official.StageForKey("preparatory-4-scientific")!));
+        Assert.DoesNotContain("اللغة الكردية", official.MandatorySubjects(official.StageForKey("preparatory-4-scientific")!));
+        Assert.Null(official.StageForKey("unknown"));
+        Assert.Null(official.StageForKey("preparatory-4")); // a branch grade alone is not a stage
 
         // Every period preset generates a valid day; working-day presets have exactly one default.
         Assert.All(catalog.PeriodPresets, preset =>

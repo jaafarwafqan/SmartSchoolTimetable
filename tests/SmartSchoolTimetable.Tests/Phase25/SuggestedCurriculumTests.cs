@@ -25,6 +25,9 @@ public sealed class SuggestedCurriculumTests
     private static readonly string[] KurdishAndFrench = ["اللغة الكردية", "اللغة الفرنسية"];
     private static readonly string[] BothBranches = ["scientific", "literary"];
     private static readonly string[] NoBranches = [];
+    private static readonly string[] Scientific = ["scientific"];
+    private static readonly string[] FourthScientificMandatory =
+        ["التربية الإسلامية", "اللغة العربية", "اللغة الإنكليزية", "الرياضيات", "الكيمياء", "الفيزياء", "الأحياء", "التربية الفنية والنشيد", "التربية الرياضية"];
     private static readonly long[] UnknownStage = [999L];
     private static readonly int[] NothingPlanned = [0, 0, 0, 0, 0, 0];
     private static readonly int[] PrimaryTotals = [30, 30, 30, 30, 30, 31];
@@ -312,6 +315,19 @@ public sealed class SuggestedCurriculumTests
         var daily = await ReadAsync<DailySuggestionDto>(await host.Client.GetAsync($"{root}/daily-suggestion"));
         Assert.Equal((30, "aboveCapacity"), (daily.Stages[0].Capacity, daily.Stages[0].Status)); // 32 lessons with French
         Assert.Equal((35, "apply"), (daily.Stages[1].Capacity, daily.Stages[1].Status));
+    }
+
+    [Fact]
+    public async Task SuggestedSubjectsOfAStageAreItsMandatorySubjects()
+    {
+        var (host, token, root, _, shifts) = await SchoolAsync("secondary", "morning", [("preparatory-4", Scientific)]);
+        await using var _ = host;
+        var suggested = await ReadAsync<List<string>>(await host.Client.GetAsync($"{root}/templates/suggested-subjects"));
+        Assert.Equal(FourthScientificMandatory, suggested);
+        Assert.Equal(HttpStatusCode.OK, (await host.PostAsync($"{root}/templates/stages", new { grades = new[] { new { gradeKey = "intermediate-1", sections = 1, shiftId = shifts[0].Id } } }, token)).StatusCode);
+        suggested = await ReadAsync<List<string>>(await host.Client.GetAsync($"{root}/templates/suggested-subjects"));
+        Assert.Contains("التربية الأخلاقية", suggested); // الأول المتوسط
+        Assert.DoesNotContain(suggested, name => OptionalSubjects.Contains(name));
     }
 
     [Fact]

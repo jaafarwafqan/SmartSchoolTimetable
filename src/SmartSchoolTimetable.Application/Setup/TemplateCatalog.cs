@@ -10,8 +10,6 @@ public sealed record BranchTemplate(string Key, string Name);
 /// <param name="BranchStem">Set for grades taught in branches: the stage is "{stem} {branch}" (e.g. "الرابع العلمي").</param>
 public sealed record GradeTemplate(string Key, string Name, string? BranchStem, IReadOnlyList<string> SchoolTypes);
 
-public sealed record SubjectGroupTemplate(IReadOnlyList<string> Stages, IReadOnlyList<string> Subjects);
-
 public sealed record PeriodPresetTemplate(string Key, string Name, string FirstStart, int LessonMinutes, int LessonCount, IReadOnlyList<BreakSlotDto> Breaks);
 
 public sealed record WorkingDayPresetTemplate(string Key, string Name, IReadOnlyList<int> Days, int WeekStart, bool IsDefault);
@@ -28,7 +26,8 @@ public sealed record TemplateCatalogDto(
 
 /// <summary>
 /// Data-driven setup templates (spec 2.5 §4.1), embedded JSON resources: Iraqi stages per school type with
-/// branches, suggested subject NAMES per stage (no official weekly counts), period and working-day presets.
+/// branches, period and working-day presets. Suggested subjects come from the official curriculum template only
+/// (<see cref="SuggestedCurriculumTemplate.MandatorySubjects"/>).
 /// </summary>
 public sealed class TemplateCatalog
 {
@@ -36,14 +35,12 @@ public sealed class TemplateCatalog
     private static readonly Lazy<TemplateCatalog> Instance = new(Load);
 
     private sealed record StagesFile(IReadOnlyList<BranchTemplate> Branches, IReadOnlyList<GradeTemplate> Grades);
-    private sealed record SubjectsFile(IReadOnlyList<SubjectGroupTemplate> Groups);
     private sealed record PresetsFile(IReadOnlyList<PeriodPresetTemplate> Periods, IReadOnlyList<WorkingDayPresetTemplate> WorkingDays, BreakDefaultsTemplate BreakDefaults);
 
-    private TemplateCatalog(StagesFile stages, SubjectsFile subjects, PresetsFile presets)
+    private TemplateCatalog(StagesFile stages, PresetsFile presets)
     {
         Branches = stages.Branches;
         Grades = stages.Grades;
-        SubjectGroups = subjects.Groups;
         PeriodPresets = presets.Periods;
         WorkingDayPresets = presets.WorkingDays;
         BreakDefaults = presets.BreakDefaults;
@@ -53,7 +50,6 @@ public sealed class TemplateCatalog
 
     public IReadOnlyList<BranchTemplate> Branches { get; }
     public IReadOnlyList<GradeTemplate> Grades { get; }
-    public IReadOnlyList<SubjectGroupTemplate> SubjectGroups { get; }
     public IReadOnlyList<PeriodPresetTemplate> PeriodPresets { get; }
     public IReadOnlyList<WorkingDayPresetTemplate> WorkingDayPresets { get; }
     public BreakDefaultsTemplate BreakDefaults { get; }
@@ -97,14 +93,8 @@ public sealed class TemplateCatalog
             : ($"{grade.Key}-{branch.Key}", $"{grade.BranchStem} {branch.Name}");
     }
 
-    /// <summary>Suggested subject names for a stage key (a branch stage falls back to its grade's list).</summary>
-    public IReadOnlyList<string> SubjectsFor(string stageKey) =>
-        SubjectGroups.FirstOrDefault(group => group.Stages.Contains(stageKey))?.Subjects
-        ?? SubjectGroups.FirstOrDefault(group => group.Stages.Any(stage => stageKey.StartsWith(stage + "-", StringComparison.Ordinal)))?.Subjects
-        ?? [];
-
     private static TemplateCatalog Load() =>
-        new(Read<StagesFile>("stages.json"), Read<SubjectsFile>("subjects.json"), Read<PresetsFile>("presets.json"));
+        new(Read<StagesFile>("stages.json"), Read<PresetsFile>("presets.json"));
 
     private static T Read<T>(string name)
     {
