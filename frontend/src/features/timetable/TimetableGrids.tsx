@@ -3,7 +3,7 @@ import { TimetableGrid, type GridCell } from "../../components/ui/timetable-grid
 import { messages } from "../../i18n/messages";
 import type { Formatter } from "../../lib/format";
 import { weekdayLabel } from "../timetable-structure/weekdays";
-import { clock, type GridLesson, type GridShift, type Timetable } from "./timetableApi";
+import { clock, sessionOn, type GridLesson, type GridLessonTime, type GridSessions, type GridShift, type Term, type Timetable } from "./timetableApi";
 
 const text = messages.school.timetable;
 
@@ -33,12 +33,34 @@ export function lookups(timetable: Timetable): Lookups {
   };
 }
 
+function timeRange(time: GridLessonTime | undefined, format: Formatter) {
+  return time ? text.timeRange(format.time(clock(time.startMinute)), format.time(clock(time.endMinute))) : "";
+}
+
 function lessonHeader(number: number, shift: GridShift | undefined, format: Formatter) {
   const time = shift?.lessons.find((lesson) => lesson.number === number);
   return (
     <>
       <span>{text.lessonColumn(format.number(number))}</span>
-      {time && <span className="timetable-time">{text.timeRange(format.time(clock(time.startMinute)), format.time(clock(time.endMinute)))}</span>}
+      {time && <span className="timetable-time">{timeRange(time, format)}</span>}
+    </>
+  );
+}
+
+/** R3: the daily sessions of a shift in one semester (the grid is the same; only the clock changes). */
+export type SessionView = { sessions: GridSessions; term: Term };
+
+/** The sessions of a grid's shift, when the timetable has them for that shift. */
+export function sessionViewOf(timetable: Timetable, shiftId: number | undefined, term: Term): SessionView | undefined {
+  return timetable.sessions && timetable.sessions.shiftId === shiftId ? { sessions: timetable.sessions, term } : undefined;
+}
+
+function dayLabel(day: number, view: SessionView | undefined) {
+  if (!view) return weekdayLabel(day);
+  return (
+    <>
+      <span>{weekdayLabel(day)}</span>
+      <span className="timetable-session">{text.sessionShort[sessionOn(view.sessions, view.term, day)]}</span>
     </>
   );
 }
@@ -72,10 +94,12 @@ type WeekGridProps = {
   look: Lookups;
   /** Builds the cell (the editor adds selection and conflicts); defaults to the read-only cell. */
   cell?: (lesson: GridLesson | undefined, day: number, number: number) => GridCell;
+  /** R3 daily sessions: one clock row per session, and each day names its session in the chosen semester. */
+  sessions?: SessionView;
 };
 
 /** Days × lessons for one section or one teacher in one shift. */
-export function WeekGrid({ caption, days, shift, lessonCount, lessons, format, secondLine, look, cell }: WeekGridProps) {
+export function WeekGrid({ caption, days, shift, lessonCount, lessons, format, secondLine, look, cell, sessions }: WeekGridProps) {
   const at = new Map(lessons.map((lesson) => [`${lesson.day}:${lesson.lesson}`, lesson]));
   const numbers = Array.from({ length: lessonCount }, (_, index) => index + 1);
   const build = cell ?? ((lesson: GridLesson | undefined, day: number, number: number) => cellFor(lesson, day, number, format, look, secondLine));
@@ -83,10 +107,19 @@ export function WeekGrid({ caption, days, shift, lessonCount, lessons, format, s
     <TimetableGrid
       caption={caption}
       corner={text.dayColumn}
-      headerRows={[numbers.map((number) => ({ key: String(number), label: lessonHeader(number, shift, format) }))]}
+      headerRows={sessions
+        ? [
+            numbers.map((number) => ({ key: String(number), label: text.lessonColumn(format.number(number)) })),
+            ...sessions.sessions.timings.map((timing) => numbers.map((number) => ({
+              key: `${timing.session}:${number}`,
+              label: <span className="timetable-time">{timeRange(timing.lessons.find((lesson) => lesson.number === number), format)}</span>,
+            }))),
+          ]
+        : [numbers.map((number) => ({ key: String(number), label: lessonHeader(number, shift, format) }))]}
+      headerRowLabels={sessions ? [null, ...sessions.sessions.timings.map((timing) => text.sessionNames[timing.session])] : undefined}
       rows={days.map((day) => ({
         key: String(day),
-        label: weekdayLabel(day),
+        label: dayLabel(day, sessions),
         cells: numbers.map((number) => build(at.get(`${day}:${number}`), day, number)),
       }))}
     />
@@ -94,19 +127,32 @@ export function WeekGrid({ caption, days, shift, lessonCount, lessons, format, s
 }
 
 /** All sections × (days × lessons): the master timetable, scrolling inside its own container only. */
-export function MasterGrid({ timetable, format, look }: { timetable: Timetable; format: Formatter; look: Lookups }) {
+export function MasterGrid({ timetable, format, look, term = 1 }: { timetable: Timetable; format: Formatter; look: Lookups; term?: Term }) {
   const lessonCount = Math.max(1, ...timetable.sections.flatMap((section) => section.allowedByDay.map((day) => day.lessons)));
   const numbers = Array.from({ length: lessonCount }, (_, index) => index + 1);
   const at = new Map(timetable.lessons.map((lesson) => [`${lesson.sectionId}:${lesson.day}:${lesson.lesson}`, lesson]));
   const teacherOf = (lesson: GridLesson) => look.teacher(lesson.teacherId)?.shortName ?? "";
+  // R3: with daily sessions each day shows its session in the semester, and its lesson numbers that session's clock.
+  const sessions = timetable.sessions && timetable.sections.every((section) => section.shiftId === timetable.sessions?.shiftId) ? timetable.sessions : null;
+  const dayHeader = (day: number) => (sessions ? text.dayWithSession(weekdayLabel(day), text.sessionShort[sessionOn(sessions, term, day)]) : weekdayLabel(day));
+  const numberHeader = (day: number, number: number) => {
+    if (!sessions) return format.number(number);
+    const time = sessions.timings.find((timing) => timing.session === sessionOn(sessions, term, day))?.lessons.find((lesson) => lesson.number === number);
+    return (
+      <>
+        <span>{format.number(number)}</span>
+        {time && <span className="timetable-time">{timeRange(time, format)}</span>}
+      </>
+    );
+  };
   return (
     <TimetableGrid
       caption={text.views.master}
       corner={text.sectionColumn}
       className="timetable-master"
       headerRows={[
-        timetable.days.map((day) => ({ key: `d${day}`, label: weekdayLabel(day), span: numbers.length })),
-        timetable.days.flatMap((day) => numbers.map((number) => ({ key: `${day}:${number}`, label: format.number(number) }))),
+        timetable.days.map((day) => ({ key: `d${day}`, label: dayHeader(day), span: numbers.length })),
+        timetable.days.flatMap((day) => numbers.map((number) => ({ key: `${day}:${number}`, label: numberHeader(day, number) }))),
       ]}
       rows={timetable.sections.map((section) => ({
         key: String(section.id),

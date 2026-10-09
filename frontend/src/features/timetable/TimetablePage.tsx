@@ -6,6 +6,7 @@ import { Alert } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
+import { ChipGroup } from "../../components/ui/chip-group";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { Field } from "../../components/ui/field";
 import { Select } from "../../components/ui/select";
@@ -14,8 +15,8 @@ import { messages } from "../../i18n/messages";
 import { PageHeader } from "../../layout/PageHeader";
 import { useFormatter, useSchoolContext } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
-import { useApproveTimetable, useTimetable, useTimetableVersions, type Timetable, type TimetableVersionSummary } from "./timetableApi";
-import { lookups, MasterGrid, WeekGrid } from "./TimetableGrids";
+import { useApproveTimetable, useTimetable, useTimetableVersions, type Term, type Timetable, type TimetableVersionSummary } from "./timetableApi";
+import { lookups, MasterGrid, sessionViewOf, WeekGrid } from "./TimetableGrids";
 import { TimetableEditor } from "./TimetableEditor";
 
 const text = messages.school.timetable;
@@ -29,6 +30,8 @@ function TimetableViews({ timetable, onSaved }: { timetable: Timetable; onSaved:
   const [sectionId, setSectionId] = useState<number>(timetable.sections[0]?.id ?? 0);
   const [teacherId, setTeacherId] = useState<number>(timetable.teachers[0]?.id ?? 0);
   const [editing, setEditing] = useState(false);
+  // R3: two-session schools choose the semester; the grid is the same, the clock follows the day's session.
+  const [term, setTerm] = useState<Term>(1);
   const shifts = new Map(timetable.shifts.map((shift) => [shift.id, shift]));
   const section = timetable.sections.find((item) => item.id === sectionId) ?? timetable.sections[0];
   const teacher = timetable.teachers.find((item) => item.id === teacherId) ?? timetable.teachers[0];
@@ -44,11 +47,19 @@ function TimetableViews({ timetable, onSaved }: { timetable: Timetable; onSaved:
         <strong>{school.data?.schoolName ?? ""}</strong>
         <span>{text.printYear(school.data?.currentYear?.name ?? "", school.data?.currentTerm?.name ?? "")}</span>
         <span>{text.printVersion(format.number(timetable.summary.number), viewTitle)}</span>
+        {timetable.sessions && <span>{text.printSemester(text.terms[term])}</span>}
       </div>
+      {timetable.sessions && (
+        <div className="timetable-controls timetable-term">
+          <ChipGroup label={text.termLabel} caption={text.termLabel} value={term} onChange={(value) => setTerm(value === 2 ? 2 : 1)}
+            options={([1, 2] as const).map((value) => ({ value, label: text.terms[value] }))} />
+          <span className="card-note">{text.termHint}</span>
+        </div>
+      )}
       {!editing && (
         <div className="timetable-controls">
           <Button variant="secondary" icon={<Printer aria-hidden="true" size={18} />} onClick={() => window.print()}>{text.print}</Button>
-          <a className="link-button" href={`/api/v1/timetables/${timetable.summary.id}/export.xlsx`} download>
+          <a className="link-button" href={`/api/v1/timetables/${timetable.summary.id}/export.xlsx${timetable.sessions ? `?term=${term}` : ""}`} download>
             <FileDown aria-hidden="true" size={18} /><span>{text.exportExcel}</span>
           </a>
           <span className="card-note">{text.printHint}</span>
@@ -79,11 +90,13 @@ function TimetableViews({ timetable, onSaved }: { timetable: Timetable; onSaved:
       )}
       {view === "section" && section && editing && (
         <TimetableEditor timetable={timetable} sectionId={section.id} format={format} look={look} lessonCount={lessonCountOf(section.shiftId)}
+          sessions={sessionViewOf(timetable, section.shiftId, term)}
           onClose={() => setEditing(false)} onSaved={(id) => { setEditing(false); onSaved(id); }} />
       )}
       {view === "section" && section && !editing && (
         <WeekGrid caption={look.sectionName(section.id)} days={timetable.days} shift={shifts.get(section.shiftId)} format={format} look={look}
           lessonCount={lessonCountOf(section.shiftId)} lessons={timetable.lessons.filter((lesson) => lesson.sectionId === section.id)}
+          sessions={sessionViewOf(timetable, section.shiftId, term)}
           secondLine={(lesson) => look.teacher(lesson.teacherId)?.shortName ?? ""} />
       )}
       {view === "teacher" && teacher && (
@@ -92,12 +105,13 @@ function TimetableViews({ timetable, onSaved }: { timetable: Timetable; onSaved:
           {teacherShifts.map((shiftId) => (
             <WeekGrid key={shiftId} caption={teacherShifts.length > 1 ? text.teacherInShift(teacher.name, shifts.get(shiftId)?.name ?? "") : teacher.name}
               days={timetable.days} shift={shifts.get(shiftId)} format={format} look={look} lessonCount={lessonCountOf(shiftId)}
+              sessions={sessionViewOf(timetable, shiftId, term)}
               lessons={teacherLessons.filter((lesson) => look.section(lesson.sectionId)?.shiftId === shiftId)}
               secondLine={(lesson) => look.sectionName(lesson.sectionId)} />
           ))}
         </>
       )}
-      {view === "master" && <MasterGrid timetable={timetable} format={format} look={look} />}
+      {view === "master" && <MasterGrid timetable={timetable} format={format} look={look} term={term} />}
     </div>
   );
 }

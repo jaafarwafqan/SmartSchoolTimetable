@@ -1,7 +1,7 @@
 // Phase 2 strings: app shell, dashboard, school profile, academic years. Numbers are passed in pre-formatted;
 // user-entered values are bidi-isolated.
 import { isolate } from "../isolate";
-import { scheduleStructure, shiftMode, stagesSections } from "./structure";
+import { scheduleStructure, sessions, shiftMode, stagesSections } from "./structure";
 import { blockedGrid, subjects } from "./subjects";
 import { teachers } from "./teachers";
 import { calendar } from "./calendar";
@@ -101,7 +101,7 @@ export const school = {
     studyTypes: {
       morning: "صباحي",
       evening: "مسائي",
-      dual: "مزدوج",
+      dual: "ورديتان بشعب مختلفة",
     },
     numeralSystems: {
       arabicIndic: "أرقام عربية مشرقية",
@@ -241,6 +241,7 @@ export const school = {
   orphanOnSave,
   schedulingProfile,
   scheduleStructure,
+  sessions,
   shiftMode,
   stagesSections,
   subjects,

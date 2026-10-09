@@ -35,6 +35,7 @@ public static class SchedulingInputHash
             {
                 LessonsByDay = ByDay(shift.LessonsByDay),
                 Periods = shift.Periods?.OrderBy(period => period.Position).ToArray(),
+                SessionBreaksAfter = shift.SessionBreaksAfter is { Count: > 0 } breaks ? breaks.Distinct().Order().ToArray() : null,
             }).ToArray(),
             Sections = input.Sections.OrderBy(section => section.Id).Select(section => section with { AllowedByDay = ByDay(section.AllowedByDay) }).ToArray(),
             Subjects = input.Subjects.OrderBy(subject => subject.Id).Select(subject => subject with { Blocked = Slots(subject.Blocked) }).ToArray(),

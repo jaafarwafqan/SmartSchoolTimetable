@@ -32,3 +32,28 @@ export function ChipGroup({ label, caption, options, value, onChange }: ChipGrou
     </div>
   );
 }
+
+type ToggleChipGroupProps = {
+  /** Accessible name of the group (for example «اختر أيام الدوام الصباحي»). */
+  label: string;
+  options: readonly { value: number; label: string }[];
+  values: readonly number[];
+  onToggle: (value: number) => void;
+};
+
+/** Several chips may be on at once (for example the morning days of a semester); same look and states as ChipGroup. */
+export function ToggleChipGroup({ label, options, values, onToggle }: ToggleChipGroupProps) {
+  return (
+    <div className="ui-chip-group" role="group" aria-label={label}>
+      {options.map((option) => {
+        const pressed = values.includes(option.value);
+        return (
+          <button key={option.value} type="button" className={`ui-chip${pressed ? " is-pressed" : ""}`} aria-pressed={pressed} onClick={() => onToggle(option.value)}>
+            {pressed && <Check aria-hidden="true" size={14} />}
+            <span>{option.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}

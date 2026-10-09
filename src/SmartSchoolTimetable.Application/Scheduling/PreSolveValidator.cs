@@ -96,12 +96,8 @@ public static class PreSolveValidator
         {
             if (first.Shift != second.Shift || second.Lesson != first.Lesson + 1)
                 return false;
-            if (!Shifts.TryGetValue(first.Shift, out var shift) || shift.Periods is not { Count: > 0 } periods)
-                return true;
-            var lessons = periods.Where(period => period.Kind == nameof(PeriodKind.Lesson)).OrderBy(period => period.Position).ToArray();
-            if (first.Lesson > lessons.Length || second.Lesson > lessons.Length)
-                return true;
-            return lessons[second.Lesson - 1].Position == lessons[first.Lesson - 1].Position + 1;
+            // No break row between them, in the shift or in any of its daily sessions (R3).
+            return !Shifts.TryGetValue(first.Shift, out var shift) || shift.Adjacent(first.Lesson);
         }
 
         public static bool Usable(TeacherInput teacher, Slot slot) =>

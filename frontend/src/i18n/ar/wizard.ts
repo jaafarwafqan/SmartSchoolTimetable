@@ -41,8 +41,8 @@ export const wizard = {
       secondary: "الصفوف المتوسطة والإعدادية معاً",
     },
     shiftMode: "نمط الدوام",
-    modes: { morning: "صباحي فقط", evening: "مسائي فقط", dual: "مزدوج" },
-    modeHints: { morning: "دوام واحد في الصباح", evening: "دوام واحد في المساء", dual: "دوامان: صباحي ومسائي" },
+    modes: { morning: "صباحي فقط", evening: "مسائي فقط", dual: "ورديتان بشعب مختلفة" },
+    modeHints: { morning: "دوام واحد في الصباح", evening: "دوام واحد في المساء", dual: "وردية صباحية ووردية مسائية، لكل منهما شعبها" },
     principal: "اسم المدير (اختياري)",
   },
   year: {

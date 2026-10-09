@@ -1,7 +1,17 @@
 # Changelog
 
 ## [Unreleased]
-### Phase 4 follow-up R1–R2 (branch `phase-4g`)
+### Phase 4 follow-up R3 (branch `phase-4-followup`)
+- **R3 double shift (دوام مزدوج) with daily sessions (ADR 0043):**
+  - `SessionPlan` per year: one, two, or three sessions (three in the model only, «قريباً» in the UI); the timing of the sessions other than morning; and the day→session mapping per semester.
+  - The structural shift's periods are the morning timing. Every session has the same lessons per day (`SESSION_LESSON_COUNT_MISMATCH`), and sessions need exactly one shift (`SESSIONS_NEED_ONE_SHIFT`).
+  - Double lessons must be adjacent in every session. One rule, `ShiftInput.Adjacent`, is shared by the validator, the solver, the verifier and the scorer.
+  - Only new break gaps are hashed. Single-session hashes are unchanged.
+  - A «نظام الدوام اليومي» card on `/school/timing`: the evening timing, day chips per semester, and «اعكس للفصل الثاني».
+  - The viewer, print and Excel (`?term=`) show each day's session and clock in the chosen semester.
+  - The old two-shift mode is relabelled «ورديتان بشعب مختلفة».
+  - Corrective migration `Phase4SessionPlans` (tables only). A backup from the previous schema restores as one session.
+### Phase 4 follow-up R1–R2 (tag `phase-4g`)
 - **R1 12-hour time:**
   - `lib/time.ts` (single formatter, «٨:٠٠ ص»/«١:٣٠ م») and `Clock12` for Excel.
   - `TimeField` rebuilt as hour, minute and ص/م selects.

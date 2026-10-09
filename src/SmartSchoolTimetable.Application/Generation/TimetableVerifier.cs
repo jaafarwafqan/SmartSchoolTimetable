@@ -184,12 +184,8 @@ public static class TimetableVerifier
             return startA < endB && startB < endA;
         }
 
-        /// <summary>Lessons n and n+1 form a double only when no break row lies between them.</summary>
-        private bool Adjacent(long shiftId, int lesson)
-        {
-            var rows = LessonRows(shiftId);
-            return lesson + 1 > rows.Length || rows[lesson].Position == rows[lesson - 1].Position + 1;
-        }
+        /// <summary>Lessons n and n+1 form a double only when no break row lies between them (in any daily session, R3).</summary>
+        private bool Adjacent(long shiftId, int lesson) => !Shifts.TryGetValue(shiftId, out var shift) || shift.Adjacent(lesson);
 
         public int Pairs(long shiftId, IEnumerable<int> lessons)
         {

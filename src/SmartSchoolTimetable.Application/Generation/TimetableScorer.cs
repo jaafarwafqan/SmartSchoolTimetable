@@ -92,18 +92,15 @@ public static class TimetableScorer
         return new TimetableScore(rules.Sum(rule => rule.Weighted), rules);
     }
 
-    /// <summary>Most disjoint pairs (n, n+1) on one day with no break row between them.</summary>
+    /// <summary>Most disjoint pairs (n, n+1) on one day with no break row between them (in any daily session, R3).</summary>
     private static int Pairs(ShiftInput? shift, IEnumerable<int> lessons)
     {
-        var rows = shift?.Periods is { Count: > 0 } periods
-            ? periods.Where(period => period.Kind == nameof(PeriodKind.Lesson)).OrderBy(period => period.Position).Select(period => period.Position).ToArray()
-            : [];
         var sorted = lessons.Distinct().Order().ToArray();
         var pairs = 0;
         for (var index = 0; index + 1 < sorted.Length; index++)
         {
             var lesson = sorted[index];
-            var adjacent = lesson + 1 > rows.Length || rows[lesson] == rows[lesson - 1] + 1;
+            var adjacent = shift?.Adjacent(lesson) ?? true;
             if (sorted[index + 1] != lesson + 1 || !adjacent)
                 continue;
             pairs++;

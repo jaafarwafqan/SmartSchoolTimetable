@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace SmartSchoolTimetable.Application.Scheduling;
 
 /// <summary>
@@ -18,8 +20,27 @@ public sealed record PeriodInput(int Position, string Kind, int StartMinute, int
 public sealed record SlotRef(int Day, int Lesson);
 
 /// <param name="StartMinute">First period start (minutes after midnight), null without periods; for the overlap warning.</param>
+/// <param name="SessionBreaksAfter">
+/// R3 (دوام مزدوج): lesson numbers n after which another daily session of this shift has a break, so (n, n+1) is not a
+/// double lesson. Hashed: it changes which timetables are valid. Null for a single session and then left out of the
+/// JSON, so the hash of every single-session school is the same as before R3. The other sessions' clock times and the
+/// day→session mapping only change the times shown, so they are not part of the input (docs/DECISIONS_PENDING #81).
+/// </param>
 public sealed record ShiftInput(long Id, [property: NotHashed] string Name, IReadOnlyList<DayLessons> LessonsByDay, int? StartMinute, int? EndMinute,
-    IReadOnlyList<PeriodInput>? Periods = null);
+    IReadOnlyList<PeriodInput>? Periods = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<int>? SessionBreaksAfter = null)
+{
+    /// <summary>True when lessons n and n+1 can form a double: no break row between them in the shift or any session.</summary>
+    public bool Adjacent(int lesson)
+    {
+        if (SessionBreaksAfter?.Contains(lesson) == true)
+            return false;
+        if (Periods is not { Count: > 0 } periods)
+            return true;
+        var rows = periods.Where(period => period.Kind == nameof(Domain.SchoolSetup.PeriodKind.Lesson)).OrderBy(period => period.Position).Select(period => period.Position).ToArray();
+        return lesson < 1 || lesson + 1 > rows.Length || rows[lesson] == rows[lesson - 1] + 1;
+    }
+}
 
 /// <param name="AllowedByDay">The first N lessons of each working day the section may use (its stage's count in its shift).</param>
 public sealed record SectionInput(long Id, long StageId, long ShiftId, [property: NotHashed] string StageName, [property: NotHashed] string Label, IReadOnlyList<DayLessons> AllowedByDay);

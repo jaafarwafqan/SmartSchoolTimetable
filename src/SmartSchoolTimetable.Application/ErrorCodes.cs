@@ -89,4 +89,8 @@ public static class ErrorCodes
     public const string RestoreFileInvalid = "RESTORE_FILE_INVALID";
     public const string RestoreIncompatible = "RESTORE_INCOMPATIBLE";
     public const string RestoreConfirmationRequired = "RESTORE_CONFIRMATION_REQUIRED";
+
+    // Phase 4 follow-up R3: daily sessions (دوام مزدوج).
+    public const string SessionLessonCountMismatch = "SESSION_LESSON_COUNT_MISMATCH";
+    public const string SessionsNeedOneShift = "SESSIONS_NEED_ONE_SHIFT";
 }

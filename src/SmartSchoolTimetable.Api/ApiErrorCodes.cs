@@ -59,6 +59,8 @@ public static class ApiErrorCodes
             [ErrorCodes.MaxPerDayExceedsPeriods] = StatusCodes.Status422UnprocessableEntity,
             [ErrorCodes.MaxPerWeekExceedsCapacity] = StatusCodes.Status422UnprocessableEntity,
             [ErrorCodes.ShiftNotInYear] = StatusCodes.Status422UnprocessableEntity,
+            [ErrorCodes.SessionLessonCountMismatch] = StatusCodes.Status422UnprocessableEntity,
+            [ErrorCodes.SessionsNeedOneShift] = StatusCodes.Status409Conflict,
             [ErrorCodes.StageNotInSchoolType] = StatusCodes.Status422UnprocessableEntity,
             [ErrorCodes.AssetTooLarge] = StatusCodes.Status422UnprocessableEntity,
             [ErrorCodes.AssetTypeNotAllowed] = StatusCodes.Status422UnprocessableEntity,

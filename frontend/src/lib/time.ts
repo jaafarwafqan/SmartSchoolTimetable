@@ -44,3 +44,10 @@ export function clockOf(minutes: number): string {
   const total = ((minutes % 1440) + 1440) % 1440;
   return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
+
+/** "HH:mm" → minutes after midnight; null when the text is not a valid time. */
+export function minutesOf(value: string | null | undefined): number | null {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value ?? "");
+  if (!match || Number(match[1]) > 23 || Number(match[2]) > 59) return null;
+  return Number(match[1]) * 60 + Number(match[2]);
+}

@@ -1,6 +1,6 @@
 # Phase 4 follow-up report: R1, R2 (tag `phase-4g`) and R3 (tag `phase-4h`)
 
-- Branch: `phase-4g`, from `phase-4` (`3dee04a`). Not pushed, not merged.
+- Branch: `phase-4-followup` (renamed from `phase-4g`, because a branch and a tag with the same name made `git` refs ambiguous), from `phase-4` (`3dee04a`). Not pushed, not merged.
 - Nothing was run against the owner's real database: every test, check and published-executable run used temporary databases.
 
 ## R1: 12-hour time (Iraqi convention) everywhere
@@ -101,3 +101,108 @@ There was no database constraint on the row count, so there is no migration.
 | Playwright with axe | 23 passed (full suite) |
 | Published executable (`SmartSchoolTimetable-20261009-234213`) | auth flow, `phase25-model` (12-hour timing step, breaks) and `phase4-generation` (viewers with the 12-hour check): 4 passed |
 | Launcher, on a temporary database | the server answered, first-run setup shown, page right-to-left, temp database created, real database unchanged |
+## R3: double shift (دوام مزدوج) with daily sessions
+
+**What changed** (ADR 0043; DECISIONS_PENDING #81–#86):
+- **Model.** `SessionPlan` per academic year:
+  - `System`: `OneSession` (the default; no row means one session), `TwoSessions`, or `ThreeSessions`. Three sessions are allowed by the model; the UI shows «الدوام الثلاثي … قريباً».
+  - The timing of each session other than morning, as lesson and break rows.
+  - The day mapping `(semester 1|2, day) → session`.
+
+  Morning is the shift's own periods, so a single-session school sees no change and has no extra step.
+- **Same lessons per day in every session.** This is enforced in the domain and the API with the Arabic message `SESSION_LESSON_COUNT_MISMATCH`. Three guards keep it true later:
+  - changing the shift's lesson count is refused while sessions are on;
+  - adding a second shift is refused (`SESSIONS_NEED_ONE_SHIFT`);
+  - applying the old two-shift mode is refused (`SESSIONS_NEED_ONE_SHIFT`).
+- **Uniform period count investigated** (#85):
+  - The solver, `TimetableVerifier` and `SchedulingInput` already support different counts per day (`AllowedByDay`/`LessonsByDay`; the H3 test with [4,4,4,4,2]).
+  - Those per-day counts apply to every session alike. No per-session-per-day counts were added.
+- **One grid.** Generation, verification and approval are unchanged. A double lesson must be adjacent in **every** session, so a break in the evening splits (n, n+1). All four adjacency checks now share one rule, `ShiftInput.Adjacent`: the validator, the CP-SAT model builder, the verifier and the scorer.
+- **InputHash** (#81):
+  - Only the lesson gaps where another session has a break, and the shift does not, are hashed (`SessionBreaksAfter`).
+  - Evening clock times and the day mapping are not hashed: they change no lesson.
+  - A null value is left out of the JSON, so single-session hashes are byte-for-byte the same as before.
+- **UI** (`/school/timing`, card «نظام الدوام اليومي»; no drawers, nothing typed):
+  - choice cards «دوام واحد / دوام مزدوج»;
+  - a read-only morning summary;
+  - the evening timing: 12-hour `TimeField`, lesson length stepper, the R2 breaks editor, and a live 12-hour preview;
+  - per semester, day chips «اختر أيام الدوام الصباحي» (the other days are listed as evening) and «اعكس للفصل الثاني».
+- **Viewer, print and Excel:**
+  - The timetable page has a semester switch «الفصل الدراسي الأول / الثاني» (chips with `aria-pressed`).
+  - Section and teacher grids show the lesson numbers, then one clock row per session («الدوام الصباحي», «الدوام المسائي»). Each day's row header names its session in the chosen semester.
+  - The master grid shows «الأحد — صباحي» and that session's clock under each lesson number.
+  - Print adds «أوقات الفصل الدراسي الثاني».
+  - Excel takes `?term=1|2`. It names the semester in each sheet header and in the file name (`timetable-vN-term2.xlsx`), adds the same per-session time rows and day labels, and has no 24-hour time.
+- **Old «مزدوج»** (two shifts, each with its own sections) is kept and relabelled «ورديتان بشعب مختلفة» (#82).
+- **Teacher availability** stays by (day, lesson). Availability by session (for example, no evenings) is a future option in #83.
+- **Migration** `20261009205646_Phase4SessionPlans` is corrective: it only adds tables, and no old migration was edited. Old data reads as one session, with the same times in both semesters.
+
+**Files:**
+- **Domain:** `SchoolSetup/SessionPlan.cs`, `DomainErrorCode.SessionLessonCountMismatch`.
+- **Application:**
+  - `SchoolSetup/SessionPlanService.cs`;
+  - guards in `TimetableStructureService` and `ShiftModeService`;
+  - `ShiftInput.SessionBreaksAfter` and `Adjacent` in `Scheduling/SchedulingInput.cs`, plus `SchedulingInputHash` and `SchedulingInputBuilder`;
+  - `PreSolveValidator`, `TimetableVerifier`, `TimetableScorer`;
+  - `GridSessions` and `SessionsAsync` in `TimetableService`;
+  - the semester in `TimetableExport`;
+  - `ErrorCodes`.
+- **Infrastructure:** `CpSatModelBuilder`, `ExcelTimetableExporter`, `SessionPlanConfiguration`, the migration.
+- **Api:**
+  - `GET/PUT /api/v1/session-plan`;
+  - `?term=` on `export.xlsx`;
+  - `ApiErrorCodes`.
+- **Frontend:**
+  - `features/timetable-structure/SessionsCard.tsx`, `sessionPlan.ts`, `sessionPlanApi.ts`;
+  - `components/ui/chip-group.tsx` (`ToggleChipGroup`);
+  - `components/ui/timetable-grid.tsx` (`headerRowLabels`);
+  - `features/timetable/TimetableGrids.tsx`, `TimetablePage.tsx`, `TimetableEditor.tsx`, `timetableApi.ts`;
+  - `lib/time.ts` (`minutesOf`);
+  - the dictionary (`structure.ts`, `school.ts`, `wizard.ts`, `phase4.ts`, `errors.ts`);
+  - styles.
+- **Docs:** ADR 0043, `API.md`, DECISIONS_PENDING #81–#86, `USER_GUIDE_AR.md`, `OWNER_TEST_SCRIPT_PHASE4.md` (steps 26–32).
+
+**Tests added:**
+- `SessionPlanTests` (domain and scheduler):
+  - the owner's mapping and its reverse;
+  - unequal lesson counts refused (`SessionLessonCountMismatch`);
+  - each working day mapped exactly once per semester (missing, duplicate, wrong session, non-working day), and overlapping evening rows refused;
+  - three sessions in the model, and one session clearing the plan;
+  - a single session keeps the pre-R3 hash, and an old snapshot reads back the same;
+  - an evening break splits a double lesson in the solver (infeasible in «دروس مزدوجة», valid in the standard mode), the scorer (S5 penalty), the verifier (`DOUBLE_PERIOD_BROKEN`) and the validator (`DOUBLE_PERIOD_IMPOSSIBLE`).
+- `SessionPlanApiTests`:
+  - the full scenario on a temporary database: the one-session default; Arabic-coded refusals; the shift-count and second-shift guards; generate once; API times for semester 1 and 2;
+  - Excel for semester 1 and 2: header, session rows «٨:٠٠ ص – ٨:٤٠ ص» / «١:٠٠ م – ١:٤٠ م», «الأحد\nصباحي» in S1 against «الأحد\nمسائي» in S2, identical lessons, no 24-hour time, `term=3` refused;
+  - a new mapping keeps the version current, and a new evening break makes it out of date;
+  - back to one session: the single-shift regression, with no semester in Excel;
+  - only a new break gap changes the hash (`OnlyANewBreakGapChangesTheInputHash`);
+  - sessions need exactly one shift.
+- `BackupApiTests.ABackupFromThePreviousSchemaIsRestoredAsASingleSessionSchool`: a backup is migrated down to `Phase4Generation` (the previous schema), restored, upgraded, and reads as one session with its data.
+- Vitest `sessionPlan.test.ts`: evening rows, form round trip, mapping, reverse.
+- Playwright `phase4-sessions.spec.ts`:
+  - the card: double, evening 1:00 pm with a break, semester 1 Sunday+Monday, reverse;
+  - axe and no horizontal scroll at 375 and 1280 px;
+  - generate once;
+  - the viewer in S1 and S2: same lessons, Sunday morning then evening, 12-hour check, axe;
+  - the master in S2, the print header, and the Excel file name.
+
+**Screenshots viewed** (from the Playwright run, opened and checked):
+- `r3-sessions-card.png`: the card with «دوام مزدوج», the morning summary «من ٨:٠٠ ص إلى ١:٣٠ م، ٧ حصص», the evening editor with a break «من ٣:١٥ م إلى ٣:٣٠ م», the 12-hour preview, and the chips (S1: الأحد، الاثنين; S2: الثلاثاء، الأربعاء، الخميس). The element screenshot shows the sticky top bar over its middle; this is a capture effect and does not appear on the page.
+- `r3-viewer-term1.png` and `r3-viewer-term2.png`: the section grid with the rows «الدوام الصباحي ٨:٠٠ ص – ٨:٤٥ ص …» and «الدوام المسائي ١:٠٠ م – ١:٤٥ م …». Sunday and Monday show «صباحي» in S1 and «مسائي» in S2; the lessons are identical.
+- The full Playwright run also produced two screenshot differences, both reviewed and intended:
+  - `periods-*`: the new «نظام الدوام اليومي» card on the structure page;
+  - `wizard-step-1-*`: «ورديتان بشعب مختلفة» replaces «مزدوج» on the old two-shift card.
+
+  Reviewing them found a real bug, now fixed: after a shift was created on the same page, the card still said "needs one shift". Shift and shift-mode changes now refresh the session plan. The baselines of these two specs only were updated, after the images were opened (375 and 1440 px).
+
+## Gates at `phase-4h` (R3)
+
+| Gate | Result |
+|---|---|
+| `dotnet build -c Release` | 0 warnings, 0 errors |
+| `dotnet test -c Release` | 310 passed, 4 skipped (the performance category) |
+| ESLint and Stylelint (`npm run lint`) | clean |
+| Vitest | 112 passed (29 files) |
+| Playwright with axe | 24 passed (full suite, including `phase4-sessions`) |
+| Published executable (`SmartSchoolTimetable-20261010-004627`) | `phase4-sessions` on a temporary database (set double shift, map the days, generate once, view S1 and S2, master, print header, Excel term 2) and `phase4-generation` (single-shift regression): 2 passed |
+| Owner's real database | not used; `%LOCALAPPDATA%\SmartSchoolTimetable\timetable.db` last written 2026-10-09 14:40, before R3 |

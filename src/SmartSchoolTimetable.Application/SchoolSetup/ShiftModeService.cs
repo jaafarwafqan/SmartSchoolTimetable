@@ -58,6 +58,9 @@ public sealed class ShiftModeService(IDataStore store, TimeProvider clock)
             return OperationResult.Failure<ShiftModeDto>(ErrorCodes.Conflict);
         if (plan.Affected.Count > 0)
             return OperationResult.Failure<ShiftModeDto>(ErrorCodes.ShiftModeInUse);
+        // R3: the two-shift mode (separate sections per shift) cannot be combined with daily sessions of one shift.
+        if (plan.Mode == StudyType.Dual && plan.Create.Count + plan.Adopt.Count > 0 && await SessionPlanService.ActiveAsync(store, plan.Year.Id, token) is not null)
+            return OperationResult.Failure<ShiftModeDto>(ErrorCodes.SessionsNeedOneShift);
 
         profile.SetStudyType(plan.Mode, clock.GetUtcNow());
         foreach (var shift in plan.Adopt)

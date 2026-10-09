@@ -24,6 +24,15 @@ export type GridSection = { id: number; stageName: string; label: string; shiftI
 export type GridSubject = { id: number; name: string; colorIndex: number };
 export type GridTeacher = { id: number; name: string; shortName: string };
 export type GridLesson = { sectionId: number; lineId: number; subjectId: number; teacherId: number; day: number; lesson: number };
+export type SessionName = "morning" | "noon" | "evening";
+/** R3 daily sessions: the clock of each session and the session of each working day per semester (null for one session). */
+export type GridSessions = {
+  system: "twoSessions" | "threeSessions";
+  shiftId: number;
+  timings: { session: SessionName; lessons: GridLessonTime[] }[];
+  days: { term: 1 | 2; day: number; session: SessionName }[];
+};
+export type Term = 1 | 2;
 
 export type Timetable = {
   summary: TimetableVersionSummary;
@@ -35,6 +44,7 @@ export type Timetable = {
   lessons: GridLesson[];
   score: { total: number; rules: { key: string; enabled: boolean; weight: number; penalty: number; weighted: number }[] } | null;
   violations: number;
+  sessions: GridSessions | null;
 };
 
 export const timetableKeys = {
@@ -92,6 +102,11 @@ export function useSaveEdit() {
       apiRequest<TimetableVersionSummary>(`/api/v1/timetables/${id}/edits`, "POST", { lessons, note }),
     onSuccess: () => void client.invalidateQueries({ queryKey: ["timetable"] }),
   });
+}
+
+/** The session a working day falls in during a semester (morning when unmapped). */
+export function sessionOn(sessions: GridSessions, term: Term, day: number): SessionName {
+  return sessions.days.find((item) => item.term === term && item.day === day)?.session ?? "morning";
 }
 
 /** "HH:mm" for the formatter, from minutes after midnight. */

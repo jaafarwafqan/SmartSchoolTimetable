@@ -189,6 +189,22 @@
   font-weight: 400;
 }
 
+/* R3 daily sessions: the session of each day (row header) and the session name of each clock row. */
+.timetable-session {
+  color: var(--color-ink-subtle);
+  font-size: var(--text-xs);
+  font-weight: 400;
+}
+
+.ui-tt-grid thead th.ui-tt-header-label {
+  font-size: var(--text-xs);
+  vertical-align: middle;
+}
+
+.timetable-term {
+  align-items: center;
+}
+
 .ui-tt-grid td {
   min-inline-size: 7rem;
   padding: 0;

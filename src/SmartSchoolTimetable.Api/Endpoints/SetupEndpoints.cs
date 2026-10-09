@@ -14,6 +14,12 @@ public static class SetupEndpoints
         mode.MapPut("/", async (SetShiftModeCommand command, HttpContext context, ShiftModeService service, CancellationToken token) =>
             ApiResults.Ok(context, await service.SetAsync(command, token)));
 
+        var sessions = endpoints.MapOwnerGroup("/session-plan");
+        sessions.MapGet("/", async (HttpContext context, SessionPlanService service, CancellationToken token) =>
+            ApiResults.Ok(context, await service.GetAsync(token)));
+        sessions.MapPut("/", async (SaveSessionPlanCommand command, HttpContext context, SessionPlanService service, CancellationToken token) =>
+            ApiResults.Ok(context, await service.SaveAsync(command, token)));
+
         var progress = endpoints.MapOwnerGroup("/setup-progress");
         progress.MapGet("/", async (SetupProgressService service, CancellationToken token) => Results.Ok(await service.GetAsync(token)));
         progress.MapPut("/", async (SaveSetupProgressCommand command, HttpContext context, SetupProgressService service, CancellationToken token) =>

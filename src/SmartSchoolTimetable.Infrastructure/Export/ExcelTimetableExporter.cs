@@ -7,7 +7,8 @@ namespace SmartSchoolTimetable.Infrastructure.Export;
 /// <summary>
 /// The Excel adapter (ClosedXML, ADR 0041): one sheet for the master timetable («الجدول العام»), one per section and
 /// one per teacher. Every sheet is right-to-left with Arabic headers, the school's name and year on top, subject
-/// cells filled with a light tint of the subject colour, and printing set to A4 (landscape for the master).
+/// cells filled with a light tint of the subject colour, and printing set to A4 (landscape for the master). With daily
+/// sessions (R3) the clock times follow the session of each day in the exported semester, which the header names.
 /// </summary>
 public sealed class ExcelTimetableExporter : ITimetableExporter
 {
@@ -36,27 +37,40 @@ public sealed class ExcelTimetableExporter : ITimetableExporter
         string SectionName(long id) => sections.TryGetValue(id, out var section) ? $"{section.StageName} / {section.Label}" : string.Empty;
         var lessonCount = Math.Max(1, timetable.Sections.SelectMany(section => section.AllowedByDay).Select(day => day.Lessons).DefaultIfEmpty(1).Max());
         var shifts = timetable.Shifts.ToDictionary(shift => shift.Id);
-        // Lesson clock times in the Iraqi 12-hour form (R1), from the section's shift; empty when unknown.
-        string Times(long? shiftId, int lesson) =>
-            shiftId is { } id && shifts.TryGetValue(id, out var shift) && shift.Lessons.FirstOrDefault(item => item.Number == lesson) is { } time
-                ? $"{Clock12.Format(time.StartMinute, header.ArabicIndicNumerals)} – {Clock12.Format(time.EndMinute, header.ArabicIndicNumerals)}"
-                : string.Empty;
-        string WithTimes(string label, long? shiftId, int lesson) => Times(shiftId, lesson) is { Length: > 0 } times ? $"{label}\n{times}" : label;
+        var sessions = timetable.Sessions;
+        // R3: with daily sessions, a day's clock comes from the session it falls in during the exported semester.
+        string? DaySession(long? shiftId, int day) => sessions is not null && shiftId == sessions.ShiftId ? sessions.SessionOn(header.Term, day) : null;
+        string Range(GridLessonTime time) =>
+            $"{Clock12.Format(time.StartMinute, header.ArabicIndicNumerals)} – {Clock12.Format(time.EndMinute, header.ArabicIndicNumerals)}";
+        // Lesson clock times in the Iraqi 12-hour form (R1), from the section's shift (or the day's session); empty when unknown.
+        string Times(long? shiftId, int lesson, int? day = null)
+        {
+            var clock = day is { } value && DaySession(shiftId, value) is { } session ? sessions!.TimesOf(session)
+                : shiftId is { } id && shifts.TryGetValue(id, out var shift) ? shift.Lessons : null;
+            return clock?.FirstOrDefault(item => item.Number == lesson) is { } time ? Range(time) : string.Empty;
+        }
+        string WithTimes(string label, long? shiftId, int lesson, int? day = null) => Times(shiftId, lesson, day) is { Length: > 0 } times ? $"{label}\n{times}" : label;
+        string DayLabel(long? shiftId, int day) =>
+            DaySession(shiftId, day) is { } session ? $"{DayNames.GetValueOrDefault(day, string.Empty)}\n{SessionShort(session)}" : DayNames.GetValueOrDefault(day, string.Empty);
         long? OnlyShift(IEnumerable<long> ids) => ids.Distinct().Take(2).ToArray() is [var single] ? single : null;
         var masterShift = OnlyShift(timetable.Sections.Select(section => section.ShiftId));
+        var term = sessions is null ? null : header.Term == 2 ? "الفصل الدراسي الثاني" : "الفصل الدراسي الأول";
 
         // Master: sections × (days × lessons).
         var master = AddSheet(workbook, MasterSheet, names);
-        var top = WriteHeader(master, header, MasterSheet, Number);
+        var top = WriteHeader(master, header, MasterSheet, Number, term);
         master.Cell(top, 1).Value = "الشعبة";
         master.Range(top, 1, top + 1, 1).Merge();
         for (var dayIndex = 0; dayIndex < timetable.Days.Count; dayIndex++)
         {
             var first = 2 + dayIndex * lessonCount;
-            master.Cell(top, first).Value = DayNames.GetValueOrDefault(timetable.Days[dayIndex], string.Empty);
+            var day = timetable.Days[dayIndex];
+            master.Cell(top, first).Value = DaySession(masterShift, day) is { } session
+                ? $"{DayNames.GetValueOrDefault(day, string.Empty)} — {SessionShort(session)}"
+                : DayNames.GetValueOrDefault(day, string.Empty);
             master.Range(top, first, top, first + lessonCount - 1).Merge();
             for (var lesson = 1; lesson <= lessonCount; lesson++)
-                master.Cell(top + 1, first + lesson - 1).Value = WithTimes(Number(lesson), masterShift, lesson);
+                master.Cell(top + 1, first + lesson - 1).Value = WithTimes(Number(lesson), masterShift, lesson, day);
         }
         StyleHeader(master.Range(top, 1, top + 1, 1 + timetable.Days.Count * lessonCount));
         var masterAt = timetable.Lessons.ToDictionary(lesson => (lesson.SectionId, lesson.Day, lesson.Lesson));
@@ -110,16 +124,26 @@ public sealed class ExcelTimetableExporter : ITimetableExporter
         void WeekSheet(IXLWorksheet sheet, TimetableDocumentHeader documentHeader, string title, IReadOnlyList<int> days, int count, GridLesson[] lessons,
             Func<GridLesson, string> second, Func<int, string> number, long? shiftId)
         {
-            var first = WriteHeader(sheet, documentHeader, title, number);
+            var first = WriteHeader(sheet, documentHeader, title, number, term);
+            var top = first;
             sheet.Cell(first, 1).Value = "اليوم";
+            // Daily sessions: the lesson numbers, then one row of clock times per session; each day names its session.
+            var timings = sessions is not null && shiftId == sessions.ShiftId ? sessions.Timings : [];
             for (var lesson = 1; lesson <= count; lesson++)
-                sheet.Cell(first, 1 + lesson).Value = WithTimes($"الحصة {number(lesson)}", shiftId, lesson);
-            StyleHeader(sheet.Range(first, 1, first, 1 + count));
+                sheet.Cell(first, 1 + lesson).Value = timings.Count > 0 ? $"الحصة {number(lesson)}" : WithTimes($"الحصة {number(lesson)}", shiftId, lesson);
+            foreach (var timing in timings)
+            {
+                first++;
+                sheet.Cell(first, 1).Value = SessionName(timing.Session);
+                for (var lesson = 1; lesson <= count; lesson++)
+                    sheet.Cell(first, 1 + lesson).Value = timing.Lessons.FirstOrDefault(item => item.Number == lesson) is { } time ? Range(time) : string.Empty;
+            }
+            StyleHeader(sheet.Range(top, 1, first, 1 + count));
             var at = lessons.ToDictionary(lesson => (lesson.Day, lesson.Lesson));
             for (var dayIndex = 0; dayIndex < days.Count; dayIndex++)
             {
                 var line = first + 1 + dayIndex;
-                sheet.Cell(line, 1).Value = DayNames.GetValueOrDefault(days[dayIndex], string.Empty);
+                sheet.Cell(line, 1).Value = DayLabel(shiftId, days[dayIndex]);
                 for (var lesson = 1; lesson <= count; lesson++)
                 {
                     if (!at.TryGetValue((days[dayIndex], lesson), out var item))
@@ -129,9 +153,23 @@ public sealed class ExcelTimetableExporter : ITimetableExporter
                     Fill(cell, item.SubjectId);
                 }
             }
-            Finish(sheet, first, first + days.Count, 1 + count, landscape: false);
+            Finish(sheet, top, first + days.Count, 1 + count, landscape: false);
         }
     }
+
+    private static string SessionName(string session) => session switch
+    {
+        "evening" => "الدوام المسائي",
+        "noon" => "الدوام الظهري",
+        _ => "الدوام الصباحي",
+    };
+
+    private static string SessionShort(string session) => session switch
+    {
+        "evening" => "مسائي",
+        "noon" => "ظهري",
+        _ => "صباحي",
+    };
 
     private static string Digits(string value, bool arabicIndic) =>
         arabicIndic ? string.Concat(value.Select(ch => ch is >= '0' and <= '9' ? (char)('٠' + (ch - '0')) : ch)) : value;
@@ -155,12 +193,14 @@ public sealed class ExcelTimetableExporter : ITimetableExporter
     }
 
     /// <summary>School name, year and the sheet title on top; returns the first row of the table.</summary>
-    private static int WriteHeader(IXLWorksheet sheet, TimetableDocumentHeader header, string title, Func<int, string> number)
+    private static int WriteHeader(IXLWorksheet sheet, TimetableDocumentHeader header, string title, Func<int, string> number, string? term)
     {
         sheet.Cell(1, 1).Value = header.SchoolName;
         sheet.Cell(1, 1).Style.Font.Bold = true;
         sheet.Cell(1, 1).Style.Font.FontSize = 14;
-        sheet.Cell(2, 1).Value = $"السنة الدراسية {header.YearLabel} — الإصدار {number(header.VersionNumber)}";
+        sheet.Cell(2, 1).Value = term is null
+            ? $"السنة الدراسية {header.YearLabel} — الإصدار {number(header.VersionNumber)}"
+            : $"السنة الدراسية {header.YearLabel} — {term} — الإصدار {number(header.VersionNumber)}";
         sheet.Cell(3, 1).Value = title;
         sheet.Cell(3, 1).Style.Font.Bold = true;
         return 5;

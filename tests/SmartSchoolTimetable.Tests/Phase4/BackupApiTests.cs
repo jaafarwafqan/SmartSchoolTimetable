@@ -1,5 +1,7 @@
 using System.Net;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using SmartSchoolTimetable.Application;
 using static SmartSchoolTimetable.Tests.ApiTestHelpers;
 
@@ -71,5 +73,43 @@ public sealed class BackupApiTests
         var names = await SubjectNamesAsync(host);
         Assert.Contains("الرياضيات", names);
         Assert.DoesNotContain("الفيزياء", names);
+    }
+
+    /// <summary>
+    /// R3: a backup made before the daily sessions existed (schema at <c>Phase4Generation</c>) is restored, brought up to
+    /// date by the corrective migration, and reads as a single-session school with its data intact.
+    /// </summary>
+    [Fact]
+    public async Task ABackupFromThePreviousSchemaIsRestoredAsASingleSessionSchool()
+    {
+        await using var host = new TestHost();
+        var token = (await Phase3.ReferenceProtectionTests.SeedAsync(host)).Token;
+        var folder = Path.Combine(Path.GetDirectoryName(host.DatabasePath)!, "owner-backups");
+        await CreateSubjectAsync(host, token, "التاريخ");
+        var created = await host.PostAsync("/api/v1/backup/", new { folder }, token);
+        var backupFile = (await JsonAsync(created)).GetProperty("filePath").GetString()!;
+
+        // Turn the copy into a database of the previous schema (the session tables did not exist then).
+        var options = new DbContextOptionsBuilder<Infrastructure.LocalDbContext>()
+            .UseSqlite($"Data Source={backupFile};Pooling=False").Options;
+        await using (var old = new Infrastructure.LocalDbContext(options))
+        {
+            await old.GetService<Microsoft.EntityFrameworkCore.Migrations.IMigrator>().MigrateAsync("20261009064335_Phase4Generation");
+            var applied = (await old.Database.GetAppliedMigrationsAsync()).ToArray();
+            Assert.Equal("20261009064335_Phase4Generation", applied[^1]);
+        }
+        await CreateSubjectAsync(host, token, "الفيزياء");
+
+        var restored = await host.PostAsync("/api/v1/backup/restore", new { filePath = backupFile, confirm = true, confirmReplace = true }, token);
+        Assert.Equal(HttpStatusCode.OK, restored.StatusCode);
+        var login = await host.PostAsync("/api/v1/auth/login", new { username = "owner", password = "A-Strong-Passphrase-401" }, token);
+        Assert.True(login.IsSuccessStatusCode, login.StatusCode.ToString());
+        var names = await SubjectNamesAsync(host);
+        Assert.Contains("التاريخ", names);
+        Assert.DoesNotContain("الفيزياء", names);
+        Assert.True(File.Exists(backupFile));
+        var plan = await JsonAsync(await host.Client.GetAsync("/api/v1/session-plan/"));
+        Assert.Equal("oneSession", plan.GetProperty("system").GetString());
+        Assert.Equal(0, plan.GetProperty("version").GetInt32());
     }
 }

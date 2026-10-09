@@ -29,6 +29,7 @@ export function useSetShiftMode() {
         queryClient.invalidateQueries({ queryKey: profileKey }),
         queryClient.invalidateQueries({ queryKey: ["shift-mode-impact"] }),
         queryClient.invalidateQueries({ queryKey: ["schedule-grid"] }),
+        queryClient.invalidateQueries({ queryKey: ["session-plan"] }),
         refreshSchoolData(),
       ]);
     },

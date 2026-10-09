@@ -3,6 +3,9 @@ using SmartSchoolTimetable.Application.Common;
 using SmartSchoolTimetable.Application.Scheduling;
 using SmartSchoolTimetable.Domain.Generation;
 using PeriodKind = SmartSchoolTimetable.Domain.SchoolSetup.PeriodKind;
+using SessionKind = SmartSchoolTimetable.Domain.SchoolSetup.SessionKind;
+using SessionPlan = SmartSchoolTimetable.Domain.SchoolSetup.SessionPlan;
+using SessionSystem = SmartSchoolTimetable.Domain.SchoolSetup.SessionSystem;
 
 namespace SmartSchoolTimetable.Application.Generation;
 
@@ -16,6 +19,24 @@ public sealed record GridSection(long Id, string StageName, string Label, long S
 public sealed record GridSubject(long Id, string Name, int ColorIndex);
 public sealed record GridTeacher(long Id, string Name, string ShortName);
 public sealed record GridLesson(long SectionId, long LineId, long SubjectId, long TeacherId, int Day, int Lesson);
+public sealed record GridSessionTiming(string Session, IReadOnlyList<GridLessonTime> Lessons);
+public sealed record GridSessionDay(int Term, int Day, string Session);
+
+/// <summary>
+/// R3 daily sessions of the timetable's shift: the clock of each session and which session each working day falls in,
+/// per semester (1, 2). The grid itself is the same in both semesters; only the times shown change. Morning is the
+/// shift's own timing from the snapshot; the other sessions and the mapping are the current settings (not hashed:
+/// they change no lesson, DECISIONS_PENDING #81).
+/// </summary>
+public sealed record GridSessions(string System, long ShiftId, IReadOnlyList<GridSessionTiming> Timings, IReadOnlyList<GridSessionDay> Days)
+{
+    /// <summary>The session of a working day in a semester (morning when unmapped).</summary>
+    public string SessionOn(int term, int day) =>
+        Days.FirstOrDefault(item => item.Term == term && item.Day == day)?.Session ?? ApiText.ToValue(SessionKind.Morning);
+
+    /// <summary>The lesson clock of a session, or null when it has no timing.</summary>
+    public IReadOnlyList<GridLessonTime>? TimesOf(string session) => Timings.FirstOrDefault(item => item.Session == session)?.Lessons;
+}
 
 /// <summary>Everything the read-only grids need, from the version's own input snapshot (names as they were).</summary>
 /// <param name="Violations">Hard-constraint violations found by the independent verifier now (0 for a valid version).</param>
@@ -28,7 +49,8 @@ public sealed record TimetableDto(
     IReadOnlyList<GridTeacher> Teachers,
     IReadOnlyList<GridLesson> Lessons,
     TimetableScore? Score,
-    int Violations);
+    int Violations,
+    GridSessions? Sessions = null);
 
 public sealed record ApproveTimetableCommand(int Version);
 
@@ -57,7 +79,8 @@ public sealed class TimetableService(IDataStore store, TimeProvider clock)
             return OperationResult.Failure<TimetableDto>(ErrorCodes.NotFound);
         var current = await SchedulingInputBuilder.BuildAsync(store, version.AcademicYearId, token);
         var input = SnapshotOf(version);
-        return OperationResult.Success(ToDto(version, input, current is null ? version.InputHash : SchedulingInputHash.Compute(current)));
+        var sessions = await SessionsAsync(store, version.AcademicYearId, input, token);
+        return OperationResult.Success(ToDto(version, input, current is null ? version.InputHash : SchedulingInputHash.Compute(current), sessions));
     }
 
     public async Task<OperationResult<TimetableVersionSummary>> ApproveAsync(long versionId, ApproveTimetableCommand command, CancellationToken token)
@@ -147,7 +170,29 @@ public sealed class TimetableService(IDataStore store, TimeProvider clock)
             version.ApprovedAt, version.Note, !string.Equals(version.InputHash, currentHash, StringComparison.Ordinal));
     }
 
-    public static TimetableDto ToDto(TimetableVersion version, SchedulingInput input, string currentHash)
+    /// <summary>The year's daily sessions for a timetable of that year (null for a single session).</summary>
+    public static async Task<GridSessions?> SessionsAsync(IDataStore store, long yearId, SchedulingInput input, CancellationToken token)
+    {
+        ArgumentNullException.ThrowIfNull(store);
+        ArgumentNullException.ThrowIfNull(input);
+        var plan = await store.FirstOrDefaultAsync(store.Read<SessionPlan>().Where(item => item.AcademicYearId == yearId), token);
+        if (plan is null || plan.System == SessionSystem.OneSession || input.Shifts.FirstOrDefault(shift => shift.Id == plan.ShiftId) is not { } shift)
+            return null;
+        static GridLessonTime[] Lessons(IEnumerable<(string Kind, int Position, int Start, int End)> rows) =>
+            rows.Where(row => row.Kind == nameof(PeriodKind.Lesson)).OrderBy(row => row.Position)
+                .Select((row, index) => new GridLessonTime(index + 1, row.Start, row.End)).ToArray();
+        static int Minutes(TimeOnly time) => time.Hour * 60 + time.Minute;
+        var timings = new List<GridSessionTiming>
+        {
+            new(ApiText.ToValue(SessionKind.Morning), Lessons((shift.Periods ?? []).Select(period => (period.Kind, period.Position, period.StartMinute, period.EndMinute)))),
+        };
+        timings.AddRange(plan.Periods.GroupBy(period => period.Session).OrderBy(group => group.Key).Select(group => new GridSessionTiming(ApiText.ToValue(group.Key),
+            Lessons(group.Select(period => (period.Kind.ToString(), period.Position, Minutes(period.StartTime), Minutes(period.EndTime)))))));
+        return new GridSessions(ApiText.ToValue(plan.System), shift.Id, timings,
+            plan.Days.Where(day => input.WorkingDays.Contains(day.Day)).Select(day => new GridSessionDay(day.Term, day.Day, ApiText.ToValue(day.Session))).ToArray());
+    }
+
+    public static TimetableDto ToDto(TimetableVersion version, SchedulingInput input, string currentHash, GridSessions? sessions = null)
     {
         ArgumentNullException.ThrowIfNull(version);
         ArgumentNullException.ThrowIfNull(input);
@@ -172,6 +217,7 @@ public sealed class TimetableService(IDataStore store, TimeProvider clock)
                 .Select(teacher => new GridTeacher(teacher.Id, teacher.Name, string.IsNullOrWhiteSpace(teacher.ShortName) ? teacher.Name : teacher.ShortName)).ToArray(),
             lessons,
             TimetableScorer.Score(input, placed, doubles),
-            TimetableVerifier.Verify(input, placed, doubles).Count);
+            TimetableVerifier.Verify(input, placed, doubles).Count,
+            sessions);
     }
 }

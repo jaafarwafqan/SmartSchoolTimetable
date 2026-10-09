@@ -35,6 +35,9 @@ public sealed class TimetableStructureService(IDataStore store, TimeProvider clo
             return invalid;
         if (await ShiftNameTakenAsync(yearId, null, command.Name, token))
             return OperationResult.Invalid<ShiftDto>(nameof(command.Name), ErrorCodes.DuplicateName);
+        // R3: daily sessions share the year's single shift; a second shift would leave them without a grid.
+        if (await SessionPlanService.ActiveAsync(store, yearId, token) is not null)
+            return OperationResult.Failure<ShiftDto>(ErrorCodes.SessionsNeedOneShift);
         store.Add(shift!);
         AuditTrail.Record(store, clock, "ShiftCreated", $"academic-year:{yearId}", "Shift created.");
         var createdDays = await WorkingDaysAsync(token);
@@ -150,6 +153,10 @@ public sealed class TimetableStructureService(IDataStore store, TimeProvider clo
         }
         if (input.Any)
             return input.ToResult<ShiftDto>();
+        // R3: every daily session has the same number of lessons; change the sessions first (or go back to one session).
+        if (await SessionPlanService.ActiveAsync(store, yearId, token) is { } sessions && sessions.ShiftId == id
+            && drafts.Count(draft => draft.Kind == PeriodKind.Lesson) != shift.LessonCount)
+            return OperationResult.Invalid<ShiftDto>(nameof(command.Periods), ErrorCodes.SessionLessonCountMismatch);
         if (StoreSaving.TryDomain<ShiftDto>(() => shift.ReplacePeriods(drafts)) is { } invalid)
             return invalid;
         AuditTrail.Record(store, clock, "ShiftPeriodsUpdated", $"shift:{id}", "Shift periods updated.");

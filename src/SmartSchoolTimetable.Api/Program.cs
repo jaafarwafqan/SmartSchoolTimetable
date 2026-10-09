@@ -68,6 +68,7 @@ builder.Services.AddScoped<SubjectsService>();
 builder.Services.AddScoped<TeachersService>();
 builder.Services.AddScoped<CalendarService>();
 builder.Services.AddScoped<ShiftModeService>();
+builder.Services.AddScoped<SessionPlanService>();
 builder.Services.AddScoped<SetupProgressService>();
 builder.Services.AddScoped<StageCardsService>();
 builder.Services.AddScoped<CurriculumService>();

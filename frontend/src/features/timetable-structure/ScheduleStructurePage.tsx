@@ -5,6 +5,7 @@ import { messages } from "../../i18n/messages";
 import { PageHeader } from "../../layout/PageHeader";
 import { useYearChoice, YearPicker } from "../academic-years/YearPicker";
 import { BellSettingsCard } from "./BellSettingsCard";
+import { SessionsCard } from "./SessionsCard";
 import { ShiftModeCard } from "./ShiftModeCard";
 import { ShiftsCard } from "./ShiftsCard";
 import { WorkingDaysCard } from "./WorkingDaysCard";
@@ -25,6 +26,7 @@ export function ScheduleStructurePage() {
       {(week.isError || bells.isError || choice.years.isError) && <Alert tone="error" message={messages.school.common.loadFailed} />}
       {week.data && <WorkingDaysCard week={week.data} onReload={() => void week.refetch()} />}
       <ShiftModeCard />
+      <SessionsCard />
       <Card className="page-card">
         <YearPicker id="structure-year" choice={choice} />
       </Card>

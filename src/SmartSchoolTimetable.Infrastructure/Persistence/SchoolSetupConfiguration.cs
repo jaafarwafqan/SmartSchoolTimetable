@@ -68,6 +68,41 @@ internal sealed class ShiftConfiguration : IEntityTypeConfiguration<Shift>
     }
 }
 
+/// <summary>R3 daily sessions: one optional plan per year; no row means a single session (the behaviour before R3).</summary>
+internal sealed class SessionPlanConfiguration : IEntityTypeConfiguration<SessionPlan>
+{
+    public void Configure(EntityTypeBuilder<SessionPlan> builder)
+    {
+        builder.ToTable("SessionPlans");
+        builder.HasKey(plan => plan.Id);
+        builder.HasIndex(plan => plan.AcademicYearId).IsUnique();
+        builder.HasOne<AcademicYear>().WithMany().HasForeignKey(plan => plan.AcademicYearId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<Shift>().WithMany().HasForeignKey(plan => plan.ShiftId).OnDelete(DeleteBehavior.Cascade);
+        builder.Property(plan => plan.System).HasConversion<int>();
+        builder.OwnsMany(plan => plan.Periods, period =>
+        {
+            period.ToTable("SessionPeriods");
+            period.WithOwner().HasForeignKey("SessionPlanId");
+            period.Property<long>("Id").ValueGeneratedOnAdd();
+            period.HasKey("Id");
+            period.Property(value => value.Session).HasConversion<int>();
+            period.Property(value => value.Kind).HasConversion<string>().HasMaxLength(16);
+            period.HasIndex("SessionPlanId", nameof(SessionPeriod.Session), nameof(SessionPeriod.Position)).IsUnique();
+        });
+        builder.Navigation(plan => plan.Periods).UsePropertyAccessMode(PropertyAccessMode.Field);
+        builder.OwnsMany(plan => plan.Days, day =>
+        {
+            day.ToTable("SessionDays");
+            day.WithOwner().HasForeignKey("SessionPlanId");
+            day.Property<long>("Id").ValueGeneratedOnAdd();
+            day.HasKey("Id");
+            day.Property(value => value.Session).HasConversion<int>();
+            day.HasIndex("SessionPlanId", nameof(SessionDay.Term), nameof(SessionDay.Day)).IsUnique();
+        });
+        builder.Navigation(plan => plan.Days).UsePropertyAccessMode(PropertyAccessMode.Field);
+    }
+}
+
 internal sealed class WorkingWeekConfiguration : IEntityTypeConfiguration<WorkingWeek>
 {
     public void Configure(EntityTypeBuilder<WorkingWeek> builder)

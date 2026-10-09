@@ -24,6 +24,7 @@ public static class SchedulingInputBuilder
         var week = await store.FirstOrDefaultAsync(store.Read<WorkingWeek>(), token) ?? WorkingWeek.CreateDefault();
         var days = week.Days;
         var shifts = await store.ListAsync(store.Read<Shift>().Where(shift => shift.AcademicYearId == yearId), token);
+        var sessions = await store.FirstOrDefaultAsync(store.Read<SessionPlan>().Where(plan => plan.AcademicYearId == yearId), token);
         var stages = await store.ListAsync(store.Read<Stage>().Where(stage => stage.AcademicYearId == yearId && !stage.IsArchived), token);
         var stageIds = stages.Select(stage => stage.Id).ToArray();
         var sections = await store.ListAsync(store.Read<Section>().Where(section => stageIds.Contains(section.StageId) && !section.IsArchived), token);
@@ -46,7 +47,7 @@ public static class SchedulingInputBuilder
             SchedulingInput.CurrentFormatVersion,
             yearId,
             days,
-            shifts.Select(shift => ShiftOf(shift, days)).ToArray(),
+            shifts.Select(shift => ShiftOf(shift, days, sessions)).ToArray(),
             sections.Select(section =>
             {
                 var stage = stageById[section.StageId];
@@ -86,14 +87,20 @@ public static class SchedulingInputBuilder
         && (teacher.ReleaseFrom is null || teacher.ReleaseFrom <= year.EndDate)
         && (teacher.ReleaseTo is null || teacher.ReleaseTo >= year.StartDate);
 
-    private static ShiftInput ShiftOf(Shift shift, IReadOnlyList<int> days)
+    private static ShiftInput ShiftOf(Shift shift, IReadOnlyList<int> days, SessionPlan? sessions)
     {
+        // Gaps where only ANOTHER session has a break (a gap the shift already breaks in adds nothing, so it keeps the hash).
+        var lessonRows = shift.Lessons().Select(item => item.Period.Position).ToArray();
+        var sessionBreaks = sessions is { System: not SessionSystem.OneSession } && sessions.ShiftId == shift.Id
+            ? sessions.BreaksAfterLessons().Where(lesson => lesson < lessonRows.Length && lessonRows[lesson] == lessonRows[lesson - 1] + 1).ToArray()
+            : [];
         var periods = shift.Periods;
         var hasLessons = periods.Any(period => period.Kind == PeriodKind.Lesson);
         static int Minutes(TimeOnly time) => time.Hour * 60 + time.Minute;
         return new ShiftInput(shift.Id, shift.Name, days.Select(day => new DayLessons(day, shift.LessonsOn(day))).ToArray(),
             hasLessons ? Minutes(periods[0].StartTime) : null,
             hasLessons ? Minutes(periods[^1].EndTime) : null,
-            periods.Select(period => new PeriodInput(period.Position, period.Kind.ToString(), Minutes(period.StartTime), Minutes(period.EndTime), period.StartBell, period.EndBell)).ToArray());
+            periods.Select(period => new PeriodInput(period.Position, period.Kind.ToString(), Minutes(period.StartTime), Minutes(period.EndTime), period.StartBell, period.EndBell)).ToArray(),
+            sessionBreaks.Length > 0 ? sessionBreaks : null);
     }
 }

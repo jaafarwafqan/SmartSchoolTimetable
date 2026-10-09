@@ -40,8 +40,8 @@ public static class GenerationEndpoints
             ApiResults.Ok(context, await service.CheckAsync(id, command, token)));
         timetables.MapPost("/{id:long}/edits", async (long id, EditedTimetableCommand command, HttpContext context, TimetableService service, CancellationToken token) =>
             ApiResults.From(context, await service.SaveEditAsync(id, command, token), value => Results.Created($"/api/v1/timetables/{value.Id}", value)));
-        timetables.MapGet("/{id:long}/export.xlsx", async (long id, HttpContext context, TimetableExportService service, CancellationToken token) =>
-            ApiResults.From(context, await service.ExcelAsync(id, token), file => Results.File(file.Content, file.ContentType, file.FileName)));
+        timetables.MapGet("/{id:long}/export.xlsx", async (long id, int? term, HttpContext context, TimetableExportService service, CancellationToken token) =>
+            ApiResults.From(context, await service.ExcelAsync(id, token, term ?? 1), file => Results.File(file.Content, file.ContentType, file.FileName)));
         timetables.MapPost("/{id:long}/approve", async (long id, ApproveTimetableCommand command, HttpContext context, TimetableService service, CancellationToken token) =>
             ApiResults.Ok(context, await service.ApproveAsync(id, command, token)));
         return endpoints;

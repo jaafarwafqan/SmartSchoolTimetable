@@ -96,11 +96,6 @@ internal sealed class CpSatModelBuilder
     private int ShiftLessons(long shiftId, int day) =>
         _shifts.TryGetValue(shiftId, out var shift) ? shift.LessonsByDay.FirstOrDefault(item => item.Day == day)?.Lessons ?? 0 : 0;
 
-    private int[] LessonPositions(long shiftId) =>
-        _shifts.TryGetValue(shiftId, out var shift) && shift.Periods is { Count: > 0 } periods
-            ? periods.Where(period => period.Kind == nameof(PeriodKind.Lesson)).OrderBy(period => period.Position).Select(period => period.Position).ToArray()
-            : [];
-
     /// <summary>Clock interval of lesson n in a shift (period rows; an estimate without rows, DECISIONS_PENDING #69).</summary>
     private (int Start, int End) Interval(long shiftId, int lesson)
     {
@@ -114,12 +109,8 @@ internal sealed class CpSatModelBuilder
         return (start + (lesson - 1) * EstimatedLessonMinutes, start + lesson * EstimatedLessonMinutes);
     }
 
-    /// <summary>Lessons n and n+1 can form a double only when no break row lies between them.</summary>
-    private bool Adjacent(long shiftId, int lesson)
-    {
-        var rows = LessonPositions(shiftId);
-        return lesson + 1 > rows.Length || rows[lesson] == rows[lesson - 1] + 1;
-    }
+    /// <summary>Lessons n and n+1 can form a double only when no break row lies between them (in any daily session, R3).</summary>
+    private bool Adjacent(long shiftId, int lesson) => !_shifts.TryGetValue(shiftId, out var shift) || shift.Adjacent(lesson);
 
     private void CreateVariables()
     {

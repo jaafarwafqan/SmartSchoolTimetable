@@ -22,8 +22,13 @@ type TimetableGridProps = {
   caption: string;
   /** Header of the row-label column. */
   corner: ReactNode;
-  /** One or two header rows; the last one has one entry per cell column. */
+  /** One or more header rows; the last one has one entry per cell column. */
   headerRows: GridColumnHeader[][];
+  /**
+   * Optional row headers for the header rows after the first (for example the clock row of each daily session). When
+   * given, the corner covers the first header row only.
+   */
+  headerRowLabels?: ReactNode[];
   rows: GridRow[];
   className?: string;
 };
@@ -34,7 +39,7 @@ type TimetableGridProps = {
  * End jump within the row; Enter or Space activates a cell that has an action. The grid scrolls inside its own
  * container only (never the page).
  */
-export function TimetableGrid({ caption, corner, headerRows, rows, className = "" }: TimetableGridProps) {
+export function TimetableGrid({ caption, corner, headerRows, headerRowLabels, rows, className = "" }: TimetableGridProps) {
   function onKeyDown(event: KeyboardEvent<HTMLTableElement>) {
     const cell = (event.target as HTMLElement).closest<HTMLElement>("[data-cell]");
     if (!cell) return;
@@ -78,7 +83,8 @@ export function TimetableGrid({ caption, corner, headerRows, rows, className = "
         <thead>
           {headerRows.map((headers, index) => (
             <tr key={index}>
-              {index === 0 && <th scope="col" rowSpan={headerRows.length}>{corner}</th>}
+              {index === 0 && <th scope="col" rowSpan={headerRowLabels ? 1 : headerRows.length}>{corner}</th>}
+              {index > 0 && headerRowLabels && <th scope="row" className="ui-tt-header-label">{headerRowLabels[index]}</th>}
               {headers.map((header) => (
                 <th key={header.key} scope={header.span && header.span > 1 ? "colgroup" : "col"} colSpan={header.span}>{header.label}</th>
               ))}

@@ -12,7 +12,7 @@ import { useFormFeedback } from "../../lib/useFormFeedback";
 import { weekdayLabel } from "../timetable-structure/weekdays";
 import { changedCount, moveOrSwap, push, redo, startHistory, undo, type History, type Slot } from "./editing";
 import { checkTimetable, useSaveEdit, type GridLesson, type Timetable, type TimetableCheck, type Violation } from "./timetableApi";
-import { cellFor, type Lookups, WeekGrid } from "./TimetableGrids";
+import { cellFor, type Lookups, type SessionView, WeekGrid } from "./TimetableGrids";
 
 const text = messages.school.timetable;
 const violationText = messages.school.violations;
@@ -67,6 +67,8 @@ type EditorProps = {
   format: Formatter;
   look: Lookups;
   lessonCount: number;
+  /** R3 daily sessions of the section's shift in the semester shown. */
+  sessions?: SessionView;
   onClose: () => void;
   onSaved: (versionId: number) => void;
 };
@@ -76,7 +78,7 @@ type EditorProps = {
  * keyboard (Enter on a cell) or from the slot list. Every step is checked at once by the independent verifier;
  * saving is refused while any hard rule is broken, and a save creates a new version (the parent is kept).
  */
-export function TimetableEditor({ timetable, sectionId, format, look, lessonCount, onClose, onSaved }: EditorProps) {
+export function TimetableEditor({ timetable, sectionId, format, look, lessonCount, sessions, onClose, onSaved }: EditorProps) {
   const [history, setHistory] = useState<History>(() => startHistory(timetable.lessons));
   const [selected, setSelected] = useState<Slot | null>(null);
   const [target, setTarget] = useState("");
@@ -153,7 +155,7 @@ export function TimetableEditor({ timetable, sectionId, format, look, lessonCoun
         </div>
       )}
       {section && (
-        <WeekGrid caption={look.sectionName(section.id)} days={days} shift={shift} lessonCount={lessonCount} format={format} look={look}
+        <WeekGrid caption={look.sectionName(section.id)} days={days} shift={shift} lessonCount={lessonCount} format={format} look={look} sessions={sessions}
           lessons={lessons.filter((lesson) => lesson.sectionId === section.id)} secondLine={teacherOf}
           cell={(lesson, day, number) => {
             const base = cellFor(lesson, day, number, format, look, teacherOf);

@@ -24,7 +24,7 @@ public sealed class GenerationApiTests
     /// Two sections of one stage with math 5 a week. With one teacher for both the school passes the validator but is
     /// infeasible (both sections must start at lesson 1, H3); with one teacher per section it is timetabled.
     /// </summary>
-    private static async Task<(ReferenceProtectionTests.School School, long YearId)> ReadySchoolAsync(TestHost host, int teachers = 2, bool assign = true)
+    internal static async Task<(ReferenceProtectionTests.School School, long YearId)> ReadySchoolAsync(TestHost host, int teachers = 2, bool assign = true)
     {
         var school = await ReferenceProtectionTests.SeedAsync(host);
         var ids = new List<long>();
@@ -52,13 +52,13 @@ public sealed class GenerationApiTests
         var yearId = long.Parse(school.Root.Split('/')[^1], System.Globalization.CultureInfo.InvariantCulture);
         return (school, yearId);
     }
-    private static async Task<JsonElement> JsonAsync(HttpResponseMessage response)
+    internal static async Task<JsonElement> JsonAsync(HttpResponseMessage response)
     {
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         return document.RootElement.Clone();
     }
 
-    private static async Task<JsonElement> WaitForEndAsync(TestHost host, long runId)
+    internal static async Task<JsonElement> WaitForEndAsync(TestHost host, long runId)
     {
         for (var attempt = 0; attempt < 300; attempt++)
         {
