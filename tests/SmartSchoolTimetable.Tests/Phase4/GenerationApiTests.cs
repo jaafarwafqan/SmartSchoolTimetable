@@ -170,6 +170,9 @@ public sealed class GenerationApiTests
             Assert.Equal(context.GetProperty("schoolName").GetString(), workbook.Worksheets.First().Cell(1, 1).GetString());
             var sectionSheet = workbook.Worksheets.Skip(1).First();
             Assert.Equal("اليوم", sectionSheet.Cell(5, 1).GetString());
+            // R1: lesson headers carry the 12-hour clock (the seeded shift starts at 08:00 with 40-minute lessons).
+            Assert.Equal("الحصة ١\n٨:٠٠ ص – ٨:٤٠ ص", sectionSheet.Cell(5, 2).GetString());
+            Assert.DoesNotContain(workbook.Worksheets.SelectMany(sheet => sheet.CellsUsed()), cell => System.Text.RegularExpressions.Regex.IsMatch(cell.GetString(), @"\b(1[3-9]|2[0-3]):\d\d\b"));
             Assert.Equal(5, sectionSheet.CellsUsed(cell => cell.GetString().StartsWith("الرياضيات", StringComparison.Ordinal)).Count());
         }
         await AssertApiErrorAsync(await host.Client.GetAsync("/api/v1/timetables/999999/export.xlsx"), ErrorCodes.NotFound);

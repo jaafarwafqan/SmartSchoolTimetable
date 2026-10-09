@@ -4,7 +4,7 @@ import { arabicCount } from "../src/lib/arabicCount";
 import { createFormatter, formatNumber } from "../src/lib/format";
 import { api, prepareSchool } from "./support/api";
 import { ApiServer } from "./support/apiServer";
-import { expectNoSeriousA11yViolations, expectNoTextOverlap, goToSection, setupOwner } from "./support/flows";
+import { expectNo24HourTimes, expectNoSeriousA11yViolations, expectNoTextOverlap, goToSection, setupOwner } from "./support/flows";
 
 // Owner model changes: M1 editable breaks (ADR 0026) and M2 lessons per day per stage (ADR 0027).
 const server = new ApiServer();
@@ -36,6 +36,7 @@ test("breaks are edited per shift and stages get their own lessons per day", asy
   const fourthLesson = preview.getByRole("row", { name: new RegExp(wizard.timing.lessonRow(arab(4))) });
   await expect(preview.getByRole("row")).toHaveCount(9); // header + 7 lessons + 1 break
   await expect(fourthLesson).toContainText(format.time("10:30"));
+  await expectNo24HourTimes(page, "wizard timing step"); // R1: the preview runs past noon («١:٣٠ م», never 13:30)
   await page.getByLabel(breaks.duration(arab(1))).selectOption("20");
   await expect(fourthLesson).toContainText(format.time("10:35"));
   await page.getByRole("button", { name: breaks.add }).click();

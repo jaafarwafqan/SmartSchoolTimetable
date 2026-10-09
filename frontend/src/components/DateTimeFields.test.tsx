@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ltrRuns } from "../i18n/isolate";
 import { messages } from "../i18n/messages";
 import { composeDate, DateField, splitDate } from "./DateField";
-import { composeTime, TimeField } from "./TimeField";
+import { composeTime, minuteChoices, TimeField } from "./TimeField";
 import { LtrText } from "./ui/ltr-text";
 import { fromDigits, toDigits } from "./ui/segment-input";
 
@@ -42,15 +42,25 @@ describe("DateField", () => {
 });
 
 describe("TimeField", () => {
-  it("is 24-hour, steps minutes by 5 and wraps hours", () => {
+  it("is 12-hour with ص/م, minutes in 5-minute steps, and keeps 24-hour values for the API", () => {
     const onChange = vi.fn();
     render(wrap(<TimeField id="first" label="البدء" value="23:55" onChange={onChange} />));
-    fireEvent.keyDown(screen.getByRole("textbox", { name: `البدء - ${time.minutes}` }), { key: "ArrowUp" });
-    expect(onChange).toHaveBeenLastCalledWith("23:00");
-    fireEvent.keyDown(screen.getByRole("textbox", { name: `البدء - ${time.hours}` }), { key: "ArrowUp" });
-    expect(onChange).toHaveBeenLastCalledWith("00:00");
-    expect(composeTime({ hours: 8, minutes: null })).toBe("08:");
+    const hour = screen.getByRole("combobox", { name: `البدء - ${time.hours}` });
+    const minute = screen.getByRole("combobox", { name: `البدء - ${time.minutes}` });
+    const meridiem = screen.getByRole("combobox", { name: `البدء - ${time.meridiem}` });
+    expect(hour).toHaveValue("11");
+    expect(meridiem).toHaveValue("pm");
+    fireEvent.change(meridiem, { target: { value: "am" } });
+    expect(onChange).toHaveBeenLastCalledWith("11:55");
+    fireEvent.change(hour, { target: { value: "12" } });
+    expect(onChange).toHaveBeenLastCalledWith("00:55");
+    fireEvent.change(minute, { target: { value: "5" } });
+    expect(onChange).toHaveBeenLastCalledWith("00:05");
+    expect(Array.from((minute as HTMLSelectElement).options).map((option) => option.value)).toEqual(["", ...minuteChoices(null).map(String)]);
+    expect(minuteChoices(46)).toContain(46);
+    expect(composeTime({ hour: 8, minute: null, meridiem: "am" })).toBe("");
     expect(screen.getByRole("group", { name: "البدء" })).toHaveAttribute("dir", "ltr");
+    expect(screen.getByRole("group", { name: "البدء" }).textContent).not.toMatch(/\b(1[3-9]|2[0-3])\b/);
   });
 
   it("converts between digit sets", () => {

@@ -35,6 +35,15 @@ public sealed class ExcelTimetableExporter : ITimetableExporter
         string Number(int value) => Digits(value.ToString(CultureInfo.InvariantCulture), header.ArabicIndicNumerals);
         string SectionName(long id) => sections.TryGetValue(id, out var section) ? $"{section.StageName} / {section.Label}" : string.Empty;
         var lessonCount = Math.Max(1, timetable.Sections.SelectMany(section => section.AllowedByDay).Select(day => day.Lessons).DefaultIfEmpty(1).Max());
+        var shifts = timetable.Shifts.ToDictionary(shift => shift.Id);
+        // Lesson clock times in the Iraqi 12-hour form (R1), from the section's shift; empty when unknown.
+        string Times(long? shiftId, int lesson) =>
+            shiftId is { } id && shifts.TryGetValue(id, out var shift) && shift.Lessons.FirstOrDefault(item => item.Number == lesson) is { } time
+                ? $"{Clock12.Format(time.StartMinute, header.ArabicIndicNumerals)} – {Clock12.Format(time.EndMinute, header.ArabicIndicNumerals)}"
+                : string.Empty;
+        string WithTimes(string label, long? shiftId, int lesson) => Times(shiftId, lesson) is { Length: > 0 } times ? $"{label}\n{times}" : label;
+        long? OnlyShift(IEnumerable<long> ids) => ids.Distinct().Take(2).ToArray() is [var single] ? single : null;
+        var masterShift = OnlyShift(timetable.Sections.Select(section => section.ShiftId));
 
         // Master: sections × (days × lessons).
         var master = AddSheet(workbook, MasterSheet, names);
@@ -47,7 +56,7 @@ public sealed class ExcelTimetableExporter : ITimetableExporter
             master.Cell(top, first).Value = DayNames.GetValueOrDefault(timetable.Days[dayIndex], string.Empty);
             master.Range(top, first, top, first + lessonCount - 1).Merge();
             for (var lesson = 1; lesson <= lessonCount; lesson++)
-                master.Cell(top + 1, first + lesson - 1).Value = Number(lesson);
+                master.Cell(top + 1, first + lesson - 1).Value = WithTimes(Number(lesson), masterShift, lesson);
         }
         StyleHeader(master.Range(top, 1, top + 1, 1 + timetable.Days.Count * lessonCount));
         var masterAt = timetable.Lessons.ToDictionary(lesson => (lesson.SectionId, lesson.Day, lesson.Lesson));
@@ -75,13 +84,14 @@ public sealed class ExcelTimetableExporter : ITimetableExporter
             var sheet = AddSheet(workbook, SectionName(section.Id), names);
             var lessons = timetable.Lessons.Where(lesson => lesson.SectionId == section.Id).ToArray();
             var count = Math.Max(1, section.AllowedByDay.Select(day => day.Lessons).DefaultIfEmpty(1).Max());
-            WeekSheet(sheet, header, SectionName(section.Id), timetable.Days, count, lessons, lesson => Teacher(lesson.TeacherId), Number);
+            WeekSheet(sheet, header, SectionName(section.Id), timetable.Days, count, lessons, lesson => Teacher(lesson.TeacherId), Number, section.ShiftId);
         }
         foreach (var teacher in timetable.Teachers)
         {
             var sheet = AddSheet(workbook, teacher.Name, names);
             var lessons = timetable.Lessons.Where(lesson => lesson.TeacherId == teacher.Id).ToArray();
-            WeekSheet(sheet, header, teacher.Name, timetable.Days, lessonCount, lessons, lesson => SectionName(lesson.SectionId), Number);
+            var teacherShift = OnlyShift(lessons.Select(lesson => sections.TryGetValue(lesson.SectionId, out var section) ? section.ShiftId : 0));
+            WeekSheet(sheet, header, teacher.Name, timetable.Days, lessonCount, lessons, lesson => SectionName(lesson.SectionId), Number, teacherShift);
         }
 
         using var stream = new MemoryStream();
@@ -98,12 +108,12 @@ public sealed class ExcelTimetableExporter : ITimetableExporter
         }
 
         void WeekSheet(IXLWorksheet sheet, TimetableDocumentHeader documentHeader, string title, IReadOnlyList<int> days, int count, GridLesson[] lessons,
-            Func<GridLesson, string> second, Func<int, string> number)
+            Func<GridLesson, string> second, Func<int, string> number, long? shiftId)
         {
             var first = WriteHeader(sheet, documentHeader, title, number);
             sheet.Cell(first, 1).Value = "اليوم";
             for (var lesson = 1; lesson <= count; lesson++)
-                sheet.Cell(first, 1 + lesson).Value = $"الحصة {number(lesson)}";
+                sheet.Cell(first, 1 + lesson).Value = WithTimes($"الحصة {number(lesson)}", shiftId, lesson);
             StyleHeader(sheet.Range(first, 1, first, 1 + count));
             var at = lessons.ToDictionary(lesson => (lesson.Day, lesson.Lesson));
             for (var dayIndex = 0; dayIndex < days.Count; dayIndex++)

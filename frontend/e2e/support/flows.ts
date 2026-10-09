@@ -66,10 +66,21 @@ export async function fillDate(scope: Page | Locator, label: string, iso: string
 }
 
 /** Types "HH:mm" into a TimeField. */
+/**
+ * R1: no time on the page is on a 24-hour clock. Arabic-Indic digits are converted first, because `\d` in the
+ * required pattern only matches ASCII digits and «١٣:٠٠» would otherwise slip through.
+ */
+export async function expectNo24HourTimes(page: Page, screen: string): Promise<void> {
+  const text = (await page.locator("main").innerText()).replace(/[٠-٩]/g, (digit) => String(digit.charCodeAt(0) - 0x0660));
+  expect(text.match(/\b(1[3-9]|2[0-3]):\d\d\b/g), `${screen} shows a 24-hour time`).toBeNull();
+}
+
+/** Sets a 12-hour TimeField from a 24-hour "HH:mm" value (hour 1–12, minute, ص/م selects). */
 export async function fillTime(scope: Page | Locator, label: string, value: string): Promise<void> {
-  const [hours, minutes] = value.split(":");
-  await scope.getByRole("textbox", { name: `${label} - ${timeParts.hours}`, exact: true }).fill(hours);
-  await scope.getByRole("textbox", { name: `${label} - ${timeParts.minutes}`, exact: true }).fill(minutes);
+  const [hours, minutes] = value.split(":").map(Number);
+  await scope.getByRole("combobox", { name: `${label} - ${timeParts.hours}`, exact: true }).selectOption(String(hours % 12 === 0 ? 12 : hours % 12));
+  await scope.getByRole("combobox", { name: `${label} - ${timeParts.minutes}`, exact: true }).selectOption(String(minutes));
+  await scope.getByRole("combobox", { name: `${label} - ${timeParts.meridiem}`, exact: true }).selectOption(hours < 12 ? "am" : "pm");
 }
 
 /** Add pattern rule: dialogs are centred (never anchored to an edge) and need no inner scrolling at 1280x720. */

@@ -55,6 +55,29 @@
   color: var(--color-ink-subtle);
 }
 
+/* 12-hour time field (R1): hour, minute and ص/م selects in reading order «٨:٠٠ ص». */
+.ui-time-field {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.ui-time-field .ui-select-control {
+  display: inline-block;
+}
+
+.ui-time-select {
+  inline-size: 4.75rem;
+  padding-inline-start: 0.625rem;
+  padding-inline-end: 1.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.ui-time-field .ui-select-chevron {
+  inset-inline-end: 0.375rem;
+}
+
 @media (pointer: coarse) {
   .ui-segmented {
     min-block-size: var(--touch-target-min);

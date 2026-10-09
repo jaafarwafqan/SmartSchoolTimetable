@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { messages } from "../src/i18n/messages";
 import { api, prepareSchool } from "./support/api";
 import { ApiServer } from "./support/apiServer";
-import { breakpoints, expectNoPageScrollX, expectNoSeriousA11yViolations, expectNoTextOverlap, setupOwner } from "./support/flows";
+import { breakpoints, expectNo24HourTimes, expectNoPageScrollX, expectNoSeriousA11yViolations, expectNoTextOverlap, setupOwner } from "./support/flows";
 
 const server = new ApiServer();
 const generation = messages.school.generation;
@@ -87,11 +87,14 @@ test("(4) generate a timetable with real progress, read it three ways and approv
     await page.keyboard.press("ArrowLeft");
     await expect(grid.locator("[data-cell=\"0:1\"] .ui-tt-cell")).toBeFocused();
 
+    await expectNo24HourTimes(page, "section timetable");
+    await expect(page.locator(".ui-tt-grid thead").first()).toContainText(" ص");
     await page.getByLabel(timetable.viewsLabel).selectOption("teacher");
     await expect(page.getByLabel(timetable.chooseTeacher)).toBeVisible();
     await expect(page.locator(".ui-tt-grid").first()).toBeVisible();
     await page.getByLabel(timetable.viewsLabel).selectOption("master");
     await expect(page.getByRole("table", { name: timetable.views.master })).toBeVisible();
+    await expectNo24HourTimes(page, "master timetable");
     await expectNoSeriousA11yViolations(page, "timetable viewer");
     for (const width of breakpoints) {
       await page.setViewportSize({ width, height: 900 });
