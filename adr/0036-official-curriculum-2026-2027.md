@@ -33,3 +33,10 @@ The owner supplied the Ministry of Education's official study plans for 2026-202
 ## Consequences
 - Open questions for the owner are in DECISIONS_PENDING #66–#68.
 - How to change: replace the JSON (bump `templateVersion` and the loader check), `SuggestedCurriculumTemplate`, `SuggestedCurriculumService`, `SuggestedCurriculumPanel`.
+
+## Addendum (2026-10-09): owner decisions #66–#68
+- The JSON was replaced by the owner's update (same name, `templateVersion` still 2). Every stage's counted rows now equal the printed total (30/30/30/30/30/31, 30/30/30, 30/30/33, 30/31/31), and no stage has `needsReview`.
+- الرابع الابتدائي is 30: الاجتماعيات is 2 lessons, with a note that the plan mentions a practical lesson and the school may edit it.
+- منهج جرائم حزب البعث is in الخامس العلمي and الخامس الأدبي only (optional, one lesson, on top of the official total).
+- Support for `needsReview` and `verificationNote` stays in the code and the panel for any future note.
+- Break lengths and lessons per day are the owner's choice; `presets.json` values are suggestions («مقترح»).

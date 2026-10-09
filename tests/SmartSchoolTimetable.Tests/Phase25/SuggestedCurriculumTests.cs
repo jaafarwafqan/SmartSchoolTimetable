@@ -27,13 +27,14 @@ public sealed class SuggestedCurriculumTests
     private static readonly string[] NoBranches = [];
     private static readonly long[] UnknownStage = [999L];
     private static readonly int[] NothingPlanned = [0, 0, 0, 0, 0, 0];
-    private static readonly int[] PrimaryTotals = [30, 30, 30, 31, 30, 31];
+    private static readonly int[] PrimaryTotals = [30, 30, 30, 30, 30, 31];
     private static readonly int[] SecondaryDefault = [30, 30, 30, 28, 28];
 
     private static readonly int[] SecondaryWithKurdishAndFrench = [32, 32, 32, 32, 32];
     private static readonly int[] FourthAndFifthOfficial = [30, 30, 30, 31];
     private static readonly int[] FourthAndFifthWithoutKurdish = [28, 28, 29, 30];
-    private static readonly string[] ReviewStages = ["الرابع الابتدائي", "الرابع العلمي"];
+    private static readonly string[] ReviewStages = [];
+    private static readonly string[] BaathStages = ["الخامس العلمي", "الخامس الأدبي"];
     private static readonly string[] OptionalSubjects = ["الحاسوب", "اللغة الفرنسية", "اللغة الكردية", "منهج جرائم حزب البعث"];
     private static readonly string[] AddedOnTop = ["الحاسوب", "اللغة الفرنسية", "منهج جرائم حزب البعث"];
     private static readonly HashSet<string> NoneChosen = [];
@@ -59,28 +60,19 @@ public sealed class SuggestedCurriculumTests
         Assert.Equal(PrintedTotals, template.Stages.Select(stage => (stage.Name, stage.StatedTotal)));
         Assert.All(template.Stages.SelectMany(stage => stage.Entries), entry => Assert.InRange(entry.Lessons, CurriculumEntry.MinWeeklyLessons, CurriculumEntry.MaxWeeklyLessons));
 
-        // Mandatory rows + Kurdish (optional but counted) = the printed total, except الرابع الابتدائي: 31 against 30.
+        // Mandatory rows + Kurdish (optional but counted) = the printed total in every stage (owner decision #66:
+        // الرابع الابتدائي is 30, الاجتماعيات 2).
         foreach (var stage in template.Stages)
         {
             var counted = stage.Entries.Where(entry => !entry.Optional || entry.Subject == "اللغة الكردية").Sum(entry => entry.Lessons);
             Assert.Equal(counted, stage.OfficialTotal());
             Assert.Equal(counted, stage.ComputedTotal);
-            if (stage.Name == "الرابع الابتدائي")
-            {
-                Assert.Equal((31, 30), (counted, stage.StatedTotal));
-                Assert.True(stage.NeedsReview);
-                Assert.False(stage.TotalMatchesPrinted);
-                Assert.False(string.IsNullOrWhiteSpace(stage.VerificationNote));
-            }
-            else
-            {
-                Assert.Equal(stage.StatedTotal, counted);
-                Assert.True(stage.TotalMatchesPrinted);
-            }
+            Assert.Equal(stage.StatedTotal, counted);
+            Assert.True(stage.TotalMatchesPrinted);
         }
-        // Flagged: الرابع الابتدائي (total) and الرابع العلمي (does منهج جرائم حزب البعث apply to the fifth too?).
+        // No stage carries a review question (#66-#68 decided); needsReview/verificationNote stay supported for later notes.
         Assert.Equal(ReviewStages, template.Stages.Where(stage => stage.NeedsReview).Select(stage => stage.Name));
-        Assert.All(template.Stages.Where(stage => stage.NeedsReview), stage => Assert.False(string.IsNullOrWhiteSpace(stage.VerificationNote)));
+        Assert.All(template.Stages, stage => Assert.Null(stage.VerificationNote));
 
         // Optional rows: Kurdish counts in the official total; French, computing and حزب البعث are added on top of it.
         var optional = template.Stages.SelectMany(stage => stage.Entries).Where(entry => entry.Optional).ToArray();
@@ -108,6 +100,30 @@ public sealed class SuggestedCurriculumTests
         Assert.Equal("اللغة العربية", template.Canonical("اللغة العربية (قراءتي)"));
         Assert.False(template.SameSubject("الجغرافية", "التاريخ"));
         Assert.Null(template.Canonical("مادة غير موجودة"));
+    }
+
+    [Fact]
+    public void BaathCurriculumIsAnOptionalFifthGradeSubjectOnly()
+    {
+        // Owner decision #67: one optional lesson, on top of the official total, in الخامس العلمي and الخامس الأدبي only.
+        var template = SuggestedCurriculumTemplate.Current;
+        Assert.Equal(BaathStages, template.Stages.Where(stage => stage.Entries.Any(entry => entry.Subject == "منهج جرائم حزب البعث")).Select(stage => stage.Name));
+        Assert.All(template.Stages.SelectMany(stage => stage.Entries).Where(entry => entry.Subject == "منهج جرائم حزب البعث"),
+            entry => Assert.Equal((1, true, false), (entry.Lessons, entry.Optional, entry.CountsInStatedTotal)));
+        Assert.DoesNotContain(template.Stages.Single(stage => stage.Name == "الرابع العلمي").Entries, entry => entry.Subject == "منهج جرائم حزب البعث");
+        Assert.DoesNotContain(template.Stages.Single(stage => stage.Name == "الرابع الأدبي").Entries, entry => entry.Subject == "منهج جرائم حزب البعث");
+    }
+
+    [Fact]
+    public void FourthPrimaryTotalsThirtyWithTwoSocialStudiesLessons()
+    {
+        // Owner decision #66: 31 was wrong; الاجتماعيات is 2 lessons with a note that the school may edit it.
+        var fourth = SuggestedCurriculumTemplate.Current.Stages.Single(stage => stage.Name == "الرابع الابتدائي");
+        Assert.Equal((30, 30, 30), (fourth.StatedTotal, fourth.ComputedTotal, fourth.OfficialTotal()));
+        var social = fourth.Entries.Single(entry => entry.Subject == "الاجتماعيات");
+        Assert.Equal((2, false), (social.Lessons, social.Optional));
+        Assert.False(string.IsNullOrWhiteSpace(social.Note));
+        Assert.False(fourth.NeedsReview);
     }
 
     [Theory]
@@ -193,9 +209,9 @@ public sealed class SuggestedCurriculumTests
         Assert.Equal((2, "official"), (preview.TemplateVersion, preview.Provenance.Status));
         Assert.Equal((false, "exists", "اللغة الإنجليزية"), preview.Subjects.Where(line => line.Name == "اللغة الإنكليزية").Select(line => (line.Optional, line.Action, line.ExistingName)).Single());
         Assert.Equal(PrimaryTotals, preview.Stages.Select(stage => stage.ResultingTotal));
-        Assert.Equal([false, false, false, true, false, false], preview.Stages.Select(stage => stage.NeedsReview));
-        Assert.Equal((30, 31), (preview.Stages[3].StatedTotal, preview.Stages[3].OfficialTotal));
-        Assert.NotNull(preview.Stages[3].VerificationNote);
+        Assert.All(preview.Stages, stage => Assert.False(stage.NeedsReview));
+        Assert.Equal((30, 30), (preview.Stages[3].StatedTotal, preview.Stages[3].OfficialTotal));
+        Assert.All(preview.Stages, stage => Assert.Null(stage.VerificationNote));
         // «اللغة العربية (قراءتي)» and «اللغة العربية» are one subject, as are «التربية الفنية والنشيد» and its alias.
         Assert.Single(preview.Subjects, line => line.Name == "اللغة العربية");
         Assert.DoesNotContain(preview.Subjects, line => line.Name == "اللغة العربية (قراءتي)");
@@ -273,7 +289,9 @@ public sealed class SuggestedCurriculumTests
         var preview = await ReadAsync<SuggestedCurriculumPlanDto>(await host.PostAsync($"{root}/curriculum/suggested/preview", new { }, token));
         Assert.Equal(SecondaryDefault, preview.Stages.Select(stage => stage.ResultingTotal));
         Assert.All(preview.Stages, stage => Assert.Equal((30, 30), (stage.StatedTotal, stage.OfficialTotal)));
-        Assert.Equal([false, false, false, true, false], preview.Stages.Select(stage => stage.NeedsReview));
+        Assert.All(preview.Stages, stage => Assert.False(stage.NeedsReview));
+        // منهج جرائم حزب البعث is a fifth-grade subject only: the fourth grades never list it.
+        Assert.All(preview.Stages, stage => Assert.DoesNotContain(stage.Entries, line => line.Subject == "منهج جرائم حزب البعث"));
         Assert.Equal(OptionalSubjects, preview.OptionalSubjects.Order());
         Assert.Contains(preview.Subjects, line => line is { Name: "اللغة الفرنسية", Optional: true, Included: false, InStatedTotal: false });
         Assert.Contains(preview.Subjects, line => line is { Name: "اللغة الكردية", Optional: true, Included: false, InStatedTotal: true });

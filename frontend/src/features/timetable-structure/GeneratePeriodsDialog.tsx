@@ -95,8 +95,8 @@ export function GeneratePeriodsDialog({ open, yearId, defaultStart, onClose, onG
         <Alert tone="error" message={feedback.error} />
         <div className="form-grid" key={`preset-${presetKey}`}>
           {presets.length > 0 && (
-            <Field id="periodPreset" label={presetText.presetsLabel}>
-              <Select id="periodPreset" value={presetKey} onChange={(event) => choosePreset(event.target.value)}
+            <Field id="periodPreset" label={presetText.presetsLabel} hint={presetText.presetsHint}>
+              <Select id="periodPreset" aria-describedby="periodPreset-hint" value={presetKey} onChange={(event) => choosePreset(event.target.value)}
                 options={[{ value: "", label: presetText.presetNone }, ...presets.map((item) => ({ value: item.key, label: item.name }))]} />
             </Field>
           )}

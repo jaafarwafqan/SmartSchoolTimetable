@@ -20,8 +20,8 @@ public sealed record SuggestedSubjectLineDto(string Name, string Action, string?
 public sealed record SuggestedEntryLineDto(string Subject, int Lessons, string Action, bool Optional, int? CurrentLessons, bool InStatedTotal, string? Note);
 
 /// <param name="StatedTotal">The total printed in the official plan.</param>
-/// <param name="OfficialTotal">Sum of the rows counted in the official total (mandatory + Kurdish); differs from
-/// <paramref name="StatedTotal"/> only where the source itself does (الرابع الابتدائي: 31 against 30).</param>
+/// <param name="OfficialTotal">Sum of the rows counted in the official total (mandatory + Kurdish); equals
+/// <paramref name="StatedTotal"/> in every stage of the current template.</param>
 /// <param name="SuggestedTotal">Sum of the enabled rows (mandatory + chosen optional).</param>
 /// <param name="ResultingTotal">The stage's planned lessons after applying.</param>
 /// <param name="VerificationNote">The source's question for the owner (Arabic data), shown but never blocking.</param>

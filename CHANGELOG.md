@@ -1,6 +1,10 @@
 # Changelog
 
 ## [Unreleased]
+### Phase 2.5 - template update with the owner's decisions (branch `phase-2-5-template-update`)
+- **Official template updated by the owner (#66–#68 decided):** الرابع الابتدائي totals 30 (الاجتماعيات 2, with a note); منهج جرائم حزب البعث moved from the fourth grades to الخامس العلمي/الخامس الأدبي (optional, one lesson, on top). Every stage now matches its printed total and no stage carries a review note; `needsReview`/`verificationNote` support stays.
+- **Period presets are labelled suggestions:** «قالب مقترح للحصص» with a hint that break lengths and lessons per day are the owner's choice.
+
 ### Phase 2.5 - school-type stage template guard
 - The saved school profile is now the authority for stage templates. Preview and apply reject a mismatched school type, an out-of-type grade, or an invalid/missing branch with `STAGE_NOT_IN_SCHOOL_TYPE`.
 - Changing school type from the stage-template panel saves the profile; existing stages are retained and active template stages outside the new type are listed for review.

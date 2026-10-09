@@ -46,14 +46,13 @@ test("(a) primary: six grades filled, then the daily suggestion makes every stag
   try {
     await openPanel(page);
     await expectNoSeriousA11yViolations(page, "suggested curriculum panel");
-    // الرابع الابتدائي: the rows add up to 31 against a printed 30; flagged with the source's note, never blocked.
+    // الرابع الابتدائي: 30 as printed (owner decision #66); no stage carries a review warning.
     const fourth = panel(page).locator(".suggested-stage", { hasText: "الرابع الابتدائي" });
-    await expect(fourth.getByText(suggested.review)).toBeVisible();
     await expect(fourth).toContainText(suggested.officialTotal("٣٠ حصة"));
-    await expect(fourth).toContainText(suggested.enabledTotal("٣١ حصة"));
-    await expect(fourth.locator(".suggested-note")).toContainText("31");
+    await expect(fourth).toContainText(suggested.enabledTotal("٣٠ حصة"));
+    await expect(panel(page).locator(".review-warning")).toHaveCount(0);
     await applySuggested(page);
-    const expected = [30, 30, 30, 31, 30, 31];
+    const expected = [30, 30, 30, 30, 30, 31];
     for (const [index, total] of expected.entries()) await expect(totals(page).nth(index)).toContainText(curriculum.plannedOf(arab(total), arab(35)));
     await expect(page.locator(".suggested-mark").first()).toHaveText(suggested.badge);
 
@@ -119,16 +118,19 @@ test("(b) intermediate 30/30/30, then French and computing ticked 34/34/32; (e) 
   }
 });
 
-test("(c) preparatory with both branches: الرابع العلمي carries the source's question; Kurdish counts in the official total", async ({ browser, page }) => {
+test("(c) preparatory with both branches: no review questions, حزب البعث only in the fifth; Kurdish counts in the official total", async ({ browser, page }) => {
   const server = await school_(browser, page, "curriculum-c", { schoolType: "preparatory", shiftMode: "morning", grades: preparatory() });
   try {
     await openPanel(page);
     await expect(panel(page).locator(".suggested-stage")).toHaveCount(6);
     const fourthScientific = panel(page).locator(".suggested-stage", { hasText: "الرابع العلمي" });
-    await expect(fourthScientific.getByText(suggested.review)).toBeVisible();
-    await expect(fourthScientific.locator(".suggested-note").first()).toContainText("حزب البعث");
-    for (const stage of ["الرابع الأدبي", "الخامس الأدبي", "السادس الأدبي"])
-      await expect(panel(page).locator(".suggested-stage", { hasText: stage }).locator(".review-warning")).toHaveCount(0);
+    await expect(panel(page).locator(".review-warning")).toHaveCount(0);
+    // منهج جرائم حزب البعث (owner decision #67): ticking it adds one lesson to the fifth grades only.
+    const fifthScientific = panel(page).locator(".suggested-stage", { hasText: "الخامس العلمي" });
+    await panel(page).getByRole("checkbox", { name: "منهج جرائم حزب البعث" }).check();
+    await expect(fifthScientific).toContainText(suggested.enabledTotal("٣٠ حصة")); // 29 without Kurdish + 1
+    await expect(fourthScientific).toContainText(suggested.enabledTotal("٢٨ حصة"));
+    await panel(page).getByRole("checkbox", { name: "منهج جرائم حزب البعث" }).uncheck();
     // Kurdish: optional, unticked → 28 against the official 30; ticked → exactly 30.
     await expect(fourthScientific).toContainText(suggested.enabledTotal("٢٨ حصة"));
     await panel(page).getByRole("checkbox", { name: "اللغة الكردية" }).check();
@@ -136,8 +138,8 @@ test("(c) preparatory with both branches: الرابع العلمي carries the 
     await expect(panel(page).locator(".optional-subject", { hasText: "اللغة الكردية" })).toContainText(suggested.optionalCounted);
     await expect(panel(page).locator(".optional-subject", { hasText: "اللغة الفرنسية" })).toContainText(suggested.optionalExtra);
     await applySuggested(page);
-    await expect(page.locator(".curriculum-table thead .review-warning")).toHaveCount(1);
-    await expectNoSeriousA11yViolations(page, "review warnings");
+    await expect(page.locator(".curriculum-table thead .review-warning")).toHaveCount(0);
+    await expectNoSeriousA11yViolations(page, "official plan without review warnings");
   } finally {
     await server.stop();
   }

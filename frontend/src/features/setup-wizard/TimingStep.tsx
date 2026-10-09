@@ -57,8 +57,8 @@ function ShiftBlock({ kind, plan, days, presets, yearId, suggestedBreak, onChang
     <section className="wizard-shift" aria-labelledby={`wizard-shift-${kind}`}>
       <h3 id={`wizard-shift-${kind}`}>{name}</h3>
       <div className="form-grid">
-        <Field id={`wizard-${kind}-preset`} label={messages.school.templates.presetsLabel}>
-          <Select id={`wizard-${kind}-preset`} value={plan.presetKey}
+        <Field id={`wizard-${kind}-preset`} label={messages.school.templates.presetsLabel} hint={messages.school.templates.presetsHint}>
+          <Select id={`wizard-${kind}-preset`} aria-describedby={`wizard-${kind}-preset-hint`} value={plan.presetKey}
             onChange={(event) => onChange({ ...planFromPreset(presets.find((item) => item.key === event.target.value), plan.firstStartTime), dayLessons: plan.dayLessons })}
             options={[...(plan.presetKey ? [] : [{ value: "", label: messages.school.templates.presetNone }]), ...presets.map((item) => ({ value: item.key, label: item.name }))]} />
         </Field>

@@ -231,6 +231,7 @@ Official study plan 2026-2027 (`phase-2-5-official-curriculum`, ADR 0036) replac
   - primary apply: totals 30/30/30/31/30/31; one «اللغة العربية» for «(قراءتي)» and the plain spelling; nine subjects; apply twice = 0 changes.
   - `OptionalSubjectsAndReviewWarningsFollowTheSchool`: default 30/30/30/28/28, an unticked optional subject is never created; Kurdish and French ticked 32 each.
   - `KurdishIsOptionalButCountsInTheOfficialTotal`: fourth/fifth grades 28/28/29/30 unticked, exactly the printed 30/30/30/31 ticked; one Kurdish subject; a third apply changes nothing; unticking never deletes.
+- Template update (`phase-2-5-template-update`, owner decisions #66–#68): every stage equals its printed total and none is flagged (`ReviewStages` is empty); primary totals 30/30/30/30/30/31; `BaathCurriculumIsAnOptionalFifthGradeSubjectOnly`; `FourthPrimaryTotalsThirtyWithTwoSocialStudiesLessons`. Playwright (a) checks 30/30 and no review warning; (c) checks no review warning and that ticking حزب البعث changes only the fifth grades.
 - Playwright `phase25-curriculum.spec.ts`: (a) الرابع الابتدائي review note and totals; (b) French and computing ticked → 34/34/32 and both rows in the curriculum tab, with axe; (c) the الرابع العلمي question, Kurdish ticked → 30; (d) seven stages "مطابق" (السادس العلمي 33 and السادس الأدبي 31 above the evening 30).
 
 ## Phase 3 test inventory (updated per checkpoint)

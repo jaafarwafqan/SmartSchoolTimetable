@@ -77,7 +77,8 @@ export const templates = {
   subjectsApplied: (subjects: string) => `تمت إضافة ${subjects}.`,
   noSuggestions: "لا توجد مواد مقترحة. أضف المراحل من القالب أولاً أو اختر نوع المدرسة.",
   selectAll: "تحديد الكل",
-  presetsLabel: "قالب جاهز للحصص",
+  presetsLabel: "قالب مقترح للحصص",
+  presetsHint: "اقتراح غير رسمي: مدد الفرصات وعدد الحصص اليومية تحددها أنت ويمكن تعديلها.",
   presetNone: "بدون قالب",
 } as const;
 
