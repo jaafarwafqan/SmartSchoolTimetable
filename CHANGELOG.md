@@ -3,6 +3,7 @@
 ## [Unreleased]
 ### Phase 2.5 - template update with the owner's decisions (branch `phase-2-5-template-update`)
 - **Official template updated by the owner (#66–#68 decided):** الرابع الابتدائي totals 30 (الاجتماعيات 2, with a note); منهج جرائم حزب البعث moved from the fourth grades to الخامس العلمي/الخامس الأدبي (optional, one lesson, on top). Every stage now matches its printed total and no stage carries a review note; `needsReview`/`verificationNote` support stays.
+- **Demo data generator removed (owner decision):** `Infrastructure/DemoData/` (DemoCatalog, DemoDataSeeder, DemoSchool) and the `--seed-demo-data`/`--dual-shift`/`--with-problems` command are gone; its three tests were removed and `Phase2/CalendarAndDemoDataTests.cs` became `CalendarTests.cs` (calendar tests only). Tests build synthetic data inside the test projects. README, DOMAIN, DATABASE and the owner test scripts say so.
 - **Period presets are labelled suggestions:** «قالب مقترح للحصص» with a hint that break lengths and lessons per day are the owner's choice.
 
 ### Phase 2.5 - school-type stage template guard

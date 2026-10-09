@@ -71,8 +71,6 @@ Migration `Phase2ETeachers` adds:
 Migration `Phase2FCalendar` adds `CalendarDays`:
 - `Title`, `NormalizedTitle`, `StartDate`, `EndDate` (check `EndDate >= StartDate`, indexed together), `Kind` (enum string), `AffectsSchedule`, `Version`.
 
-Demo databases created with `--seed-demo-data` use exactly this schema (migrated on creation) in a separate file.
-
 Migration `Phase25BDayLessonsShiftModeSetup` (2.5B) adds:
 - `Shifts.Kind` (`Morning`, `Evening` or `Other`; existing rows get `Other`).
 - `ShiftDayLessons`: `ShiftId`, `Day`, `Lessons`, unique per shift and day. Only days that differ from the shift's lesson count are stored (ADR 0020).

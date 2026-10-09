@@ -9,7 +9,7 @@ H = "src/SmartSchoolTimetable.Application/Scheduling/SchedulingInputHash.cs"
 W = "src/SmartSchoolTimetable.Application/Workload/WorkloadService.cs"
 M = "src/SmartSchoolTimetable.Infrastructure/Migrations/20261005192744_Phase3EWorkloadWizardStep.cs"
 E = "src/SmartSchoolTimetable.Api/Endpoints/Phase3Endpoints.cs"
-VAL = "FullyQualifiedName~PreSolveValidator|FullyQualifiedName~ValidatorProperty|FullyQualifiedName~ReadinessTests|FullyQualifiedName~DemoData"
+VAL = "FullyQualifiedName~PreSolveValidator|FullyQualifiedName~ValidatorProperty|FullyQualifiedName~ReadinessTests"
 
 MUTANTS = [
     ("M01 shortage arithmetic", V, 118, "r > a ? r - a : null", "r > a ? r - a + 1 : null", VAL),
@@ -26,7 +26,7 @@ MUTANTS = [
     ("M12 availability ignores max per week", A, 39, "Math.Min(byDay, maxPerWeek ?? int.MaxValue)", "byDay", VAL + "|FullyQualifiedName~WorkloadTests"),
     ("M13 hash: teachers not sorted", H, 43, "OrderBy(teacher => teacher.Id)", "AsEnumerable()", "FullyQualifiedName~PreSolveValidator|FullyQualifiedName~SchedulingInputHash|FullyQualifiedName~ReadinessTests"),
     ("M14 hash: NotHashed ignored", H, 63, "member.IsDefined(typeof(NotHashedAttribute), inherit: true)", "false", "FullyQualifiedName~PreSolveValidator|FullyQualifiedName~SchedulingInputHash|FullyQualifiedName~ReadinessTests"),
-    ("M15 suggester ignores the teacher limit", W, 193, ">= entry.WeeklyLessons", ">= 0", "FullyQualifiedName~AssignmentSuggester|FullyQualifiedName~DemoData"),
+    ("M15 suggester ignores the teacher limit", W, 193, ">= entry.WeeklyLessons", ">= 0", "FullyQualifiedName~AssignmentSuggester"),
     ("M16 migration mask shift wrong", M, 15, "<< 1", "<< 2", "FullyQualifiedName~Phase3E|FullyQualifiedName~WizardStepMigration|FullyQualifiedName~SetupWizard|FullyQualifiedName~Migration"),
     ("M18 migration Down keeps the workload bit", M, 31, '("CompletedMask" & ~384)', '("CompletedMask" & ~256)', "FullyQualifiedName~WizardStepMigration"),
     ("M17 readiness endpoint without session", E, 60, 'MapOwnerGroup("/academic-years/{yearId:long}/readiness")', 'MapGroup("/api/v1/academic-years/{yearId:long}/readiness")', "FullyQualifiedName~ReadinessTests"),
