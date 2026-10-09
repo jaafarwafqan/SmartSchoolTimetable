@@ -89,3 +89,15 @@ There was no database constraint on the row count, so there is no migration.
 **Screenshots viewed:**
 - The generate-periods dialog at 1280×720 (it first overflowed by 83 px and was compacted).
 - The breaks editor at 375 px and 1440 px.
+
+## Gates at `phase-4g` (R1 + R2)
+
+| Gate | Result |
+|---|---|
+| `dotnet build -c Release` | 0 warnings, 0 errors |
+| `dotnet test -c Release` | 298 passed, 4 skipped (the performance category) |
+| ESLint and Stylelint (`npm run lint`) | clean |
+| Vitest | 107 passed (28 files) |
+| Playwright with axe | 23 passed (full suite) |
+| Published executable (`SmartSchoolTimetable-20261009-234213`) | auth flow, `phase25-model` (12-hour timing step, breaks) and `phase4-generation` (viewers with the 12-hour check): 4 passed |
+| Launcher, on a temporary database | the server answered, first-run setup shown, page right-to-left, temp database created, real database unchanged |
