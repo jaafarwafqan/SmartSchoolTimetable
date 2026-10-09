@@ -56,7 +56,7 @@ Results from the last full run, before `phase-4f`:
 - No run proved optimality within its limit.
 - The deterministic mode (one worker) is slow: 12/20 found its first timetable after 34.7 s, and 24/40 found none in 60 deterministic units (about 196 s of wall time).
 
-## 5. Decisions to confirm (docs/DECISIONS_PENDING.md #69–#77)
+## 5. Decisions (docs/DECISIONS_PENDING.md #69–#77): all approved by the owner on 2026-10-09
 - Lesson time estimate when a shift has no period rows.
 - H9 cap max(2, ⌈n ÷ days⌉).
 - Pairs never cross a break; S2 is counted per shift.
@@ -76,9 +76,11 @@ Results from the last full run, before `phase-4f`:
   - Drag and drop is not provided; editing is by choosing and the keyboard, which the prompt allows.
   - Moves are within one section only.
 - **Not verified:**
-  - `تشغيل البرنامج.bat` itself was not executed, because it uses the real database location. Its content was written by the script, and the executable it starts was verified.
   - The printed output was checked through print-media emulation, not on paper.
-  - The first run of `Publish-Release.ps1` failed at the publish step, cause not identified. A direct publish and the second run succeeded.
+  - The launcher's browser step was not observed on screen. It is the same `start` command at the verified port.
+- **Investigated** (section 9):
+  - The first `Publish-Release.ps1` failure did not reproduce in 6 attempts. The script now keeps a full log, retries once on download failures, and explains every failure in Arabic.
+  - The launcher had a real bug, found by running it. It is fixed and verified on a temporary database.
 - **Risks:**
   - Timetable quality and feasibility depend on the owner's data.
   - H3 packing (lessons from lesson 1 with no gaps) makes some small or unusual curricula infeasible. The diagnostics explain those cases.
@@ -114,8 +116,71 @@ Results from the last full run, before `phase-4f`:
   ```
 - **Check the published folder:** set `$env:SST_RELEASE_EXE` to the folder's `SmartSchoolTimetable.Api.exe`, then run `npx playwright test e2e/phase4-generation.spec.ts` in `frontend`.
 
-## 8. Files left for the owner (not touched or not committed)
-- `frontend/src/features/generation/GenerationPage.tsx.tmp`: a stray copy I created by mistake. It is not committed and should be deleted once you confirm.
-- `artifacts/release/` (ignored by git): the published folder `SmartSchoolTimetable-20261009-130332`, plus a partial folder from the first failed script run.
-- `%TEMP%\claude\sst-publish-probe`: a probe publish made outside the repository.
-- `design-system/`, `temp_check/`, `.kilo/`, `.claude/`, `spikes/`: untouched.
+## 8. Files
+- **Deleted on the owner's instruction (2026-10-09), and nothing else:**
+  - `frontend/src/features/generation/GenerationPage.tsx.tmp`;
+  - `artifacts/release/SmartSchoolTimetable-20261009-130155` (it was empty).
+- **In `artifacts/release/`** (ignored by git; nothing deleted):
+  - `SmartSchoolTimetable-20261009-140917`: **the current folder, with the fixed launcher.** Use this one.
+  - `SmartSchoolTimetable-20261009-130332` and `-140428`: older builds whose launcher has the bug from §9. Do not hand them out.
+  - `*.publish.log`: the full publish logs.
+- **Outside the repository** (all under `%TEMP%\claude\`; nothing deleted):
+  - `sst-publish-probe`: the probe publish;
+  - `sst-repro-*`: three clean-state reproductions;
+  - `sst-inrepo-*`: the in-repository replica logs;
+  - `sst-errors-*`: the error-path tests;
+  - `sst-launcher-*` and `sst-bat-probe*`: the launcher tests and probes.
+- **Untouched:** `design-system/`, `temp_check/`, `.kilo/`, `.claude/`, `spikes/`.
+
+## 9. Release script and launcher investigation (2026-10-09)
+
+**The first publish failure.** The original output is lost, because the command kept only its last 6 lines and the folder `...-130155` was empty. The only distinguishing fact is that the NuGet cache shows the win-x64 runtime packs (`microsoft.netcore.app.runtime.win-x64`, `microsoft.aspnetcore.app.runtime.win-x64` and `microsoft.windowsdesktop.app.runtime.win-x64` 9.0.20) created at 13:01:59, four seconds into that run. It was the first publish on this computer that needed them.
+
+Reproductions (all logs kept):
+
+| Attempts | Conditions | Result |
+|---|---|---|
+| 3 | Fresh `git archive` extracts, each with a new empty NuGet cache, a non-RID Release build, then the script (`sst-repro-20261009-133632`) | 3 of 3 succeeded |
+| 3 | In-repository replicas: `dotnet restore` back to the non-RID state, a new empty NuGet cache, the original `dotnet publish` command, with VS Code's C# Dev Kit open and the owner's server running (`sst-inrepo-*`) | 3 of 3 succeeded, in 66–80 s |
+
+**Conclusion.** The root cause is not determinable from the evidence left. A cold cache, a fresh tree, Dev Kit and a running server do not reproduce it. The most likely cause is a transient failure while downloading the runtime packs for the first time, but that is not proven.
+
+**Changes to `tools/Publish-Release.ps1`:**
+- The complete `dotnet publish` output always goes to `<folder>.publish.log`.
+- On a NuGet or network download failure the publish is retried once automatically.
+- Every failure ends with an Arabic message: the likely cause, the action to take, the log path, the exit code and the first error lines.
+
+  | Cause | Detected by |
+  |---|---|
+  | locked file | `being used by another process`, `EBUSY`, `MSB3021` |
+  | download failure | `NU1301` and others |
+  | frontend build failure | `npm ERR!`, `MSB3073` |
+  | unknown | anything else |
+
+- Before publishing, the script warns in Arabic when the app is running from the source folder.
+- An existing output folder is refused with an Arabic message.
+
+Each error path was exercised in its own temporary extract (`sst-errors-*`):
+
+| Case | Simulated by | Result |
+|---|---|---|
+| Frontend | a TypeScript error | the frontend hint, with the two `TS` errors including file and line |
+| Locked file | `wwwroot\index.html` held open with no sharing | the locked-file hint |
+| Network | an unreachable HTTPS package source | the retry notice, then the network hint with `NU1301` |
+
+**Launcher bug, found by running it.** The launcher started `SmartSchoolTimetable.Api.exe` by bare name. With the Windows setting `NoDefaultCurrentDirectoryInExePath=1`, which was set in the session where I ran the tests, cmd does not search the current folder and replied "'SmartSchoolTimetable.Api.exe' is not recognized". Every line before it ran correctly, as traced with `echo on`.
+
+**Fix.** The launcher now:
+- calls `"%~dp0SmartSchoolTimetable.Api.exe"` by full path;
+- forwards its arguments (`%*`), so the database path or port can be passed;
+- takes an optional port `SST_PORT` (default 5080, and the browser opens on the same port);
+- skips the browser when `SST_NO_BROWSER` is set, for unattended checks;
+- pauses with an Arabic message if the server exits with an error.
+
+**Launcher verification** on folder `-140917`, port 5099, with `--Database:Path=<new temp folder>` on the command line. The test was run with `NoDefaultCurrentDirectoryInExePath=1` and again with it cleared, and both runs gave the same results:
+- The server answered `bootstrap` with `setupRequired = true`.
+- `/` returned 200 with `lang="ar" dir="rtl"`.
+- The temp database was created.
+- The server's own command line showed the temp path and port.
+- `%LOCALAPPDATA%\SmartSchoolTimetable\timetable.db` was byte-identical before and after (hash and write time).
+- Only the test's own server process was stopped.

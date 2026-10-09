@@ -27,7 +27,13 @@ The owner rules say no backup is ever deleted and no file is deleted without con
 - **Release folder** (`tools/Publish-Release.ps1`):
   - `dotnet publish` produces a self-contained win-x64 build with the frontend in `wwwroot`.
   - The script writes it to a new timestamped folder under `artifacts/release/` (ignored by git) and refuses an existing folder.
-  - It adds `تشغيل البرنامج.bat`, which starts the server on 127.0.0.1:5080 and opens the browser, and `اقرأني.txt` with Arabic instructions.
+  - It adds `اقرأني.txt` with Arabic instructions and `تشغيل البرنامج.bat`. The launcher:
+    - starts the server on 127.0.0.1:5080 and opens the browser;
+    - calls the server by its full path (`%~dp0`), so it works even with `NoDefaultCurrentDirectoryInExePath`;
+    - forwards its arguments and takes an optional `SST_PORT`;
+    - skips the browser when `SST_NO_BROWSER` is set;
+    - pauses with an Arabic message if the server exits with an error.
+  - The script keeps the full publish log, retries once on a download failure, and ends every failure with an Arabic message saying the cause and the action (PHASE4_REPORT §9).
 - **Verification:**
   - Playwright can run the published `.exe` (`SST_RELEASE_EXE`) on temporary databases.
   - The batch file itself is not run by tests, because it uses the real database location.

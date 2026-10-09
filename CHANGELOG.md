@@ -41,6 +41,12 @@
   - The published executable passed the auth and Phase 4 Playwright scenarios on temporary databases (`SST_RELEASE_EXE`).
   - The settings screenshot was re-baselined after viewing it; the suggested backup folder is masked because it contains the machine's user path.
   - New documents: `docs/USER_GUIDE_AR.md` and `docs/OWNER_TEST_SCRIPT_PHASE4.md` (25 steps).
+- **Before final (owner review, 2026-10-09):**
+  - Decisions #69–#77 approved.
+  - The two files the owner named were deleted.
+  - The first publish failure was investigated (6 reproductions, none failed; root cause not determinable, PHASE4_REPORT §9).
+  - `Publish-Release.ps1` now keeps a full log, retries once on download failures, and gives Arabic, actionable errors. All three error paths were verified.
+  - Launcher bug fixed: the server is now called by full path, which works under `NoDefaultCurrentDirectoryInExePath`. The launcher also gains argument forwarding, `SST_PORT`, `SST_NO_BROWSER` and an Arabic message on failure. It was verified on a temporary database, and the real database was unchanged.
 - **Tags:** M1–M4 were built and verified together on one working tree, so they are one commit tagged `phase-4d`; there are no separate `phase-4a`–`phase-4c` tags.
 - **Tests:**
   - .NET: 284 passed, 4 performance tests skipped by default.
