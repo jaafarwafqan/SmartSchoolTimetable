@@ -79,6 +79,12 @@ public static class ApiErrorCodes
             [ErrorCodes.SolverFailed] = StatusCodes.Status500InternalServerError,
             [ErrorCodes.TimetableVerificationFailed] = StatusCodes.Status500InternalServerError,
             [ErrorCodes.TimetableHasViolations] = StatusCodes.Status422UnprocessableEntity,
+            [ErrorCodes.BackupPathInvalid] = StatusCodes.Status422UnprocessableEntity,
+            [ErrorCodes.BackupFileExists] = StatusCodes.Status409Conflict,
+            [ErrorCodes.BackupFailed] = StatusCodes.Status500InternalServerError,
+            [ErrorCodes.RestoreFileInvalid] = StatusCodes.Status422UnprocessableEntity,
+            [ErrorCodes.RestoreIncompatible] = StatusCodes.Status422UnprocessableEntity,
+            [ErrorCodes.RestoreConfirmationRequired] = StatusCodes.Status422UnprocessableEntity,
 
             [ErrorCodes.RecordInUse] = StatusCodes.Status409Conflict,
             [ErrorCodes.CurrentYearRequired] = StatusCodes.Status409Conflict,

@@ -43,7 +43,8 @@ test("account screens pass axe and keep their layout at 375, 768, 1024 and 1440 
 
   await goToSection(page, messages.school.nav.settings);
   await expectNoSeriousA11yViolations(page, "settings");
-  await expectBreakpointScreenshots(page, "settings");
+  // The suggested backup folder is under the machine's user profile: masked so the baseline does not depend on it.
+  await expectBreakpointScreenshots(page, "settings", [page.locator("#backup-folder")]);
 
   await logout(page);
   await expectNoSeriousA11yViolations(page, "login");

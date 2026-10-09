@@ -8,7 +8,7 @@ import { calendar } from "./calendar";
 import { curriculum, daily, stageCards, suggested, templates } from "./curriculum";
 import { wizard } from "./wizard";
 import { orphanOnSave, readiness, requiredResource, resources, schedulingProfile, specializations, workload } from "./phase3";
-import { generation, timetable, violations } from "./phase4";
+import { backup, generation, timetable, violations } from "./phase4";
 
 export const school = {
   nav: {
@@ -256,4 +256,5 @@ export const school = {
   generation,
   timetable,
   violations,
+  backup,
 } as const;

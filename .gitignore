@@ -19,3 +19,6 @@ src/SmartSchoolTimetable.Api/wwwroot/
 
 # TypeScript incremental build state (tsc -b).
 frontend/tsconfig.tsbuildinfo
+
+# Ready-to-run folders built by tools/Publish-Release.ps1 (never committed).
+artifacts/

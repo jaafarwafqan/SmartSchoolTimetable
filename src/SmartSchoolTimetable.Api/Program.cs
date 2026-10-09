@@ -87,6 +87,7 @@ builder.Services.AddSingleton<SmartSchoolTimetable.Application.Generation.Genera
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Generation.GenerationService>();
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Generation.TimetableService>();
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Generation.TimetableExportService>();
+builder.Services.AddScoped<SmartSchoolTimetable.Application.Backup.BackupService>();
 builder.Services.AddHostedService<GenerationWorker>();
 builder.Services.AddLocalInfrastructure(
     databasePath,
@@ -131,6 +132,7 @@ app.MapWorkloadEndpoints();
 app.MapReadinessEndpoints();
 app.MapGenerationEndpoints();
 app.MapTimetableEndpoints();
+app.MapBackupEndpoints();
 app.MapFallback(async (HttpContext context) =>
 {
     if (context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))

@@ -366,3 +366,8 @@
     print-color-adjust: exact;
   }
 }
+/* ---------- Backup section (M6) ---------- */
+.settings-subtitle {
+  margin: 0;
+  font-size: var(--text-lg);
+}

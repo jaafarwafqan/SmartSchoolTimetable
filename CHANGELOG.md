@@ -32,6 +32,15 @@
   - Paper is A4 landscape for the master view (named page) and A4 portrait for a section or teacher, right to left, with subject colours kept. The owner saves a PDF from the print dialog.
   - «تصدير إلى إكسل»: `GET /api/v1/timetables/{id}/export.xlsx` (ClosedXML 0.105.1). It contains the master sheet plus one sheet per section and per teacher, right to left, with Arabic headers, light subject fills and A4 page setup.
   - Tested by opening the workbook in the API test and by print-media emulation and a download in Playwright.
+- **M6 `phase-4f` backup, restore and the ready-to-run folder (ADR 0042):**
+  - Settings → «النسخ الاحتياطي والاستعادة».
+  - A backup is `VACUUM INTO` a new timestamped file in a folder the owner types. It never overwrites a file.
+  - A restore needs two confirmations and a valid file of this app with known migrations. It takes an automatic `pre-restore` backup next to the database, copies with SQLite's online backup API (nothing is deleted), migrates, and signs the owner out.
+  - New error codes: `BACKUP_PATH_INVALID`, `BACKUP_FILE_EXISTS`, `BACKUP_FAILED`, `RESTORE_FILE_INVALID`, `RESTORE_INCOMPATIBLE` and `RESTORE_CONFIRMATION_REQUIRED`.
+  - `tools/Publish-Release.ps1` builds a self-contained win-x64 folder (196 MB) under `artifacts/release/`, which git ignores, with `تشغيل البرنامج.bat` and `اقرأني.txt`.
+  - The published executable passed the auth and Phase 4 Playwright scenarios on temporary databases (`SST_RELEASE_EXE`).
+  - The settings screenshot was re-baselined after viewing it; the suggested backup folder is masked because it contains the machine's user path.
+  - New documents: `docs/USER_GUIDE_AR.md` and `docs/OWNER_TEST_SCRIPT_PHASE4.md` (25 steps).
 - **Tags:** M1–M4 were built and verified together on one working tree, so they are one commit tagged `phase-4d`; there are no separate `phase-4a`–`phase-4c` tags.
 - **Tests:**
   - .NET: 284 passed, 4 performance tests skipped by default.

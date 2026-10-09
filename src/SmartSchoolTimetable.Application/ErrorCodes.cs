@@ -83,4 +83,10 @@ public static class ErrorCodes
     public const string GenerationNotReady = "GENERATION_NOT_READY";
     public const string TimetableVerificationFailed = "TIMETABLE_VERIFICATION_FAILED";
     public const string TimetableHasViolations = "TIMETABLE_HAS_VIOLATIONS";
+    public const string BackupPathInvalid = "BACKUP_PATH_INVALID";
+    public const string BackupFileExists = "BACKUP_FILE_EXISTS";
+    public const string BackupFailed = "BACKUP_FAILED";
+    public const string RestoreFileInvalid = "RESTORE_FILE_INVALID";
+    public const string RestoreIncompatible = "RESTORE_INCOMPATIBLE";
+    public const string RestoreConfirmationRequired = "RESTORE_CONFIRMATION_REQUIRED";
 }
