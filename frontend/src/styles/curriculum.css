@@ -509,6 +509,17 @@
 }
 
 /* Workload matrix (Phase 3 §4): a teacher chooser per cell; empty cells are marked with an icon and text. */
+.workload-matrix {
+  display: grid;
+  gap: 1rem;
+  inline-size: 100%;
+  min-inline-size: 0;
+}
+
+.workload-matrix > .ui-table-container {
+  inline-size: 100%;
+}
+
 .workload-table .ui-select-control {
   min-inline-size: 10rem;
 }

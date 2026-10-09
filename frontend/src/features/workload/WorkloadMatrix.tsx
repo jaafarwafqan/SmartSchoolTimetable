@@ -107,7 +107,7 @@ export function WorkloadMatrix({ yearId, loads }: { yearId: number; loads: reado
 
   const stageOptions = data.stages.map((item) => ({ value: String(item.stageId), label: text.stageOption(item.stageName, format.number(item.assignedCells), format.number(item.totalCells)) }));
   return (
-    <div className="form-stack">
+    <div className="workload-matrix">
       <div className="list-toolbar">
         <Field id="workload-stage" label={text.stage}>
           <Select id="workload-stage" value={String(stage?.stageId ?? "")} options={stageOptions} onChange={(event) => { feedback.reset(); setStageId(Number(event.target.value)); }} />

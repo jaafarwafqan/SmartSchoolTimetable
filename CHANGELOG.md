@@ -1,6 +1,11 @@
 # Changelog
 
 ## [Unreleased]
+### Phase 2.5 - school-type stage template guard
+- The saved school profile is now the authority for stage templates. Preview and apply reject a mismatched school type, an out-of-type grade, or an invalid/missing branch with `STAGE_NOT_IN_SCHOOL_TYPE`.
+- Changing school type from the stage-template panel saves the profile; existing stages are retained and active template stages outside the new type are listed for review.
+- Added API coverage for all four Iraqi school structures, invalid stage requests, profile type changes, and retained stages.
+
 ### Phase 2.5 - official study plan 2026-2027 (branch `phase-2-5-official-curriculum`)
 - **The curriculum template is now the Ministry's official plan 2026-2027** (`iraq-curriculum.official-2026-2027.json`, template version 2; ADR 0036). It replaces the unverified `iraq-curriculum.suggested.json`.
 - **Optional subjects** start unticked and are never created unless ticked: اللغة الكردية (counted in the official total), اللغة الفرنسية, الحاسوب and منهج جرائم حزب البعث (added on top).

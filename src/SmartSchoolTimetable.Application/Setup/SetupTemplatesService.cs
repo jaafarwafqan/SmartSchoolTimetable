@@ -11,10 +11,12 @@ public sealed record StageTemplateGradeInput(string? GradeKey, IReadOnlyList<str
 
 public sealed record StageTemplateCommand(string? SchoolType, IReadOnlyList<StageTemplateGradeInput>? Grades);
 
-/// <param name="Action">create, exists (kept as is) or notApplicable (not part of the school type).</param>
+/// <param name="Action">create or exists (kept as is).</param>
 public sealed record StagePlanLineDto(string Key, string Name, string Action, int ExistingSections, int SectionsToAdd);
 
 public sealed record StagePlanDto(IReadOnlyList<StagePlanLineDto> Lines, int Changes);
+
+public sealed record OutOfTypeStageDto(long Id, string Name, int Version);
 
 public sealed record SubjectTemplateCommand(IReadOnlyList<string>? Names);
 
@@ -38,19 +40,32 @@ public sealed class SetupTemplatesService(IDataStore store, StagesSectionsServic
     {
         ArgumentNullException.ThrowIfNull(command);
         var input = new InputErrors();
-        var schoolType = input.Option<SchoolType>(command.SchoolType, "SchoolType");
+        SchoolType? requestedSchoolType = command.SchoolType is null
+            ? null
+            : input.Option<SchoolType>(command.SchoolType, nameof(command.SchoolType));
         if (input.Any)
             return input.ToResult<StagePlanDto>();
         if (!await store.AnyAsync(store.Query<AcademicYear>().Where(year => year.Id == yearId), token))
             return OperationResult.Failure<StagePlanDto>(ErrorCodes.NotFound);
-        var plans = await PlanStagesAsync(yearId, schoolType, command.Grades ?? [], token);
+        var profile = await store.FirstOrDefaultAsync(store.Query<SchoolProfile>(), token);
+        if (profile is null)
+            return OperationResult.Failure<StagePlanDto>(ErrorCodes.SetupRequired);
+        if (requestedSchoolType is { } requested && requested != profile.SchoolType)
+            return OperationResult.Failure<StagePlanDto>(ErrorCodes.StageNotInSchoolType);
+
+        var catalog = TemplateCatalog.Current;
+        var grades = command.Grades ?? [];
+        if (!AreStagesAllowed(catalog, profile.SchoolType, grades))
+            return OperationResult.Failure<StagePlanDto>(ErrorCodes.StageNotInSchoolType);
+
+        var plans = await PlanStagesAsync(yearId, profile.SchoolType, grades, token);
         var preview = new StagePlanDto(plans.Select(plan => plan.Line).ToArray(), plans.Count(plan => plan.Line.Action == "create" || plan.Line.SectionsToAdd > 0));
         if (!apply || preview.Changes == 0)
             return OperationResult.Success(preview);
 
         return await SetupTransaction.RunAsync(store, async () =>
         {
-            foreach (var plan in plans.Where(plan => plan.Line.Action != "notApplicable"))
+            foreach (var plan in plans)
             {
                 var stageId = plan.ExistingId ?? SetupTransaction.Require(await stages.CreateStageAsync(yearId,
                     new SaveStageCommand(plan.Line.Name, plan.DisplayOrder, 0, plan.Line.Key), token)).Id;
@@ -62,6 +77,26 @@ public sealed class SetupTemplatesService(IDataStore store, StagesSectionsServic
             }
             return preview;
         }, token);
+    }
+
+    public async Task<OperationResult<IReadOnlyList<OutOfTypeStageDto>>> OutOfTypeStagesAsync(long yearId, CancellationToken token)
+    {
+        if (!await store.AnyAsync(store.Query<AcademicYear>().Where(year => year.Id == yearId), token))
+            return OperationResult.Failure<IReadOnlyList<OutOfTypeStageDto>>(ErrorCodes.NotFound);
+        var profile = await store.FirstOrDefaultAsync(store.Query<SchoolProfile>(), token);
+        if (profile is null)
+            return OperationResult.Failure<IReadOnlyList<OutOfTypeStageDto>>(ErrorCodes.SetupRequired);
+
+        var allowedKeys = TemplateCatalog.Current.StageKeysFor(profile.SchoolType);
+        var stages = await store.ListAsync(store.Query<Stage>()
+            .Where(stage => stage.AcademicYearId == yearId && !stage.IsArchived && stage.TemplateKey != null), token);
+        IReadOnlyList<OutOfTypeStageDto> result = stages
+            .Where(stage => !allowedKeys.Contains(stage.TemplateKey!))
+            .OrderBy(stage => stage.DisplayOrder)
+            .ThenBy(stage => stage.Name)
+            .Select(stage => new OutOfTypeStageDto(stage.Id, stage.Name, stage.Version))
+            .ToArray();
+        return OperationResult.Success(result);
     }
 
     public async Task<OperationResult<SubjectPlanDto>> SubjectsAsync(SubjectTemplateCommand command, bool apply, CancellationToken token)
@@ -132,5 +167,32 @@ public sealed class SetupTemplatesService(IDataStore store, StagesSectionsServic
             }
         }
         return plans;
+    }
+
+    private static bool AreStagesAllowed(
+        TemplateCatalog catalog,
+        SchoolType schoolType,
+        IReadOnlyList<StageTemplateGradeInput> grades)
+    {
+        var allowedGrades = catalog.GradesFor(schoolType).ToDictionary(grade => grade.Key, StringComparer.Ordinal);
+        var seenGrades = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var input in grades)
+        {
+            if (input.GradeKey is not { } key || !allowedGrades.TryGetValue(key, out var grade) || !seenGrades.Add(key))
+                return false;
+
+            var branches = input.Branches ?? [];
+            if (grade.BranchStem is null)
+            {
+                if (branches.Count > 0)
+                    return false;
+                continue;
+            }
+
+            if (branches.Count == 0 || branches.Distinct(StringComparer.Ordinal).Count() != branches.Count ||
+                branches.Any(branchKey => catalog.Branch(branchKey) is null))
+                return false;
+        }
+        return true;
     }
 }

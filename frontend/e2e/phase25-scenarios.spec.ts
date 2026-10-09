@@ -4,6 +4,7 @@ import { arabicCount } from "../src/lib/arabicCount";
 import { formatNumber } from "../src/lib/format";
 import { ApiServer } from "./support/apiServer";
 import {
+  breakpoints,
   expectBreakpointScreenshots,
   expectNoLatinText,
   expectNoPageScrollX,
@@ -100,6 +101,13 @@ test("scenario (b): a dual-shift ثانوية with branches through the wizard",
   await expect(page.locator(".curriculum-table tfoot td").first()).toContainText(curriculum.status.under(arab(31)));
   await expect(page.locator(".curriculum-table thead th.curriculum-stage-head").nth(3)).toContainText(curriculum.headerCapacity(arab(29)));
   await expectNoSeriousA11yViolations(page, "scenario b step 5");
+  for (const width of breakpoints) {
+    await page.setViewportSize({ width, height: 900 });
+    await expectNoPageScrollX(page, `wizard curriculum step at ${width}px`);
+    const contentWidth = await page.locator(".wizard-card > .form-stack").evaluate((element) => element.getBoundingClientRect().width);
+    const panelWidth = await page.locator(".wizard-card > .form-stack > .ui-card").first().evaluate((element) => element.getBoundingClientRect().width);
+    expect(panelWidth).toBeGreaterThanOrEqual(contentWidth - 1);
+  }
   await expectBreakpointScreenshots(page, "wizard-step-5");
   await next();
 

@@ -183,6 +183,7 @@ public sealed class CurriculumServiceTests
     public async Task TemplatesCreateOnlyWhatIsMissingAndNeverLowerSections()
     {
         var seed = await SeedAsync();
+        seed.Store.Query<SchoolProfile>().Single().SetSchoolType(SchoolType.Secondary, DateTimeOffset.UnixEpoch);
         var stages = new StagesSectionsService(seed.Store, TimeProvider.System);
         var cards = new StageCardsService(seed.Store, TimeProvider.System);
         var subjects = new SubjectsService(seed.Store, TimeProvider.System);
@@ -190,11 +191,11 @@ public sealed class CurriculumServiceTests
         await cards.SetSectionCountAsync(seed.Year.Id, seed.First.Id, new SetSectionCountCommand(4, seed.Morning.Id, null), default);
         StageTemplateGradeInput Grade(string key, int sections, params string[] branches) => new(key, branches, sections, seed.Morning.Id, null);
         var command = new StageTemplateCommand("secondary",
-            [Grade("intermediate-1", 2), Grade("intermediate-3", 3), Grade("preparatory-4", 2, "scientific", "literary"), Grade("primary-1", 1), Grade("preparatory-5", 1, "arts")]);
+            [Grade("intermediate-1", 2), Grade("intermediate-3", 3), Grade("preparatory-4", 2, "scientific", "literary")]);
 
         var preview = (await templates.StagesAsync(seed.Year.Id, command, false, default)).Value!;
         Assert.Equal(
-            [("intermediate-1", "exists", 0), ("intermediate-3", "create", 3), ("preparatory-4-scientific", "create", 2), ("preparatory-4-literary", "create", 2), ("primary-1", "notApplicable", 0), ("preparatory-5", "notApplicable", 0)],
+            [("intermediate-1", "exists", 0), ("intermediate-3", "create", 3), ("preparatory-4-scientific", "create", 2), ("preparatory-4-literary", "create", 2)],
             preview.Lines.Select(line => (line.Key, line.Action, line.SectionsToAdd)));
         Assert.Equal(3, preview.Changes);
         Assert.Equal(2, seed.Store.Query<Stage>().Count());

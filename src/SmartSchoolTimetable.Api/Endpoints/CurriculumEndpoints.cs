@@ -35,6 +35,8 @@ public static class CurriculumEndpoints
             ApiResults.Ok(context, await service.StagesAsync(yearId, command, false, token)));
         year.MapPost("/templates/stages", async (long yearId, StageTemplateCommand command, HttpContext context, SetupTemplatesService service, CancellationToken token) =>
             ApiResults.Ok(context, await service.StagesAsync(yearId, command, true, token)));
+        year.MapGet("/templates/stages/out-of-type", async (long yearId, HttpContext context, SetupTemplatesService service, CancellationToken token) =>
+            ApiResults.Ok(context, await service.OutOfTypeStagesAsync(yearId, token)));
         year.MapPost("/curriculum/suggested/preview", async (long yearId, SuggestedCurriculumCommand command, HttpContext context, SuggestedCurriculumService service, CancellationToken token) =>
             ApiResults.Ok(context, await service.PreviewAsync(yearId, command, token)));
         year.MapPost("/curriculum/suggested", async (long yearId, SuggestedCurriculumCommand command, HttpContext context, SuggestedCurriculumService service, CancellationToken token) =>

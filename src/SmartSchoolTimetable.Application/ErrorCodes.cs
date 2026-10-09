@@ -67,6 +67,7 @@ public static class ErrorCodes
     public const string AssetTypeMismatch = "ASSET_TYPE_MISMATCH";
     public const string YearStructureInUse = "YEAR_STRUCTURE_IN_USE";
     public const string StageArchived = "STAGE_ARCHIVED";
+    public const string StageNotInSchoolType = "STAGE_NOT_IN_SCHOOL_TYPE";
     public const string NoCurrentYear = "NO_CURRENT_YEAR";
     public const string ShiftModeInUse = "SHIFT_MODE_IN_USE";
     public const string CurriculumInUse = "CURRICULUM_IN_USE";

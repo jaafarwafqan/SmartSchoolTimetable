@@ -34,6 +34,10 @@
   max-inline-size: none;
 }
 
+form.form-stack.form-wide {
+  max-inline-size: none;
+}
+
 .dialog-form {
   margin-block-start: 1rem;
 }

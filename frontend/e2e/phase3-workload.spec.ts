@@ -69,6 +69,9 @@ test("(3C) workload: matrix, loads, bulk class teacher, shortage, protection and
       await page.setViewportSize({ width, height: 900 });
       await expectNoPageScrollX(page, `workload matrix at ${width}px`);
       await expectNoTextOverlap(page.locator("main"), `workload matrix at ${width}px`);
+      const matrixWidth = await page.locator(".workload-matrix").evaluate((element) => element.getBoundingClientRect().width);
+      const tableWidth = await page.locator(".workload-matrix > .ui-table-container").evaluate((element) => element.getBoundingClientRect().width);
+      expect(tableWidth).toBeGreaterThanOrEqual(matrixWidth - 1);
     }
     await page.setViewportSize({ width: 1280, height: 900 });
     await expectBreakpointScreenshots(page, "phase3-workload-matrix");

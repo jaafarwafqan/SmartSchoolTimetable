@@ -38,6 +38,7 @@ export type StageTemplateGrade = { gradeKey: string; branches: string[]; section
 export type StageTemplateInput = { schoolType: string; grades: StageTemplateGrade[] };
 export type StagePlanLine = { key: string; name: string; action: PlanAction; existingSections: number; sectionsToAdd: number };
 export type StagePlan = { lines: StagePlanLine[]; changes: number };
+export type OutOfTypeStage = { id: number; name: string; version: number };
 export type SubjectPlan = { lines: { name: string; action: PlanAction }[]; changes: number };
 
 export const curriculumKey = ["curriculum"] as const;
@@ -110,6 +111,14 @@ export function useSetAcross(yearId: number) {
 
 export function useStageTemplate(yearId: number) {
   return usePlan<StageTemplateInput, StagePlan>(() => `${yearPath(yearId)}/templates/stages`);
+}
+
+export function useOutOfTypeStages(yearId: number, schoolType: string | null) {
+  return useQuery({
+    queryKey: ["out-of-type-stages", yearId, schoolType],
+    enabled: schoolType !== null,
+    queryFn: () => apiRequest<OutOfTypeStage[]>(`${yearPath(yearId)}/templates/stages/out-of-type`),
+  });
 }
 
 export function useSubjectTemplate() {

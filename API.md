@@ -134,7 +134,8 @@ Every `…/preview` route returns the plan without saving; its twin without `/pr
 | POST | `/curriculum-entries/{id}/archive`, `/restore` | `{ version }` | 200 entry | 401, 404, 409 `CONFLICT` |
 | DELETE | `/curriculum-entries/{id}?version=` | — | 204 | 401, 404, 409 `CONFLICT` |
 | GET | `/templates` | — | 200 `{ branches, grades: [{ key, name, branchStem, schoolTypes }], periodPresets, workingDayPresets }` | 401 |
-| POST | `/academic-years/{yearId}/templates/stages[/preview]` | `{ schoolType, grades: [{ gradeKey, branches, sections, shiftId, labelStyle }] }` | 200 `{ lines: [{ key, name, action, existingSections, sectionsToAdd }], changes }`; one transaction | 401, 404, 422 `SchoolType`, and any error of the services it calls (everything rolled back) |
+| POST | `/academic-years/{yearId}/templates/stages[/preview]` | `{ schoolType?, grades: [{ gradeKey, branches, sections, shiftId, labelStyle }] }`; `schoolType`, when sent, must match the saved school profile | 200 `{ lines: [{ key, name, action, existingSections, sectionsToAdd }], changes }`; only stages allowed for the saved school type are accepted; one transaction | 401, 403 `SETUP_REQUIRED`, 404, 422 `SchoolType`, `STAGE_NOT_IN_SCHOOL_TYPE`, and any error of the services it calls (everything rolled back) |
+| GET | `/academic-years/{yearId}/templates/stages/out-of-type` | — | 200 `[{ id, name, version }]`; active template stages not allowed for the saved school type; changing type never deletes them | 401, 403 `SETUP_REQUIRED`, 404 |
 | GET | `/academic-years/{yearId}/templates/suggested-subjects` | — | 200 subject names | 401 |
 | POST | `/templates/subjects[/preview]` | `{ names }` | 200 `{ lines: [{ name, action }], changes }` | 401, 422 |
 

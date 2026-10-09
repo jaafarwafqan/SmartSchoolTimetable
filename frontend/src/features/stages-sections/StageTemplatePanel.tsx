@@ -8,12 +8,13 @@ import { Checkbox } from "../../components/ui/checkbox";
 import { Field } from "../../components/ui/field";
 import { Select } from "../../components/ui/select";
 import { Stepper } from "../../components/ui/stepper";
+import { userErrorMessage } from "../../api";
 import { messages } from "../../i18n/messages";
 import { useFormatter } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
-import { useStageTemplate, useTemplateCatalog, type LabelStyle, type StageTemplateInput } from "../curriculum/curriculumApi";
+import { useOutOfTypeStages, useStageTemplate, useTemplateCatalog, type LabelStyle, type StageTemplateInput } from "../curriculum/curriculumApi";
 import { PlanList } from "../curriculum/PlanList";
-import { useSchoolProfile } from "../school-profile/profileApi";
+import { useSchoolProfile, useUpdateProfile } from "../school-profile/profileApi";
 import { useShifts } from "../timetable-structure/scheduleApi";
 import { NewSectionOptions } from "./StageCardsPanel";
 
@@ -33,7 +34,7 @@ export function StageTemplatePanel({ yearId, open = false }: { yearId: number; o
   const profile = useSchoolProfile();
   const shifts = useShifts(yearId);
   const template = useStageTemplate(yearId);
-  const [typeChoice, setTypeChoice] = useState<TemplateSchoolType | null>(null);
+  const updateProfile = useUpdateProfile();
   const [skipped, setSkipped] = useState<ReadonlySet<string>>(new Set());
   const [sections, setSections] = useState(2);
   const [shiftChoice, setShiftChoice] = useState<number | null>(null);
@@ -41,11 +42,12 @@ export function StageTemplatePanel({ yearId, open = false }: { yearId: number; o
   /** Dual shift: the shift of each grade's new sections (spec 2.5 §5 step 4). */
   const [gradeShifts, setGradeShifts] = useState<Readonly<Record<string, number>>>({});
   const profileType = profile.data?.schoolType;
-  const schoolType = typeChoice ?? (isTemplateType(profileType) ? profileType : "intermediate");
+  const schoolType = isTemplateType(profileType) ? profileType : null;
   const shiftList = shifts.data?.items ?? [];
   const shiftId = shiftList.find((shift) => shift.id === shiftChoice)?.id ?? shiftList[0]?.id ?? null;
-  const grades = (catalog.data?.grades ?? []).filter((grade) => grade.schoolTypes.includes(schoolType));
+  const grades = (catalog.data?.grades ?? []).filter((grade) => schoolType !== null && grade.schoolTypes.includes(schoolType));
   const branches = catalog.data?.branches ?? [];
+  const outOfTypeStages = useOutOfTypeStages(yearId, schoolType);
   const plan = template.preview.data;
 
   /** Any change invalidates the preview, so "apply" always applies what was last shown. */
@@ -58,9 +60,37 @@ export function StageTemplatePanel({ yearId, open = false }: { yearId: number; o
     return next;
   }));
 
+  function saveSchoolType(value: string) {
+    if (!isTemplateType(value) || !profile.data || updateProfile.isPending || value === profile.data.schoolType)
+      return;
+    template.preview.reset();
+    feedback.reset();
+    const current = profile.data;
+    updateProfile.mutate({
+      name: current.name,
+      schoolType: value,
+      studyType: current.studyType,
+      principalName: current.principalName,
+      scheduleOfficerName: current.scheduleOfficerName,
+      timeZone: current.timeZone,
+      numeralSystem: current.numeralSystem,
+      calendarDisplay: current.calendarDisplay,
+      version: current.version,
+    }, {
+      onSuccess: () => {
+        setSkipped(new Set());
+        feedback.showSuccess(text.schoolTypeSaved);
+      },
+      onError: feedback.showError,
+    });
+  }
+
+  const selectedGrades = grades.filter((grade) =>
+    !skipped.has(grade.key) &&
+    (grade.branchStem === null || branches.some((branch) => !skipped.has(`${grade.key}-${branch.key}`))));
   const input: StageTemplateInput = {
-    schoolType,
-    grades: grades.filter((grade) => !skipped.has(grade.key)).map((grade) => ({
+    schoolType: schoolType ?? "",
+    grades: selectedGrades.map((grade) => ({
       gradeKey: grade.key,
       branches: grade.branchStem ? branches.map((branch) => branch.key).filter((key) => !skipped.has(`${grade.key}-${key}`)) : [],
       sections,
@@ -81,10 +111,22 @@ export function StageTemplatePanel({ yearId, open = false }: { yearId: number; o
         <div className="form-stack">
           <p className="card-note">{text.stagesDescription}</p>
           <Field id="template-school-type" label={text.schoolType}>
-            <Select id="template-school-type" value={schoolType}
-              onChange={(event) => edit(setTypeChoice)(event.target.value as TemplateSchoolType)}
-              options={schoolTypes.map((value) => ({ value, label: messages.school.profile.schoolTypes[value] }))} />
+            <Select id="template-school-type" value={schoolType ?? ""} disabled={!profile.data || updateProfile.isPending}
+              onChange={(event) => saveSchoolType(event.target.value)}
+              options={[
+                ...(!schoolType ? [{ value: "", label: text.chooseSchoolType }] : []),
+                ...schoolTypes.map((value) => ({ value, label: messages.school.profile.schoolTypes[value] })),
+              ]} />
           </Field>
+          {!schoolType && <Alert tone="info" message={text.schoolTypeRequired} />}
+          {outOfTypeStages.isError && <Alert tone="error" message={userErrorMessage(outOfTypeStages.error)} />}
+          {outOfTypeStages.data && outOfTypeStages.data.length > 0 && (
+            <Alert tone="warning" message={text.outOfTypeStages}>
+              <ul className="plan-list">
+                {outOfTypeStages.data.map((stage) => <li key={stage.id}>{stage.name}</li>)}
+              </ul>
+            </Alert>
+          )}
           <fieldset className="choice-group">
             <legend>{text.grades}</legend>
             {grades.map((grade) => (
@@ -115,14 +157,14 @@ export function StageTemplatePanel({ yearId, open = false }: { yearId: number; o
               decreaseLabel={text.sectionsDecrease} increaseLabel={text.sectionsIncrease} onChange={edit(setSections)} />
           </div>
           <NewSectionOptions idPrefix="template" shifts={shiftList} shiftId={shiftId} style={style} onShift={edit(setShiftChoice)} onStyle={edit(setStyle)} />
-          {nothingSelected && <Alert tone="info" message={text.nothingSelected} />}
+          {nothingSelected && schoolType && <Alert tone="info" message={text.nothingSelected} />}
           <Alert tone="success" message={feedback.success} />
           <Alert tone="error" message={feedback.error} />
           <div className="form-actions">
-            <Button variant="secondary" icon={<Eye aria-hidden="true" size={20} />} disabled={nothingSelected} loading={template.preview.isPending}
+            <Button variant="secondary" icon={<Eye aria-hidden="true" size={20} />} disabled={!schoolType || nothingSelected || updateProfile.isPending} loading={template.preview.isPending}
               onClick={() => { feedback.reset(); template.preview.mutate(input, { onError: feedback.showError }); }}>{text.preview}</Button>
-            {plan && plan.changes > 0 && (
-              <Button icon={<Check aria-hidden="true" size={20} />} loading={template.apply.isPending}
+            {plan && plan.changes > 0 && schoolType && (
+              <Button icon={<Check aria-hidden="true" size={20} />} loading={template.apply.isPending} disabled={updateProfile.isPending}
                 onClick={() => template.apply.mutate(input, {
                   onSuccess: (result) => { template.preview.reset(); feedback.showSuccess(text.applied(format.number(result.changes))); },
                   onError: feedback.showError,

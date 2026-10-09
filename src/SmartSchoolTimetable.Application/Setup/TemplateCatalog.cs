@@ -67,6 +67,23 @@ public sealed class TemplateCatalog
         return Grades.Where(grade => grade.SchoolTypes.Contains(type)).ToArray();
     }
 
+    public IReadOnlySet<string> StageKeysFor(SchoolType schoolType)
+    {
+        var keys = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var grade in GradesFor(schoolType))
+        {
+            if (grade.BranchStem is null)
+            {
+                keys.Add(grade.Key);
+                continue;
+            }
+
+            foreach (var branch in Branches)
+                keys.Add(Stage(grade, branch).Key);
+        }
+        return keys;
+    }
+
     public GradeTemplate? Grade(string? key) => Grades.FirstOrDefault(grade => grade.Key == key);
 
     public BranchTemplate? Branch(string? key) => Branches.FirstOrDefault(branch => branch.Key == key);
