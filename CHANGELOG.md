@@ -27,6 +27,11 @@
   - Each step is checked at once by the independent verifier (`POST /timetables/{id}/check`); conflicts are shown on the grid and as an Arabic list.
   - Undo and redo within the session.
   - Saving (`POST /timetables/{id}/edits`) creates a new version linked to its parent, with an audit entry. It is refused with `TIMETABLE_HAS_VIOLATIONS` (422) while any hard rule is broken.
+- **M5 `phase-4e` printing and Excel (ADR 0041):**
+  - «طباعة» uses a print stylesheet scoped to the timetable page. It hides the shell and controls and shows a header with school, year, term, version and view.
+  - Paper is A4 landscape for the master view (named page) and A4 portrait for a section or teacher, right to left, with subject colours kept. The owner saves a PDF from the print dialog.
+  - «تصدير إلى إكسل»: `GET /api/v1/timetables/{id}/export.xlsx` (ClosedXML 0.105.1). It contains the master sheet plus one sheet per section and per teacher, right to left, with Arabic headers, light subject fills and A4 page setup.
+  - Tested by opening the workbook in the API test and by print-media emulation and a download in Playwright.
 - **Tags:** M1–M4 were built and verified together on one working tree, so they are one commit tagged `phase-4d`; there are no separate `phase-4a`–`phase-4c` tags.
 - **Tests:**
   - .NET: 284 passed, 4 performance tests skipped by default.

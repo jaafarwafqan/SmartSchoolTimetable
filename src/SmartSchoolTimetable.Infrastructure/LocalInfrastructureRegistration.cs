@@ -42,6 +42,7 @@ public static class LocalInfrastructureRegistration
         services.AddSingleton<ILoginDelay>(skipLoginDelay ? new NoLoginDelay() : new RealLoginDelay());
         services.AddSingleton<ISolver, CpSatSolver>();
         services.AddSingleton<ISolverInfo, OrToolsInfo>();
+        services.AddSingleton<ITimetableExporter, Export.ExcelTimetableExporter>();
         return services;
     }
 

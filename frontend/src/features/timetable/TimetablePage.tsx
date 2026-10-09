@@ -1,4 +1,4 @@
-import { BadgeCheck, PencilLine, Play, ShieldCheck, Stamp } from "lucide-react";
+import { BadgeCheck, FileDown, PencilLine, Play, Printer, ShieldCheck, Stamp } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { userErrorMessage } from "../../api";
@@ -36,8 +36,24 @@ function TimetableViews({ timetable, onSaved }: { timetable: Timetable; onSaved:
   const teacherShifts = [...new Set(teacherLessons.map((lesson) => look.section(lesson.sectionId)?.shiftId ?? 0))];
   const lessonCountOf = (shiftId: number) => Math.max(1, shifts.get(shiftId)?.lessons.length ?? 0,
     ...timetable.sections.filter((item) => item.shiftId === shiftId).flatMap((item) => item.allowedByDay.map((day) => day.lessons)));
+  const school = useSchoolContext();
+  const viewTitle = view === "master" ? text.views.master : view === "teacher" ? teacher?.name ?? "" : section ? look.sectionName(section.id) : "";
   return (
-    <div className="timetable-views">
+    <div className={`timetable-views${view === "master" ? " is-landscape" : ""}`}>
+      <div className="timetable-print-header">
+        <strong>{school.data?.schoolName ?? ""}</strong>
+        <span>{text.printYear(school.data?.currentYear?.name ?? "", school.data?.currentTerm?.name ?? "")}</span>
+        <span>{text.printVersion(format.number(timetable.summary.number), viewTitle)}</span>
+      </div>
+      {!editing && (
+        <div className="timetable-controls">
+          <Button variant="secondary" icon={<Printer aria-hidden="true" size={18} />} onClick={() => window.print()}>{text.print}</Button>
+          <a className="link-button" href={`/api/v1/timetables/${timetable.summary.id}/export.xlsx`} download>
+            <FileDown aria-hidden="true" size={18} /><span>{text.exportExcel}</span>
+          </a>
+          <span className="card-note">{text.printHint}</span>
+        </div>
+      )}
       <div className="timetable-controls">
         <Field id="timetable-view" label={text.viewsLabel}>
           <Select id="timetable-view" value={view} onChange={(event) => { setView(event.target.value as View); setEditing(false); }}
@@ -119,7 +135,7 @@ export function TimetablePage() {
   const summary = timetable.data?.summary;
 
   return (
-    <div className="page">
+    <div className="page timetable-print-root">
       <PageHeader title={text.title} description={text.description} />
       {!yearId && school.isSuccess && <Alert tone="warning" message={messages.school.readiness.noYear} />}
       {versions.isError && <Alert tone="error" message={text.loadFailed}>{userErrorMessage(versions.error)}</Alert>}

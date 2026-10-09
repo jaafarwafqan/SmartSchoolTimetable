@@ -269,3 +269,100 @@
 .ui-tt-grid td:has(.ui-tt-cell) {
   cursor: default;
 }
+/* ---------- Printing (M5): A4, right to left, school header; master landscape, section/teacher portrait ---------- */
+.timetable-print-header {
+  display: none;
+}
+
+@page timetable-portrait {
+  size: A4 portrait;
+  margin: 12mm;
+}
+
+@page timetable-landscape {
+  size: A4 landscape;
+  margin: 10mm;
+}
+
+@media print {
+  body:has(.timetable-print-root) {
+    background: var(--color-surface);
+  }
+
+  body:has(.timetable-print-root) .app-topbar,
+  body:has(.timetable-print-root) .app-sidebar,
+  body:has(.timetable-print-root) .app-mobile-menu,
+  body:has(.timetable-print-root) .page-header,
+  body:has(.timetable-print-root) .ui-alert,
+  body:has(.timetable-print-root) .ui-button,
+  body:has(.timetable-print-root) .link-button,
+  body:has(.timetable-print-root) .timetable-versions,
+  body:has(.timetable-print-root) .timetable-controls,
+  body:has(.timetable-print-root) .page-header-actions,
+  body:has(.timetable-print-root) .generation-verified,
+  body:has(.timetable-print-root) .card-note {
+    display: none !important;
+  }
+
+  .timetable-print-root {
+    page: timetable-portrait;
+  }
+
+  .timetable-print-root .timetable-views.is-landscape {
+    page: timetable-landscape;
+  }
+
+  .timetable-print-root .timetable-layout {
+    display: block;
+  }
+
+  .timetable-print-root .ui-card,
+  .timetable-print-root .ui-table-container {
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .timetable-print-header {
+    display: grid;
+    gap: 0.125rem;
+    margin-block-end: 0.5rem;
+    color: var(--color-ink);
+    text-align: start;
+  }
+
+  .timetable-print-header strong {
+    font-size: var(--text-xl);
+  }
+
+  .timetable-print-root .ui-tt-grid {
+    inline-size: 100%;
+    border-spacing: 0.125rem;
+    break-inside: auto;
+  }
+
+  .timetable-print-root .ui-tt-grid tr {
+    break-inside: avoid;
+  }
+
+  .timetable-print-root .ui-tt-grid td,
+  .timetable-print-root .ui-tt-grid td .ui-tt-cell,
+  .timetable-print-root .timetable-master td,
+  .timetable-print-root .timetable-master td .ui-tt-cell {
+    min-inline-size: 0;
+    min-block-size: 2.5rem;
+  }
+
+  .timetable-print-root .timetable-master {
+    font-size: var(--text-xs);
+  }
+
+  .timetable-print-root .timetable-master tbody th {
+    position: static;
+  }
+
+  .timetable-print-root .ui-tt-cell {
+    print-color-adjust: exact;
+  }
+}

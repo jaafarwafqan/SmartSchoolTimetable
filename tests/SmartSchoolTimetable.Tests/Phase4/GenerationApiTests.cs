@@ -157,6 +157,23 @@ public sealed class GenerationApiTests
         Assert.True(approved.GetProperty("isApproved").GetBoolean());
         await AssertApiErrorAsync(await host.PostAsync($"/api/v1/timetables/{versionId}/approve", new { version = 99 }, school.Token), ErrorCodes.Conflict);
 
+        // Excel: the master sheet, one sheet per section and per teacher, right to left, Arabic headers.
+        var context = await JsonAsync(await host.Client.GetAsync("/api/v1/school-context"));
+        var excel = await host.Client.GetAsync($"/api/v1/timetables/{versionId}/export.xlsx");
+        Assert.Equal(HttpStatusCode.OK, excel.StatusCode);
+        Assert.Equal(TimetableExportService.ExcelContentType, excel.Content.Headers.ContentType?.MediaType);
+        using (var workbook = new ClosedXML.Excel.XLWorkbook(await excel.Content.ReadAsStreamAsync()))
+        {
+            Assert.Equal(1 + 2 + 2, workbook.Worksheets.Count);
+            Assert.Equal("الجدول العام", workbook.Worksheets.First().Name);
+            Assert.All(workbook.Worksheets, sheet => Assert.True(sheet.RightToLeft));
+            Assert.Equal(context.GetProperty("schoolName").GetString(), workbook.Worksheets.First().Cell(1, 1).GetString());
+            var sectionSheet = workbook.Worksheets.Skip(1).First();
+            Assert.Equal("اليوم", sectionSheet.Cell(5, 1).GetString());
+            Assert.Equal(5, sectionSheet.CellsUsed(cell => cell.GetString().StartsWith("الرياضيات", StringComparison.Ordinal)).Count());
+        }
+        await AssertApiErrorAsync(await host.Client.GetAsync("/api/v1/timetables/999999/export.xlsx"), ErrorCodes.NotFound);
+
         // An edit that puts two lessons of one section in the same slot is reported and refused.
         var lessons = timetable.GetProperty("lessons").EnumerateArray().Select(item => new GridLesson(
             item.GetProperty("sectionId").GetInt64(), item.GetProperty("lineId").GetInt64(), item.GetProperty("subjectId").GetInt64(),

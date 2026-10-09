@@ -86,6 +86,7 @@ builder.Services.AddScoped<SmartSchoolTimetable.Application.Common.ReferenceGuar
 builder.Services.AddSingleton<SmartSchoolTimetable.Application.Generation.GenerationRegistry>();
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Generation.GenerationService>();
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Generation.TimetableService>();
+builder.Services.AddScoped<SmartSchoolTimetable.Application.Generation.TimetableExportService>();
 builder.Services.AddHostedService<GenerationWorker>();
 builder.Services.AddLocalInfrastructure(
     databasePath,

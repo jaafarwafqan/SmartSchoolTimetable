@@ -3,7 +3,7 @@
 - Branch: `phase-4`, from `phase-2-5-template-update` (contains `phase-3-final`). Nothing pushed or merged.
 - Scope: PHASE_4_MVP_PROMPT, which takes precedence over PHASE_4_PROMPT.
 - Baseline before Phase 4: build 0 warnings; 229/229 .NET tests.
-- Last green tag: `phase-4d`.
+- Last green tag: `phase-4e`.
 
 | Milestone | Tag | State |
 |---|---|---|
@@ -11,8 +11,8 @@
 | M2 saving, «التوليد» | in `phase-4d` | done |
 | M3 viewer, approval | in `phase-4d` | done |
 | M4 manual edit | `phase-4d` | done |
-| M5 print, Excel | `phase-4e` | next |
-| M6 backup, release folder | `phase-4f` | not started |
+| M5 print, Excel | `phase-4e` | done |
+| M6 backup, release folder | `phase-4f` | next |
 
 **Checks at `phase-4d`:**
 - `dotnet build -c Release --no-incremental`: 0 warnings, 0 errors.

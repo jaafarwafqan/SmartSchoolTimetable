@@ -104,6 +104,19 @@ test("(4) generate a timetable with real progress, read it three ways and approv
     await expect(page.getByText(timetable.approvedDone)).toBeVisible();
     await expect(page.getByText(timetable.approved).first()).toBeVisible();
 
+    // Printing (M5): print media hides the shell and controls and shows the school header; the grid stays.
+    await page.emulateMedia({ media: "print" });
+    await expect(page.locator(".app-sidebar")).toBeHidden();
+    await expect(page.locator(".timetable-controls").first()).toBeHidden();
+    await expect(page.locator(".timetable-print-header")).toBeVisible();
+    await expect(page.locator(".ui-tt-grid").first()).toBeVisible();
+    await page.emulateMedia({ media: "screen" });
+    await expect(page.locator(".timetable-print-header")).toBeHidden();
+    // Excel (M5): the workbook downloads from the version.
+    const download = page.waitForEvent("download");
+    await page.getByRole("link", { name: timetable.exportExcel }).click();
+    expect((await download).suggestedFilename()).toMatch(/^timetable-v\d+\.xlsx$/);
+
     // Manual edit (M4): moving the first lesson of a day into a free slot leaves a gap at lesson 1 (H3):
     // the verifier reports it at once, saving is blocked, and undo restores the timetable.
     await page.getByLabel(timetable.viewsLabel).selectOption("section");
