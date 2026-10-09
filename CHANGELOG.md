@@ -7,6 +7,7 @@
 - **Suggested subjects have one source:** `Setup/Templates/subjects.json` and `TemplateCatalog.SubjectGroups`/`SubjectsFor` were removed; a stage's suggested subjects are its mandatory rows in the official template (`SuggestedCurriculumTemplate.MandatorySubjects`), canonical names, optional subjects excluded until ticked.
 - **Stages without an official template** are listed in «تعبئة المنهج» under «مراحل لا يوجد لها قالب رسمي»; each can be matched to an official stage chosen from a list (`stageMatches`, not saved). Invalid matches give 422 `StageMatches`.
 - **Capacity notices (never blocking):** each preview stage carries `weeklyCapacity` and `workingDays`; with optional subjects ticked the panel says «بعد التفعيل يصبح مجموع المرحلة N وتحتاج M حصة يومياً» and names stages above the current shift. The timing step lists, per shift, the stages whose total with every optional subject exceeds it (e.g. 7×5 = 35: السادس العلمي 37, الخامس الأدبي 36). `/templates` gains `officialStages`. Shift capacity per stage moved to a shared `StageCapacity` helper (used by the daily suggestion too).
+- **Housekeeping:** `frontend/tsconfig.tsbuildinfo` is ignored; `frontend/test-results/` and `design-system/` were already ignored and untracked (nothing deleted).
 - **Period presets are labelled suggestions:** «قالب مقترح للحصص» with a hint that break lengths and lessons per day are the owner's choice.
 
 ### Phase 2.5 - school-type stage template guard
