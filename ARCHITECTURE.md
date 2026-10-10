@@ -43,5 +43,5 @@ The CP-SAT adapter uses Google.OrTools for .NET in Infrastructure. Solver types 
 - Architecture documented
 - Major decisions captured in ADRs
 - Single-user, local-only security model explicitly stated
-- Solver and Arabic PDF spikes executed and reported honestly
+- Solver and Arabic PDF spikes executed and reported honestly (the spikes were removed after delivery; they remain at tag `phase-0`)
 - No application implementation beyond isolated spikes

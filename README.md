@@ -98,7 +98,7 @@ First run creates one local owner and signs in automatically. Before entering th
 Passwords must be 8–1024 characters and use PBKDF2-HMAC-SHA-256 with 600,000 iterations. Failed login uses a fixed one-second delay, with no escalating delay or temporary lockout. Sessions use an HttpOnly, SameSite=Strict cookie; inactivity auto-lock supports a configured duration or `Never`. Kestrel validates Host/Origin and a per-launch token on state-changing requests. Details are in [SECURITY.md](./SECURITY.md).
 
 ## Phase 0 validation notes
-- The Google.OrTools and QuestPDF feasibility spikes are kept under `spikes/CSharpSpikes/` as history.
+- The Phase 0 Google.OrTools and QuestPDF feasibility spikes were removed after delivery; they remain in git history (tag `phase-0`).
   - The product uses OR-Tools CP-SAT 9.15 ([ADR 0037](./adr/0037-or-tools-dependency-and-in-process-generation.md)).
   - It does not use QuestPDF: printing and PDF go through the browser's print dialog, and Excel uses ClosedXML ([ADR 0041](./adr/0041-excel-export-closedxml.md)).
 - The Phase 0 risk was that a 40-section/54-teacher input found no timetable in 30 s. It did not show in Phase 4: [docs/PERFORMANCE.md](./docs/PERFORMANCE.md) records a first timetable after about 3.4 s on synthetic 40/54 and 40/60 schools. That is one seed per size, and real data with tight availability can be harder.

@@ -284,8 +284,7 @@ Official study plan 2026-2027 (`phase-2-5-official-curriculum`, ADR 0036) replac
 - .NET `Phase3/WizardStepMigrationTests`: finished wizard, wizard in the middle, no progress row, `Down` restores the seven-step masks and keeps the review undone.
 - .NET `Phase3/AssignmentSuggesterTests`: the preview is deterministic, balanced, within limits and equal to the applied result; existing assignments never change; no teacher above the limit (reason `capacity`).
 - .NET `Phase3/ReadinessTests`: foreign Origin 403, foreign Host 400, no session 401, suggestion apply without the launch token 403; the 40-section test prints its timing.
-- .NET `CalendarAndDemoDataTests`: the default demo completes every checklist item and is ready; `--with-problems` shows the three readiness errors.
-- Mutation checks: `docs/phase3-mutation-checks.py` applies 18 mutants one at a time to the working copy, runs the tests and always restores the file (never committed). All 18 are caught.
+- Mutation checks (Phase 3, one-off): 18 mutants were applied one at a time, and the tests caught all 18. The script was removed after delivery; it remains at tag `phase-3-final` (`docs/phase3-mutation-checks.py`).
 - Vitest: `features/readiness/readinessPresentation.test.ts` (every code has Arabic text, the unknown-code fallback, the double-period note), `features/design-guide/SchedulingSection.test.tsx` (the style-guide matrix, load bar and finding render).
 - Playwright `phase3-scenarios.spec.ts`: (a) a 12-section primary school assigned with the class-teacher bulk action, then ready; (h) a 12-section intermediate school assigned by the suggester (preview = applied, existing kept); (c) a resource shortage fixed by raising the capacity; (d) protection of subject, section and stage with the dependents listed; (f) orphan blocked periods previewed, then removed. (b) 28/25 and (g) readiness + dashboard are in `phase3-readiness.spec.ts`, (e) undo in `phase3-workload.spec.ts`. Wizard step 7 «الأنصبة» has screenshots in `phase25-scenarios.spec.ts`. The report's check time and hash are masked in screenshots.
 - Final Phase 3 run: Release build 0 warnings; .NET 214; Vitest 91; Playwright 21; coverage Domain 97.3%, Application 95.4% of lines.
@@ -299,4 +298,4 @@ Official study plan 2026-2027 (`phase-2-5-official-curriculum`, ADR 0036) replac
 ## Quality expectations and scope
 - Domain and scheduling logic: 90%+ coverage target.
 - Do not add acceptance tests for multi-tenancy, RBAC, refresh-token rotation, remote sync, or multi-user concurrency; these are out of scope.
-- Phase 0 validation is complete documentation and isolated spikes; current application tests are Phase 1/1.2 implementation validation, not Phase 2 work.
+- Phase 0 validation was documentation and isolated spikes (removed after delivery; tag `phase-0`). The current tests cover Phases 1–4 and R1–R3.

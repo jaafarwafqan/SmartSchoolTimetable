@@ -1,3 +1,0 @@
-<Project>
-  <!-- Isolates the Phase 0 spikes from the repository-wide analyzer settings in ../Directory.Build.props. -->
-</Project>
