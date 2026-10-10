@@ -46,6 +46,10 @@ public static class GenerationEndpoints
             ApiResults.From(context, await service.ExcelAsync(id, token, term ?? 1), file => Results.File(file.Content, file.ContentType, file.FileName)));
         timetables.MapGet("/{fromId:long}/compare/{toId:long}", async (long fromId, long toId, HttpContext context, TimetableService service, CancellationToken token) =>
             ApiResults.Ok(context, await service.CompareAsync(fromId, toId, token)));
+        timetables.MapGet("/{id:long}/current-check", async (long id, HttpContext context, TimetableService service, CancellationToken token) =>
+            ApiResults.Ok(context, await service.CurrentCheckAsync(id, token)));
+        timetables.MapPost("/{id:long}/replace-teachers", async (long id, ReplaceTeachersCommand command, HttpContext context, TimetableService service, CancellationToken token) =>
+            ApiResults.Ok(context, await service.ReplaceTeachersAsync(id, command, token)));
         timetables.MapPost("/{id:long}/archive", async (long id, ArchiveTimetableCommand command, HttpContext context, TimetableService service, CancellationToken token) =>
             ApiResults.Ok(context, await service.ArchiveAsync(id, command, token)));
         timetables.MapPost("/{id:long}/rollback", async (long id, RollbackTimetableCommand command, HttpContext context, TimetableService service, CancellationToken token) =>

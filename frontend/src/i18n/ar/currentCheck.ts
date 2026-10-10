@@ -1,0 +1,106 @@
+// MF11 strings: a saved timetable checked against today's school data, what changed since generation, repair and teacher replacement.
+import { isolate } from "../isolate";
+
+export const currentCheck = {
+  title: "الفحص على البيانات الحالية",
+  atGeneration: "الفحص وقت التوليد",
+  atGenerationOk: "لا خرق لأي قيد إلزامي وقت إنشاء هذا الإصدار.",
+  hint: "يقارن هذا الفحص الإصدار المحفوظ ببيانات المدرسة اليوم، ولا يغيّر الإصدار نفسه.",
+  loading: "جارٍ فحص الإصدار على بيانات اليوم...",
+  failed: "تعذّر فحص الإصدار على البيانات الحالية. أعد المحاولة.",
+  status: {
+    fits: "متوافق مع بيانات المدرسة الحالية",
+    changed: "تغيّرت بيانات المدرسة، لكن الجدول ما زال صالحاً",
+    conflicts: (count: string) => `يتعارض مع بيانات المدرسة الحالية: ${count}`,
+  },
+  show: "عرض في الجدول",
+  repair: "إصلاح بأقل تغيير",
+  repairHint: "يعيد التوليد مع إبقاء كل حصة لا تتعارض في مكانها، ويحفظ النتيجة مسودة جديدة.",
+  replace: "استبدال المعلم في الجدول",
+  replaceHint: "يضع المعلم الجديد في الحصص نفسها دون تحريك أي حصة، ويحفظ النتيجة مسودة جديدة.",
+  replaced: "استُبدل المعلم وحُفظ إصدار جديد (مسودة). الإصدار السابق كما هو.",
+  repairStarted: "بدأ إصلاح الجدول. تابع التقدم من شاشة التوليد.",
+  approvalBlocked: "لا يمكن اعتماد هذا الإصدار لأنه يتعارض مع بيانات المدرسة الحالية. أصلحه أولاً.",
+  approvalWarning: "تنبيه: تغيّرت بيانات المدرسة بعد إنشاء هذا الإصدار، دون أن يسبّب ذلك تعارضاً.",
+  cellConflict: (description: string) => `${description}، يتعارض مع البيانات الحالية`,
+  changesTitle: "ما الذي تغيّر منذ التوليد",
+  changesNone: "لم تتغير بيانات الجدولة منذ إنشاء هذا الإصدار.",
+  areas: {
+    assignments: "تعيين المعلمين",
+    availability: "إتاحة المعلمين",
+    loads: "الأنصبة",
+    curriculum: "ساعات المنهج",
+    timing: "الدوام والشعب",
+    other: "أخرى",
+  },
+  unknown: {
+    teacher: "معلم محذوف",
+    section: "شعبة محذوفة",
+    subject: "مادة محذوفة",
+    stage: "مرحلة محذوفة",
+    resource: "مورد محذوف",
+    shift: "دوام محذوف",
+  },
+  noLimit: "بلا حد",
+  noDays: "لا أيام",
+  findings: {
+    TEACHER_UNAVAILABLE: (teacher: string, day: string, count: string) => `${isolate(teacher)}: غير متاح يوم ${day}، وفي الجدول ${count} فيه.`,
+    TEACHER_CONFLICT: (teacher: string, day: string, lesson: string, section: string) => `${isolate(teacher)}: حصتان في الوقت نفسه يوم ${day} الحصة ${lesson}، إحداهما في الشعبة ${section}.`,
+    TEACHER_DAY_LIMIT: (teacher: string, day: string, count: string, limit: string) => `${isolate(teacher)}: في يوم ${day} ${count}، والحد الأقصى اليومي ${limit}.`,
+    TEACHER_WEEK_LIMIT: (teacher: string, count: string, limit: string) => `${isolate(teacher)}: ${count} في الأسبوع والحد الأقصى ${limit}.`,
+    TEACHER_REASSIGNED: (subject: string, section: string, current: string, saved: string, count: string) =>
+      `مادة ${isolate(subject)} في الشعبة ${section} أصبحت للمعلم ${isolate(current)}، والجدول ما زال باسم ${isolate(saved)} (${count}).`,
+    ASSIGNMENT_REMOVED: (subject: string, section: string, count: string) =>
+      `مادة ${isolate(subject)} في الشعبة ${section} لم يعد لها معلم معيّن أو أُزيلت من المنهج، وما زال في الجدول ${count} منها.`,
+    WRONG_LESSON_COUNT: (subject: string, section: string, count: string, limit: string) =>
+      `مادة ${isolate(subject)} في الشعبة ${section}: في الجدول ${count} والمطلوب الآن ${limit}.`,
+    OUTSIDE_SECTION_DAY: (subject: string, section: string, day: string, lesson: string, limit: string) =>
+      `الشعبة ${section}: حصة ${isolate(subject)} في يوم ${day} الحصة ${lesson} خارج حصص اليوم الحالية (${limit}).`,
+    SECTION_CONFLICT: (section: string, day: string, lesson: string) => `الشعبة ${section}: أكثر من حصة يوم ${day} الحصة ${lesson}.`,
+    SECTION_GAP: (section: string, day: string) => `الشعبة ${section}: فراغ قبل حصص يوم ${day}؛ يجب أن تبدأ الحصص من الأولى بلا فراغ.`,
+    SUBJECT_BLOCKED: (subject: string, section: string, day: string, lesson: string) =>
+      `مادة ${isolate(subject)} محجوبة الآن يوم ${day} الحصة ${lesson}، ولها حصة فيه في الشعبة ${section}.`,
+    RESOURCE_CAPACITY: (resource: string, day: string, lesson: string, count: string, limit: string) =>
+      `${isolate(resource)}: ${count} في الوقت نفسه يوم ${day} الحصة ${lesson} وسعته ${limit}.`,
+    SUBJECT_DAILY_CAP: (subject: string, section: string, day: string, count: string, limit: string) =>
+      `مادة ${isolate(subject)} في الشعبة ${section}: في يوم ${day} ${count}، والحد ${limit}.`,
+    DOUBLE_PERIOD_BROKEN: (subject: string, section: string) => `مادة ${isolate(subject)} في الشعبة ${section}: الحصص المزدوجة ليست متتالية.`,
+    UNKNOWN: "حصة في الجدول لا تطابق بيانات المدرسة الحالية.",
+  },
+  changes: {
+    ASSIGNMENT_TEACHER_CHANGED: (subject: string, section: string, from: string, to: string) =>
+      `مادة ${isolate(subject)} في الشعبة ${section}: انتقلت من ${isolate(from)} إلى ${isolate(to)}.`,
+    ASSIGNMENT_ADDED: (subject: string, section: string, teacher: string) => `عُيّن ${isolate(teacher)} لمادة ${isolate(subject)} في الشعبة ${section}.`,
+    ASSIGNMENT_REMOVED: (subject: string, section: string, teacher: string) => `أُلغي تعيين ${isolate(teacher)} لمادة ${isolate(subject)} في الشعبة ${section}.`,
+    TEACHER_OFF_DAYS_CHANGED: (teacher: string, days: string) => `${isolate(teacher)}: أيام الإجازة الآن: ${days}.`,
+    TEACHER_BLOCKED_CHANGED: (teacher: string, from: string, to: string) => `${isolate(teacher)}: تغيّرت الحصص المحجوبة (كانت ${from} وأصبحت ${to}).`,
+    TEACHER_RELEASED_CHANGED: (teacher: string, released: boolean) => (released ? `أُعفي ${isolate(teacher)} من التدريس.` : `أُلغي إعفاء ${isolate(teacher)} من التدريس.`),
+    TEACHER_ARCHIVED_CHANGED: (teacher: string, archived: boolean) => (archived ? `أُرشف ${isolate(teacher)}.` : `استُعيد ${isolate(teacher)} من الأرشيف.`),
+    TEACHER_SPECIALIZATIONS_CHANGED: (teacher: string) => `تغيّرت تخصصات ${isolate(teacher)}.`,
+    TEACHER_DAY_LIMIT_CHANGED: (teacher: string, from: string, to: string) => `${isolate(teacher)}: الحد الأقصى اليومي صار ${to} بعد أن كان ${from}.`,
+    TEACHER_WEEK_LIMIT_CHANGED: (teacher: string, from: string, to: string) => `${isolate(teacher)}: الحد الأقصى الأسبوعي صار ${to} بعد أن كان ${from}.`,
+    LESSONS_PER_WEEK_CHANGED: (subject: string, stage: string, from: string, to: string) => `مادة ${isolate(subject)} في ${isolate(stage)}: ${to} في الأسبوع بعد أن كانت ${from}.`,
+    LINE_ADDED: (subject: string, stage: string, count: string) => `أُضيفت مادة ${isolate(subject)} إلى منهج ${isolate(stage)} بمعدل ${count} في الأسبوع.`,
+    LINE_REMOVED: (subject: string, stage: string) => `أُزيلت مادة ${isolate(subject)} من منهج ${isolate(stage)}.`,
+    LINE_DOUBLE_CHANGED: (subject: string, stage: string, needs: boolean) =>
+      (needs ? `مادة ${isolate(subject)} في ${isolate(stage)} صارت تحتاج حصة مزدوجة.` : `مادة ${isolate(subject)} في ${isolate(stage)} لم تعد تحتاج حصة مزدوجة.`),
+    WORKING_DAYS_CHANGED: (days: string) => `تغيّرت أيام الدوام: ${days}.`,
+    SHIFT_TIMING_CHANGED: (shift: string) => `تغيّر توقيت الحصص أو عددها في ${isolate(shift)}.`,
+    SECTION_ADDED: (section: string) => `أُضيفت الشعبة ${section}.`,
+    SECTION_REMOVED: (section: string) => `أُزيلت الشعبة ${section}.`,
+    SECTION_DAYS_CHANGED: (section: string) => `تغيّر عدد حصص الشعبة ${section} في أيام الأسبوع أو مرحلتها أو دوامها.`,
+    SUBJECT_RULES_CHANGED: (subject: string) => `تغيّرت قواعد مادة ${isolate(subject)} (حصص محجوبة أو حصة مزدوجة أو مورد أو أولوية).`,
+    RESOURCE_CHANGED: (resource: string, capacity: string) => `تغيّر ${isolate(resource)} (السعة الآن ${capacity}).`,
+    PRIORITIES_CHANGED: "تغيّرت أولويات الجدول؛ هذا يؤثر في جودة الجدول لا في صحته.",
+    OTHER_CHANGE: "تغيّرت بيانات أخرى في المدرسة.",
+  },
+  repairRun: {
+    title: "أُصلح الجدول بأقل تغيير",
+    sentence: "بقيت الحصص التي لا تتعارض مع بيانات المدرسة الحالية في أماكنها، وحُفظ جدول جديد (مسودة).",
+    moved: (count: string) => `الحصص التي تغيّرت عن الإصدار الأصلي: ${count}.`,
+    nothingMoved: "لم تتغير أي حصة عن الإصدار الأصلي.",
+    impossible: "تعذّر إصلاح الجدول بتغيير محدود",
+    impossibleHint: "لا يوجد حل يُبقي بقية الحصص في أماكنها. ابدأ توليد جدول جديد كاملاً من الأسفل، أو راجع التنبيهات.",
+    parent: "الإصدار الأصلي",
+  },
+} as const;

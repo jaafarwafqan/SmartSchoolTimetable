@@ -110,6 +110,8 @@ public static class AuditEvents
     public const string TimetableEdited = "TimetableEdited";
     public const string TimetableGenerated = "TimetableGenerated";
     public const string TimetableRolledBack = "TimetableRolledBack";
+    public const string TimetableRepaired = "TimetableRepaired";
+    public const string TimetableTeacherReplaced = "TimetableTeacherReplaced";
     public const string WorkingWeekUpdated = "WorkingWeekUpdated";
     public const string WorkloadArchivedWithLine = "WorkloadArchivedWithLine";
     public const string WorkloadAssigned = "WorkloadAssigned";
@@ -210,6 +212,8 @@ public static class AuditEvents
         [TimetableEdited] = AuditCategories.Timetable,
         [TimetableGenerated] = AuditCategories.Timetable,
         [TimetableRolledBack] = AuditCategories.Timetable,
+        [TimetableRepaired] = AuditCategories.Timetable,
+        [TimetableTeacherReplaced] = AuditCategories.Timetable,
         [WorkingWeekUpdated] = AuditCategories.School,
         [WorkloadArchivedWithLine] = AuditCategories.School,
         [WorkloadAssigned] = AuditCategories.School,

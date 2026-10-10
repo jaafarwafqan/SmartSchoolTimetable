@@ -5,7 +5,7 @@ export type TimetableVersionSummary = {
   id: number;
   version: number;
   number: number;
-  source: "generated" | "edited" | "rolledBack";
+  source: "generated" | "edited" | "rolledBack" | "repaired" | "teacherReplaced";
   generationRunId: number | null;
   parentVersionId: number | null;
   mode: "standard" | "doublePeriods";
@@ -103,6 +103,72 @@ export function useRollbackTimetable() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (version: TimetableVersionSummary) => apiRequest<TimetableVersionSummary>(`/api/v1/timetables/${version.id}/rollback`, "POST", { version: version.version, note: null }),
+    onSuccess: () => refreshLifecycle(client),
+  });
+}
+
+/** MF11: one problem of a saved version against today's data (names come from `CurrentCheck.names`). */
+export type CurrentFinding = {
+  code: string;
+  sectionId: number | null;
+  teacherId: number | null;
+  currentTeacherId: number | null;
+  subjectId: number | null;
+  resourceId: number | null;
+  day: number | null;
+  lesson: number | null;
+  count: number | null;
+  limit: number | null;
+};
+
+/** MF11: one change in the scheduling input since the version was made. */
+export type InputChange = {
+  code: string;
+  teacherId: number | null;
+  toTeacherId: number | null;
+  sectionId: number | null;
+  subjectId: number | null;
+  stageId: number | null;
+  shiftId: number | null;
+  resourceId: number | null;
+  from: number | null;
+  to: number | null;
+  days: number[] | null;
+};
+
+type Named = { id: number; name: string };
+export type CurrentCheck = {
+  versionId: number;
+  stale: boolean;
+  findings: CurrentFinding[];
+  changes: InputChange[];
+  canReplaceTeachers: boolean;
+  canRepair: boolean;
+  names: {
+    teachers: Named[];
+    sections: { id: number; stageName: string; label: string }[];
+    subjects: Named[];
+    stages: Named[];
+    resources: Named[];
+    shifts: Named[];
+  };
+};
+
+/** «الفحص على البيانات الحالية» (MF11): read fresh on every visit, because the school data may have changed meanwhile. */
+export function useCurrentCheck(id: number | undefined) {
+  return useQuery({
+    queryKey: ["timetable", "current-check", id ?? 0],
+    queryFn: () => apiRequest<CurrentCheck>(`/api/v1/timetables/${id}/current-check`),
+    enabled: id !== undefined,
+    refetchOnMount: "always",
+  });
+}
+
+/** «استبدال المعلم في الجدول»: a NEW draft with today's teachers in the same slots. */
+export function useReplaceTeachers() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (version: TimetableVersionSummary) => apiRequest<TimetableVersionSummary>(`/api/v1/timetables/${version.id}/replace-teachers`, "POST", { version: version.version }),
     onSuccess: () => refreshLifecycle(client),
   });
 }

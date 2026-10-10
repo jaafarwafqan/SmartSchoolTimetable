@@ -136,6 +136,8 @@ export const audit = {
       : `أُرشف الإصدار${part(p.number)}.`),
     TimetableEdited: (p: Parameters) => `حُفظ الإصدار${part(p.number)} من تعديل يدوي على الإصدار${part(p.from)}${p.moved ? `، الحصص المنقولة: ${p.moved}` : ""}.`,
     TimetableGenerated: (p: Parameters) => `حُفظ الإصدار${part(p.number)} من توليد جديد.`,
+    TimetableRepaired: (p: Parameters) => `أُصلح الإصدار${part(p.from)} بأقل تغيير وحُفظ كإصدار جديد${p.number ? ` رقم ${p.number}` : ""}${p.changed ? `، الحصص التي تغيّرت: ${p.changed}` : ""}.`,
+    TimetableTeacherReplaced: (p: Parameters) => `استُبدل معلم حصص في الإصدار${part(p.from)} وحُفظ الإصدار${part(p.number)} الجديد${p.replaced ? `، الحصص المعدّلة: ${p.replaced}` : ""}.`,
     TimetableRolledBack: (p: Parameters) => `استُرجع الإصدار${part(p.from)} كإصدار جديد${p.number ? ` رقم ${p.number}` : ""}.`,
     WorkingWeekUpdated: () => "عُدّلت أيام الدوام الأسبوعية.",
     WorkloadArchivedWithLine: (p: Parameters) => `أُرشفت أنصبة مع بند منهج${p.count ? `: ${p.count}` : ""}.`,

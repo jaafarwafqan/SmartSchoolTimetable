@@ -12,6 +12,12 @@ public enum TimetableSource
 
     /// <summary>An older version restored as a NEW version (M1): the older one is never changed.</summary>
     RolledBack = 3,
+
+    /// <summary>MF11: regenerated with every lesson that still fits today's data kept in place; only the conflicting lessons moved.</summary>
+    Repaired = 4,
+
+    /// <summary>MF11: the teacher of lessons replaced directly after a change of assignment, nothing else moved.</summary>
+    TeacherReplaced = 5,
 }
 
 /// <summary>

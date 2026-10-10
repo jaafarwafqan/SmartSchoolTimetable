@@ -127,7 +127,7 @@ export function WeekGrid({ caption, days, shift, lessonCount, lessons, format, s
 }
 
 /** All sections × (days × lessons): the master timetable, scrolling inside its own container only. */
-export function MasterGrid({ timetable, format, look, term = 1 }: { timetable: Timetable; format: Formatter; look: Lookups; term?: Term }) {
+export function MasterGrid({ timetable, format, look, term = 1, flagged }: { timetable: Timetable; format: Formatter; look: Lookups; term?: Term; flagged?: ReadonlySet<string> }) {
   const lessonCount = Math.max(1, ...timetable.sections.flatMap((section) => section.allowedByDay.map((day) => day.lessons)));
   const numbers = Array.from({ length: lessonCount }, (_, index) => index + 1);
   const at = new Map(timetable.lessons.map((lesson) => [`${lesson.sectionId}:${lesson.day}:${lesson.lesson}`, lesson]));
@@ -157,8 +157,11 @@ export function MasterGrid({ timetable, format, look, term = 1 }: { timetable: T
       rows={timetable.sections.map((section) => ({
         key: String(section.id),
         label: look.sectionName(section.id),
-        cells: timetable.days.flatMap((day) => numbers.map((number) =>
-          cellFor(at.get(`${section.id}:${day}:${number}`), day, number, format, look, teacherOf, look.sectionName(section.id)))),
+        cells: timetable.days.flatMap((day) => numbers.map((number) => {
+          const cell = cellFor(at.get(`${section.id}:${day}:${number}`), day, number, format, look, teacherOf, look.sectionName(section.id));
+          // MF11: a slot that conflicts with today's school data shows an icon and a border as well as its text.
+          return flagged?.has(`${section.id}:${day}:${number}`) ? { ...cell, state: "conflict" as const, description: messages.school.currentCheck.cellConflict(cell.description) } : cell;
+        })),
       }))}
     />
   );

@@ -2,7 +2,7 @@ import { SectionTitle } from "../../components/ui/section-title";
 import { Archive, ArchiveRestore, BadgeCheck, CalendarCheck, CalendarRange, FileDown, FilePen, GitCompareArrows, History, PencilLine, Play, Printer, ShieldCheck, Stamp } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { flushSync } from "react-dom";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { userErrorMessage } from "../../api";
 import { Alert } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
@@ -18,15 +18,19 @@ import { messages } from "../../i18n/messages";
 import { PageHeader } from "../../layout/PageHeader";
 import { useFormatter, useSchoolContext } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
-import { useApproveTimetable, useArchiveTimetable, useRollbackTimetable, useTimetable, useTimetableVersions, type Term, type Timetable, type TimetableVersionSummary } from "./timetableApi";
+import { useStartRepair } from "../generation/generationApi";
+import { useApproveTimetable, useArchiveTimetable, useCurrentCheck, useReplaceTeachers, useRollbackTimetable, useTimetable, useTimetableVersions, type Term, type Timetable, type TimetableVersionSummary } from "./timetableApi";
 import { VersionComparison } from "./VersionComparison";
 import { PrintDocument } from "./PrintDocument";
 import { defaultOptions, type Orientation, type PaperSize, type PrintOptions, type PrintScope } from "./printing";
-import { lookups, MasterGrid, sessionViewOf, WeekGrid } from "./TimetableGrids";
+import { CurrentDataCheck } from "./CurrentDataCheck";
+import { flaggedSlots, slotKey, type FindingItem } from "./currentCheck";
+import { cellFor, lookups, MasterGrid, sessionViewOf, WeekGrid } from "./TimetableGrids";
 import { TimetableEditor } from "./TimetableEditor";
 
 const text = messages.school.timetable;
 const lifecycle = messages.school.lifecycle;
+const currentText = messages.school.currentCheck;
 
 type View = "section" | "teacher" | "master";
 
@@ -36,9 +40,13 @@ type ViewsProps = {
   editing: boolean;
   onEditingChange: (editing: boolean) => void;
   onSaved: (versionId: number) => void;
+  /** MF11: slots ("section:day:lesson") that conflict with today's school data; marked on the grids outside the editor. */
+  flagged: ReadonlySet<string>;
+  /** MF11: «عرض في الجدول»: switch to the finding's section (or teacher) and focus its cell. `nonce` makes a repeated request count. */
+  focusRequest: { nonce: number; item: FindingItem } | null;
 };
 
-function TimetableViews({ timetable, editing, onEditingChange, onSaved }: ViewsProps) {
+function TimetableViews({ timetable, editing, onEditingChange, onSaved, flagged, focusRequest }: ViewsProps) {
   const format = useFormatter();
   const look = useMemo(() => lookups(timetable), [timetable]);
   const [chosenView, setView] = useState<View>("section");
@@ -47,6 +55,31 @@ function TimetableViews({ timetable, editing, onEditingChange, onSaved }: ViewsP
   const setEditing = onEditingChange;
   const [sectionId, setSectionId] = useState<number>(timetable.sections[0]?.id ?? 0);
   const [teacherId, setTeacherId] = useState<number>(timetable.teachers[0]?.id ?? 0);
+  // «عرض في الجدول»: adjust the view while rendering when a new request arrives (no effect needed for state).
+  const [seenRequest, setSeenRequest] = useState(0);
+  if (focusRequest && focusRequest.nonce !== seenRequest) {
+    setSeenRequest(focusRequest.nonce);
+    const { sectionId: wantedSection, teacherId: wantedTeacher } = focusRequest.item;
+    if (wantedSection !== null && timetable.sections.some((item) => item.id === wantedSection)) {
+      setView("section");
+      setSectionId(wantedSection);
+    } else if (wantedTeacher !== null && timetable.teachers.some((item) => item.id === wantedTeacher)) {
+      setView("teacher");
+      setTeacherId(wantedTeacher);
+    }
+  }
+  useEffect(() => {
+    if (!focusRequest) return undefined;
+    const { day, lesson } = focusRequest.item;
+    const handle = window.setTimeout(() => {
+      const row = day === null ? -1 : timetable.days.indexOf(day);
+      const exact = row >= 0 && lesson !== null ? document.querySelector<HTMLElement>(`.timetable-views [data-cell="${row}:${lesson - 1}"] .ui-tt-cell`) : null;
+      const target = exact ?? document.querySelector<HTMLElement>(".timetable-views .ui-tt-cell.is-conflict");
+      target?.scrollIntoView({ block: "center" });
+      target?.focus();
+    }, 60);
+    return () => window.clearTimeout(handle);
+  }, [focusRequest, timetable.days]);
   // R3: two-session schools choose the semester; the grid is the same, the clock follows the day's session. It opens on
   // the current semester when the year's dates tell it, otherwise on semester 1 (#86).
   const [term, setTerm] = useState<Term>(timetable.sessions?.currentTerm ?? 1);
@@ -114,7 +147,8 @@ function TimetableViews({ timetable, editing, onEditingChange, onSaved }: ViewsP
         <WeekGrid caption={look.sectionName(section.id)} days={timetable.days} shift={shifts.get(section.shiftId)} format={format} look={look}
           lessonCount={lessonCountOf(section.shiftId)} lessons={timetable.lessons.filter((lesson) => lesson.sectionId === section.id)}
           sessions={sessionViewOf(timetable, section.shiftId, term)}
-          secondLine={(lesson) => look.teacher(lesson.teacherId)?.shortName ?? ""} />
+          secondLine={(lesson) => look.teacher(lesson.teacherId)?.shortName ?? ""}
+          cell={(lesson, day, number) => flagCell(cellFor(lesson, day, number, format, look, (item) => look.teacher(item.teacherId)?.shortName ?? ""), flagged.has(slotKey(section.id, day, number)))} />
       )}
       {view === "teacher" && teacher && (
         <>
@@ -124,15 +158,22 @@ function TimetableViews({ timetable, editing, onEditingChange, onSaved }: ViewsP
               days={timetable.days} shift={shifts.get(shiftId)} format={format} look={look} lessonCount={lessonCountOf(shiftId)}
               sessions={sessionViewOf(timetable, shiftId, term)}
               lessons={teacherLessons.filter((lesson) => look.section(lesson.sectionId)?.shiftId === shiftId)}
-              secondLine={(lesson) => look.sectionName(lesson.sectionId)} />
+              secondLine={(lesson) => look.sectionName(lesson.sectionId)}
+              cell={(lesson, day, number) => flagCell(cellFor(lesson, day, number, format, look, (item) => look.sectionName(item.sectionId)),
+                lesson !== undefined && flagged.has(slotKey(lesson.sectionId, day, number)))} />
           ))}
         </>
       )}
-      {view === "master" && <MasterGrid timetable={timetable} format={format} look={look} term={term} />}
+      {view === "master" && <MasterGrid timetable={timetable} format={format} look={look} term={term} flagged={editing ? undefined : flagged} />}
       {!editing && (printPanelOpen || browserPrinting) && <PrintDocument timetable={timetable} options={print} term={term} format={format} look={look}
         current={{ view, sectionId: section?.id, teacherId: teacher?.id }} />}
     </div>
   );
+}
+
+/** MF11: marks a cell that conflicts with today's data (icon and border, with the reason in its description). */
+function flagCell<T extends { state?: string; description: string }>(cell: T, flagged: boolean): T {
+  return flagged ? { ...cell, state: "conflict", description: currentText.cellConflict(cell.description) } : cell;
 }
 
 const printText = messages.school.printing;
@@ -205,6 +246,14 @@ export function TimetablePage() {
   const [confirming, setConfirming] = useState<"approve" | "archive" | "rollback" | null>(null);
   const [editing, setEditing] = useState(false);
   const summary = timetable.data?.summary;
+  // MF11: the saved version against today's data; read fresh on every visit.
+  const currentCheck = useCurrentCheck(selectedId);
+  const replaceTeachers = useReplaceTeachers();
+  const startRepair = useStartRepair(yearId);
+  const navigate = useNavigate();
+  const [focusRequest, setFocusRequest] = useState<{ nonce: number; item: FindingItem } | null>(null);
+  const flagged = useMemo(() => flaggedSlots(currentCheck.data?.findings ?? [], timetable.data?.lessons ?? []), [currentCheck.data, timetable.data]);
+  const hasConflicts = (currentCheck.data?.findings.length ?? 0) > 0;
   // Comparison: the version in the URL (?compare=) is the older side; it defaults to the parent, else the previous version.
   const compareParam = Number(params.get("compare")) || undefined;
   const defaultBase = (current: TimetableVersionSummary) =>
@@ -251,7 +300,8 @@ export function TimetablePage() {
                 {summary.status !== "archived" && (
                   <Button icon={<PencilLine aria-hidden="true" size={18} />} onClick={() => setEditing(true)}>{text.edit}</Button>
                 )}
-                {summary.status === "draft" && <Button icon={<Stamp aria-hidden="true" size={18} />} onClick={() => setConfirming("approve")}>{text.approve}</Button>}
+                {summary.status === "draft" && <Button icon={<Stamp aria-hidden="true" size={18} />} disabled={hasConflicts} aria-describedby={hasConflicts ? "approval-blocked" : undefined}
+                  onClick={() => setConfirming("approve")}>{text.approve}</Button>}
                 {summary.status !== "archived" && (
                   <Button variant="secondary" icon={<Archive aria-hidden="true" size={18} />} onClick={() => setConfirming("archive")}>{lifecycle.archive}</Button>
                 )}
@@ -263,6 +313,7 @@ export function TimetablePage() {
             )}
           </div>
           {summary && <p className="card-note">{editing ? lifecycle.editingHint : lifecycle.statusHints[summary.status]}</p>}
+          {summary && summary.status === "draft" && hasConflicts && !editing && <Alert tone="warning" message={currentText.approvalBlocked} />}
           <details className="advanced-options tool-panel">
             <summary><History aria-hidden="true" size={18} /><span>{lifecycle.allVersions(format.count(list.length, "version"))}</span></summary>
             <VersionsTable versions={list} selectedId={selectedId} onSelect={selectVersion} />
@@ -280,8 +331,20 @@ export function TimetablePage() {
                 {timetable.data.violations === 0
                   ? <p className="generation-verified"><ShieldCheck aria-hidden="true" size={18} /><span>{text.verified}</span></p>
                   : <Alert tone="error" message={messages.errors.TIMETABLE_VERIFICATION_FAILED} />}
-                {summary.stale && <Alert tone="warning" message={text.stale} />}
-                <TimetableViews key={summary.id} timetable={timetable.data} editing={editing} onEditingChange={setEditing}
+                {!editing && (
+                  <CurrentDataCheck version={summary} check={currentCheck}
+                    onShow={(item) => setFocusRequest((current) => ({ nonce: (current?.nonce ?? 0) + 1, item }))}
+                    repairing={startRepair.isPending} replacing={replaceTeachers.isPending}
+                    onRepair={() => { feedback.reset(); startRepair.mutate(summary.id, { onSuccess: () => navigate("/timetable/generate"), onError: feedback.showError }); }}
+                    onReplace={() => {
+                      feedback.reset();
+                      replaceTeachers.mutate(summary, {
+                        onSuccess: (created) => { setParams({ version: String(created.id) }); feedback.showSuccess(currentText.replaced); },
+                        onError: (error) => { feedback.showError(error); void currentCheck.refetch(); },
+                      });
+                    }} />
+                )}
+                <TimetableViews key={summary.id} timetable={timetable.data} editing={editing} onEditingChange={setEditing} flagged={flagged} focusRequest={focusRequest}
                   onSaved={(id) => { setEditing(false); setParams({ version: String(id) }); feedback.showSuccess(text.savedEdit); }} />
               </>
             )}
@@ -290,7 +353,7 @@ export function TimetablePage() {
       )}
       {summary && (
         <>
-          <ConfirmDialog open={confirming === "approve"} title={text.approveConfirmTitle} consequence={text.approveConfirm(format.number(summary.number))}
+          <ConfirmDialog open={confirming === "approve"} title={text.approveConfirmTitle} consequence={`${text.approveConfirm(format.number(summary.number))}${currentCheck.data?.stale && !hasConflicts ? ` ${currentText.approvalWarning}` : ""}`}
             confirmLabel={text.approve} confirmIcon={<Stamp aria-hidden="true" size={18} />} loading={approve.isPending}
             onCancel={() => setConfirming(null)}
             onConfirm={() => approve.mutate(summary, {

@@ -82,6 +82,11 @@ type NoTimetableStatus = keyof typeof plain.noTimetable;
 
 /** MF3: the result in plain Arabic — a headline and one friendly sentence; `ok` when a valid timetable was saved. */
 export function resultHeadline(run: GenerationRun): { ok: boolean; title: string; sentence: string } {
+  if (run.isRepair) {
+    // MF11: a repair says so, and when it has no solution it says that (not «تعذّر إنشاء جدول بهذه البيانات»).
+    const text = messages.school.currentCheck.repairRun;
+    return run.timetableVersionId !== null ? { ok: true, title: text.title, sentence: text.sentence } : { ok: false, title: text.impossible, sentence: text.impossibleHint };
+  }
   if (run.timetableVersionId !== null) {
     const sentence = run.status === "cancelled" ? plain.readyStopped : run.optimal ? plain.readyBest : plain.readyGood;
     return { ok: true, title: plain.ready, sentence };

@@ -23,6 +23,7 @@ import type { Formatter } from "../../lib/format";
 import { useFormatter, useSchoolContext } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
 import { errorCount, fixHref, warningCount } from "../readiness/readinessPresentation";
+import { useComparison } from "../timetable/timetableApi";
 import { useReadiness } from "../readiness/readinessApi";
 import {
   isActive, useCancelGeneration, useCurrentRun, useEngine, useManualEdits, useRunHistory, useStartGeneration,
@@ -86,6 +87,20 @@ function ProgressPanel({ run, format, onStop, stopping }: { run: GenerationRun; 
 }
 
 /** MF3: the result in plain Arabic first (headline, one sentence, what could be better); the solver's numbers stay under «تفاصيل تقنية». */
+/** MF11: how many lessons a repair changed against the version it repaired (from the comparison of the two versions). */
+function RepairSummary({ parentId, versionId, format }: { parentId: number; versionId: number; format: Formatter }) {
+  const comparison = useComparison(parentId, versionId);
+  const repair = messages.school.currentCheck.repairRun;
+  if (!comparison.data) return null;
+  const changed = comparison.data.totals.moved + comparison.data.totals.reassigned + comparison.data.totals.added + comparison.data.totals.removed;
+  return (
+    <p className="generation-verified">
+      <Wrench aria-hidden="true" size={18} />
+      <span>{changed === 0 ? repair.nothingMoved : repair.moved(format.count(changed, "lesson"))}</span>
+    </p>
+  );
+}
+
 function ResultPanel({ run, format }: { run: GenerationRun; format: Formatter }) {
   const headline = resultHeadline(run);
   const notes = improvementNotes(run, format);
@@ -102,6 +117,7 @@ function ResultPanel({ run, format }: { run: GenerationRun; format: Formatter })
       </p>
       <p>{headline.sentence}</p>
       {run.errorCode && run.status === "failed" && <Alert tone="error" message={messages.errors[run.errorCode as keyof typeof messages.errors] ?? messages.errors.UNKNOWN_ERROR} />}
+      {run.isRepair && run.timetableVersionId !== null && run.lockedFromVersionId !== null && <RepairSummary parentId={run.lockedFromVersionId} versionId={run.timetableVersionId} format={format} />}
       {run.lockedLessons > 0 && (
         <p className="generation-verified"><Lock aria-hidden="true" size={18} /><span>{lifecycle.locksKept(format.count(run.lockedLessons - run.locksDropped, "lesson"))}</span></p>
       )}
