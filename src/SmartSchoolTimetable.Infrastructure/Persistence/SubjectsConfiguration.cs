@@ -15,6 +15,8 @@ internal sealed class SubjectConfiguration : IEntityTypeConfiguration<Subject>
         builder.Property(subject => subject.Notes).HasMaxLength(Subject.NotesMaxLength);
         builder.HasIndex(subject => subject.NormalizedName).IsUnique();
         builder.HasIndex(subject => subject.IsArchived);
+        // A required resource cannot be deleted while subjects point at it (reference guard first, then this key).
+        builder.HasOne<Domain.Resources.Resource>().WithMany().HasForeignKey(subject => subject.RequiredResourceId).OnDelete(DeleteBehavior.Restrict);
         builder.ToTable(table =>
         {
             table.HasCheckConstraint("CK_Subjects_ColorIndex", "\"ColorIndex\" BETWEEN 1 AND 10");

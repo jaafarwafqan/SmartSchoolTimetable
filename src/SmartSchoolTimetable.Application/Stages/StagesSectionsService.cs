@@ -13,10 +13,12 @@ namespace SmartSchoolTimetable.Application.Stages;
 /// </summary>
 public sealed class StagesSectionsService(IDataStore store, TimeProvider clock)
 {
+    private readonly ReferenceGuard references = new(store);
+
     public async Task<PagedResult<StageDto>> ListStagesAsync(long yearId, ListQuery query, CancellationToken token)
     {
         ArgumentNullException.ThrowIfNull(query);
-        var rows = store.Query<Stage>().Where(row => row.AcademicYearId == yearId);
+        var rows = store.Read<Stage>().Where(row => row.AcademicYearId == yearId);
         if (!query.WithArchived)
             rows = rows.Where(row => !row.IsArchived);
         var search = query.NormalizedSearch;
@@ -37,7 +39,7 @@ public sealed class StagesSectionsService(IDataStore store, TimeProvider clock)
         ArgumentNullException.ThrowIfNull(query);
         if (await FindStageAsync(yearId, stageId, token) is null)
             return new PagedResult<SectionDto>([], 0, query.SafePage, query.SafePageSize);
-        var rows = store.Query<Section>().Where(row => row.StageId == stageId);
+        var rows = store.Read<Section>().Where(row => row.StageId == stageId);
         if (!query.WithArchived)
             rows = rows.Where(row => !row.IsArchived);
         var search = query.NormalizedSearch;
@@ -90,10 +92,8 @@ public sealed class StagesSectionsService(IDataStore store, TimeProvider clock)
             return OperationResult.Failure<StageDto>(ErrorCodes.NotFound);
         if (!stage.IsVersion(command.Version))
             return OperationResult.Failure<StageDto>(ErrorCodes.Conflict);
-        if (archived && await store.AnyAsync(store.Query<Section>().Where(row => row.StageId == id && !row.IsArchived), token))
-            return OperationResult.Failure<StageDto>(ErrorCodes.RecordInUse);
-        if (archived && await store.AnyAsync(store.Query<CurriculumEntry>().Where(entry => entry.StageId == id && !entry.IsArchived), token))
-            return OperationResult.Failure<StageDto>(ErrorCodes.CurriculumInUse);
+        if (archived && await references.ArchiveBlockedAsync(ReferenceKinds.Stage, id, token) is { } inUse)
+            return OperationResult.Failure<StageDto>(inUse);
         if (archived)
             stage.Archive(clock.GetUtcNow());
         else
@@ -102,17 +102,15 @@ public sealed class StagesSectionsService(IDataStore store, TimeProvider clock)
         return await store.SaveAsync(() => ToDto(stage), "Name", token);
     }
 
-    /// <summary>Hard delete, allowed only while the stage has no sections (archived ones included).</summary>
+    /// <summary>Hard delete, allowed only while nothing refers to the stage (archived sections and lines included).</summary>
     public async Task<OperationResult<bool>> DeleteStageAsync(long yearId, long id, int version, CancellationToken token)
     {
         if (await FindStageAsync(yearId, id, token) is not { } stage)
             return OperationResult.Failure<bool>(ErrorCodes.NotFound);
         if (!stage.IsVersion(version))
             return OperationResult.Failure<bool>(ErrorCodes.Conflict);
-        if (await store.AnyAsync(store.Query<Section>().Where(row => row.StageId == id), token))
-            return OperationResult.Failure<bool>(ErrorCodes.RecordInUse);
-        if (await store.AnyAsync(store.Query<CurriculumEntry>().Where(entry => entry.StageId == id), token))
-            return OperationResult.Failure<bool>(ErrorCodes.CurriculumInUse);
+        if (await references.DeleteBlockedAsync(ReferenceKinds.Stage, id, token) is { } inUse)
+            return OperationResult.Failure<bool>(inUse);
         store.Remove(stage);
         AuditTrail.Record(store, clock, "StageDeleted", $"stage:{id}", "Stage deleted.");
         return await store.SaveAsync(() => true, "Name", token);
@@ -160,6 +158,8 @@ public sealed class StagesSectionsService(IDataStore store, TimeProvider clock)
             return OperationResult.Failure<SectionDto>(ErrorCodes.Conflict);
         if (!archived && stage.IsArchived)
             return OperationResult.Failure<SectionDto>(ErrorCodes.StageArchived);
+        if (archived && await references.ArchiveBlockedAsync(ReferenceKinds.Section, id, token) is { } inUse)
+            return OperationResult.Failure<SectionDto>(inUse);
         if (archived)
             section.Archive(clock.GetUtcNow());
         else
@@ -168,13 +168,15 @@ public sealed class StagesSectionsService(IDataStore store, TimeProvider clock)
         return await store.SaveAsync(ct => MapSectionAsync(section, ct), "Label", token);
     }
 
-    /// <summary>Hard delete. Nothing references sections in Phase 2; Phase 3 workload will block this.</summary>
+    /// <summary>Hard delete, allowed only while nothing refers to the section (reference guard).</summary>
     public async Task<OperationResult<bool>> DeleteSectionAsync(long yearId, long stageId, long id, int version, CancellationToken token)
     {
         if (await FindSectionAsync(yearId, stageId, id, token) is not { } section)
             return OperationResult.Failure<bool>(ErrorCodes.NotFound);
         if (!section.IsVersion(version))
             return OperationResult.Failure<bool>(ErrorCodes.Conflict);
+        if (await references.DeleteBlockedAsync(ReferenceKinds.Section, id, token) is { } inUse)
+            return OperationResult.Failure<bool>(inUse);
         store.Remove(section);
         AuditTrail.Record(store, clock, "SectionDeleted", $"section:{id}", "Section deleted.");
         return await store.SaveAsync(() => true, "Label", token);

@@ -15,15 +15,15 @@ internal static class CurriculumTableBuilder
     public static async Task<CurriculumTableDto> BuildAsync(IDataStore store, long yearId, CancellationToken token)
     {
         var stages = await store.ListAsync(
-            store.Query<Stage>().Where(stage => stage.AcademicYearId == yearId && !stage.IsArchived).OrderBy(stage => stage.DisplayOrder).ThenBy(stage => stage.NormalizedName),
+            store.Read<Stage>().Where(stage => stage.AcademicYearId == yearId && !stage.IsArchived).OrderBy(stage => stage.DisplayOrder).ThenBy(stage => stage.NormalizedName),
             token);
         var stageIds = stages.Select(stage => stage.Id).ToArray();
-        var subjects = await store.ListAsync(store.Query<Subject>().Where(subject => !subject.IsArchived).OrderBy(subject => subject.NormalizedName), token);
+        var subjects = await store.ListAsync(store.Read<Subject>().Where(subject => !subject.IsArchived).OrderBy(subject => subject.NormalizedName), token);
         var entries = await store.ListAsync(
-            store.Query<CurriculumEntry>().Where(entry => stageIds.Contains(entry.StageId) && !entry.IsArchived).OrderBy(entry => entry.Id), token);
-        var sections = await store.ListAsync(store.Query<Section>().Where(section => stageIds.Contains(section.StageId) && !section.IsArchived), token);
-        var shifts = (await store.ListAsync(store.Query<Shift>().Where(shift => shift.AcademicYearId == yearId), token)).ToDictionary(shift => shift.Id);
-        var week = await store.FirstOrDefaultAsync(store.Query<WorkingWeek>(), token);
+            store.Read<CurriculumEntry>().Where(entry => stageIds.Contains(entry.StageId) && !entry.IsArchived).OrderBy(entry => entry.Id), token);
+        var sections = await store.ListAsync(store.Read<Section>().Where(section => stageIds.Contains(section.StageId) && !section.IsArchived), token);
+        var shifts = (await store.ListAsync(store.Read<Shift>().Where(shift => shift.AcademicYearId == yearId), token)).ToDictionary(shift => shift.Id);
+        var week = await store.FirstOrDefaultAsync(store.Read<WorkingWeek>(), token);
 
         var stageDtos = stages.Select(stage =>
         {

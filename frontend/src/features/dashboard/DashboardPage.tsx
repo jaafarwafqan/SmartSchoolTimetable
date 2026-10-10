@@ -9,6 +9,7 @@ import { messages } from "../../i18n/messages";
 import { PageHeader } from "../../layout/PageHeader";
 import { useFormatter } from "../../lib/schoolContext";
 import { CurriculumStatusCard } from "./CurriculumStatusCard";
+import { ReadinessCard } from "../readiness/ReadinessCard";
 import { countItems } from "./dashboardItems";
 import { SetupChecklist } from "./SetupChecklist";
 import { useDashboard } from "./useDashboard";
@@ -43,6 +44,7 @@ export function DashboardPage() {
             </Card>
           )}
           <SetupChecklist steps={summary.data.checklist} />
+          <ReadinessCard />
           <Card className="dashboard-card" aria-labelledby="counts-title">
             <h2 id="counts-title">{messages.school.dashboard.countsTitle}</h2>
             <dl className="count-grid">

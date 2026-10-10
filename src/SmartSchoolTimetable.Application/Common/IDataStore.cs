@@ -9,6 +9,9 @@ public interface IDataStore
 {
     IQueryable<T> Query<T>() where T : class;
 
+    /// <summary>Read-only query: results are not tracked, so they must not be changed and saved (lists, reports).</summary>
+    IQueryable<T> Read<T>() where T : class;
+
     void Add<T>(T entity) where T : class;
 
     void Remove<T>(T entity) where T : class;

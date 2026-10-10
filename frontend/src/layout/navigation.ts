@@ -1,4 +1,4 @@
-import { LayoutDashboard, Library, School, Settings, UsersRound, type LucideIcon } from "lucide-react";
+import { CalendarRange, LayoutDashboard, Library, School, Settings, UsersRound, type LucideIcon } from "lucide-react";
 import { messages } from "../i18n/messages";
 
 export type NavItem = {
@@ -33,16 +33,42 @@ export const navGroups: readonly NavGroup[] = [
       { to: "/classes/stages", label: nav.stagesSections },
       { to: "/classes/subjects", label: nav.subjects },
       { to: "/classes/curriculum", label: nav.curriculum },
+      { to: "/classes/resources", label: nav.resources },
+    ],
+  },
+  {
+    root: "/teachers",
+    label: nav.teachers,
+    tabs: [
+      { to: "/teachers/list", label: nav.teachers },
+      { to: "/teachers/workload", label: nav.workload },
+    ],
+  },
+  {
+    root: "/timetable",
+    label: nav.timetable,
+    tabs: [
+      { to: "/timetable/generate", label: nav.generate },
+      { to: "/timetable/view", label: nav.timetables },
+    ],
+  },
+  {
+    root: "/settings",
+    label: nav.settings,
+    tabs: [
+      { to: "/settings/general", label: nav.settingsGeneral },
+      { to: "/settings/scheduling", label: nav.schedulingProfile },
     ],
   },
 ];
 
-/** The five sidebar entries in display order. */
+/** The sidebar entries in display order. */
 export const navItems: readonly NavItem[] = [
   { to: "/", label: nav.dashboard, icon: LayoutDashboard, end: true },
   { to: "/school", label: nav.school, icon: School },
   { to: "/classes", label: nav.classes, icon: Library },
   { to: "/teachers", label: nav.teachers, icon: UsersRound },
+  { to: "/timetable", label: nav.timetable, icon: CalendarRange },
   { to: "/settings", label: nav.settings, icon: Settings },
 ];
 

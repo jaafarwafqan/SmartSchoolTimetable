@@ -11,10 +11,10 @@ import { DataTable } from "../../components/ui/table";
 import { messages } from "../../i18n/messages";
 import { useFormatter, useSchoolContext } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
-import { useTemplateCatalog, type PeriodPreset } from "../curriculum/curriculumApi";
+import { useTemplateCatalog, type OfficialStageTotal, type PeriodPreset } from "../curriculum/curriculumApi";
 import { useShifts, useWorkingWeek, type Period } from "../timetable-structure/scheduleApi";
 import { weekdayLabel, weekdaysFrom } from "../timetable-structure/weekdays";
-import { BreaksEditor, validBreaks } from "../timetable-structure/BreaksEditor";
+import { breakIssues, BreaksEditor, validBreaks } from "../timetable-structure/BreaksEditor";
 import { lessonMinuteChoices, lessonsOn, maxLessonsPerDay, planFromPreset, planFromShift, toShiftInput, weeklyLessons, type ShiftPlan } from "./timingPlan";
 import { WizardFooter } from "./WizardFrame";
 import { useSaveTimingStep, type SetupProgress } from "./wizardApi";
@@ -48,8 +48,35 @@ function PeriodsPreview({ yearId, kind, plan }: { yearId: number; kind: Kind; pl
   );
 }
 
-function ShiftBlock({ kind, plan, days, presets, yearId, suggestedBreak, onChange }: {
-  kind: Kind; plan: ShiftPlan; days: number[]; presets: PeriodPreset[]; yearId: number | null; suggestedBreak: number; onChange: (plan: ShiftPlan) => void;
+/**
+ * A notice that never blocks: for the school type's stages with optional subjects, the total once they are all ticked
+ * and the lessons a day it needs; stages above this shift's weekly lessons are named.
+ */
+function OptionalCapacity({ kind, stages, capacity, days }: { kind: Kind; stages: OfficialStageTotal[]; capacity: number; days: number }) {
+  const format = useFormatter();
+  const withOptional = stages.filter((stage) => stage.allOptionalTotal > stage.officialTotal);
+  if (withOptional.length === 0 || days === 0) return null;
+  const above = withOptional.filter((stage) => stage.allOptionalTotal > capacity);
+  return (
+    <div className="form-stack optional-capacity">
+      <Alert tone={above.length > 0 ? "warning" : "info"} message={above.length > 0 ? text.timing.optionalAboveCount(format.count(above.length, "stage")) : text.timing.optionalFits} />
+      <details className="advanced-options">
+        <summary>{text.timing.optionalTitle}</summary>
+        <ul className="optional-capacity-list">
+          {withOptional.map((stage) => (
+            <li key={`${kind}-optional-${stage.key}`} className={stage.allOptionalTotal > capacity ? "is-above" : undefined}>
+              {text.timing.optionalLine(stage.name, format.count(stage.allOptionalTotal, "lesson"), format.count(Math.ceil(stage.allOptionalTotal / days), "lesson"))}
+              {stage.allOptionalTotal > capacity && ` ${text.timing.optionalAbove(format.count(capacity, "lesson"))}`}
+            </li>
+          ))}
+        </ul>
+      </details>
+    </div>
+  );
+}
+
+function ShiftBlock({ kind, plan, days, presets, yearId, suggestedBreak, officialStages, onChange }: {
+  kind: Kind; plan: ShiftPlan; days: number[]; presets: PeriodPreset[]; yearId: number | null; suggestedBreak: number; officialStages: OfficialStageTotal[]; onChange: (plan: ShiftPlan) => void;
 }) {
   const format = useFormatter();
   const name = text.timing.shifts[kind];
@@ -57,8 +84,8 @@ function ShiftBlock({ kind, plan, days, presets, yearId, suggestedBreak, onChang
     <section className="wizard-shift" aria-labelledby={`wizard-shift-${kind}`}>
       <h3 id={`wizard-shift-${kind}`}>{name}</h3>
       <div className="form-grid">
-        <Field id={`wizard-${kind}-preset`} label={messages.school.templates.presetsLabel}>
-          <Select id={`wizard-${kind}-preset`} value={plan.presetKey}
+        <Field id={`wizard-${kind}-preset`} label={messages.school.templates.presetsLabel} hint={messages.school.templates.presetsHint}>
+          <Select id={`wizard-${kind}-preset`} aria-describedby={`wizard-${kind}-preset-hint`} value={plan.presetKey}
             onChange={(event) => onChange({ ...planFromPreset(presets.find((item) => item.key === event.target.value), plan.firstStartTime), dayLessons: plan.dayLessons })}
             options={[...(plan.presetKey ? [] : [{ value: "", label: messages.school.templates.presetNone }]), ...presets.map((item) => ({ value: item.key, label: item.name }))]} />
         </Field>
@@ -73,7 +100,8 @@ function ShiftBlock({ kind, plan, days, presets, yearId, suggestedBreak, onChang
             decreaseLabel={text.timing.lessonsDecrease(name)} increaseLabel={text.timing.lessonsIncrease(name)} onChange={(lessonCount) => onChange({ ...plan, lessonCount })} />
         </div>
       </div>
-      <BreaksEditor idPrefix={`wizard-${kind}`} lessonCount={plan.lessonCount} breaks={validBreaks(plan.lessonCount, plan.breaks)} gapMinutes={plan.gapMinutes}
+      <BreaksEditor idPrefix={`wizard-${kind}`} lessonCount={plan.lessonCount} breaks={plan.breaks} gapMinutes={plan.gapMinutes}
+        firstStartTime={plan.firstStartTime} lessonMinutes={plan.lessonMinutes}
         suggestedMinutes={suggestedBreak} onChange={(breaks, gapMinutes) => onChange({ ...plan, breaks, gapMinutes })} />
       <details className="advanced-options">
         <summary>{text.timing.perDay}</summary>
@@ -89,6 +117,7 @@ function ShiftBlock({ kind, plan, days, presets, yearId, suggestedBreak, onChang
         </ul>
       </details>
       <p className="card-note">{text.timing.weekly(format.number(weeklyLessons(plan, days)))}</p>
+      <OptionalCapacity kind={kind} stages={officialStages} capacity={weeklyLessons(plan, days)} days={days.length} />
       {yearId !== null && <PeriodsPreview yearId={yearId} kind={kind} plan={plan} />}
     </section>
   );
@@ -144,11 +173,16 @@ export function TimingStep({ progress, onBack, onDone }: { progress: SetupProgre
       {kinds.map((kind) => (
         <ShiftBlock key={`wizard-shift-${kind}`} kind={kind} plan={planFor(kind)} days={days} presets={presets} yearId={yearId}
           suggestedBreak={catalog.data?.breakDefaults.minutes[progress.schoolType] ?? 15}
+          officialStages={(catalog.data?.officialStages ?? []).filter((stage) => stage.schoolTypes.includes(progress.schoolType))}
           onChange={(plan) => setPlans((current) => ({ ...current, [kind]: plan }))} />
       ))}
       <WizardFooter step={3} pending={save.isPending} error={feedback.error} onBack={onBack}
         onNext={() => {
           feedback.reset();
+          if (kinds.some((kind) => breakIssues(planFor(kind).lessonCount, planFor(kind).breaks).some((issue) => issue !== null))) {
+            feedback.setError(messages.school.scheduleStructure.breaks.blocked);
+            return;
+          }
           save.mutate(
             { days, weekStartDay: chosenPreset?.weekStart ?? weekStart, shifts: kinds.map((kind) => toShiftInput(kind, planFor(kind), days)) },
             { onSuccess: onDone, onError: feedback.showError },

@@ -12,6 +12,7 @@ import { Textarea } from "../../components/ui/textarea";
 import { messages } from "../../i18n/messages";
 import { useFormatter } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
+import { useAllResources } from "../resources/resourcesApi";
 import { BlockedPeriodsEditor, slotsInGrid } from "../timetable-structure/BlockedPeriodsEditor";
 import { useScheduleGrid, type BlockedSlot } from "../timetable-structure/scheduleApi";
 import { useSaveSubject, type Subject } from "./subjectsApi";
@@ -37,6 +38,15 @@ export function SubjectEditor({ subject, onSaved, onCancel, onReload }: SubjectE
     requiresDoublePeriod: subject.requiresDoublePeriod,
   });
   const [blocked, setBlocked] = useState<BlockedSlot[]>(subject.blockedPeriods);
+  const resources = useAllResources();
+  // Active resources, plus the current one even when it was archived since (keeping it stays allowed).
+  const resourceOptions = [
+    { value: "", label: messages.school.requiredResource.none },
+    ...(resources.data?.items ?? [])
+      .filter((resource) => !resource.isArchived || resource.id === subject.requiredResourceId)
+      .map((resource) => ({ value: String(resource.id), label: resource.isArchived ? messages.school.requiredResource.archivedOption(resource.name) : resource.name })),
+  ];
+  const orphans = grid.data ? blocked.length - slotsInGrid(blocked, grid.data).length : 0;
   const priorities = [1, 2, 3, 4, 5].map((value) => ({ value: String(value), label: text.priorityValue(format.number(value)) }));
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -52,6 +62,7 @@ export function SubjectEditor({ subject, onSaved, onCancel, onReload }: SubjectE
         ...flags,
         blockedPeriods: slotsInGrid(blocked, grid.data),
         notes: String(form.get(`${prefix}-notes`) ?? "").trim() || null,
+        requiredResourceId: Number(form.get(`${prefix}-resource`) || 0) || null,
         version: subject.version,
       },
     }, { onSuccess: () => { feedback.reset(); onSaved(); }, onError: feedback.showError });
@@ -65,6 +76,11 @@ export function SubjectEditor({ subject, onSaved, onCancel, onReload }: SubjectE
         <TextField id={`${prefix}-name`} label={text.name} defaultValue={subject.name} maxLength={80} required field="Name" errors={feedback.fieldErrors} />
         <SelectField id={`${prefix}-priority`} label={text.priority} hint={text.priorityHint} options={priorities} defaultValue={String(subject.priority)} required field="Priority" errors={feedback.fieldErrors} />
       </div>
+      {resources.data && (
+        <SelectField id={`${prefix}-resource`} label={messages.school.requiredResource.label} hint={messages.school.requiredResource.hint} options={resourceOptions}
+          defaultValue={subject.requiredResourceId === null ? "" : String(subject.requiredResourceId)} field="RequiredResourceId" errors={feedback.fieldErrors} />
+      )}
+      {orphans > 0 && <Alert tone="warning" message={messages.school.orphanOnSave(format.number(orphans))} />}
       <SubjectColorPicker name={`${prefix}-color`} legend={text.color} value={color} swatchLabel={(index) => text.colorSwatch(format.number(index))} onChange={setColor} />
       <details className="advanced-options">
         <summary>{text.advanced}</summary>

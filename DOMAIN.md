@@ -113,6 +113,37 @@ No implementation of domain logic; only specification and validation strategy.
   - **Rule:** a section only uses the first N lessons of its day; Phase 3 and the solver must respect it.
 
 ## Phase 2.5 suggested curriculum
+- **Template (ADR 0036):** the official plan 2026-2027. Each row is mandatory or optional. An optional row is either counted in the official total (`inStatedTotal`: اللغة الكردية) or added on top of it (اللغة الفرنسية، الحاسوب، منهج جرائم حزب البعث). `OfficialTotal()` sums the counted rows, and `Total(chosen)` sums the mandatory rows plus the chosen optional ones.
 - **`CurriculumEntry.IsSuggested`:** `CreateSuggested`, `ResetToSuggestion`; cleared by every owner edit (ADR 0029).
 - **`DailyDistribution.Suggest(total, days in week order, maxOnDay)`:** even split, extra lessons on the earlier days, capped per day; problems `NoCurriculum`, `BelowWorkingDays`, `AboveShiftCapacity` (ADR 0030).
 - **`Stage.ApplySuggestedDayLessons` / `DayLessonsSuggested`:** counts from the suggestion; any owner edit clears the flag, and later suggestions skip such stages.
+
+## Phase 3A: protection and hardening
+- **Reference guard (`Application/Common/ReferenceGuard`):** the one place that answers which records depend on a subject, teacher, section, stage, shift, resource or curriculum line. Dependents today: a stage has sections and curriculum lines; a subject has curriculum lines; a shift has sections. Archive needs no active dependent, delete no dependent at all (DECISIONS_PENDING #48).
+- **Clearing a curriculum cell** archives the line; restoring it is the undo (#49).
+- **`Teacher.DropBlockedOutside(grid)` / `Subject.DropBlockedOutside(grid)`:** remove the blocked slots outside the current `ScheduleGrid` and return them; the version is bumped only when something was removed. Used only after the owner confirms the orphan preview (#50).
+
+## Phase 3B: resources, specializations, profile (ADR 0031)
+- **`Resource`:** name, `ResourceKind` (Lab, Field, Hall, Other), `Capacity` 1–20 (sections per slot, per shift), notes, soft archive, `Version`.
+- **`Subject.RequiredResourceId`:** at most one resource; existence and active state are checked in Application.
+- **`Teacher.Specializations`:** owned `TeacherSpecialization(SubjectId)`, at most 30. `TeacherDetails.SpecializationIds` null keeps them; `AddSpecialization` adds one (no change when already present).
+- **`SchedulingProfile`:** one row; five `SchedulingRule(Key, Enabled, Weight 0–100)` in `SchedulingRuleKeys.Defaults` order. `Update` needs every key exactly once; `RestoreDefaults`; `ProfileVersion` and `Version` grow only on a real change.
+
+## Phase 3C: workload (ADR 0032)
+- **`WorkloadAssignment(SectionId, CurriculumEntryId, TeacherId)`:** `Reassign` (no change for the same teacher), `Archive`, `Restore`; lessons come from the line.
+- **`TeacherAvailability.Compute(slots, offDays, blocked, maxPerDay, maxPerWeek, released)`:** `Slots` (distinct `ShiftSlot(shift, day, lesson)` without off days and blocked lesson numbers), `ByDayLimit` (each day at most max per day), `Available` (also ≤ max per week; 0 when released). `SectionSlots(shift, days, lessonsOn)` lists a section's allowed slots.
+
+## Phase 3D: scheduling input and readiness
+- **`SchedulingInput`** is the serializable Application-layer contract for one academic year. It includes working days; active shifts, ordered period/break rows, bell flags and lesson counts; all active stages (including those without sections); sections and their stage-limited allowed slots; subjects, curriculum lines, assignments; teachers and constraints; resources and capacities; and the scheduling profile and `ProfileVersion`.
+- The builder uses a fixed set of `IDataStore.Read<T>()` queries and returns lists in canonical order. Archived people/resources are included only when an active assignment or subject requirement still refers to them, so the validator can report the inconsistency. No solver type enters the contract.
+- **`InputHash`** is lowercase SHA-256 over compact canonical JSON. Lists are sorted by stable IDs (working days retain week order; slots by day/lesson; profile rules by key). Names, labels and assignment-row IDs are excluded; scheduling-relevant IDs, constraints, counts, assignments, profile rules and `ProfileVersion` are included. `FormatVersion` is part of the hash and is bumped when the contract shape changes. A display-only rename does not invalidate a timetable.
+- **Pre-solve validation** is a deterministic pure function over `SchedulingInput`. Findings carry a stable code, `error`/`warning`, entity references, required/available/shortage values, details and fix codes. The UI resolves messages and deep links in Arabic.
+- **Soundness policy:** an error is emitted only when demand exceeds a proven upper bound (section capacity, teacher slots/limits, subject slots, resource uses, or consecutive double-period pairs), or an active assignment refers to an archived/fully released teacher. Uncertain, partial-release and stale-grid cases are warnings. The validator may miss conflicts requiring combined constraint reasoning; it must not call a feasible input impossible.
+- **Finding codes** are declared once in `FindingCodes` and listed in `FindingCodes.All` (contract: `FindingCodeContractTests`).
+- **Generation mode (`ValidatorOptions.DoublePeriodsRequired`, default false):** in the standard mode double periods are a soft preference in Phase 4, so `DOUBLE_PERIOD_IMPOSSIBLE` is a warning whose Arabic text says it will block the «دروس مزدوجة» mode; with the option on it is an error (DECISIONS_PENDING #65).
+- The validator reports unassigned section/line cells, over/under-capacity sections, grouped teacher overloads, subject and assignment slot shortages, per-shift resource capacity, break-aware double-period pairs, orphan blocked periods, and structural consistency. Phase 4 consumes this input and hash; solver placement and solver diagnostics remain Phase 4.
+
+## Phase 3E: suggester, wizard step, demo data
+- **Assignment suggester (`WorkloadService` suggestions):** deterministic. Candidates are the (section, line) cells with no active assignment, in stage, section, subject, label and line order. Each goes to the specialist with the smallest load-to-limit share after the line (ties by name) who is not fully released and still has room; otherwise the cell stays unassigned with the reason `noSpecialist`, `released` or `capacity`. Existing assignments are never changed, and applying writes exactly the preview.
+- **Setup wizard:** eight steps; step 7 «الأنصبة» (assigned/total lines and the suggester) sits before the review. Migration `Phase3EWorkloadWizardStep` moves a saved review (bit 128) to bit 256 and `Down` reverses it.
+- **Demo data:** removed on 2026-10-09 (owner decision). Tests create synthetic data inside the test projects only.

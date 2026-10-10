@@ -4,6 +4,7 @@ import { arabicCount } from "../src/lib/arabicCount";
 import { formatNumber } from "../src/lib/format";
 import { ApiServer } from "./support/apiServer";
 import {
+  breakpoints,
   expectBreakpointScreenshots,
   expectNoLatinText,
   expectNoPageScrollX,
@@ -28,7 +29,7 @@ test.describe.configure({ mode: "serial" });
 test.beforeAll(async ({ browser }) => { await server.start(browser, "phase25-scenarios"); });
 test.afterAll(async () => { await server.stop(); });
 
-const stepTitle = (page: Page, step: 1 | 2 | 3 | 4 | 5 | 6 | 7) => page.getByRole("heading", { level: 2, name: wizard.steps[step] });
+const stepTitle = (page: Page, step: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8) => page.getByRole("heading", { level: 2, exact: true, name: wizard.steps[step] });
 
 test("scenario (b): a dual-shift ثانوية with branches through the wizard", async ({ page }) => {
   // A fixed date keeps the proposed year (and the screenshots) stable.
@@ -66,6 +67,8 @@ test("scenario (b): a dual-shift ثانوية with branches through the wizard",
   await ux.choose(evening.getByRole("button", { name: school.scheduleStructure.decreaseFor(school.scheduleStructure.days.thursday) }));
   await expect(evening.getByText(wizard.timing.weekly(arab(29)))).toBeVisible();
   await expect(blocks.nth(0).getByText(wizard.timing.weekly(arab(35)))).toBeVisible();
+  // A notice, never a block: with every optional subject, السادس العلمي (37) and الخامس الأدبي (36) exceed 35.
+  await expect(blocks.nth(0).getByRole("status").filter({ hasText: wizard.timing.optionalAboveCount("مرحلتان") })).toBeVisible();
   await expectNoSeriousA11yViolations(page, "scenario b step 3");
   await expectBreakpointScreenshots(page, "wizard-step-3");
   await next();
@@ -100,18 +103,29 @@ test("scenario (b): a dual-shift ثانوية with branches through the wizard",
   await expect(page.locator(".curriculum-table tfoot td").first()).toContainText(curriculum.status.under(arab(31)));
   await expect(page.locator(".curriculum-table thead th.curriculum-stage-head").nth(3)).toContainText(curriculum.headerCapacity(arab(29)));
   await expectNoSeriousA11yViolations(page, "scenario b step 5");
+  for (const width of breakpoints) {
+    await page.setViewportSize({ width, height: 900 });
+    await expectNoPageScrollX(page, `wizard curriculum step at ${width}px`);
+    const contentWidth = await page.locator(".wizard-card > .form-stack").evaluate((element) => element.getBoundingClientRect().width);
+    const panelWidth = await page.locator(".wizard-card > .form-stack > .ui-card").first().evaluate((element) => element.getBoundingClientRect().width);
+    expect(panelWidth).toBeGreaterThanOrEqual(contentWidth - 1);
+  }
   await expectBreakpointScreenshots(page, "wizard-step-5");
   await next();
 
-  // 6. Teachers is optional; 7. review, then finish.
+  // 6. Teachers and 7. workload are optional (the workload step came with Phase 3E); 8. review, then finish.
   await expect(stepTitle(page, 6)).toBeVisible();
   await expectBreakpointScreenshots(page, "wizard-step-6");
   await ux.act(page.getByRole("button", { name: wizard.skip }));
   await expect(stepTitle(page, 7)).toBeVisible();
+  await expectNoSeriousA11yViolations(page, "scenario b step 7");
+  await expectBreakpointScreenshots(page, "wizard-step-7");
+  await ux.act(page.getByRole("button", { name: wizard.skip }));
+  await expect(stepTitle(page, 8)).toBeVisible();
   await expect(page.locator(".count-item", { hasText: wizard.review.shifts })).toContainText(arab(2));
   await expect(page.locator(".count-item", { hasText: wizard.review.sections })).toContainText(arab(9));
   await expectNoLatinText(page, "scenario b review", ["owner"]);
-  await expectBreakpointScreenshots(page, "wizard-step-7");
+  await expectBreakpointScreenshots(page, "wizard-step-8");
   await ux.act(page.getByRole("button", { name: wizard.finish }));
   await expect(page.getByRole("heading", { name: school.nav.dashboard, level: 1 })).toBeVisible();
   ux.report();

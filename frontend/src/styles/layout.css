@@ -101,6 +101,10 @@
 .form-stack {
   display: grid;
   gap: 1rem;
+  min-inline-size: 0;
+}
+
+form.form-stack:not(.form-wide) {
   max-inline-size: 34rem;
 }
 

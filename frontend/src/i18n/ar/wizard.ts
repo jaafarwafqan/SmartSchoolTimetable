@@ -4,7 +4,7 @@ import { isolate } from "../isolate";
 
 export const wizard = {
   title: "معالج إعداد المدرسة",
-  description: "سبع خطوات قصيرة. تُحفظ كل خطوة عند الانتقال إلى التالية، ويمكنك العودة لاحقاً من حيث توقفت.",
+  description: "ثماني خطوات قصيرة. تُحفظ كل خطوة عند الانتقال إلى التالية، ويمكنك العودة لاحقاً من حيث توقفت.",
   progressLabel: "خطوات الإعداد",
   stepOf: (current: string, total: string) => `الخطوة ${current} من ${total}`,
   steps: {
@@ -14,7 +14,8 @@ export const wizard = {
     4: "الصفوف والشعب",
     5: "المواد والمنهج",
     6: "المعلمون",
-    7: "المراجعة",
+    7: "الأنصبة",
+    8: "المراجعة",
   },
   stepDone: "مكتملة",
   stepSkipped: "متخطاة",
@@ -40,8 +41,8 @@ export const wizard = {
       secondary: "الصفوف المتوسطة والإعدادية معاً",
     },
     shiftMode: "نمط الدوام",
-    modes: { morning: "صباحي فقط", evening: "مسائي فقط", dual: "مزدوج" },
-    modeHints: { morning: "دوام واحد في الصباح", evening: "دوام واحد في المساء", dual: "دوامان: صباحي ومسائي" },
+    modes: { morning: "صباحي فقط", evening: "مسائي فقط", dual: "ورديتان بشعب مختلفة" },
+    modeHints: { morning: "دوام واحد في الصباح", evening: "دوام واحد في المساء", dual: "وردية صباحية ووردية مسائية، لكل منهما شعبها" },
     principal: "اسم المدير (اختياري)",
   },
   year: {
@@ -70,6 +71,11 @@ export const wizard = {
     from: "من",
     to: "إلى",
     weekly: (lessons: string) => `مجموع الحصص الأسبوعية: ${lessons}`,
+    optionalTitle: "أثر المواد الاختيارية على هذا الدوام",
+    optionalLine: (stage: string, total: string, daily: string) => `${isolate(stage)}: بعد تفعيل كل موادها الاختيارية يصبح مجموع المرحلة ${total} وتحتاج ${daily} يومياً.`,
+    optionalAbove: (capacity: string) => `يتجاوز سعة هذا الدوام (${capacity} أسبوعياً).`,
+    optionalAboveCount: (stages: string) => `${stages} تتجاوز سعة هذا الدوام إذا فُعّلت موادها الاختيارية. هذا تنبيه فقط ولا يمنع الحفظ؛ المواد الاختيارية غير مفعّلة افتراضياً.`,
+    optionalFits: "كل المراحل تتسع في هذا الدوام حتى مع تفعيل كل المواد الاختيارية.",
     replaceNote: "حفظ هذه الخطوة يستبدل جدول الحصص الحالي للدوام بالقيم الظاهرة هنا.",
   },
   stages: {
@@ -82,6 +88,9 @@ export const wizard = {
   teachers: {
     note: "الصق أسماء المعلمين، اسماً في كل سطر. هذه الخطوة اختيارية ويمكن تخطيها.",
     saved: (teachers: string) => `تمت إضافة ${teachers}.`,
+  },
+  workload: {
+    counts: (assigned: string, total: string) => `بنود المنهج التي لها معلم في الشعب: ${assigned} من ${total}. يمكنك اقتراح توزيع الأنصبة أو المتابعة لاحقاً.`,
   },
   review: {
     counts: "ملخص الإعداد",

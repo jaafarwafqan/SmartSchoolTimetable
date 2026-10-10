@@ -20,8 +20,11 @@ export type Teacher = {
   isArchived: boolean;
   archivedAt: string | null;
   version: number;
+  /** Subjects the teacher is qualified for (Phase 3 §2.1). */
+  specializationIds: number[];
 };
-export type TeacherInput = Omit<Teacher, "id" | "isArchived" | "archivedAt">;
+/** `specializationIds` omitted or null keeps the saved list. */
+export type TeacherInput = Omit<Teacher, "id" | "isArchived" | "archivedAt" | "specializationIds"> & { specializationIds?: number[] | null };
 export type BulkStatus = "ready" | "tooLong" | "duplicateInList" | "exists" | "noShortName";
 export type BulkPreview = { lines: { line: number; fullName: string; shortName: string | null; status: BulkStatus }[]; readyCount: number };
 
@@ -47,7 +50,8 @@ function useTeachersMutation<TInput, TResult>(request: (input: TInput) => Promis
   return useMutation({
     mutationFn: request,
     onSuccess: async () => {
-      await Promise.all([queryClient.invalidateQueries({ queryKey: teachersKey }), refreshSchoolData()]);
+      // Teacher limits and lists feed the workload loads (Phase 3C).
+      await Promise.all([queryClient.invalidateQueries({ queryKey: teachersKey }), queryClient.invalidateQueries({ queryKey: ["workload"] }), refreshSchoolData()]);
     },
   });
 }

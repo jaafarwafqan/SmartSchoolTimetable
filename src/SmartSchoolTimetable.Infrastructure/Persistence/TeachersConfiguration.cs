@@ -30,5 +30,15 @@ internal sealed class TeacherConfiguration : IEntityTypeConfiguration<Teacher>
             period.HasIndex("TeacherId", nameof(BlockedPeriod.Day), nameof(BlockedPeriod.LessonNumber)).IsUnique();
         });
         builder.Navigation(teacher => teacher.BlockedPeriods).UsePropertyAccessMode(PropertyAccessMode.Field);
+        // Specializations go with a deleted subject (they only describe the teacher; DECISIONS_PENDING #53).
+        builder.OwnsMany(teacher => teacher.Specializations, specialization =>
+        {
+            specialization.ToTable("TeacherSpecializations");
+            specialization.WithOwner().HasForeignKey("TeacherId");
+            specialization.HasKey("TeacherId", nameof(TeacherSpecialization.SubjectId));
+            specialization.HasIndex(item => item.SubjectId);
+            specialization.HasOne<Domain.Subjects.Subject>().WithMany().HasForeignKey(item => item.SubjectId).OnDelete(DeleteBehavior.Cascade);
+        });
+        builder.Navigation(teacher => teacher.Specializations).UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

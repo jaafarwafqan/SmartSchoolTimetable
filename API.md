@@ -114,6 +114,8 @@ Audit events: `SchoolProfileUpdated`, `SchoolAssetUploaded`, `SchoolAssetRemoved
 | PUT | `/academic-years/{yearId}/shifts/{id}/day-lessons` | `{ dayLessons: [{ day, lessons }], version }`: 0..lesson count per working day | 200 shift; shifts now also carry `kind` (`morning`, `evening` or `other`), `dayLessons` for every working day, and `weeklyLessons` | 401, 404, 409 `CONFLICT`, 422 `DayLessons`: `INVALID_OPTION` (not a working day), `DUPLICATE_NAME` (day repeated), `VALUE_OUT_OF_RANGE` |
 | GET | `/shift-mode/impact?mode=morning\|evening\|dual` | — | 200 `{ mode, allowed, shiftsToCreate, shiftsToRemove, affectedSections: [{ sectionId, stageName, label, shiftName, isArchived }] }` | 401, 409 `NO_CURRENT_YEAR`, 422 `Mode` |
 | PUT | `/shift-mode` | `{ mode, version }` (school-profile version) | 200 `{ mode, shifts, profileVersion }`; creates or adopts morning/evening shifts of the current year, removes unneeded unused ones | 401, 409 `CONFLICT`, 409 `NO_CURRENT_YEAR`, 409 `SHIFT_MODE_IN_USE`, 422 |
+| GET | `/session-plan` | — | 200 `{ system: oneSession\|twoSessions\|threeSessions, shiftId, available, lessonCount, workingDays, timings: [{ session, periods }], days: [{ term, day, session }], version }` (R3; morning = the shift's periods) | 401, 409 `NO_CURRENT_YEAR` |
+| PUT | `/session-plan` | `{ system, timings: [{ session: evening\|noon, periods: [{ kind, startTime, endTime }] }], days: [{ term: 1\|2, day, session }], version }` (version 0 when none yet) | 200 the plan; every session has the shift's lesson count, every working day is mapped once per semester; `oneSession` clears the plan | 401, 409 `CONFLICT`, 409 `SESSIONS_NEED_ONE_SHIFT`, 422 `SESSION_LESSON_COUNT_MISMATCH` / `Days` / `Periods[i]` |
 | GET | `/setup-progress` | — | 200 `{ currentStep, completedSteps, skippedSteps, isFinished, schoolType, shiftMode, version }` | 401 |
 | PUT | `/setup-progress` | `{ currentStep (1–7), completedSteps, skippedSteps, isFinished, version }` | 200 progress | 401, 409 `CONFLICT`, 422 (`VALUE_OUT_OF_RANGE`) |
 
@@ -133,9 +135,10 @@ Every `…/preview` route returns the plan without saving; its twin without `/pr
 | PUT | `/curriculum-entries/{id}` | `{ weeklyLessons, label, needsDoublePeriod, notes, version }` | 200 entry | 401, 404, 409 `CONFLICT`, 422 |
 | POST | `/curriculum-entries/{id}/archive`, `/restore` | `{ version }` | 200 entry | 401, 404, 409 `CONFLICT` |
 | DELETE | `/curriculum-entries/{id}?version=` | — | 204 | 401, 404, 409 `CONFLICT` |
-| GET | `/templates` | — | 200 `{ branches, grades: [{ key, name, branchStem, schoolTypes }], periodPresets, workingDayPresets }` | 401 |
-| POST | `/academic-years/{yearId}/templates/stages[/preview]` | `{ schoolType, grades: [{ gradeKey, branches, sections, shiftId, labelStyle }] }` | 200 `{ lines: [{ key, name, action, existingSections, sectionsToAdd }], changes }`; one transaction | 401, 404, 422 `SchoolType`, and any error of the services it calls (everything rolled back) |
-| GET | `/academic-years/{yearId}/templates/suggested-subjects` | — | 200 subject names | 401 |
+| GET | `/templates` | — | 200 `{ branches, grades: [{ key, name, branchStem, schoolTypes }], periodPresets, workingDayPresets, breakDefaults, officialStages: [{ key, name, schoolTypes, officialTotal, allOptionalTotal }] }` (presets are suggestions; `officialStages` feeds the timing step's capacity notice) | 401 |
+| POST | `/academic-years/{yearId}/templates/stages[/preview]` | `{ schoolType?, grades: [{ gradeKey, branches, sections, shiftId, labelStyle }] }`; `schoolType`, when sent, must match the saved school profile | 200 `{ lines: [{ key, name, action, existingSections, sectionsToAdd }], changes }`; only stages allowed for the saved school type are accepted; one transaction | 401, 403 `SETUP_REQUIRED`, 404, 422 `SchoolType`, `STAGE_NOT_IN_SCHOOL_TYPE`, and any error of the services it calls (everything rolled back) |
+| GET | `/academic-years/{yearId}/templates/stages/out-of-type` | — | 200 `[{ id, name, version }]`; active template stages not allowed for the saved school type; changing type never deletes them | 401, 403 `SETUP_REQUIRED`, 404 |
+| GET | `/academic-years/{yearId}/templates/suggested-subjects` | — | 200 subject names: the mandatory subjects of the official template for the year's matched stages (or the saved school type when none match), canonical names, optional subjects excluded | 401 |
 | POST | `/templates/subjects[/preview]` | `{ names }` | 200 `{ lines: [{ name, action }], changes }` | 401, 422 |
 
 `POST …/shifts/generate-periods` also accepts `breaks: [{ afterLesson, minutes }]` (period presets with several breaks). Stage and subject archive/delete can now return 409 `CURRICULUM_IN_USE`. Audit events: `SectionsAdded`, `SectionsRemoved`, `CurriculumEntryCreated`, `CurriculumEntryUpdated`, `CurriculumEntryDeleted`, `CurriculumEntryArchived`, `CurriculumEntryRestored`, `CurriculumCopied`, `CurriculumLessonsSet`.
@@ -155,7 +158,7 @@ Each step is one transaction through the normal services, and records the step i
 ### Phase 2.5 fixes 2: breaks and lessons per stage
 | Method | Route | Request | Success | Errors |
 |---|---|---|---|---|
-| POST | `/academic-years/{yearId}/shifts/generate-periods` | also `breaks` (up to 3 × `{ afterLesson, minutes }`) and `gapMinutes` (0–30) | 200 generated periods | 422 `Breaks`, `GapMinutes`, `BreakAfterLesson`, `BreakMinutes` |
+| POST | `/academic-years/{yearId}/shifts/generate-periods` | also `breaks` (any number, one per gap: `{ afterLesson: 1..N−1, minutes: 1–120 }`) and `gapMinutes` (0–30) | 200 generated periods | 422 `Breaks`, `GapMinutes`, `BreakAfterLesson`, `BreakMinutes` |
 | PUT | `/academic-years/{yearId}/stages/{id}/day-lessons` | `{ dayLessons: [{ day, lessons }], version }`; an empty list inherits the shift | 200 stage; stages now carry `dayLessons` | 401, 403, 404, 409 `CONFLICT`, 409 `STAGE_ARCHIVED`, 422 `DayLessons` (`INVALID_OPTION`, `DUPLICATE_NAME`, `VALUE_OUT_OF_RANGE`) |
 | POST | `/academic-years/{yearId}/shifts/{id}/day-lessons/impact` | `{ dayLessons, version }` | 200 `[{ stageId, stageName, day, stageLessons, shiftLessons }]`; nothing is saved | 401, 404, 422 |
 | PUT | `/academic-years/{yearId}/shifts/{id}/day-lessons` | also `confirmStageChanges` (default false) | 200 shift; with confirmation, the affected stages are lowered | 409 `STAGE_LESSONS_ABOVE_SHIFT` when stages would exceed the shift without confirmation |
@@ -165,7 +168,7 @@ Each step is one transaction through the normal services, and records the step i
 ### Phase 2.5: suggested curriculum and daily distribution
 | Method | Route | Request | Success | Errors |
 |---|---|---|---|---|
-| POST | `/academic-years/{yearId}/curriculum/suggested/preview` | `{ optionalSubjects: [] }` | 200 `{ provenance, subjects: [{ name, action: create\|exists, existingName, optional, included }], stages: [{ stageId, stageName, needsReview, statedTotal, suggestedTotal, currentTotal, resultingTotal, entries: [{ subject, lessons, action, optional, currentLessons }] }], optionalSubjects, changes }` | 401, 403, 404 |
+| POST | `/academic-years/{yearId}/curriculum/suggested/preview` | `{ optionalSubjects: [], stageMatches?: [{ stageId, templateStage }] }` (also accepted by apply and the stage reset; a match must name an official stage from `templateStages` for a stage the template cannot match itself, else 422 `StageMatches`) | 200 `{ templateVersion, provenance: { source, status, transcribedBy }, subjects: [{ name, action: create\|exists, existingName, optional, included, inStatedTotal, note }], stages: [{ stageId, stageName, needsReview, statedTotal, officialTotal, suggestedTotal, currentTotal, resultingTotal, verificationNote, entries: [{ subject, lessons, action, optional, currentLessons, inStatedTotal, note }], weeklyCapacity, workingDays }], optionalSubjects, changes, unmatchedStages: [{ stageId, stageName, templateStage }], templateStages }` (ADR 0036; `note`/`verificationNote` are Arabic template data) | 401, 403, 404 |
 | POST | `/academic-years/{yearId}/curriculum/suggested` | same | 200 plan; adds only missing subjects and (stage, subject) lines, marked suggested; idempotent; one transaction | 401, 403, 404, 409, 422 |
 | POST | `/academic-years/{yearId}/curriculum/suggested/stages/{stageId}/reset/preview` | `{ optionalSubjects }` | 200 before/after (`update`, `unchanged`, `create` with `currentLessons`) | 401, 404 |
 | POST | `/academic-years/{yearId}/curriculum/suggested/stages/{stageId}/reset` | `{ optionalSubjects, confirm: true }` | 200 | 401, 404, 422 `Confirm` `REQUIRED` |
@@ -173,6 +176,80 @@ Each step is one transaction through the normal services, and records the step i
 | POST | `/academic-years/{yearId}/daily-suggestion` | `{ stageIds }` | 200 updated suggestion; manual stages are skipped | 401, 403, 409 `DAILY_TOTAL_ABOVE_SHIFT`, 422 `StageIds` |
 
 Curriculum cells and entries carry `isSuggested`. Audit events: `SuggestedCurriculumApplied`, `SuggestedCurriculumStageReset`, `StageDayLessonsSuggested`.
+
+### Phase 3A: reference protection, soft clear, orphan blocked periods
+| Method | Route | Request | Success | Errors |
+|---|---|---|---|---|
+| GET | `/references/{kind}/{id}` | `kind`: `subject`, `teacher`, `section`, `stage`, `shift`, `resource`, `curriculumEntry` | 200 `{ kind, id, dependents: [{ kind: section\|curriculumEntry, active, archived, samples (≤ 5 names), errorCode }], archiveBlockedBy, deleteBlockedBy }` | 401, 404 (unknown kind) |
+| GET | `/blocked-periods/orphans/` | — | 200 `{ owners: [{ kind: teacher\|subject, id, name, version, periods: [{ day, lessonNumber }] }], total }` | 401 |
+| POST | `/blocked-periods/orphans/clean` | `{ owners: [{ kind, id, version }] }` | 200 the remaining report; removes orphan slots only from the listed records | 401, 403, 404, 409 `CONFLICT` |
+
+- **Every delete and archive** of a stage, section, subject, teacher, shift and curriculum line asks the reference guard first. Archive is refused while an active dependent exists, delete while any dependent exists: `409 RECORD_IN_USE` (sections) or `409 CURRICULUM_IN_USE` (curriculum lines).
+- **`PUT /academic-years/{yearId}/curriculum/cell` with `weeklyLessons: null`** archives the line instead of deleting it. The table response carries it as `cleared` (`{ id, version, … }`); undo is `POST /curriculum-entries/{id}/restore` with that version (`409 STAGE_ARCHIVED` when the stage was archived meanwhile).
+- Audit events: `CurriculumEntryCleared`, `OrphanBlockedPeriodsRemoved`.
+
+### Phase 3B: resources, specializations, scheduling profile
+| Method | Route | Request | Success | Errors |
+|---|---|---|---|---|
+| GET | `/resources/` | `search`, `sort` (`name`, `kind`, `capacity`, `-` for descending), `page`, `pageSize`, `includeArchived` | 200 paged `{ id, name, kind: lab\|field\|hall\|other, capacity, notes, isArchived, archivedAt, version }` | 401 |
+| POST | `/resources/` | `{ name, kind, capacity (default 1), notes, version: 0 }` | 201 | 401, 403, 422 (`Name` `DUPLICATE_NAME`, `Kind` `INVALID_OPTION`, `Capacity` `VALUE_OUT_OF_RANGE`) |
+| PUT | `/resources/{id}` | same with the read `version` | 200 | 401, 403, 404, 409 `CONFLICT`, 422 |
+| POST | `/resources/{id}/archive`, `/restore` | `{ version }` | 200 | 401, 403, 404, 409 `CONFLICT`, 409 `RESOURCE_IN_USE` (an active subject requires it) |
+| DELETE | `/resources/{id}?version=` | — | 204 | 401, 403, 404, 409 `CONFLICT`, 409 `RESOURCE_IN_USE` (any subject requires it) |
+| POST | `/teachers/{id}/specializations/{subjectId}` | `{ version }` | 200 teacher («إضافة المادة لتخصصاته»; adding twice changes nothing) | 401, 403, 404, 409, 422 `SubjectId` `INVALID_OPTION` |
+| GET | `/scheduling-profile/` | — | 200 `{ rules: [{ key, enabled, weight, enabledByDefault, defaultWeight }], profileVersion, isDefault, version }` | 401 |
+| PUT | `/scheduling-profile/` | `{ rules: [{ key, enabled, weight }], version }` (every rule once, weight 0–100) | 200; `profileVersion` + 1 when something changed | 401, 403, 409 `CONFLICT`, 422 `Rules` |
+| POST | `/scheduling-profile/restore-defaults` | `{ confirm: true, version }` | 200 defaults; `profileVersion` + 1 | 401, 403, 409, 422 `Confirm` `REQUIRED` |
+
+- **Subjects** carry `requiredResourceId` (DTO and save command). A newly chosen resource must be active: `422 RequiredResourceId INVALID_OPTION`.
+- **Teachers** carry `specializationIds`. The save command's `specializationIds` is optional: null keeps the list. New ids must be active subjects (`422 SpecializationIds INVALID_OPTION`).
+- **`GET /references/resource/{id}`** lists the subjects that require the resource (dependent kind `subject`).
+- Audit events: `ResourceCreated`, `ResourceUpdated`, `ResourceArchived`, `ResourceRestored`, `ResourceDeleted`, `TeacherSpecializationAdded`, `SchedulingProfileUpdated`, `SchedulingProfileDefaultsRestored`.
+
+### Phase 3C: workload assignments (ADR 0032)
+| Method | Route | Request | Success | Errors |
+|---|---|---|---|---|
+| GET | `/academic-years/{yearId}/workload/matrix?stageId=` | — | 200 `{ stages: [{ stageId, stageName, assignedCells, totalCells }], stage: { stageId, stageName, lines: [{ entryId, subjectId, subjectName, colorIndex, label, weeklyLessons }], sections: [{ sectionId, label, shiftName, assignedLines, totalLines, assignedLessons, totalLessons, cells: [{ entryId, assignmentId, teacherId, version, outsideSpecialization }] }] } }` (the first stage when `stageId` is omitted) | 401, 404 |
+| GET | `/academic-years/{yearId}/workload/teachers` | — | 200 `[{ teacherId, fullName, shortName, specializationIds, assignedLessons, maxPerWeek, available, limit, status: within\|near\|over, released, assignments: [...], version }]` | 401, 404 |
+| PUT | `/academic-years/{yearId}/workload/cell` | `{ sectionId, entryId, teacherId (null clears), assignmentId, version }` | 200 the stage matrix | 401, 403, 409 `CONFLICT`, 422 `SectionId`/`EntryId`/`TeacherId` `INVALID_OPTION` |
+| POST | `/academic-years/{yearId}/workload/bulk/across-stage[/preview]` | `{ teacherId, entryId, overwrite }` | 200 plan `{ lines: [{ sectionId, stageName, sectionLabel, entryId, subjectName, label, weeklyLessons, currentTeacher, newTeacher, action }], changes, loads: [{ teacherId, fullName, before, after, limit }] }` | 401, 403, 404, 422 |
+| POST | `/academic-years/{yearId}/workload/bulk/class-teacher[/preview]` | `{ teacherId, sectionId, entryIds ([] = every line), overwrite }` | 200 plan | 401, 403, 404, 422 |
+| POST | `/academic-years/{yearId}/workload/bulk/transfer[/preview]` | `{ fromTeacherId, toTeacherId }` | 200 plan (`transfer` lines) | 401, 403, 404, 422 `ToTeacherId` |
+| POST | `/academic-years/{yearId}/workload/bulk/remove[/preview]` | `{ teacherId }` | 200 plan (`remove` lines; archived) | 401, 403, 404, 422 |
+
+- Plan actions: `create`, `replace` (only with `overwrite`), `skip`, `unchanged`, `transfer`, `remove`. The applied plan equals its preview; applying again gives `changes: 0`.
+- **`409 WORKLOAD_IN_USE`:**
+  - archive or delete of a teacher or section with assignments;
+  - the section stepper removing a section with assignments;
+  - clearing a curriculum cell (`PUT …/curriculum/cell` with `weeklyLessons: null`) or archiving a line (`POST /curriculum-entries/{id}/archive`) with active assignments, unless `confirmWorkload: true`. With confirmation the assignments are archived with the line, and `POST /curriculum-entries/{id}/restore` restores them.
+- **`GET /references/{teacher|section|curriculumEntry}/{id}`** lists the assignments (dependent kind `workloadAssignment`, «المرحلة / الشعبة: المادة — المعلم»).
+- Audit events: `WorkloadAssigned`, `WorkloadReassigned`, `WorkloadCleared`, `WorkloadAssignedAcrossStage`, `WorkloadClassTeacher`, `WorkloadTransferred`, `WorkloadRemoved`, `WorkloadArchivedWithLine`.
+
+### Phase 3D: scheduling input and pre-solve readiness (ADRs 0034–0035)
+| Method | Route | Request | Success | Errors |
+|---|---|---|---|---|
+| GET | `/academic-years/{yearId}/readiness?doublePeriods=` | — | 200 `{ ready, errors, warnings, findings: [{ code, severity, entity, related, required, available, shortage, details, fixes }], inputHash, checkedAt, sections, lines, assigned, teachers }` | 401, 403 (foreign Origin), 400 (foreign Host), 404 |
+
+`ready` is true exactly when there are no error-severity findings. The endpoint builds the immutable `SchedulingInput` consumed by Phase 4, hashes it using canonical JSON, and validates it without running a solver. `inputHash` is lowercase SHA-256. `severity` is `error` or `warning`; the client renders Arabic text and fix links. The read-only call has a fixed query count.
+
+`doublePeriods=true` checks the «دروس مزدوجة» generation mode (`ValidatorOptions.DoublePeriodsRequired`): `DOUBLE_PERIOD_IMPOSSIBLE` is then an error. Without it (the standard mode) the same finding is a warning (DECISIONS_PENDING #65, ADR 0035).
+
+**Finding codes** are not HTTP error codes. They are declared once in `Application/Scheduling/FindingCodes.cs` and listed in `FindingCodes.All`; `FindingCodeContractTests` checks that each has Arabic text in `frontend/src/i18n/ar/phase3.ts` and a member of the TypeScript union, and that no literal appears elsewhere in the backend. An unknown code shows a generic Arabic message.
+
+| Code | Severity |
+|---|---|
+| `NOTHING_TO_SCHEDULE`, `UNASSIGNED_LINES`, `SECTION_OVER_CAPACITY`, `TEACHER_OVERLOAD`, `TEACHER_RELEASED_ASSIGNED`, `TEACHER_ARCHIVED_ASSIGNED`, `SUBJECT_SLOTS_SHORT`, `ASSIGNMENT_INFEASIBLE`, `RESOURCE_OVER_CAPACITY` | error |
+| `SHIFT_WITHOUT_PERIODS` | error when a section of that shift has curriculum lines; otherwise warning |
+| `DOUBLE_PERIOD_IMPOSSIBLE` | warning; error with `doublePeriods=true` |
+| `SECTION_UNDER_CAPACITY`, `TEACHER_PARTIAL_RELEASE`, `RESOURCE_ARCHIVED`, `DOUBLE_PERIOD_TIGHT`, `ORPHAN_BLOCKED_PERIODS`, `DISTRIBUTION_DISABLED_IN_CURRICULUM`, `STAGE_WITHOUT_CURRICULUM`, `TEACHER_SHIFT_OVERLAP` | warning |
+
+### Phase 3E: assignment suggester and wizard step
+| Method | Route | Request | Success | Errors |
+|---|---|---|---|---|
+| GET | `/academic-years/{yearId}/workload/suggestions/preview` | — | 200 `{ assignments: [{ sectionId, stageName, sectionLabel, entryId, subjectName, label, weeklyLessons, teacherId, teacherName }], unassigned: [{ …, reason: noSpecialist\|released\|capacity }], loads: [{ teacherId, teacherName, before, after, limit }] }` | 401, 404 |
+| POST | `/academic-years/{yearId}/workload/suggestions/apply` | `{ confirm: true }` | 200 the applied plan (equal to the preview for the same data) | 401, 403, 404, 422 `Confirm` `REQUIRED` |
+
+The suggester is deterministic: it fills only lines with no active assignment, never changes an existing one, picks the specialist of the subject whose load after the line is the smallest share of their limit (ties by name), and never goes above a teacher's limit (`capacity`) or assigns a fully released teacher (`released`). The setup wizard has eight steps; step 7 «الأنصبة» shows the assigned-line count and the suggester. Migration `Phase3EWorkloadWizardStep` moves a saved review step (bit 128) to bit 256.
 
 ### Subjects and the schedule grid (Phase 2, checkpoint 2D)
 | Method | Route | Request | Success | Endpoint-specific errors |

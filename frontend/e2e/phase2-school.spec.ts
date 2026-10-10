@@ -237,6 +237,26 @@ test("the whole setup checklist completes end to end; stale edits are caught", a
   await expect(page.getByRole("button", { name: "يوم المعلم" })).toBeVisible();
   await expectNoSeriousA11yViolations(page, "calendar month");
 
+  // Workload (checklist step added in Phase 3) needs a curriculum line first, then a class teacher for every line
+  // of the section, previewed first.
+  await goToSection(page, school.nav.curriculum);
+  const firstMaths = page.getByRole("textbox", { name: school.curriculum.cell("الرياضيات", "الأول المتوسط") });
+  await firstMaths.fill("5");
+  await firstMaths.press("Enter");
+  await expect(page.getByRole("status").filter({ hasText: school.curriculum.saved })).toBeVisible();
+  await goToSection(page, school.nav.workload);
+  const workload = school.workload;
+  await page.getByText(workload.bulk.classTeacher, { exact: true }).click();
+  const classTool = page.locator("details", { hasText: workload.bulk.classTeacher });
+  await classTool.getByLabel(workload.bulk.teacher, { exact: true }).selectOption({ label: "حسن علي مهدي" });
+  await classTool.getByLabel(workload.stage, { exact: true }).selectOption({ label: "الأول المتوسط" });
+  await classTool.getByLabel(workload.bulk.sectionChoice, { exact: true }).selectOption({ label: "أ" });
+  await classTool.getByRole("button", { name: workload.bulk.preview }).click();
+  await classTool.getByRole("button", { name: workload.bulk.apply }).click();
+  await page.getByRole("dialog", { name: workload.bulk.confirmTitle }).getByRole("button", { name: workload.bulk.apply }).click();
+  await expect(classTool.getByRole("status")).toBeVisible();
+  await expect(page.locator(".workload-flag", { hasText: workload.unassigned })).toHaveCount(0);
+
   // Dashboard reflects the completed steps and real counts.
   await goToSection(page, school.nav.dashboard);
   await expect(page.getByText(school.dashboard.checklistDone)).toBeVisible();

@@ -11,6 +11,8 @@ public sealed class EfDataStore(LocalDbContext dbContext) : IDataStore
 
     public IQueryable<T> Query<T>() where T : class => dbContext.Set<T>();
 
+    public IQueryable<T> Read<T>() where T : class => dbContext.Set<T>().AsNoTracking();
+
     public void Add<T>(T entity) where T : class => dbContext.Set<T>().Add(entity);
 
     public void Remove<T>(T entity) where T : class => dbContext.Set<T>().Remove(entity);

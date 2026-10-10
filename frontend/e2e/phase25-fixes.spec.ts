@@ -14,7 +14,7 @@ const wizard = school.wizard;
 const curriculum = school.curriculum;
 const templates = school.templates;
 const arab = (value: number) => formatNumber(value, "arab");
-const stepOrder = ["المدرسة", "السنة الدراسية", "الدوام", "الصفوف والشعب", "المواد والمنهج", "المعلمون", "المراجعة"];
+const stepOrder = ["المدرسة", "السنة الدراسية", "الدوام", "الصفوف والشعب", "المواد والمنهج", "المعلمون", "الأنصبة", "المراجعة"];
 
 test.describe.configure({ mode: "serial" });
 test.beforeAll(async ({ browser }) => { await server.start(browser, "phase25-fixes"); });
@@ -44,10 +44,10 @@ test("curriculum table, wizard layout, subject chips, counts and month names", a
   const steps = page.getByRole("navigation", { name: wizard.progressLabel }).locator(".wizard-step-label");
   await expect(steps).toHaveText(stepOrder);
   expect(Object.values(wizard.steps)).toEqual(stepOrder);
-  await expect(page.getByRole("heading", { level: 2, name: wizard.steps[4] })).toBeVisible(); // resumed after steps 1–3
+  await expect(page.getByRole("heading", { level: 2, exact: true, name: wizard.steps[4] })).toBeVisible(); // resumed after steps 1–3
   for (const step of [3, 2, 1] as const) {
     await page.getByRole("button", { name: wizard.back }).click();
-    await expect(page.getByRole("heading", { level: 2, name: wizard.steps[step] })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, exact: true, name: wizard.steps[step] })).toBeVisible();
     await expect(page.locator("[aria-current=step]")).toContainText(wizard.steps[step]);
     await atEveryWidth(page, `wizard step ${step}`);
     if (step === 3) await expectNoTextOverlap(page.locator(".wizard-shift").first(), "periods preview");
@@ -55,11 +55,11 @@ test("curriculum table, wizard layout, subject chips, counts and month names", a
   }
   for (const step of [2, 3, 4] as const) {
     await page.getByRole("button", { name: wizard.next }).click();
-    await expect(page.getByRole("heading", { level: 2, name: wizard.steps[step] })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, exact: true, name: wizard.steps[step] })).toBeVisible();
   }
   await atEveryWidth(page, "wizard step 4", () => expectNoTextOverlap(page.locator(".stage-cards"), "stage cards"));
   await page.getByRole("button", { name: wizard.next }).click();
-  await expect(page.getByRole("heading", { level: 2, name: wizard.steps[5] })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, exact: true, name: wizard.steps[5] })).toBeVisible();
 
   // B6: a subject typed by name appears at once as a chip marked «مضافة» and as a row of the table; removing it can be undone.
   const chips = page.locator(".subject-chips");
@@ -114,7 +114,7 @@ test("curriculum table, wizard layout, subject chips, counts and month names", a
 
   for (const step of [6, 7] as const) {
     await page.getByRole("button", { name: step === 6 ? wizard.next : wizard.skip }).click();
-    if (step === 6) await expect(page.getByRole("heading", { level: 2, name: wizard.steps[6] })).toBeVisible();
+    if (step === 6) await expect(page.getByRole("heading", { level: 2, exact: true, name: wizard.steps[6] })).toBeVisible();
   }
   await atEveryWidth(page, "wizard step 7");
 

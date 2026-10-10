@@ -6,8 +6,9 @@ namespace SmartSchoolTimetable.Domain.SchoolSetup;
 public sealed record BreakSlot(int AfterLesson, int Minutes);
 
 /// <summary>
-/// Input of the "Generate periods" helper (spec 2.5 §4.1; break model ADR 0026): up to three breaks, each with its
-/// own position and duration, and an optional short gap between consecutive lessons (0 by default).
+/// Input of the "Generate periods" helper (spec 2.5 §4.1; break model ADR 0026): any number of breaks (at most one
+/// per gap between lessons, R2), each with its own position and duration (1–120 minutes), and an optional short gap
+/// between consecutive lessons (0 by default).
 /// </summary>
 public sealed record PeriodPlan(TimeOnly FirstStartTime, int LessonMinutes, int LessonCount, IReadOnlyList<BreakSlot> Breaks)
 {
@@ -30,9 +31,8 @@ public static class PeriodGenerator
 {
     public const int MinLessonMinutes = 10;
     public const int MaxLessonMinutes = 120;
-    public const int MinBreakMinutes = 5;
+    public const int MinBreakMinutes = 1;
     public const int MaxBreakMinutes = 120;
-    public const int MaxBreaks = 3;
     public const int MaxGapMinutes = 30;
 
     public static IReadOnlyList<PeriodDraft> Generate(PeriodPlan plan)
@@ -45,7 +45,6 @@ public static class PeriodGenerator
             .When(breaks.Any(slot => slot.Minutes is < MinBreakMinutes or > MaxBreakMinutes), "BreakMinutes", DomainErrorCode.OutOfRange)
             .When(breaks.Any(slot => slot.AfterLesson < 1 || slot.AfterLesson >= plan.LessonCount), "BreakAfterLesson", DomainErrorCode.OutOfRange)
             .When(breaks.GroupBy(slot => slot.AfterLesson).Any(group => group.Count() > 1), "BreakAfterLesson", DomainErrorCode.Duplicate)
-            .When(breaks.Count > MaxBreaks, "Breaks", DomainErrorCode.OutOfRange)
             .When(plan.GapMinutes is < 0 or > MaxGapMinutes, nameof(plan.GapMinutes), DomainErrorCode.OutOfRange)
             .ThrowIfAny();
 

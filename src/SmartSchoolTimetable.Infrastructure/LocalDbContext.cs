@@ -10,6 +10,7 @@ public sealed class LocalDbContext(DbContextOptions<LocalDbContext> options) : D
     public DbSet<OwnerAccount> Owners => Set<OwnerAccount>();
     public DbSet<LocalAuditEntry> AuditEntries => Set<LocalAuditEntry>();
     public DbSet<Shift> Shifts => Set<Shift>();
+    public DbSet<SessionPlan> SessionPlans => Set<SessionPlan>();
     public DbSet<WorkingWeek> WorkingWeeks => Set<WorkingWeek>();
     public DbSet<BellSettings> BellSettings => Set<BellSettings>();
     public DbSet<Stage> Stages => Set<Stage>();

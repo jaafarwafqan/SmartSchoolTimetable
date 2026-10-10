@@ -1,5 +1,6 @@
 import { arabicCount, type CountNoun, type GrammaticalCase } from "./arabicCount";
 import { messages } from "../i18n/messages";
+import { formatTime12 } from "./time";
 
 /**
  * The single formatting helper (DESIGN_SYSTEM.md section 8). Every number, date and time shown in the UI goes
@@ -86,9 +87,6 @@ export function createFormatter(preferences: DisplayPreferences = defaultDisplay
   const monthFormat = new Intl.DateTimeFormat(locale, {
     calendar, numberingSystem: system, timeZone: "UTC", month: "long", year: "numeric",
   });
-  const timeFormat = new Intl.DateTimeFormat("ar", {
-    numberingSystem: system, timeZone: "UTC", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
-  });
   const formatDate = withIraqiMonths(dateFormat, gregorian);
   const formatMonth = withIraqiMonths(monthFormat, gregorian);
   return {
@@ -102,7 +100,8 @@ export function createFormatter(preferences: DisplayPreferences = defaultDisplay
     date: (value: string) => formatDate(parseApiDate(value)),
     dateRange: (start: string, end: string) => `${formatDate(parseApiDate(start))} – ${formatDate(parseApiDate(end))}`,
     month: (value: string) => formatMonth(parseApiDate(value)),
-    time: (value: string) => timeFormat.format(new Date(`1970-01-01T${value}:00Z`)),
+    /** "HH:mm" (24-hour storage) as the Iraqi 12-hour clock «٨:٠٠ ص» (lib/time.ts, the single time formatter). */
+    time: (value: string) => formatTime12(value, system),
     today: () => todayIn(preferences.timeZone),
   };
 }

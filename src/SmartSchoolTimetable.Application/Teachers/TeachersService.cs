@@ -1,5 +1,6 @@
 using SmartSchoolTimetable.Application.Common;
 using SmartSchoolTimetable.Application.SchoolSetup;
+using SmartSchoolTimetable.Domain.Subjects;
 using SmartSchoolTimetable.Domain.Teachers;
 using SmartSchoolTimetable.Domain.Text;
 
@@ -11,10 +12,12 @@ namespace SmartSchoolTimetable.Application.Teachers;
 /// </summary>
 public sealed class TeachersService(IDataStore store, TimeProvider clock)
 {
+    private readonly ReferenceGuard references = new(store);
+
     public async Task<PagedResult<TeacherDto>> ListAsync(ListQuery query, bool? released, CancellationToken token)
     {
         ArgumentNullException.ThrowIfNull(query);
-        var rows = store.Query<Teacher>();
+        var rows = store.Read<Teacher>();
         if (!query.WithArchived)
             rows = rows.Where(row => !row.IsArchived);
         if (released is { } onlyReleased)
@@ -42,6 +45,8 @@ public sealed class TeachersService(IDataStore store, TimeProvider clock)
         var details = ToDetails(command, input);
         if (input.Any)
             return input.ToResult<TeacherDto>();
+        if (await SpecializationsRejectedAsync(command.SpecializationIds, [], token))
+            return OperationResult.Invalid<TeacherDto>(nameof(command.SpecializationIds), ErrorCodes.InvalidOption);
         var grid = await ScheduleGrids.LoadAsync(store, token);
         Teacher? teacher = null;
         if (StoreSaving.TryDomain<TeacherDto>(() => teacher = Teacher.Create(details, grid)) is { } invalid)
@@ -66,6 +71,8 @@ public sealed class TeachersService(IDataStore store, TimeProvider clock)
             return OperationResult.Failure<TeacherDto>(ErrorCodes.Conflict);
         if (await ShortNameTakenAsync(id, command.ShortName, token))
             return OperationResult.Invalid<TeacherDto>(nameof(command.ShortName), ErrorCodes.DuplicateName);
+        if (await SpecializationsRejectedAsync(command.SpecializationIds, teacher.Specializations.Select(item => item.SubjectId).ToArray(), token))
+            return OperationResult.Invalid<TeacherDto>(nameof(command.SpecializationIds), ErrorCodes.InvalidOption);
         var grid = await ScheduleGrids.LoadAsync(store, token);
         if (StoreSaving.TryDomain<TeacherDto>(() => teacher.Update(details, grid)) is { } invalid)
             return invalid;
@@ -79,6 +86,8 @@ public sealed class TeachersService(IDataStore store, TimeProvider clock)
             return OperationResult.Failure<TeacherDto>(ErrorCodes.NotFound);
         if (!teacher.IsVersion(version))
             return OperationResult.Failure<TeacherDto>(ErrorCodes.Conflict);
+        if (archived && await references.ArchiveBlockedAsync(ReferenceKinds.Teacher, id, token) is { } inUse)
+            return OperationResult.Failure<TeacherDto>(inUse);
         if (archived)
             teacher.Archive(clock.GetUtcNow());
         else
@@ -93,6 +102,8 @@ public sealed class TeachersService(IDataStore store, TimeProvider clock)
             return OperationResult.Failure<bool>(ErrorCodes.NotFound);
         if (!teacher.IsVersion(version))
             return OperationResult.Failure<bool>(ErrorCodes.Conflict);
+        if (await references.DeleteBlockedAsync(ReferenceKinds.Teacher, id, token) is { } inUse)
+            return OperationResult.Failure<bool>(inUse);
         store.Remove(teacher);
         AuditTrail.Record(store, clock, "TeacherDeleted", $"teacher:{id}", "Teacher deleted.");
         return await store.SaveAsync(() => true, "ShortName", token);
@@ -146,7 +157,32 @@ public sealed class TeachersService(IDataStore store, TimeProvider clock)
         command.FullyReleased ? input.OptionalDate(command.ReleaseTo, nameof(command.ReleaseTo)) : null,
         command.MaxLessonsPerDay,
         command.MaxLessonsPerWeek,
-        command.Notes);
+        command.Notes,
+        command.SpecializationIds);
+
+    /// <summary>«إضافة المادة لتخصصاته»: adds one active subject to the teacher's specializations.</summary>
+    public async Task<OperationResult<TeacherDto>> AddSpecializationAsync(long id, long subjectId, AddSpecializationCommand command, CancellationToken token)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        if (await FindAsync(id, token) is not { } teacher)
+            return OperationResult.Failure<TeacherDto>(ErrorCodes.NotFound);
+        if (!teacher.IsVersion(command.Version))
+            return OperationResult.Failure<TeacherDto>(ErrorCodes.Conflict);
+        if (await SpecializationsRejectedAsync([subjectId], [], token))
+            return OperationResult.Invalid<TeacherDto>("SubjectId", ErrorCodes.InvalidOption);
+        if (StoreSaving.TryDomain<TeacherDto>(() => teacher.AddSpecialization(subjectId)) is { } invalid)
+            return invalid;
+        AuditTrail.Record(store, clock, "TeacherSpecializationAdded", $"teacher:{id}", "Specialization added.");
+        return await store.SaveAsync(() => ToDto(teacher), "SpecializationIds", token);
+    }
+
+    /// <summary>Newly listed subjects must exist and be active; subjects the teacher already has may stay.</summary>
+    private async Task<bool> SpecializationsRejectedAsync(IReadOnlyList<long>? ids, IReadOnlyCollection<long> current, CancellationToken token)
+    {
+        var added = (ids ?? []).Distinct().Where(subjectId => !current.Contains(subjectId)).ToArray();
+        return added.Length > 0
+            && await store.CountAsync(store.Query<Subject>().Where(subject => added.Contains(subject.Id) && !subject.IsArchived), token) != added.Length;
+    }
 
     /// <summary>A free short name, or null (then the required-field error asks the owner to type one).</summary>
     private async Task<string?> ProposeShortNameAsync(string fullName, CancellationToken token)
@@ -180,5 +216,6 @@ public sealed class TeachersService(IDataStore store, TimeProvider clock)
         row.Notes,
         row.IsArchived,
         row.ArchivedAt,
-        row.Version);
+        row.Version,
+        row.Specializations.Select(item => item.SubjectId).Order().ToArray());
 }

@@ -1,9 +1,9 @@
 import { CalendarClock, Pencil, Plus, Trash2 } from "lucide-react";
+import { GuardedDeleteDialog } from "../../components/References";
 import { useState } from "react";
 import { Alert } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
-import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { EmptyState } from "../../components/ui/empty-state";
 import { IconButton } from "../../components/ui/icon-button";
 import { DataTable, type TableColumn } from "../../components/ui/table";
@@ -89,13 +89,11 @@ export function ShiftsCard({ yearId }: { yearId: number }) {
         onReload={reload}
         onSaved={(shift) => { setDialog({ open: false, shift: null }); setSelectedId(shift.id); feedback.showSuccess(text.shiftSaved); }}
       />
-      <ConfirmDialog
-        open={deleting !== null}
-        danger
+      <GuardedDeleteDialog
+        kind="shift"
+        target={deleting && { id: deleting.id, name: deleting.name }}
         title={text.deleteShiftTitle}
         consequence={text.deleteShiftConsequence}
-        confirmLabel={messages.school.common.delete}
-        confirmIcon={<Trash2 aria-hidden="true" size={20} />}
         loading={remove.isPending}
         onCancel={() => setDeleting(null)}
         onConfirm={() => deleting && remove.mutate({ id: deleting.id, version: deleting.version }, {

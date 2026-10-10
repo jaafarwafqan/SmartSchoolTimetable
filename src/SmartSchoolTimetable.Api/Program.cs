@@ -16,17 +16,10 @@ using SmartSchoolTimetable.Application.Subjects;
 using SmartSchoolTimetable.Application.Teachers;
 using SmartSchoolTimetable.Application.Calendar;
 using SmartSchoolTimetable.Infrastructure;
-using SmartSchoolTimetable.Infrastructure.DemoData;
 
 const string resetArgument = "--reset-local-database";
-const string seedArgument = "--seed-demo-data";
-const string dualShiftArgument = "--dual-shift";
 var resetRequested = args.Contains(resetArgument, StringComparer.Ordinal);
-var seedIndex = Array.IndexOf(args, seedArgument);
-var seedTarget = seedIndex >= 0 && seedIndex + 1 < args.Length ? args[seedIndex + 1] : null;
-var commandArguments = new HashSet<string>(StringComparer.Ordinal) { resetArgument, seedArgument, dualShiftArgument };
-var builderArguments = args.Where((argument, index) =>
-    !commandArguments.Contains(argument) && !(seedIndex >= 0 && index == seedIndex + 1)).ToArray();
+var builderArguments = args.Where(argument => argument != resetArgument).ToArray();
 var builder = WebApplication.CreateBuilder(builderArguments);
 var localOptions = LocalApplicationOptions.FromConfiguration(builder.Configuration);
 LocalListenerGuard.ValidateConfiguredEndpoint(IPAddress.Loopback, localOptions.Port);
@@ -38,15 +31,6 @@ var defaultDatabasePath = Path.Combine(
     "SmartSchoolTimetable",
     "timetable.db");
 var databasePath = builder.Configuration["Database:Path"] ?? defaultDatabasePath;
-
-if (seedIndex >= 0)
-{
-    // A separate demo database; the default and configured databases are refused (DemoDataSeeder).
-    Console.OutputEncoding = Encoding.UTF8;
-    var created = await DemoDataSeeder.SeedAsync(seedTarget, [defaultDatabasePath, databasePath], args.Contains(dualShiftArgument, StringComparer.Ordinal), Console.Out);
-    Environment.ExitCode = created ? 0 : 1;
-    return;
-}
 
 if (resetRequested)
 {
@@ -78,11 +62,13 @@ builder.Services.AddScoped<SchoolProfileService>();
 builder.Services.AddScoped<SchoolContextService>();
 builder.Services.AddScoped<AcademicYearService>();
 builder.Services.AddScoped<TimetableStructureService>();
+builder.Services.AddScoped<OrphanBlockedPeriodsService>();
 builder.Services.AddScoped<StagesSectionsService>();
 builder.Services.AddScoped<SubjectsService>();
 builder.Services.AddScoped<TeachersService>();
 builder.Services.AddScoped<CalendarService>();
 builder.Services.AddScoped<ShiftModeService>();
+builder.Services.AddScoped<SessionPlanService>();
 builder.Services.AddScoped<SetupProgressService>();
 builder.Services.AddScoped<StageCardsService>();
 builder.Services.AddScoped<CurriculumService>();
@@ -93,12 +79,34 @@ builder.Services.AddScoped<SuggestedCurriculumService>();
 builder.Services.AddScoped<DailySuggestionService>();
 builder.Services.AddScoped<IYearStructure, YearStructureService>();
 builder.Services.AddScoped<DashboardService>();
+builder.Services.AddScoped<SmartSchoolTimetable.Application.Resources.ResourcesService>();
+builder.Services.AddScoped<SmartSchoolTimetable.Application.Scheduling.SchedulingProfileService>();
+builder.Services.AddScoped<SmartSchoolTimetable.Application.Workload.WorkloadService>();
+builder.Services.AddScoped<SmartSchoolTimetable.Application.Scheduling.ReadinessService>();
+builder.Services.AddScoped<SmartSchoolTimetable.Application.Common.ReferenceGuard>();
+builder.Services.AddSingleton<SmartSchoolTimetable.Application.Generation.GenerationRegistry>();
+builder.Services.AddScoped<SmartSchoolTimetable.Application.Generation.GenerationService>();
+builder.Services.AddScoped<SmartSchoolTimetable.Application.Generation.TimetableService>();
+builder.Services.AddScoped<SmartSchoolTimetable.Application.Generation.TimetableExportService>();
+builder.Services.AddScoped<SmartSchoolTimetable.Application.Backup.BackupService>();
+builder.Services.AddHostedService<GenerationWorker>();
 builder.Services.AddLocalInfrastructure(
     databasePath,
     builder.Environment.IsEnvironment("Testing"));
 
 var app = builder.Build();
 await LocalInfrastructureRegistration.InitializeLocalDatabaseAsync(app.Services);
+await using (var startupScope = app.Services.CreateAsyncScope())
+{
+    // Runs left active by a closed or crashed app are marked Interrupted (Phase 4 §6).
+    var interrupted = await startupScope.ServiceProvider.GetRequiredService<SmartSchoolTimetable.Application.Generation.GenerationService>()
+        .RecoverInterruptedAsync(CancellationToken.None);
+    if (interrupted > 0)
+        LocalLog.GenerationsInterrupted(app.Logger, interrupted);
+}
+// Solver self-check: a missing native library disables generation with an Arabic error instead of a crash.
+if (!app.Services.GetRequiredService<SmartSchoolTimetable.Application.Generation.ISolverInfo>().Available)
+    LocalLog.SolverUnavailable(app.Logger);
 
 app.UseExceptionHandler();
 app.UseMiddleware<UnifiedApiErrorMiddleware>();
@@ -118,6 +126,14 @@ app.MapTeachersEndpoints();
 app.MapCalendarEndpoints();
 app.MapSetupEndpoints();
 app.MapCurriculumEndpoints();
+app.MapReferencesEndpoints();
+app.MapResourcesEndpoints();
+app.MapSchedulingProfileEndpoints();
+app.MapWorkloadEndpoints();
+app.MapReadinessEndpoints();
+app.MapGenerationEndpoints();
+app.MapTimetableEndpoints();
+app.MapBackupEndpoints();
 app.MapFallback(async (HttpContext context) =>
 {
     if (context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))

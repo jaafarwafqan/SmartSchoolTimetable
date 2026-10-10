@@ -17,6 +17,12 @@ import { useFormFeedback } from "../lib/useFormFeedback";
 import { useUiStore } from "../state/session";
 import { MobileMenu } from "./MobileMenu";
 import { legacyRedirects, navGroups } from "./navigation";
+import { ResourcesPage } from "../features/resources/ResourcesPage";
+import { WorkloadPage } from "../features/workload/WorkloadPage";
+import { SchedulingProfilePage } from "../features/scheduling-profile/SchedulingProfilePage";
+import { ReadinessPage } from "../features/readiness/ReadinessPage";
+import { GenerationPage } from "../features/generation/GenerationPage";
+import { TimetablePage } from "../features/timetable/TimetablePage";
 import { NotFoundPage } from "./NotFoundPage";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
@@ -61,9 +67,15 @@ export function AppShell({ bootstrap }: { bootstrap: Bootstrap }) {
             <Route path="/classes/stages" element={<StagesSectionsPage />} />
             <Route path="/classes/subjects" element={<SubjectsPage />} />
             <Route path="/classes/curriculum" element={<CurriculumPage />} />
-            <Route path="/teachers" element={<TeachersPage />} />
+            <Route path="/classes/resources" element={<ResourcesPage />} />
+            <Route path="/teachers/list" element={<TeachersPage />} />
+            <Route path="/teachers/workload" element={<WorkloadPage />} />
+            <Route path="/readiness" element={<ReadinessPage />} />
+            <Route path="/timetable/generate" element={<GenerationPage />} />
+            <Route path="/timetable/view" element={<TimetablePage />} />
             <Route path="/setup" element={<SetupWizardPage />} />
-            <Route path="/settings" element={<SettingsScreen bootstrap={bootstrap} />} />
+            <Route path="/settings/general" element={<SettingsScreen bootstrap={bootstrap} />} />
+            <Route path="/settings/scheduling" element={<SchedulingProfilePage />} />
             {Object.entries(legacyRedirects).map(([from, to]) => <Route key={from} path={from} element={<Navigate to={to} replace />} />)}
             <Route path="*" element={<NotFoundPage />} />
           </Routes>

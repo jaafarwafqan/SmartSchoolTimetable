@@ -34,8 +34,11 @@ public sealed class StageLessonsAndBreaksTests
         shift.ReplacePeriods(rows); // gaps between periods are valid rows for a shift
         Assert.Equal(4, shift.LessonCount);
 
-        Assert.Equal(["Breaks"], Assert.Throws<DomainValidationException>(() => PeriodGenerator.Generate(new PeriodPlan(new TimeOnly(8, 0), 40, 6,
-            [new BreakSlot(1, 5), new BreakSlot(2, 5), new BreakSlot(3, 5), new BreakSlot(4, 5)]))).Errors.Select(error => error.Field));
+        // R2: no cap of three; a break may follow every lesson but the last, one per gap.
+        Assert.Equal(11, PeriodGenerator.Generate(new PeriodPlan(new TimeOnly(8, 0), 40, 6,
+            [new BreakSlot(1, 5), new BreakSlot(2, 5), new BreakSlot(3, 5), new BreakSlot(4, 5), new BreakSlot(5, 5)])).Count);
+        Assert.Equal(["BreakAfterLesson"], Assert.Throws<DomainValidationException>(() => PeriodGenerator.Generate(new PeriodPlan(new TimeOnly(8, 0), 40, 6,
+            [new BreakSlot(2, 5), new BreakSlot(2, 10)]))).Errors.Select(error => error.Field));
         Assert.Equal(["GapMinutes"], Assert.Throws<DomainValidationException>(() => PeriodGenerator.Generate(plan with { GapMinutes = 31 })).Errors.Select(error => error.Field));
         Assert.Throws<DomainValidationException>(() => PeriodGenerator.Generate(plan with { GapMinutes = -1 }));
         Assert.All(TemplateCatalog.Current.BreakDefaults.Minutes.Values, minutes => Assert.Equal(15, minutes)); // suggestions, not official values

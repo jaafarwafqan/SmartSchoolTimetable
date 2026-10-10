@@ -16,6 +16,8 @@ export type Subject = {
   requiresDoublePeriod: boolean;
   blockedPeriods: BlockedSlot[];
   notes: string | null;
+  /** The one resource the subject needs (Phase 3 §2.2), or null. */
+  requiredResourceId: number | null;
   isArchived: boolean;
   archivedAt: string | null;
   version: number;
@@ -42,7 +44,7 @@ function useSubjectsMutation<TInput, TResult>(request: (input: TInput) => Promis
     mutationFn: request,
     onSuccess: async () => {
       // The curriculum table and the subject suggestions list subjects too (fix B6: no reload needed).
-      await Promise.all([refreshQueries(queryClient, [subjectsKey, ["curriculum"], ["suggested-subjects"]]), refreshSchoolData()]);
+      await Promise.all([refreshQueries(queryClient, [subjectsKey, ["curriculum"], ["suggested-subjects"], ["workload"]]), refreshSchoolData()]);
     },
   });
 }

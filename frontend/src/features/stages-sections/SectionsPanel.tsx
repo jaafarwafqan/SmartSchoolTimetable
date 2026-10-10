@@ -1,10 +1,10 @@
-import { Plus, Trash2, UsersRound } from "lucide-react";
+import { Plus, UsersRound } from "lucide-react";
+import { ArchiveBlockedDialog, GuardedDeleteDialog, isReferenceError } from "../../components/References";
 import { useState } from "react";
 import { ConflictAlert } from "../../components/ConflictAlert";
 import { Alert } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
-import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { EmptyState } from "../../components/ui/empty-state";
 import { DataTable, type TableColumn } from "../../components/ui/table";
 import { messages } from "../../i18n/messages";
@@ -28,6 +28,7 @@ export function SectionsPanel({ yearId, stage, includeArchived }: SectionsPanelP
   const action = useSectionAction(yearId, stage.id);
   const [dialog, setDialog] = useState<{ open: boolean; section: Section | null }>({ open: false, section: null });
   const [deleting, setDeleting] = useState<Section | null>(null);
+  const [archiveBlocked, setArchiveBlocked] = useState<Section | null>(null);
   const rows = sections.data?.items ?? [];
   const shiftList = shifts.data?.items ?? [];
   const shiftOptions = shiftList.map((shift) => ({ value: String(shift.id), label: shift.name }));
@@ -40,7 +41,8 @@ export function SectionsPanel({ yearId, stage, includeArchived }: SectionsPanelP
     feedback.reset();
     action.mutate({ section, action: section.isArchived ? "restore" : "archive" }, {
       onSuccess: () => feedback.showSuccess(section.isArchived ? text.sectionRestored : text.sectionArchived),
-      onError: feedback.showError,
+      // A refused archive lists what still depends on the record instead of a bare error.
+      onError: (error) => isReferenceError(error) ? setArchiveBlocked(section) : feedback.showError(error),
     });
   }
 
@@ -91,13 +93,11 @@ export function SectionsPanel({ yearId, stage, includeArchived }: SectionsPanelP
         onReload={reload}
         onSaved={() => { setDialog({ open: false, section: null }); feedback.showSuccess(text.sectionSaved); }}
       />
-      <ConfirmDialog
-        open={deleting !== null}
-        danger
+      <GuardedDeleteDialog
+        kind="section"
+        target={deleting && { id: deleting.id, name: deleting.label }}
         title={text.deleteSectionTitle}
         consequence={text.deleteSectionConsequence}
-        confirmLabel={messages.school.common.delete}
-        confirmIcon={<Trash2 aria-hidden="true" size={20} />}
         loading={action.isPending}
         onCancel={() => setDeleting(null)}
         onConfirm={() => deleting && action.mutate({ section: deleting, action: "delete" }, {
@@ -106,6 +106,8 @@ export function SectionsPanel({ yearId, stage, includeArchived }: SectionsPanelP
           onSettled: () => setDeleting(null),
         })}
       />
+      <ArchiveBlockedDialog kind="section" target={archiveBlocked && { id: archiveBlocked.id, name: archiveBlocked.label }}
+        onClose={() => setArchiveBlocked(null)} />
     </Card>
   );
 }

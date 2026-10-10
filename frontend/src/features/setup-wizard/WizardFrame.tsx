@@ -7,8 +7,8 @@ import { messages } from "../../i18n/messages";
 import { wizardStepCount, type SetupProgress } from "./wizardApi";
 
 const text = messages.school.wizard;
-export type WizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
-export const wizardSteps: readonly WizardStep[] = [1, 2, 3, 4, 5, 6, 7];
+export type WizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+export const wizardSteps: readonly WizardStep[] = [1, 2, 3, 4, 5, 6, 7, 8];
 
 /** Step list with the current step (aria-current) and done/skipped marks as icon + text. */
 export function WizardProgress({ step, progress, format }: { step: WizardStep; progress: SetupProgress; format: (value: number) => string }) {

@@ -1,11 +1,14 @@
 using SmartSchoolTimetable.Application.Common;
 using System.Collections.Concurrent;
+using System.Data.Common;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -90,6 +93,7 @@ internal sealed class TestHost : IAsyncDisposable
     public TestTimeProvider Clock => _factory.Services.GetRequiredService<TestTimeProvider>();
     public RecordingLoginDelay LoginDelay => _factory.Services.GetRequiredService<RecordingLoginDelay>();
     public CapturingLoggerProvider LogProvider => _factory.LogProvider;
+    public QueryCounter Queries => _factory.Queries;
     public IServiceProvider Services => _factory.Services;
 
     public async Task<BootstrapResponse> GetBootstrapAsync() =>
@@ -150,6 +154,7 @@ internal sealed class TestHost : IAsyncDisposable
 internal sealed class TestApplicationFactory(string databasePath, SaveFailureInjection? failures = null) : WebApplicationFactory<Program>
 {
     public CapturingLoggerProvider LogProvider { get; } = new();
+    public QueryCounter Queries { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -183,6 +188,10 @@ internal sealed class TestApplicationFactory(string databasePath, SaveFailureInj
                 services.AddScoped<IDataStore>(provider => new FailingDataStore(
                     (IDataStore)ActivatorUtilities.CreateInstance(provider, real.ImplementationType!), failures));
             }
+
+            // Counts SQL commands so tests can prove list endpoints run a constant number of queries (no N+1).
+            services.AddSingleton(Queries);
+            services.ConfigureDbContext<LocalDbContext>(options => options.AddInterceptors(Queries));
 
             services.RemoveAll<ILoginDelay>();
             services.AddSingleton<RecordingLoginDelay>();
@@ -263,6 +272,7 @@ internal sealed class SaveFailureInjection
 internal sealed class FailingDataStore(IDataStore inner, SaveFailureInjection failures) : IDataStore
 {
     public IQueryable<T> Query<T>() where T : class => inner.Query<T>();
+    public IQueryable<T> Read<T>() where T : class => inner.Read<T>();
     public void Add<T>(T entity) where T : class => inner.Add(entity);
     public void Remove<T>(T entity) where T : class => inner.Remove(entity);
     public Task<List<T>> ListAsync<T>(IQueryable<T> query, CancellationToken cancellationToken) => inner.ListAsync(query, cancellationToken);
@@ -273,4 +283,50 @@ internal sealed class FailingDataStore(IDataStore inner, SaveFailureInjection fa
 
     public Task SaveChangesAsync(CancellationToken cancellationToken) =>
         failures.ShouldFail() ? throw new IOException("Injected save failure.") : inner.SaveChangesAsync(cancellationToken);
+}
+
+/// <summary>Counts the SQL commands EF Core sends (readers, scalars and non-queries).</summary>
+internal sealed class QueryCounter : DbCommandInterceptor
+{
+    private int _count;
+
+    public int Count => Volatile.Read(ref _count);
+
+    public void Reset() => Interlocked.Exchange(ref _count, 0);
+
+    public override InterceptionResult<DbDataReader> ReaderExecuting(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result)
+    {
+        Interlocked.Increment(ref _count);
+        return result;
+    }
+
+    public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+    {
+        Interlocked.Increment(ref _count);
+        return ValueTask.FromResult(result);
+    }
+
+    public override InterceptionResult<object> ScalarExecuting(DbCommand command, CommandEventData eventData, InterceptionResult<object> result)
+    {
+        Interlocked.Increment(ref _count);
+        return result;
+    }
+
+    public override ValueTask<InterceptionResult<object>> ScalarExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<object> result, CancellationToken cancellationToken = default)
+    {
+        Interlocked.Increment(ref _count);
+        return ValueTask.FromResult(result);
+    }
+
+    public override InterceptionResult<int> NonQueryExecuting(DbCommand command, CommandEventData eventData, InterceptionResult<int> result)
+    {
+        Interlocked.Increment(ref _count);
+        return result;
+    }
+
+    public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+    {
+        Interlocked.Increment(ref _count);
+        return ValueTask.FromResult(result);
+    }
 }

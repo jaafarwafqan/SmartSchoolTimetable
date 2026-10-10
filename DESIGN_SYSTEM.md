@@ -142,7 +142,7 @@ All UI is built from `frontend/src/components/ui/*`. Raw `<button>`, `<input>`, 
 ### 6.6 Navigation and layout
 - Right-hand sidebar (RTL) with icon + label; collapsible to icons with tooltips. Top bar holds the school name, current academic year/term, and user menu (settings, lock, logout).
 - On screens below 768px the navigation opens in the page flow under the top bar (no overlay, no side drawer: section 14 and ADR 0024), and the weekly grid becomes a day view.
-- Five sidebar items; screens of a group are tabs under the page title (route tabs, `aria-current="page"`). Breadcrumbs: dashboard › group › screen.
+- Six sidebar items. Phase 4 added «الجدول», with the tabs «التوليد» and «الجداول» (DECISIONS_PENDING #76). Screens of a group are tabs under the page title (route tabs, `aria-current="page"`). Breadcrumbs: dashboard › group › screen.
 - Breadcrumbs for nested screens. The current page is marked with `aria-current="page"`.
 
 ---
@@ -225,6 +225,14 @@ Records are added by choosing and by quick add, not by long forms. Each pattern 
 
 - **No side drawers or sheets** anywhere. The ESLint rule `design-system/no-drawers` and the test `styles/noDrawers.test.ts` fail if one is introduced (ADR 0024).
 - `/design` shows every pattern (section «أنماط الإضافة والتعديل»).
+
+## 16. Scheduling and readiness
+
+- The workload matrix is a scannable table: sections are rows, curriculum lines are columns, and each cell uses a native keyboard-operable teacher chooser. Unassigned cells show an icon and text, never color alone. Specialization filtering and «عرض الجميع» are visible in the cell interaction.
+- Teacher load uses the shared `LoadBar` with its accessible meter value and `LoadStatusBadge` with icon + text. Assigned, limit and available numbers remain visible next to the bar; overload fills the meter without changing its dimensions.
+- Readiness is an unframed report with a status banner, error/warning counts, a small LTR hash and check time, and findings grouped by entity. Each finding states measured numbers, explanation and actionable Arabic links. `error` blocks generation; `warning` does not. A group with a lesson shortage states it with a label («النقص: …»), never a bare number. The «فحص وضع الدروس المزدوجة» checkbox re-runs the check in that mode. The development-only `/design` guide demonstrates the matrix, load bar and a grouped finding (rendered by `SchedulingSection.test.tsx`).
+- The suggester shows a preview (assignments, unassigned lines with a reason, loads before → after) and applies only after a centred confirmation. Inside the wizard its title is an `h3` under the step's `h2`.
+- Keep cards for the report summary and individual entity groups only. Use logical CSS and shared `DataTable`, `Badge`, `Alert`, `LoadBar`, and icon + Arabic label controls. Validate at 375/768/1024/1440 px for axe, horizontal scrolling and text overlap.
 
 ## 15. Dates, times and left-to-right runs
 

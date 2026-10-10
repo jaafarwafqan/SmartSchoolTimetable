@@ -4,10 +4,13 @@ import { ConflictAlert } from "../../components/ConflictAlert";
 import { TextField } from "../../components/TextField";
 import { Alert } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
+import { Checkbox } from "../../components/ui/checkbox";
 import { Field } from "../../components/ui/field";
 import { Textarea } from "../../components/ui/textarea";
 import { messages } from "../../i18n/messages";
+import { useFormatter } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
+import { useSubjects } from "../subjects/subjectsApi";
 import { slotsInGrid } from "../timetable-structure/BlockedPeriodsEditor";
 import { useScheduleGrid } from "../timetable-structure/scheduleApi";
 import { TeacherConstraints, type ConstraintState } from "./TeacherConstraints";
@@ -30,6 +33,13 @@ export function TeacherEditor({ teacher, onSaved, onCancel, onReload }: TeacherE
     blocked: teacher.blockedPeriods,
     released: teacher.fullyReleased,
   });
+  const format = useFormatter();
+  const subjects = useSubjects({ search: "", page: 1, pageSize: 100, includeArchived: false });
+  // Archived subjects stay in the list without being shown, so saving never drops them silently.
+  const [specializations, setSpecializations] = useState<number[]>(teacher.specializationIds);
+  const toggleSpecialization = (id: number, on: boolean) =>
+    setSpecializations(on ? [...specializations, id] : specializations.filter((item) => item !== id));
+  const orphans = grid.data ? constraints.blocked.length - slotsInGrid(constraints.blocked, grid.data).length : 0;
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -50,6 +60,7 @@ export function TeacherEditor({ teacher, onSaved, onCancel, onReload }: TeacherE
         maxLessonsPerDay: optionalNumber(value("maxPerDay")),
         maxLessonsPerWeek: optionalNumber(value("maxPerWeek")),
         notes: optionalText(value("notes")),
+        specializationIds: specializations,
         version: teacher.version,
       },
     }, { onSuccess: () => { feedback.reset(); onSaved(); }, onError: feedback.showError });
@@ -63,6 +74,17 @@ export function TeacherEditor({ teacher, onSaved, onCancel, onReload }: TeacherE
         <TextField id={`${prefix}-fullName`} label={text.fullName} defaultValue={teacher.fullName} maxLength={150} required field="FullName" errors={feedback.fieldErrors} />
         <TextField id={`${prefix}-shortName`} label={text.shortName} hint={text.shortNameHint} defaultValue={teacher.shortName} maxLength={40} required field="ShortName" errors={feedback.fieldErrors} />
       </div>
+      <fieldset className="choice-group weekday-grid" aria-describedby={`${prefix}-specializations-hint`}>
+        <legend>{messages.school.specializations.legend}</legend>
+        <p id={`${prefix}-specializations-hint`} className="card-note">{messages.school.specializations.hint}</p>
+        {subjects.isSuccess && subjects.data.items.length === 0 && <p className="card-note">{messages.school.specializations.noSubjects}</p>}
+        {subjects.data?.items.map((subject) => (
+          <Checkbox key={subject.id} checked={specializations.includes(subject.id)} onChange={(event) => toggleSpecialization(subject.id, event.target.checked)}>
+            {subject.name}
+          </Checkbox>
+        ))}
+      </fieldset>
+      {orphans > 0 && <Alert tone="warning" message={messages.school.orphanOnSave(format.number(orphans))} />}
       <TeacherConstraints prefix={prefix} teacher={teacher} state={constraints} onChange={setConstraints} errors={feedback.fieldErrors} />
       <Field id={`${prefix}-notes`} label={text.notes} error={feedback.fieldErrors.Notes}>
         <Textarea id={`${prefix}-notes`} name={`${prefix}-notes`} defaultValue={teacher.notes ?? ""} maxLength={500} data-field="Notes" />

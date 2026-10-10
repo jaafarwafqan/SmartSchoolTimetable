@@ -51,6 +51,7 @@ function useStagesMutation<TInput, TResult>(request: (input: TInput) => Promise<
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: stagesKey }),
         queryClient.invalidateQueries({ queryKey: sectionsKey }),
+        queryClient.invalidateQueries({ queryKey: ["workload"] }),
         refreshSchoolData(),
       ]);
     },

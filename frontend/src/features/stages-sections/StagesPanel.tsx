@@ -1,4 +1,5 @@
-import { Layers3, Plus, Trash2 } from "lucide-react";
+import { Layers3, Plus } from "lucide-react";
+import { ArchiveBlockedDialog, GuardedDeleteDialog, isReferenceError } from "../../components/References";
 import { useState, type ReactNode } from "react";
 import { ConflictAlert } from "../../components/ConflictAlert";
 import { SearchField } from "../../components/SearchField";
@@ -6,7 +7,6 @@ import { Alert } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { Checkbox } from "../../components/ui/checkbox";
-import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { EmptyState } from "../../components/ui/empty-state";
 import { DataTable, type TableColumn } from "../../components/ui/table";
 import { messages } from "../../i18n/messages";
@@ -33,6 +33,7 @@ export function StagesPanel({ yearId, renderSelected }: StagesPanelProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [dialog, setDialog] = useState<{ open: boolean; stage: Stage | null }>({ open: false, stage: null });
   const [deleting, setDeleting] = useState<Stage | null>(null);
+  const [archiveBlocked, setArchiveBlocked] = useState<Stage | null>(null);
   const stages = useStages(yearId, search, includeArchived);
   const action = useStageAction(yearId);
   const rows = stages.data?.items ?? [];
@@ -44,7 +45,8 @@ export function StagesPanel({ yearId, renderSelected }: StagesPanelProps) {
     feedback.reset();
     action.mutate({ stage, action: stage.isArchived ? "restore" : "archive" }, {
       onSuccess: () => feedback.showSuccess(stage.isArchived ? text.stageRestored : text.stageArchived),
-      onError: feedback.showError,
+      // A refused archive lists what still depends on the record instead of a bare error.
+      onError: (error) => isReferenceError(error) ? setArchiveBlocked(stage) : feedback.showError(error),
     });
   }
 
@@ -97,13 +99,11 @@ export function StagesPanel({ yearId, renderSelected }: StagesPanelProps) {
           onReload={reload}
           onSaved={(stage) => { setDialog({ open: false, stage: null }); setSelectedId(stage.id); feedback.showSuccess(text.stageSaved); }}
         />
-        <ConfirmDialog
-          open={deleting !== null}
-          danger
+        <GuardedDeleteDialog
+          kind="stage"
+          target={deleting && { id: deleting.id, name: deleting.name }}
           title={text.deleteStageTitle}
           consequence={text.deleteStageConsequence}
-          confirmLabel={messages.school.common.delete}
-          confirmIcon={<Trash2 aria-hidden="true" size={20} />}
           loading={action.isPending}
           onCancel={() => setDeleting(null)}
           onConfirm={() => deleting && action.mutate({ stage: deleting, action: "delete" }, {
@@ -112,6 +112,8 @@ export function StagesPanel({ yearId, renderSelected }: StagesPanelProps) {
             onSettled: () => setDeleting(null),
           })}
         />
+        <ArchiveBlockedDialog kind="stage" target={archiveBlocked && { id: archiveBlocked.id, name: archiveBlocked.name }}
+          onClose={() => setArchiveBlocked(null)} />
       </Card>
       {selected ? renderSelected(selected, includeArchived) : rows.length > 0 && <Alert tone="info" message={text.selectStage} />}
     </>

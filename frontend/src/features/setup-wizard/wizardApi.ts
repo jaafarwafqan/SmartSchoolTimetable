@@ -38,7 +38,7 @@ export type SetupReview = {
   warnings: SetupWarning[];
 };
 
-export const wizardStepCount = 7;
+export const wizardStepCount = 8;
 export const setupProgressKey = ["setup-progress"] as const;
 
 export function useSetupProgress() {

@@ -1,0 +1,895 @@
+{
+  "templateVersion": 2,
+  "provenance": {
+    "source": "الخطط الدراسية المعتمدة في مدارس العراق للعام الدراسي 2026-2027 حسب نظام وزارة التربية المرقم 22 لسنة 2011 (صور رسمية قدّمها المالك)",
+    "status": "official",
+    "transcribedBy": "يُراجَع يدوياً من المالك قبل الاعتماد"
+  },
+  "subjectAliases": {
+    "اللغة العربية": [
+      "اللغة العربية (قراءتي)",
+      "قراءتي",
+      "قواعد"
+    ],
+    "التربية الفنية والنشيد": [
+      "التربية الفنية"
+    ],
+    "الاجتماع": [
+      "علم الاجتماع"
+    ],
+    "الاقتصاد": [
+      "مبادئ الاقتصاد"
+    ],
+    "الاجتماعيات": [
+      "الاجتماعيات التطبيقي"
+    ],
+    "اللغة الإنكليزية": [
+      "اللغة الانكليزية",
+      "اللغة الانجليزية"
+    ]
+  },
+  "stages": [
+    {
+      "name": "الأول الابتدائي",
+      "level": "primary",
+      "branch": null,
+      "statedTotal": 30,
+      "entries": [
+        {
+          "subject": "التربية الإسلامية",
+          "lessons": 2
+        },
+        {
+          "subject": "اللغة العربية (قراءتي)",
+          "lessons": 9
+        },
+        {
+          "subject": "اللغة الإنكليزية",
+          "lessons": 3
+        },
+        {
+          "subject": "الرياضيات",
+          "lessons": 6
+        },
+        {
+          "subject": "العلوم",
+          "lessons": 4
+        },
+        {
+          "subject": "التربية الأخلاقية",
+          "lessons": 2
+        },
+        {
+          "subject": "التربية الفنية والنشيد",
+          "lessons": 2
+        },
+        {
+          "subject": "التربية الرياضية",
+          "lessons": 2
+        }
+      ],
+      "computedTotal": 30,
+      "totalMatchesPrinted": true,
+      "needsReview": false
+    },
+    {
+      "name": "الثاني الابتدائي",
+      "level": "primary",
+      "branch": null,
+      "statedTotal": 30,
+      "entries": [
+        {
+          "subject": "التربية الإسلامية",
+          "lessons": 3
+        },
+        {
+          "subject": "اللغة العربية (قراءتي)",
+          "lessons": 8
+        },
+        {
+          "subject": "اللغة الإنكليزية",
+          "lessons": 3
+        },
+        {
+          "subject": "الرياضيات",
+          "lessons": 6
+        },
+        {
+          "subject": "العلوم",
+          "lessons": 4
+        },
+        {
+          "subject": "التربية الأخلاقية",
+          "lessons": 2
+        },
+        {
+          "subject": "التربية الفنية والنشيد",
+          "lessons": 2
+        },
+        {
+          "subject": "التربية الرياضية",
+          "lessons": 2
+        }
+      ],
+      "computedTotal": 30,
+      "totalMatchesPrinted": true,
+      "needsReview": false
+    },
+    {
+      "name": "الثالث الابتدائي",
+      "level": "primary",
+      "branch": null,
+      "statedTotal": 30,
+      "entries": [
+        {
+          "subject": "التربية الإسلامية",
+          "lessons": 3
+        },
+        {
+          "subject": "اللغة العربية",
+          "lessons": 9
+        },
+        {
+          "subject": "اللغة الإنكليزية",
+          "lessons": 3
+        },
+        {
+          "subject": "الرياضيات",
+          "lessons": 6
+        },
+        {
+          "subject": "العلوم",
+          "lessons": 4
+        },
+        {
+          "subject": "التربية الفنية والنشيد",
+          "lessons": 2
+        },
+        {
+          "subject": "التربية الرياضية",
+          "lessons": 3
+        }
+      ],
+      "computedTotal": 30,
+      "totalMatchesPrinted": true,
+      "needsReview": false
+    },
+    {
+      "name": "الرابع الابتدائي",
+      "level": "primary",
+      "branch": null,
+      "statedTotal": 30,
+      "entries": [
+        {
+          "subject": "التربية الإسلامية",
+          "lessons": 3
+        },
+        {
+          "subject": "اللغة العربية",
+          "lessons": 8
+        },
+        {
+          "subject": "اللغة الإنكليزية",
+          "lessons": 3
+        },
+        {
+          "subject": "الرياضيات",
+          "lessons": 6
+        },
+        {
+          "subject": "العلوم",
+          "lessons": 4
+        },
+        {
+          "subject": "الاجتماعيات",
+          "lessons": 2,
+          "note": "الخطة تذكر 2 نظري + حصة تطبيقية، والمجموع الرسمي 30 بحصتين؛ عدّلها حسب مدرستك"
+        },
+        {
+          "subject": "التربية الفنية والنشيد",
+          "lessons": 2
+        },
+        {
+          "subject": "التربية الرياضية",
+          "lessons": 2
+        }
+      ],
+      "computedTotal": 30,
+      "totalMatchesPrinted": true,
+      "needsReview": false
+    },
+    {
+      "name": "الخامس الابتدائي",
+      "level": "primary",
+      "branch": null,
+      "statedTotal": 30,
+      "entries": [
+        {
+          "subject": "التربية الإسلامية",
+          "lessons": 3
+        },
+        {
+          "subject": "اللغة العربية",
+          "lessons": 6
+        },
+        {
+          "subject": "اللغة الإنكليزية",
+          "lessons": 4
+        },
+        {
+          "subject": "الرياضيات",
+          "lessons": 6
+        },
+        {
+          "subject": "العلوم",
+          "lessons": 4
+        },
+        {
+          "subject": "الاجتماعيات",
+          "lessons": 3,
+          "note": "2 نظري + 1 تطبيقي"
+        },
+        {
+          "subject": "التربية الفنية والنشيد",
+          "lessons": 2
+        },
+        {
+          "subject": "التربية الرياضية",
+          "lessons": 2
+        }
+      ],
+      "computedTotal": 30,
+      "totalMatchesPrinted": true,
+      "needsReview": false
+    },
+    {
+      "name": "السادس الابتدائي",
+      "level": "primary",
+      "branch": null,
+      "statedTotal": 31,
+      "entries": [
+        {
+          "subject": "التربية الإسلامية",
+          "lessons": 3
+        },
+        {
+          "subject": "اللغة العربية",
+          "lessons": 6
+        },
+        {
+          "subject": "اللغة الإنكليزية",
+          "lessons": 5
+        },
+        {
+          "subject": "الرياضيات",
+          "lessons": 6
+        },
+        {
+          "subject": "العلوم",
+          "lessons": 4
+        },
+        {
+          "subject": "الاجتماعيات",
+          "lessons": 3
+        },
+        {
+          "subject": "التربية الفنية والنشيد",
+          "lessons": 2
+        },
+        {
+          "subject": "التربية الرياضية",
+          "lessons": 2
+        }
+      ],
+      "computedTotal": 31,
+      "totalMatchesPrinted": true,
+      "needsReview": false
+    },
+    {
+      "name": "الأول المتوسط",
+      "level": "intermediate",
+      "branch": null,
+      "statedTotal": 30,
+      "entries": [
+        {
+          "subject": "التربية الإسلامية",
+          "lessons": 2
+        },
+        {
+          "subject": "اللغة العربية",
+          "lessons": 5
+        },
+        {
+          "subject": "اللغة الإنكليزية",
+          "lessons": 5
+        },
+        {
+          "subject": "الرياضيات",
+          "lessons": 5
+        },
+        {
+          "subject": "الأحياء",
+          "lessons": 2
+        },
+        {
+          "subject": "الكيمياء",
+          "lessons": 2
+        },
+        {
+          "subject": "الفيزياء",
+          "lessons": 2
+        },
+        {
+          "subject": "الاجتماعيات",
+          "lessons": 4
+        },
+        {
+          "subject": "التربية الأخلاقية",
+          "lessons": 1
+        },
+        {
+          "subject": "التربية الفنية",
+          "lessons": 1
+        },
+        {
+          "subject": "التربية الرياضية",
+          "lessons": 1
+        },
+        {
+          "subject": "اللغة الفرنسية",
+          "lessons": 2,
+          "optional": true,
+          "inStatedTotal": false,
+          "note": "في المدارس المشمولة بتدريسها؛ إضافة على المجموع الرسمي"
+        },
+        {
+          "subject": "الحاسوب",
+          "lessons": 2,
+          "optional": true,
+          "inStatedTotal": false,
+          "note": "في المدارس المشمولة بتدريسه؛ إضافة على المجموع الرسمي"
+        }
+      ],
+      "computedTotal": 30,
+      "totalMatchesPrinted": true,
+      "needsReview": false
+    },
+    {
+      "name": "الثاني المتوسط",
+      "level": "intermediate",
+      "branch": null,
+      "statedTotal": 30,
+      "entries": [
+        {
+          "subject": "التربية الإسلامية",
+          "lessons": 2
+        },
+        {
+          "subject": "اللغة العربية",
+          "lessons": 5
+        },
+        {
+          "subject": "اللغة الإنكليزية",
+          "lessons": 5
+        },
+        {
+          "subject": "الرياضيات",
+          "lessons": 5
+        },
+        {
+          "subject": "الأحياء",
+          "lessons": 2
+        },
+        {
+          "subject": "الكيمياء",
+          "lessons": 2
+        },
+        {
+          "subject": "الفيزياء",
+          "lessons": 2
+        },
+        {
+          "subject": "الاجتماعيات",
+          "lessons": 4
+        },
+        {
+          "subject": "التربية الأخلاقية",
+          "lessons": 1
+        },
+        {
+          "subject": "التربية الفنية",
+          "lessons": 1
+        },
+        {
+          "subject": "التربية الرياضية",
+          "lessons": 1
+        },
+        {
+          "subject": "اللغة الفرنسية",
+          "lessons": 2,
+          "optional": true,
+          "inStatedTotal": false,
+          "note": "في المدارس المشمولة بتدريسها؛ إضافة على المجموع الرسمي"
+        },
+        {
+          "subject": "الحاسوب",
+          "lessons": 2,
+          "optional": true,
+          "inStatedTotal": false,
+          "note": "في المدارس المشمولة بتدريسه؛ إضافة على المجموع الرسمي"
+        }
+      ],
+      "computedTotal": 30,
+      "totalMatchesPrinted": true,
+      "needsReview": false
+    },
+    {
+      "name": "الثالث المتوسط",
+      "level": "intermediate",
+      "branch": null,
+      "statedTotal": 30,
+      "entries": [
+        {
+          "subject": "التربية الإسلامية",
+          "lessons": 2
+        },
+        {
+          "subject": "اللغة العربية",
+          "lessons": 5
+        },
+        {
+          "subject": "اللغة الإنكليزية",
+          "lessons": 5
+        },
+        {
+          "subject": "الرياضيات",
+          "lessons": 5
+        },
+        {
+          "subject": "الفيزياء",
+          "lessons": 2
+        },
+        {
+          "subject": "الكيمياء",
+          "lessons": 2
+        },
+        {
+          "subject": "الأحياء",
+          "lessons": 2
+        },
+        {
+          "subject": "الاجتماعيات",
+          "lessons": 4
+        },
+        {
+          "subject": "التربية الفنية",
+          "lessons": 2
+        },
+        {
+          "subject": "التربية الرياضية",
+          "lessons": 1
+        },
+        {
+          "subject": "اللغة الفرنسية",
+          "lessons": 2,
+          "optional": true,
+          "inStatedTotal": false,
+          "note": "في المدارس المشمولة بتدريسها؛ إضافة على المجموع الرسمي"
+        }
+      ],
+      "computedTotal": 30,
+      "totalMatchesPrinted": true,
+      "needsReview": false
+    },
+    {
+      "name": "الرابع العلمي",
+      "level": "preparatory",
+      "branch": "علمي",
+      "statedTotal": 30,
+      "entries": [
+        {
+          "subject": "التربية الإسلامية",
+          "lessons": 2
+        },
+        {
+          "subject": "اللغة العربية",
+          "lessons": 5
+        },
+        {
+          "subject": "اللغة الإنكليزية",
+          "lessons": 5
+        },
+        {
+          "subject": "اللغة الكردية",
+          "lessons": 2,
+          "optional": true,
+          "inStatedTotal": true,
+          "note": "تدرَّس في المدارس المشمولة بها؛ محسوبة ضمن المجموع الرسمي"
+        },
+        {
+          "subject": "الرياضيات",
+          "lessons": 4
+        },
+        {
+          "subject": "الكيمياء",
+          "lessons": 3
+        },
+        {
+          "subject": "الفيزياء",
+          "lessons": 3
+        },
+        {
+          "subject": "الأحياء",
+          "lessons": 3
+        },
+        {
+          "subject": "التربية الفنية",
+          "lessons": 1
+        },
+        {
+          "subject": "التربية الرياضية",
+          "lessons": 2
+        },
+        {
+          "subject": "اللغة الفرنسية",
+          "lessons": 2,
+          "optional": true,
+          "inStatedTotal": false,
+          "note": "في المدارس المشمولة بتدريسها؛ إضافة على المجموع الرسمي"
+        },
+        {
+          "subject": "الحاسوب",
+          "lessons": 2,
+          "optional": true,
+          "inStatedTotal": false,
+          "note": "في المدارس المشمولة بتدريسه؛ إضافة على المجموع الرسمي"
+        }
+      ],
+      "computedTotal": 30,
+      "totalMatchesPrinted": true,
+      "needsReview": false
+    },
+    {
+      "name": "الخامس العلمي",
+      "level": "preparatory",
+      "branch": "علمي",
+      "statedTotal": 30,
+      "entries": [
+        {
+          "subject": "التربية الإسلامية",
+          "lessons": 2
+        },
+        {
+          "subject": "اللغة العربية",
+          "lessons": 4
+        },
+        {
+          "subject": "اللغة الإنكليزية",
+          "lessons": 5
+        },
+        {
+          "subject": "اللغة الكردية",
+          "lessons": 1,
+          "optional": true,
+          "inStatedTotal": true,
+          "note": "تدرَّس في المدارس المشمولة بها؛ محسوبة ضمن المجموع الرسمي"
+        },
+        {
+          "subject": "الرياضيات",
+          "lessons": 5
+        },
+        {
+          "subject": "الكيمياء",
+          "lessons": 3
+        },
+        {
+          "subject": "الفيزياء",
+          "lessons": 3
+        },
+        {
+          "subject": "الأحياء",
+          "lessons": 3
+        },
+        {
+          "subject": "التربية الفنية",
+          "lessons": 2
+        },
+        {
+          "subject": "التربية الرياضية",
+          "lessons": 2
+        },
+        {
+          "subject": "اللغة الفرنسية",
+          "lessons": 2,
+          "optional": true,
+          "inStatedTotal": false,
+          "note": "في المدارس المشمولة بتدريسها؛ إضافة على المجموع الرسمي"
+        },
+        {
+          "subject": "الحاسوب",
+          "lessons": 2,
+          "optional": true,
+          "inStatedTotal": false,
+          "note": "في المدارس المشمولة بتدريسه؛ إضافة على المجموع الرسمي"
+        },
+        {
+          "subject": "منهج جرائم حزب البعث",
+          "lessons": 1,
+          "optional": true,
+          "inStatedTotal": false,
+          "note": "حصة واحدة أسبوعياً؛ إضافة على المجموع الرسمي"
+        }
+      ],
+      "computedTotal": 30,
+      "totalMatchesPrinted": true,
+      "needsReview": false
+    },
+    {
+      "name": "السادس العلمي",
+      "level": "preparatory",
+      "branch": "علمي",
+      "statedTotal": 33,
+      "entries": [
+        {
+          "subject": "التربية الإسلامية",
+          "lessons": 2
+        },
+        {
+          "subject": "اللغة العربية",
+          "lessons": 6
+        },
+        {
+          "subject": "اللغة الإنكليزية",
+          "lessons": 5
+        },
+        {
+          "subject": "الرياضيات",
+          "lessons": 5
+        },
+        {
+          "subject": "الكيمياء",
+          "lessons": 4
+        },
+        {
+          "subject": "الفيزياء",
+          "lessons": 5
+        },
+        {
+          "subject": "الأحياء",
+          "lessons": 4
+        },
+        {
+          "subject": "التربية الفنية",
+          "lessons": 1
+        },
+        {
+          "subject": "التربية الرياضية",
+          "lessons": 1
+        },
+        {
+          "subject": "اللغة الفرنسية",
+          "lessons": 2,
+          "optional": true,
+          "inStatedTotal": false,
+          "note": "في المدارس المشمولة بتدريسها؛ إضافة على المجموع الرسمي"
+        },
+        {
+          "subject": "الحاسوب",
+          "lessons": 2,
+          "optional": true,
+          "inStatedTotal": false,
+          "note": "في المدارس المشمولة بتدريسه؛ إضافة على المجموع الرسمي"
+        }
+      ],
+      "computedTotal": 33,
+      "totalMatchesPrinted": true,
+      "needsReview": false
+    },
+    {
+      "name": "الرابع الأدبي",
+      "level": "preparatory",
+      "branch": "أدبي",
+      "statedTotal": 30,
+      "entries": [
+        {
+          "subject": "التربية الإسلامية",
+          "lessons": 2
+        },
+        {
+          "subject": "اللغة العربية",
+          "lessons": 6
+        },
+        {
+          "subject": "اللغة الإنكليزية",
+          "lessons": 5
+        },
+        {
+          "subject": "اللغة الكردية",
+          "lessons": 2,
+          "optional": true,
+          "inStatedTotal": true,
+          "note": "تدرَّس في المدارس المشمولة بها؛ محسوبة ضمن المجموع الرسمي"
+        },
+        {
+          "subject": "الرياضيات",
+          "lessons": 3
+        },
+        {
+          "subject": "التاريخ",
+          "lessons": 3
+        },
+        {
+          "subject": "الجغرافية",
+          "lessons": 4
+        },
+        {
+          "subject": "الاجتماع",
+          "lessons": 2
+        },
+        {
+          "subject": "التربية الفنية",
+          "lessons": 1
+        },
+        {
+          "subject": "التربية الرياضية",
+          "lessons": 2
+        },
+        {
+          "subject": "اللغة الفرنسية",
+          "lessons": 2,
+          "optional": true,
+          "inStatedTotal": false,
+          "note": "في المدارس المشمولة بتدريسها؛ إضافة على المجموع الرسمي"
+        },
+        {
+          "subject": "الحاسوب",
+          "lessons": 2,
+          "optional": true,
+          "inStatedTotal": false,
+          "note": "في المدارس المشمولة بتدريسه؛ إضافة على المجموع الرسمي"
+        }
+      ],
+      "computedTotal": 30,
+      "totalMatchesPrinted": true,
+      "needsReview": false
+    },
+    {
+      "name": "الخامس الأدبي",
+      "level": "preparatory",
+      "branch": "أدبي",
+      "statedTotal": 31,
+      "entries": [
+        {
+          "subject": "التربية الإسلامية",
+          "lessons": 2
+        },
+        {
+          "subject": "اللغة العربية",
+          "lessons": 6
+        },
+        {
+          "subject": "اللغة الإنكليزية",
+          "lessons": 5
+        },
+        {
+          "subject": "اللغة الكردية",
+          "lessons": 1,
+          "optional": true,
+          "inStatedTotal": true,
+          "note": "تدرَّس في المدارس المشمولة بها؛ محسوبة ضمن المجموع الرسمي"
+        },
+        {
+          "subject": "الرياضيات",
+          "lessons": 4
+        },
+        {
+          "subject": "التاريخ",
+          "lessons": 3
+        },
+        {
+          "subject": "الجغرافية",
+          "lessons": 3
+        },
+        {
+          "subject": "مبادئ الفلسفة وعلم النفس",
+          "lessons": 3
+        },
+        {
+          "subject": "مبادئ الاقتصاد",
+          "lessons": 2
+        },
+        {
+          "subject": "التربية الفنية",
+          "lessons": 1
+        },
+        {
+          "subject": "التربية الرياضية",
+          "lessons": 1
+        },
+        {
+          "subject": "اللغة الفرنسية",
+          "lessons": 2,
+          "optional": true,
+          "inStatedTotal": false,
+          "note": "في المدارس المشمولة بتدريسها؛ إضافة على المجموع الرسمي"
+        },
+        {
+          "subject": "الحاسوب",
+          "lessons": 2,
+          "optional": true,
+          "inStatedTotal": false,
+          "note": "في المدارس المشمولة بتدريسه؛ إضافة على المجموع الرسمي"
+        },
+        {
+          "subject": "منهج جرائم حزب البعث",
+          "lessons": 1,
+          "optional": true,
+          "inStatedTotal": false,
+          "note": "حصة واحدة أسبوعياً؛ إضافة على المجموع الرسمي"
+        }
+      ],
+      "computedTotal": 31,
+      "totalMatchesPrinted": true,
+      "needsReview": false
+    },
+    {
+      "name": "السادس الأدبي",
+      "level": "preparatory",
+      "branch": "أدبي",
+      "statedTotal": 31,
+      "entries": [
+        {
+          "subject": "التربية الإسلامية",
+          "lessons": 2
+        },
+        {
+          "subject": "اللغة العربية",
+          "lessons": 8
+        },
+        {
+          "subject": "اللغة الإنكليزية",
+          "lessons": 6
+        },
+        {
+          "subject": "الرياضيات",
+          "lessons": 4
+        },
+        {
+          "subject": "التاريخ",
+          "lessons": 3
+        },
+        {
+          "subject": "الجغرافية",
+          "lessons": 3
+        },
+        {
+          "subject": "الاقتصاد",
+          "lessons": 3
+        },
+        {
+          "subject": "التربية الفنية",
+          "lessons": 1
+        },
+        {
+          "subject": "التربية الرياضية",
+          "lessons": 1
+        },
+        {
+          "subject": "اللغة الفرنسية",
+          "lessons": 2,
+          "optional": true,
+          "inStatedTotal": false,
+          "note": "في المدارس المشمولة بتدريسها؛ إضافة على المجموع الرسمي"
+        }
+      ],
+      "computedTotal": 31,
+      "totalMatchesPrinted": true,
+      "needsReview": false
+    }
+  ],
+  "notes": [
+    "اللغة الكردية محسوبة ضمن المجموع الرسمي ولكنها اختيارية (المدارس المشمولة بها).",
+    "الفرنسية والحاسوب وجرائم حزب البعث حصص إضافية فوق المجموع الرسمي وتُفعَّل حسب المدرسة.",
+    "منهج جرائم حزب البعث: للصف الخامس (العلمي والأدبي) بحسب تأكيد المالك."
+  ]
+}

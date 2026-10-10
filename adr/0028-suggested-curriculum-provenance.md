@@ -1,6 +1,6 @@
 # ADR 0028: The suggested Iraqi curriculum is an unverified, editable suggestion
 
-- Status: Accepted (owner instruction, 2026-10-05)
+- Status: Accepted (owner instruction, 2026-10-05); the data source is superseded by ADR 0036 (official plan 2026-2027)
 - Date: 2026-10-05
 
 ## Context

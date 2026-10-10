@@ -225,6 +225,71 @@ Suggested curriculum (`phase-2-5-curriculum`):
   - (f) an edited value stays, and the reset restores it after a before/after confirmation;
   - (g) axe, no horizontal page scroll and no overlapping text at 375, 768, 1024 and 1440px.
 
+Official study plan 2026-2027 (`phase-2-5-official-curriculum`, ADR 0036) replaces the numbers above:
+- .NET `Phase25/SuggestedCurriculumTests.cs`:
+  - `TheOfficialTemplateTotalsMatchThePrintedPlan`: version 2, `status: official`; for every stage the mandatory rows plus Kurdish equal the printed total, except الرابع الابتدائي (31 against 30, `needsReview`, a verification note); exactly الرابع الابتدائي and الرابع العلمي flagged; Kurdish counted, French/computing/حزب البعث on top; the aliases.
+  - primary apply: totals 30/30/30/31/30/31; one «اللغة العربية» for «(قراءتي)» and the plain spelling; nine subjects; apply twice = 0 changes.
+  - `OptionalSubjectsAndReviewWarningsFollowTheSchool`: default 30/30/30/28/28, an unticked optional subject is never created; Kurdish and French ticked 32 each.
+  - `KurdishIsOptionalButCountsInTheOfficialTotal`: fourth/fifth grades 28/28/29/30 unticked, exactly the printed 30/30/30/31 ticked; one Kurdish subject; a third apply changes nothing; unticking never deletes.
+- Demo generator removed (`phase-2-5-template-update`): `DemoTargetRefusesMissingProtectedAndExistingPaths`, `DemoDataCreatesASeparateCompleteSampleSchool` and `DemoDataWithProblemsShowsTheThreeReadinessErrors` were deleted with the generator; the remaining calendar tests live in `Phase2/CalendarTests.cs`. The inventories below that mention `CalendarAndDemoDataTests` are historical.
+- Suggested subjects from one source: `CurriculumDomainTests` checks that every one of the 15 stage keys has an official stage whose suggested subjects equal its mandatory rows; `SuggestedSubjectsOfAStageAreItsMandatorySubjects` checks the endpoint for الرابع العلمي (then adds الأول المتوسط) with no optional subject.
+- Unmatched stages and capacity: `StagesWithoutATemplateAreListedAndMatchedFromTheList` (listed, matched, applied, four invalid matches → 422); `PreviewTellsTheCapacityTheOptionalSubjectsNeed` (السادس العلمي 33 → 37 against 35, 5 days); `CurriculumDomainTests` checks `officialStages`. Playwright `phase25-curriculum` (h): match from the list, capacity notes, axe, no scroll/overlap at four widths; `phase25-scenarios` step 3 checks the timing notice («مرحلتان»). Wizard step 3/5 and curriculum screenshots were re-baselined after viewing.
+- Template update (`phase-2-5-template-update`, owner decisions #66–#68): every stage equals its printed total and none is flagged (`ReviewStages` is empty); primary totals 30/30/30/30/30/31; `BaathCurriculumIsAnOptionalFifthGradeSubjectOnly`; `FourthPrimaryTotalsThirtyWithTwoSocialStudiesLessons`. Playwright (a) checks 30/30 and no review warning; (c) checks no review warning and that ticking حزب البعث changes only the fifth grades.
+- Playwright `phase25-curriculum.spec.ts`: (a) الرابع الابتدائي review note and totals; (b) French and computing ticked → 34/34/32 and both rows in the curriculum tab, with axe; (c) the الرابع العلمي question, Kurdish ticked → 30; (d) seven stages "مطابق" (السادس العلمي 33 and السادس الأدبي 31 above the evening 30).
+
+## Phase 3 test inventory (updated per checkpoint)
+### 3A - hardening
+- .NET (`Phase3/`):
+  - `ReferenceProtectionTests`: the stage report (2 sections and 1 line, names, blocking codes); stage archive/delete refused with `RECORD_IN_USE`; subject archive/delete refused with `CURRICULUM_IN_USE`; after the line is archived the subject can be archived but still not deleted; a shift used by sections cannot be deleted; unreferenced kinds report nothing and delete normally; an unknown kind is 404; the preview needs the owner session.
+  - `CurriculumClearUndoTests`: clearing a cell archives the line and returns it; the subject's report shows it as archived history; restoring brings the value back.
+  - `OrphanBlockedPeriodsTests`: lowering lessons per day from 6 to 4 reports exactly the teacher's 2 and the subject's 1 orphan slots, removes nothing by itself, refuses a stale version, cleans only the confirmed teacher (version + 1) and leaves the subject's orphan.
+  - `QueryCountTests`: ten list and report endpoints run the same number of SQL commands (counted by `QueryCounter`, a `DbCommandInterceptor` in `TestHost`) for a school with 1 stage and one with 3 stages, 18 sections, 9 subjects, 13 teachers and 25 lines.
+- Vitest: `components/References.test.tsx` (dependent wording with `arabicCount`: delete counts archived ones, archive names only active ones, hidden names are counted).
+### 3B - resources, specializations, profile
+- .NET `Phase3/ResourcesAndProfileTests`:
+  - resource validation (name, kind, capacity 1–20) and versions;
+  - the profile's default weights 20/30/15/25/10; `ProfileVersion` + 1 per real change; same rules in another order change nothing; missing, unknown, duplicate and out-of-range rules are rejected; restore defaults;
+  - specializations: kept when not sent, added once, at most 30;
+  - API: resources (duplicate name, kind, capacity, paging, sort, search, conflict, 401, 403); a subject requiring the field blocks archive and delete with `RESOURCE_IN_USE` and the report names it; an archived resource cannot be newly chosen; clearing the requirement frees it;
+  - specializations through the API, including the one-click add and removal with a deleted subject;
+  - the profile API (versions, conflict, `Rules` validation, restore needs `Confirm`);
+  - migration `Phase3BResourcesProfile` on a database at `Phase25SuggestedCurriculum` with an existing subject.
+- Vitest: `profileApi.test.ts` (weight choices in steps of five, keeping a saved odd value).
+- Playwright `phase3-resources-profile.spec.ts`: quick add of two resources (kind, capacity stepper); the subject's required-resource chooser and row badge; the delete dialog naming the subject with «حذف» disabled; the profile's weight change (version 2) and restore defaults (version 3); axe, no horizontal scroll, no overlapping text and screenshots at 375/768/1024/1440.
+### 3C - workload
+- .NET `Phase3/WorkloadTests`:
+  - domain: reassign, archive, restore;
+  - availability: shared slots counted once, two shifts separately; off day, blocked lesson, 5 a day and 20 a week give 23 / 20 / 20; released gives 0; a blocked lesson number blocks both shifts;
+  - API cells: assign, conflict for an empty cell assigned meanwhile, stale version, reassign outside the specialization (flagged), clear, invalid line/section, 401, 403;
+  - loads: 10 of 12 «ضمن الحد», 11 of 12 «قريب», 17 of 12 «تجاوز»;
+  - bulk: across the stage without overwrite (create + skip), the applied plan equals the preview, applying again changes nothing, overwrite replaces and moves Ali's load 5 → 0; class teacher; transfer (Ahmed 11 → 0, Ali 0 → 11); remove;
+  - protection: teacher and section archive/delete and the stepper refused with `WORKLOAD_IN_USE`, the report names «الأول المتوسط / ب: الرياضيات — أحمد علي حسن»; clearing a line needs `confirmWorkload`, archives its assignment, and the undo restores it; archiving a line through its endpoint follows the same rule;
+  - the filtered unique index: one active row per (section, line), archived rows allowed.
+- `QueryCountTests` now also covers resources, the workload matrix and the loads.
+- Vitest `features/workload/workload.test.tsx`: the teacher chooser (specialists, current teacher, «عرض الجميع»), shortage order and message, load bar width and meter values, the bulk plan view, counting «نصاب».
+- Playwright `phase3-workload.spec.ts`: assign in the matrix, «خارج التخصص» and «إضافة المادة لتخصصاته», completion «٢ من ٢», the shortage warning «المسند ١١، المتاح ١٠، يزيد ١», bulk class teacher with preview and confirmation, load bars by teacher, the teacher delete dialog naming «نصابان», clearing an assigned curriculum line with confirmation and undo; axe, no scroll, no overlap and screenshots at 375/768/1024/1440.
+### 3D - scheduling input and readiness
+- .NET `Phase3/PreSolveValidatorTests`: exact 28/25/3 teacher and 7/5/2 physics bounds; unassigned grouping; section stage-day capacity; off days, blocked periods, release and daily/weekly limits; assignment intersections; per-shift resource capacity; double periods; consistency warnings; empty-stage reporting; deterministic hash ordering and scheduling-relevant changes.
+- .NET `Phase3/ValidatorPropertyTests`: 300 generated feasible schools must have zero errors; 300 known teacher-limit reductions must identify only that teacher with the exact shortage. Seeds are deterministic.
+- .NET `Phase3/ReadinessTests`: unauthenticated API rejection; a persisted unassigned workload appears in the report and becomes ready after class-teacher assignment; checklist completion is based on active assignments; a 40-section × 9-line snapshot/hash/validate benchmark must finish below one second.
+- `QueryCountTests` includes readiness and compares the number of SQL commands for small and larger schools.
+- Vitest `features/readiness/readinessPresentation.test.ts`: exact teacher/physics Arabic numbers, grouping by entity and no double-counting overload shortage. `lib/arabicCount.test.ts` covers error, warning and pair forms and guards against manual counted-noun strings.
+- Playwright `phase3-readiness.spec.ts`: real dashboard readiness card and unassigned-line finding; exact section-capacity warning; axe; no horizontal scroll and text overlap at 375/768/1024/1440; reference screenshots viewed before acceptance.
+- `SchedulingSection` adds the matrix, load bar/status, and readiness finding to the development-only `/design` guide.
+### Phase 3 finish (`phase-3-finish`: 3D fixes and verification, 3E)
+- .NET `Phase3/FindingCodeContractTests`: every `FindingCodes` constant is in `All` exactly once; every code has Arabic text and a TypeScript union member in the frontend; no finding-code literal outside `FindingCodes.cs`. `ErrorContractTests` is unchanged and treats `FindingCodes.cs` as a definition site.
+- .NET `Phase3/PreSolveValidatorTests`: double periods in both modes (warning by default, error with `DoublePeriodsRequired`); the readiness API with `doublePeriods=true`.
+- .NET `Phase3/ValidatorPropertyTests`: also the double-lesson mode on valid timetables (zero errors) and per-stage day counts that differ between days.
+- .NET `Phase3/SchedulingInputHashTests`: reading order and names never change the hash on generated schools; lesson counts, blocked periods, teacher limits, resource capacity, profile weights and assignments do.
+- .NET `Phase3/WizardStepMigrationTests`: finished wizard, wizard in the middle, no progress row, `Down` restores the seven-step masks and keeps the review undone.
+- .NET `Phase3/AssignmentSuggesterTests`: the preview is deterministic, balanced, within limits and equal to the applied result; existing assignments never change; no teacher above the limit (reason `capacity`).
+- .NET `Phase3/ReadinessTests`: foreign Origin 403, foreign Host 400, no session 401, suggestion apply without the launch token 403; the 40-section test prints its timing.
+- .NET `CalendarAndDemoDataTests`: the default demo completes every checklist item and is ready; `--with-problems` shows the three readiness errors.
+- Mutation checks: `docs/phase3-mutation-checks.py` applies 18 mutants one at a time to the working copy, runs the tests and always restores the file (never committed). All 18 are caught.
+- Vitest: `features/readiness/readinessPresentation.test.ts` (every code has Arabic text, the unknown-code fallback, the double-period note), `features/design-guide/SchedulingSection.test.tsx` (the style-guide matrix, load bar and finding render).
+- Playwright `phase3-scenarios.spec.ts`: (a) a 12-section primary school assigned with the class-teacher bulk action, then ready; (h) a 12-section intermediate school assigned by the suggester (preview = applied, existing kept); (c) a resource shortage fixed by raising the capacity; (d) protection of subject, section and stage with the dependents listed; (f) orphan blocked periods previewed, then removed. (b) 28/25 and (g) readiness + dashboard are in `phase3-readiness.spec.ts`, (e) undo in `phase3-workload.spec.ts`. Wizard step 7 «الأنصبة» has screenshots in `phase25-scenarios.spec.ts`. The report's check time and hash are masked in screenshots.
+- Final Phase 3 run: Release build 0 warnings; .NET 214; Vitest 91; Playwright 21; coverage Domain 97.3%, Application 95.4% of lines.
+
 ## Later-phase acceptance suites
 - Phase 4 infeasibility test must construct a conflict involving two teachers, a shared lab, and a blocked period; the diagnostic must identify the conflict groups and actionable correction, not merely report infeasible.
 - Large solver-risk comparison uses the same independently verified feasible 40-section/54-teacher workload and records status, first-solution/total time, objective/bound, memory method, and independently checked hard constraints for baseline, two-stage, decomposition, and hints.

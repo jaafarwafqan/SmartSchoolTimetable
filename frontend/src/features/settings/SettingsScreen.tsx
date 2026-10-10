@@ -1,6 +1,7 @@
 import { messages } from "../../i18n/messages";
 import { PageHeader } from "../../layout/PageHeader";
 import type { Bootstrap } from "../../lib/bootstrapQuery";
+import { BackupSection } from "./BackupSection";
 import { InactivitySection } from "./InactivitySection";
 import { PasswordSection } from "./PasswordSection";
 import { RecoveryCodeSection } from "./RecoveryCodeSection";
@@ -15,6 +16,7 @@ export function SettingsScreen({ bootstrap }: { bootstrap: Bootstrap }) {
         <RecoveryCodeSection />
         <PasswordSection />
         <SetupWizardSection />
+        <BackupSection />
       </div>
     </div>
   );

@@ -1,6 +1,164 @@
 # Changelog
 
 ## [Unreleased]
+### Phase 4 follow-up R3 (branch `phase-4-followup`)
+- **R3 double shift (دوام مزدوج) with daily sessions (ADR 0043):**
+  - `SessionPlan` per year: one, two, or three sessions (three in the model only, «قريباً» in the UI); the timing of the sessions other than morning; and the day→session mapping per semester.
+  - The structural shift's periods are the morning timing. Every session has the same lessons per day (`SESSION_LESSON_COUNT_MISMATCH`), and sessions need exactly one shift (`SESSIONS_NEED_ONE_SHIFT`).
+  - Double lessons must be adjacent in every session. One rule, `ShiftInput.Adjacent`, is shared by the validator, the solver, the verifier and the scorer.
+  - Only new break gaps are hashed. Single-session hashes are unchanged.
+  - A «نظام الدوام اليومي» card on `/school/timing`: the evening timing, day chips per semester, and «اعكس للفصل الثاني».
+  - The viewer, print and Excel (`?term=`) show each day's session and clock in the chosen semester.
+  - The old two-shift mode is relabelled «ورديتان بشعب مختلفة».
+  - Corrective migration `Phase4SessionPlans` (tables only). A backup from the previous schema restores as one session.
+### Phase 4 follow-up R1–R2 (tag `phase-4g`)
+- **R1 12-hour time:**
+  - `lib/time.ts` (single formatter, «٨:٠٠ ص»/«١:٣٠ م») and `Clock12` for Excel.
+  - `TimeField` rebuilt as hour, minute and ص/م selects.
+  - Excel lesson headers carry times.
+  - Playwright checks that no 24-hour time appears on the timing step or the viewers.
+- **R2 flexible breaks:**
+  - Any number of breaks (one per gap), 1–60 minutes in the editor (stepper and quick picks), 1–120 on the server.
+  - The 3-break cap, the 5-minute minimum, the 20-row limit and the duration whitelist are gone.
+  - Clock time per break; Arabic messages for a duplicate gap or a break after the last lesson.
+  - ADR 0026 amended. No migration.
+### Phase 4 (MVP delivery, branch `phase-4`)
+- **M1 `phase-4a` scheduler:**
+  - Google OR-Tools CP-SAT 9.15.6755, in Infrastructure only (ADR 0037).
+  - The neutral `ISolver` contract in `Application/Generation`.
+  - Hard rules H1–H10 and soft rules S1–S5 with the profile weights (docs/SOLVER.md, ADR 0038).
+  - The independent `TimetableVerifier` and the `TimetableScorer` (ADR 0039).
+  - Infeasibility cores, shrunk by deletion, with relaxation hints and Arabic-renderable findings (ADR 0040).
+  - Real progress events, cancellation that keeps the best timetable, and a deterministic mode.
+  - Tests: one per hard rule, one per soft rule, the verifier catalogue, diagnostics scenarios (a)–(d), and FsCheck completeness and soundness on random valid timetables.
+  - Gate measured in docs/PERFORMANCE.md: 12/20 first timetable in ≤ 1.80 s and 24/40 in ≤ 3.20 s, default settings, verified.
+- **M2 `phase-4b` saving and the «التوليد» screen:**
+  - Migration `Phase4Generation` adds `GenerationRuns`, `TimetableVersions` and `TimetableLessons`.
+  - A background worker with one active run (database check), polling for progress, a «إيقاف» button, and start-up recovery to «انقطع».
+  - Endpoints under `/api/v1/generation` and `/api/v1/academic-years/{id}/generation`, with codes `SOLVER_UNAVAILABLE`, `SOLVER_FAILED`, `GENERATION_ACTIVE`, `GENERATION_NOT_READY` and `TIMETABLE_VERIFICATION_FAILED`.
+  - The screen shows readiness, options, a real progress stepper, the result with its score breakdown, and diagnostics with links.
+  - A sixth sidebar item «الجدول» (DECISIONS_PENDING #76).
+- **M3 `phase-4c` the «الجداول» viewer:**
+  - Versions list; by-section, by-teacher and master grids from each version's own input snapshot.
+  - A `TimetableGrid` UI primitive with keyboard navigation.
+  - «اعتماد هذا الإصدار», with one approved version per year (filtered unique index).
+  - The scheduling input carries the subject colour and the teacher short name as non-hashed display fields.
+- **M4 manual edit:**
+  - «تعديل يدوي» on the section view: move a lesson to a free slot or swap two lessons, by click, by Enter on a cell, or from a slot list.
+  - Each step is checked at once by the independent verifier (`POST /timetables/{id}/check`); conflicts are shown on the grid and as an Arabic list.
+  - Undo and redo within the session.
+  - Saving (`POST /timetables/{id}/edits`) creates a new version linked to its parent, with an audit entry. It is refused with `TIMETABLE_HAS_VIOLATIONS` (422) while any hard rule is broken.
+- **M5 `phase-4e` printing and Excel (ADR 0041):**
+  - «طباعة» uses a print stylesheet scoped to the timetable page. It hides the shell and controls and shows a header with school, year, term, version and view.
+  - Paper is A4 landscape for the master view (named page) and A4 portrait for a section or teacher, right to left, with subject colours kept. The owner saves a PDF from the print dialog.
+  - «تصدير إلى إكسل»: `GET /api/v1/timetables/{id}/export.xlsx` (ClosedXML 0.105.1). It contains the master sheet plus one sheet per section and per teacher, right to left, with Arabic headers, light subject fills and A4 page setup.
+  - Tested by opening the workbook in the API test and by print-media emulation and a download in Playwright.
+- **M6 `phase-4f` backup, restore and the ready-to-run folder (ADR 0042):**
+  - Settings → «النسخ الاحتياطي والاستعادة».
+  - A backup is `VACUUM INTO` a new timestamped file in a folder the owner types. It never overwrites a file.
+  - A restore needs two confirmations and a valid file of this app with known migrations. It takes an automatic `pre-restore` backup next to the database, copies with SQLite's online backup API (nothing is deleted), migrates, and signs the owner out.
+  - New error codes: `BACKUP_PATH_INVALID`, `BACKUP_FILE_EXISTS`, `BACKUP_FAILED`, `RESTORE_FILE_INVALID`, `RESTORE_INCOMPATIBLE` and `RESTORE_CONFIRMATION_REQUIRED`.
+  - `tools/Publish-Release.ps1` builds a self-contained win-x64 folder (196 MB) under `artifacts/release/`, which git ignores, with `تشغيل البرنامج.bat` and `اقرأني.txt`.
+  - The published executable passed the auth and Phase 4 Playwright scenarios on temporary databases (`SST_RELEASE_EXE`).
+  - The settings screenshot was re-baselined after viewing it; the suggested backup folder is masked because it contains the machine's user path.
+  - New documents: `docs/USER_GUIDE_AR.md` and `docs/OWNER_TEST_SCRIPT_PHASE4.md` (25 steps).
+- **Before final (owner review, 2026-10-09):**
+  - Decisions #69–#77 approved.
+  - The two files the owner named were deleted.
+  - The first publish failure was investigated (6 reproductions, none failed; root cause not determinable, PHASE4_REPORT §9).
+  - `Publish-Release.ps1` now keeps a full log, retries once on download failures, and gives Arabic, actionable errors. All three error paths were verified.
+  - Launcher bug fixed: the server is now called by full path, which works under `NoDefaultCurrentDirectoryInExePath`. The launcher also gains argument forwarding, `SST_PORT`, `SST_NO_BROWSER` and an Arabic message on failure. It was verified on a temporary database, and the real database was unchanged.
+- **Tags:** M1–M4 were built and verified together on one working tree, so they are one commit tagged `phase-4d`; there are no separate `phase-4a`–`phase-4c` tags.
+- **Tests:**
+  - .NET: 284 passed, 4 performance tests skipped by default.
+  - Vitest: 97.
+  - Playwright: 23 existing, plus the Phase 4 scenario (generate, read three ways, approve, edit with a conflict, undo).
+  - Screenshots changed only by the new sidebar item, which I confirmed by pixel counts and by viewing the images. They were re-baselined.
+### Phase 2.5 - template update with the owner's decisions (branch `phase-2-5-template-update`)
+- **Official template updated by the owner (#66–#68 decided):** الرابع الابتدائي totals 30 (الاجتماعيات 2, with a note); منهج جرائم حزب البعث moved from the fourth grades to الخامس العلمي/الخامس الأدبي (optional, one lesson, on top). Every stage now matches its printed total and no stage carries a review note; `needsReview`/`verificationNote` support stays.
+- **Demo data generator removed (owner decision):** `Infrastructure/DemoData/` (DemoCatalog, DemoDataSeeder, DemoSchool) and the `--seed-demo-data`/`--dual-shift`/`--with-problems` command are gone; its three tests were removed and `Phase2/CalendarAndDemoDataTests.cs` became `CalendarTests.cs` (calendar tests only). Tests build synthetic data inside the test projects. README, DOMAIN, DATABASE and the owner test scripts say so.
+- **Suggested subjects have one source:** `Setup/Templates/subjects.json` and `TemplateCatalog.SubjectGroups`/`SubjectsFor` were removed; a stage's suggested subjects are its mandatory rows in the official template (`SuggestedCurriculumTemplate.MandatorySubjects`), canonical names, optional subjects excluded until ticked.
+- **Stages without an official template** are listed in «تعبئة المنهج» under «مراحل لا يوجد لها قالب رسمي»; each can be matched to an official stage chosen from a list (`stageMatches`, not saved). Invalid matches give 422 `StageMatches`.
+- **Capacity notices (never blocking):** each preview stage carries `weeklyCapacity` and `workingDays`; with optional subjects ticked the panel says «بعد التفعيل يصبح مجموع المرحلة N وتحتاج M حصة يومياً» and names stages above the current shift. The timing step lists, per shift, the stages whose total with every optional subject exceeds it (e.g. 7×5 = 35: السادس العلمي 37, الخامس الأدبي 36). `/templates` gains `officialStages`. Shift capacity per stage moved to a shared `StageCapacity` helper (used by the daily suggestion too).
+- **Housekeeping:** `frontend/tsconfig.tsbuildinfo` is ignored; `frontend/test-results/` and `design-system/` were already ignored and untracked (nothing deleted).
+- **Period presets are labelled suggestions:** «قالب مقترح للحصص» with a hint that break lengths and lessons per day are the owner's choice.
+
+### Phase 2.5 - school-type stage template guard
+- The saved school profile is now the authority for stage templates. Preview and apply reject a mismatched school type, an out-of-type grade, or an invalid/missing branch with `STAGE_NOT_IN_SCHOOL_TYPE`.
+- Changing school type from the stage-template panel saves the profile; existing stages are retained and active template stages outside the new type are listed for review.
+- Added API coverage for all four Iraqi school structures, invalid stage requests, profile type changes, and retained stages.
+
+### Phase 2.5 - official study plan 2026-2027 (branch `phase-2-5-official-curriculum`)
+- **The curriculum template is now the Ministry's official plan 2026-2027** (`iraq-curriculum.official-2026-2027.json`, template version 2; ADR 0036). It replaces the unverified `iraq-curriculum.suggested.json`.
+- **Optional subjects** start unticked and are never created unless ticked: اللغة الكردية (counted in the official total), اللغة الفرنسية, الحاسوب and منهج جرائم حزب البعث (added on top).
+- **Preview** shows «المجموع الرسمي» and «المحسوب للمواد المفعّلة» for each stage, the source's review note (الرابع الابتدائي 31 against 30; الرابع العلمي and حزب البعث), and the fixed source line. None of these block applying.
+- **Aliases** fold «اللغة العربية (قراءتي)», «التربية الفنية», «مبادئ الاقتصاد», … into one subject. Subjects are created under the canonical name, so a K-12 school gets one «التربية الفنية والنشيد», not two.
+- **API:** the plan gains `templateVersion`, and `provenance` is an object. Subject lines gain `inStatedTotal` and `note`, stage lines gain `officialTotal` and `verificationNote`, and entry lines gain `inStatedTotal` and `note`.
+- **Tests:** template totals against the printed plan, Kurdish on/off, apply twice, unticked optional not created; Playwright: preview → French and computing ticked → apply → rows in the curriculum tab.
+- Test data follows the heavier official loads: `phase3-scenarios` (h) ticks الحاسوب, uses «التربية الفنية والنشيد» and adds a third الاجتماعيات teacher (4 lessons per intermediate grade). The curriculum, wizard step 5 and suggester screenshots were re-baselined after viewing them.
+- Open questions: DECISIONS_PENDING #66–#68.
+
+### Phase 3E - suggester, wizard step, demo data, scenarios (tags `phase-3e`, `phase-3-final`)
+- **«اقتراح توزيع الأنصبة»:** a deterministic suggester for unassigned lines only (specialists, the lowest load share, never above the limit). Preview first, then a centred confirmation; the applied result equals the preview and existing assignments never change.
+- **Wizard step 7 «الأنصبة»** (eight steps). Data migration `Phase3EWorkloadWizardStep` moves a saved review step; `Down` restores it.
+- **Demo data:** about 20 sample teachers with specializations and constraints, a sports field (capacity 2) and a computer lab (capacity 1), assignments made by the suggester, so every checklist item is done and the school is ready. `--with-problems` leaves an overloaded teacher, physics with too few allowed slots and a field shortage.
+- **Readiness screen:** a group's lesson shortage now has a label («النقص: …»). **Bulk actions** offer only the chosen stage's sections and lines while another stage loads. The suggester heading is an `h3` inside the wizard.
+- **Playwright scenarios (a)–(h)** on temporary databases (`phase3-scenarios.spec.ts`, plus `phase3-readiness` and `phase3-workload`), with axe, no horizontal scroll and no text overlap at four widths; screenshots viewed before acceptance; the check time and hash are masked.
+- **UX metric** (scenario a, 12-section primary school): 0 typed, 26 chosen, 37 commands to assign every line.
+- `/design` scheduling components rendered by a Vitest test. Docs: DOMAIN, DATABASE, API, DESIGN_SYSTEM, DELIVERY_PLAN, TESTING, README, `docs/OWNER_TEST_SCRIPT_PHASE3.md`, `docs/PHASE3_REPORT.md`.
+
+### Phase 3D - scheduling input and pre-solve readiness (tag `phase-3d`)
+- **Phase 3 finish fixes:** finding codes declared once in `FindingCodes` with a contract test (B1); exact wizard locators (B3); the Phase 2 checklist test completes the workload step (B4); the workload matrix screenshot re-baselined after viewing it (B5).
+- **Double-period severity** follows the generation mode: a warning by default, an error with `?doublePeriods=true` (DECISIONS_PENDING #65).
+- **Verification:** 18 mutation checks, all caught; hash, migration and readiness security tests; the 40-section check in about 40 ms.
+- Added the serializable `SchedulingInput`, canonical SHA-256 `InputHash`, pure conservative pre-solve validator and authenticated readiness API.
+- Added «جاهزية الجدولة» with grouped findings, numeric Arabic messages, actionable links, refresh, hash/time and the live dashboard readiness card.
+- Added the dashboard checklist step «تعيين المعلمين على المنهج», computed from active curriculum lines and assignments.
+- Added FsCheck soundness properties, 40-section performance coverage, readiness API/query-count tests, Vitest presentation tests and a Playwright/axe/responsive scenario.
+- Documented ADRs 0033–0035 and the Phase 4 input boundary. No solver or generation functionality was added.
+
+### Phase 3C - workload assignments (tag `phase-3c`)
+- **«الأنصبة»** tab next to «المعلمون» (ADR 0032, #59).
+  - **«حسب الشعبة»:** a matrix per stage (sections × curriculum lines) with a teacher chooser in each cell. The chooser lists the subject's specialists, or everyone with «عرض الجميع», and shows each teacher's load.
+    - Empty cells say «غير معيّن»; each section shows «x من y».
+    - «خارج التخصص» comes with «إضافة المادة لتخصصاته».
+    - Keyboard: left/right between cells; a choice is saved on Enter or on leaving the cell (#60).
+  - **«حسب المعلم»:** load bars (assigned / limit) with «ضمن الحد، قريب، تجاوز», the numbers (assigned, max per week, available) and the assignment list.
+  - **Quick warnings:** «المعلم …: المسند …، المتاح …، يزيد …».
+  - **Bulk actions,** each previewed then confirmed, never overwriting unless chosen: across a stage, class teacher of a section, transfer, remove.
+- **Teacher rows** show «النصاب: x من y» and the status when not within.
+- **Protection** (`WORKLOAD_IN_USE`): teachers and sections with assignments cannot be archived or deleted, and the stepper never removes them.
+  - Clearing or archiving a curriculum line with assignments opens a dialog listing them. Confirming archives them with the line; the undo restores both.
+- **Domain:** `WorkloadAssignment` and `TeacherAvailability` (#57, #61, #62). Migration `Phase3CWorkload`.
+- **Tests:** .NET 173, Vitest 83, Playwright 15. The Phase 2 teachers screenshots were re-baselined after viewing them (new tabs and load badges); teacher, subject, curriculum, stage and timing changes now refresh the workload views.
+
+### Phase 3B - resources, specializations, scheduling profile (tag `phase-3b`)
+- **«الموارد»** tab under «الصفوف والمنهج» (ADR 0031):
+  - Quick add in one row: name, kind (مختبر، ساحة، قاعة، أخرى) and a capacity stepper. Rows are edited in place; archive and delete are protected.
+  - A subject's row offers «المورد المطلوب» and shows «يتطلب …». A resource required by subjects cannot be archived or deleted (`RESOURCE_IN_USE`); the dialog names the subjects.
+- **Teacher specializations:** subject checkboxes in the teacher editor and a summary badge on the row.
+  - `POST /teachers/{id}/specializations/{subjectId}` adds one subject (used by the 3C warning action).
+  - Deleting a subject removes it from specializations (#53).
+- **«ملف الجدولة»** in a new Settings tab: five soft rules with on/off and a weight (0–100, steps of five), the profile version, and «استعادة الإعدادات الافتراضية» with confirmation. Settings now has the tabs «عام» and «ملف الجدولة» (#55).
+- **Editors** for teachers and subjects say how many blocked periods outside the grid will be removed on save (#56).
+- **Migration** `Phase3BResourcesProfile`; new code `RESOURCE_IN_USE`.
+- **Tests:** .NET 165, Vitest 78, Playwright 14 (the settings screenshots were re-baselined for the new tabs).
+
+### Phase 3A - hardening (tag `phase-3a`)
+- **Build output is no longer tracked:** `src/SmartSchoolTimetable.Api/wwwroot/` is ignored and removed from the index (the build regenerates it). A new `.gitattributes` normalizes line endings and marks binary files.
+- **Reference protection** (DECISIONS_PENDING #48):
+  - One `ReferenceGuard` answers what depends on a stage, section, subject, teacher, shift, resource or curriculum line. Every delete and archive path uses it.
+  - `GET /references/{kind}/{id}` previews the dependents.
+  - The delete dialogs list them in Arabic and keep «حذف» disabled while anything depends on the record. A refused archive opens a dialog that lists the active dependents.
+- **Clearing a curriculum cell is a soft delete** with «تراجع عن الإفراغ» (#49, replaces #25).
+- **Orphan blocked periods** (#50): after the working days or lessons per day shrink, the timing, teachers and subjects screens show how many blocked periods fall outside the grid. «مراجعة الحصص المحجوبة» lists them per teacher and subject and removes them only after confirmation.
+- **Reads:**
+  - list and report queries run without change tracking (#52);
+  - a query-count test proves ten list endpoints run a constant number of SQL commands as the data grows;
+  - record lists stay paged (#51).
+- **README** documents `npm run audit:prod`.
+- Cherry-picked the npm audit decision (#44) onto `phase-3`.
+- **Tests:** .NET 158, Vitest 76, Playwright 13; Release build 0 warnings.
 ### Phase 2.5 suggested Iraqi curriculum (tag `phase-2-5-curriculum`)
 - **«تعبئة المنهج المقترح»** in the curriculum tab and wizard step 5 (ADR 0028, 0029).
   - Uses the owner's suggested weekly lessons for primary, intermediate and preparatory stages; unverified, labelled «مقترح» with a provenance banner.

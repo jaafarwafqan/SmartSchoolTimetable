@@ -61,22 +61,16 @@ public sealed class DailySuggestionService(IDataStore store, TimeProvider clock)
 
     private async Task<List<StagePlan>> PlanAsync(long yearId, CancellationToken token)
     {
-        var week = await store.FirstOrDefaultAsync(store.Query<WorkingWeek>(), token);
-        var days = week is null ? [] : DailyDistribution.InWeekOrder(week.Days, week.WeekStartDay);
         var stages = await store.ListAsync(store.Query<Stage>().Where(stage => stage.AcademicYearId == yearId && !stage.IsArchived)
             .OrderBy(stage => stage.DisplayOrder).ThenBy(stage => stage.NormalizedName), token);
         var stageIds = stages.Select(stage => stage.Id).ToArray();
         var entries = await store.ListAsync(store.Query<CurriculumEntry>().Where(entry => stageIds.Contains(entry.StageId) && !entry.IsArchived), token);
-        var sections = await store.ListAsync(store.Query<Section>().Where(section => stageIds.Contains(section.StageId) && !section.IsArchived), token);
-        var shifts = await store.ListAsync(store.Query<Shift>().Where(shift => shift.AcademicYearId == yearId), token);
+        var capacities = await StageCapacity.LoadAsync(store, yearId, stages, token);
 
         var plans = new List<StagePlan>();
         foreach (var stage in stages)
         {
-            var used = sections.Where(section => section.StageId == stage.Id).Select(section => section.ShiftId).Distinct().ToHashSet();
-            var relevant = shifts.Where(shift => used.Count == 0 || used.Contains(shift.Id)).ToArray();
-            // A stage taught in two shifts must fit both: the smaller shift bounds each day.
-            int MaxOnDay(int day) => relevant.Length == 0 ? 0 : used.Count == 0 ? relevant.Max(shift => shift.LessonsOn(day)) : relevant.Min(shift => shift.LessonsOn(day));
+            var (days, MaxOnDay) = capacities[stage.Id];
             var total = entries.Where(entry => entry.StageId == stage.Id).Sum(entry => entry.WeeklyLessons);
             var suggestion = DailyDistribution.Suggest(total, days, MaxOnDay);
             var own = stage.DayLessonCounts.ToDictionary(entry => entry.Day, entry => entry.Lessons);

@@ -58,7 +58,7 @@ public sealed class SetupWizardService(
     public const int SchoolStep = 1;
     public const int YearStep = 2;
     public const int TimingStep = 3;
-    public const int ReviewStep = 7;
+    public const int ReviewStep = 8;
 
     public Task<OperationResult<SetupProgressDto>> SaveSchoolAsync(WizardSchoolCommand command, CancellationToken token)
     {

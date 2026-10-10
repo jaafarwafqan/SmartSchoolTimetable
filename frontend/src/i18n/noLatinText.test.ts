@@ -4,8 +4,8 @@ import { messages } from "./messages";
 // Spec 2.5 §2.3: every fixed UI text is Arabic. Walks the whole dictionary (template functions are called with
 // Arabic sample values) and fails on any Latin letter. Values that are data, not prose, are listed explicitly.
 const allowedValues = new Set(["/", ":", "رمز-الاسترداد.txt"]);
-// Image format codes the owner must recognise on the upload hint (codes are allowed by the spec).
-const allowedTerms = /\b(?:PNG|JPEG|WebP)\b/g;
+// File format codes the owner must recognise: the upload hint and «حفظ بتنسيق PDF» in the print dialog (codes are allowed by the spec).
+const allowedTerms = /\b(?:PNG|JPEG|WebP|PDF)\b/g;
 const sample = "قيمة";
 
 function visibleTexts(value: unknown, path: string): { path: string; text: string }[] {

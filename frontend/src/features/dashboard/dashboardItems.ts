@@ -8,6 +8,7 @@ export const checklistSteps: Record<string, { label: string; to: string }> = {
   stagesSections: { label: messages.school.dashboard.steps.stagesSections, to: "/classes/stages" },
   subjects: { label: messages.school.dashboard.steps.subjects, to: "/classes/subjects" },
   teachers: { label: messages.school.dashboard.steps.teachers, to: "/teachers" },
+  workload: { label: messages.school.dashboard.steps.workload, to: "/teachers/workload" },
 };
 
 /** Maps server count keys to their Arabic label and the screen that lists them. */

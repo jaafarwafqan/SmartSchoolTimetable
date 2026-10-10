@@ -50,9 +50,9 @@ public sealed class ArchitectureTests
     }
 
     [Fact]
-    public void OrToolsIsNotUsedByDomainOrApplication()
+    public void OrToolsIsNotUsedByDomainApplicationOrApi()
     {
-        foreach (var assembly in new[] { DomainAssembly, ApplicationAssembly })
+        foreach (var assembly in new[] { DomainAssembly, ApplicationAssembly, ApiAssembly })
         {
             Assert.DoesNotContain(ReferencedAssemblyNames(assembly), name =>
                 name.StartsWith("Google.OrTools", StringComparison.OrdinalIgnoreCase));
@@ -72,12 +72,15 @@ public sealed class ArchitectureTests
     public void FeatureFoldersRespectDependencyDirection()
     {
         var domainViolations = FeatureViolations(DomainAssembly, "SmartSchoolTimetable.Domain", ["Common", "Text", "SchoolSetup"], []);
-        var applicationViolations = FeatureViolations(ApplicationAssembly, "SmartSchoolTimetable.Application", ["Common", "SchoolSetup"], ["Dashboard", "Setup"]);
+        // One documented edge: Generation (Phase 4) consumes the Scheduling input contract and validator; nothing else.
+        var applicationViolations = FeatureViolations(ApplicationAssembly, "SmartSchoolTimetable.Application", ["Common", "SchoolSetup"], ["Dashboard", "Setup"],
+            new Dictionary<string, string[]> { ["Generation"] = ["Scheduling"] });
         Assert.Empty(domainViolations);
         Assert.Empty(applicationViolations);
     }
 
-    private static string[] FeatureViolations(Assembly assembly, string root, string[] shared, string[] readModels)
+    private static string[] FeatureViolations(Assembly assembly, string root, string[] shared, string[] readModels,
+        Dictionary<string, string[]>? edges = null)
     {
         static string? FeatureOf(Type type, string root) =>
             type.Namespace is { } ns && ns.StartsWith(root + ".", StringComparison.Ordinal)
@@ -90,7 +93,8 @@ public sealed class ArchitectureTests
             .SelectMany(pair => ReferencedTypes(pair.type)
                 .Where(referenced => referenced.Assembly == assembly)
                 .Select(referenced => (pair.type, pair.feature, referenced, target: FeatureOf(referenced, root))))
-            .Where(item => item.target is not null && item.target != item.feature && !shared.Contains(item.target))
+            .Where(item => item.target is not null && item.target != item.feature && !shared.Contains(item.target)
+                && !(edges is not null && edges.TryGetValue(item.feature!, out var allowed) && allowed.Contains(item.target)))
             .Select(item => $"{item.type.FullName} -> {item.referenced.FullName}")
             .Distinct(StringComparer.Ordinal)
             .ToArray();

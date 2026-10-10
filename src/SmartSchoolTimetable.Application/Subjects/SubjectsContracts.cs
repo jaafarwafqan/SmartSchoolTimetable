@@ -16,8 +16,11 @@ public sealed record SubjectDto(
     string? Notes,
     bool IsArchived,
     DateTimeOffset? ArchivedAt,
-    int Version);
+    int Version,
+    long? RequiredResourceId = null);
 
+/// <param name="RequiredResourceId">The one resource the subject needs (null: none). It must be an active resource,
+/// unless it is the subject's current one.</param>
 public sealed record SaveSubjectCommand(
     string? Name,
     int ColorIndex,
@@ -28,4 +31,5 @@ public sealed record SaveSubjectCommand(
     bool RequiresDoublePeriod,
     IReadOnlyList<BlockedPeriodDto>? BlockedPeriods,
     string? Notes,
-    int Version);
+    int Version,
+    long? RequiredResourceId = null);

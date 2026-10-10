@@ -67,9 +67,30 @@ public static class ErrorCodes
     public const string AssetTypeMismatch = "ASSET_TYPE_MISMATCH";
     public const string YearStructureInUse = "YEAR_STRUCTURE_IN_USE";
     public const string StageArchived = "STAGE_ARCHIVED";
+    public const string StageNotInSchoolType = "STAGE_NOT_IN_SCHOOL_TYPE";
     public const string NoCurrentYear = "NO_CURRENT_YEAR";
     public const string ShiftModeInUse = "SHIFT_MODE_IN_USE";
     public const string CurriculumInUse = "CURRICULUM_IN_USE";
     public const string StageLessonsAboveShift = "STAGE_LESSONS_ABOVE_SHIFT";
     public const string DailyTotalAboveShift = "DAILY_TOTAL_ABOVE_SHIFT";
+    public const string ResourceInUse = "RESOURCE_IN_USE";
+    public const string WorkloadInUse = "WORKLOAD_IN_USE";
+
+    // Phase 4: generation, timetables, backup.
+    public const string SolverUnavailable = "SOLVER_UNAVAILABLE";
+    public const string SolverFailed = "SOLVER_FAILED";
+    public const string GenerationActive = "GENERATION_ACTIVE";
+    public const string GenerationNotReady = "GENERATION_NOT_READY";
+    public const string TimetableVerificationFailed = "TIMETABLE_VERIFICATION_FAILED";
+    public const string TimetableHasViolations = "TIMETABLE_HAS_VIOLATIONS";
+    public const string BackupPathInvalid = "BACKUP_PATH_INVALID";
+    public const string BackupFileExists = "BACKUP_FILE_EXISTS";
+    public const string BackupFailed = "BACKUP_FAILED";
+    public const string RestoreFileInvalid = "RESTORE_FILE_INVALID";
+    public const string RestoreIncompatible = "RESTORE_INCOMPATIBLE";
+    public const string RestoreConfirmationRequired = "RESTORE_CONFIRMATION_REQUIRED";
+
+    // Phase 4 follow-up R3: daily sessions (دوام مزدوج).
+    public const string SessionLessonCountMismatch = "SESSION_LESSON_COUNT_MISMATCH";
+    public const string SessionsNeedOneShift = "SESSIONS_NEED_ONE_SHIFT";
 }

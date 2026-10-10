@@ -6,11 +6,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.105.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.20">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.20" />
+    <!-- CP-SAT solver (ADR 0037). Confined to Infrastructure by ArchitectureTests. -->
+    <PackageReference Include="Google.OrTools" Version="9.15.6755" />
   </ItemGroup>
 
   <PropertyGroup>

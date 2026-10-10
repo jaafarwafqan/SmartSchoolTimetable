@@ -24,6 +24,7 @@ public enum DomainErrorCode
     MaxPerDayExceedsPeriods,
     MaxPerWeekExceedsCapacity,
     ShiftNotInYear,
+    SessionLessonCountMismatch,
 }
 
 public sealed record DomainError(string Field, DomainErrorCode Code);
@@ -67,6 +68,8 @@ public sealed class DomainErrors
     private readonly List<DomainError> _errors = [];
 
     public bool Any => _errors.Count > 0;
+
+    public IReadOnlyList<DomainError> Errors => _errors;
 
     public DomainErrors Add(string field, DomainErrorCode code)
     {

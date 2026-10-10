@@ -1,4 +1,9 @@
-import { ListPlus, Trash2, UsersRound } from "lucide-react";
+import { ListPlus, UsersRound } from "lucide-react";
+import { LoadStatusBadge } from "../../components/LoadBar";
+import { useSubjects } from "../subjects/subjectsApi";
+import { useTeacherLoads } from "../workload/workloadApi";
+import { OrphanBlockedNotice } from "../timetable-structure/OrphanBlockedNotice";
+import { ArchiveBlockedDialog, GuardedDeleteDialog, isReferenceError } from "../../components/References";
 import { useState } from "react";
 import { ConflictAlert } from "../../components/ConflictAlert";
 import { InlineAddForm } from "../../components/InlineAddForm";
@@ -10,13 +15,12 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { Checkbox } from "../../components/ui/checkbox";
-import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { EmptyState } from "../../components/ui/empty-state";
 import { ExpandableRow } from "../../components/ui/expandable-row";
 import { Pagination } from "../../components/ui/pagination";
 import { messages } from "../../i18n/messages";
 import { PageHeader } from "../../layout/PageHeader";
-import { useFormatter } from "../../lib/schoolContext";
+import { useFormatter, useSchoolContext } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
 import { weekdayLabel } from "../timetable-structure/weekdays";
 import { BulkAddPanel } from "./BulkAddPanel";
@@ -36,7 +40,19 @@ export function TeachersPage() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [bulk, setBulk] = useState({ open: false, key: 0 });
   const [deleting, setDeleting] = useState<Teacher | null>(null);
+  const [archiveBlocked, setArchiveBlocked] = useState<Teacher | null>(null);
   const teachers = useTeachers({ ...filters, pageSize });
+  const subjects = useSubjects({ search: "", page: 1, pageSize: 100, includeArchived: true });
+  const context = useSchoolContext();
+  const loads = useTeacherLoads(context.data?.currentYear?.id ?? null);
+  const loadOf = (id: number) => loads.data?.find((load) => load.teacherId === id);
+  const subjectNames = new Map((subjects.data?.items ?? []).map((subject) => [subject.id, subject.name]));
+  /** Up to three subject names, then how many more (Phase 3 §4 teacher card). */
+  const specializationSummary = (ids: number[]) => {
+    const names = ids.map((id) => subjectNames.get(id)).filter((name): name is string => name !== undefined);
+    const shown = names.slice(0, 3).join("، ");
+    return names.length > 3 ? `${shown} ${messages.school.references.more(format.number(names.length - 3))}` : shown;
+  };
   const action = useTeacherAction();
   const create = useSaveTeacher();
   const rows = teachers.data?.items ?? [];
@@ -61,7 +77,8 @@ export function TeachersPage() {
     feedback.reset();
     action.mutate({ teacher, action: teacher.isArchived ? "restore" : "archive" }, {
       onSuccess: () => feedback.showSuccess(teacher.isArchived ? text.restored : text.archived),
-      onError: feedback.showError,
+      // A refused archive lists what still depends on the record instead of a bare error.
+      onError: (error) => isReferenceError(error) ? setArchiveBlocked(teacher) : feedback.showError(error),
     });
   }
 
@@ -70,6 +87,7 @@ export function TeachersPage() {
       <PageHeader title={text.title} description={text.description}
         actions={<Button variant="secondary" icon={<ListPlus aria-hidden="true" size={20} />} aria-expanded={bulk.open}
           onClick={() => setBulk((current) => ({ open: !current.open, key: current.key + 1 }))}>{text.bulkAdd}</Button>} />
+      <OrphanBlockedNotice />
       {bulk.open && (
         <BulkAddPanel key={`bulk-${bulk.key}`} onClose={() => setBulk((current) => ({ ...current, open: false }))}
           onSaved={(count) => { setBulk((current) => ({ ...current, open: false })); feedback.showSuccess(text.bulkSaved(format.count(count, "teacher", "oblique"))); }} />
@@ -105,6 +123,13 @@ export function TeachersPage() {
                   <span className="row-summary-muted">{teacher.shortName}</span>
                   {teacher.offDays.length > 0 && <Badge>{teacher.offDays.map(weekdayLabel).join("، ")}</Badge>}
                   <Badge>{text.limitsValue(limit(teacher.maxLessonsPerDay), limit(teacher.maxLessonsPerWeek))}</Badge>
+                  {loadOf(teacher.id) && (
+                    <Badge>{messages.school.workload.teacherCardLoad(format.number(loadOf(teacher.id)?.assignedLessons ?? 0), format.number(loadOf(teacher.id)?.limit ?? 0))}</Badge>
+                  )}
+                  {loadOf(teacher.id) && loadOf(teacher.id)?.status !== "within" && <LoadStatusBadge status={loadOf(teacher.id)?.status ?? "within"} />}
+                  {teacher.specializationIds.length > 0 && subjects.isSuccess && (
+                    <Badge tone="primary">{messages.school.specializations.summary(specializationSummary(teacher.specializationIds))}</Badge>
+                  )}
                   {teacher.fullyReleased && <Badge tone="warning" icon={<UsersRound aria-hidden="true" size={16} />}>{text.releasedBadge}</Badge>}
                   <ArchiveBadge archived={teacher.isArchived} />
                 </span>
@@ -118,13 +143,11 @@ export function TeachersPage() {
         </ul>
         {teachers.data && <Pagination page={filters.page} pageSize={pageSize} total={teachers.data.total} format={format} onPage={(page) => setFilters({ ...filters, page })} />}
       </Card>
-      <ConfirmDialog
-        open={deleting !== null}
-        danger
+      <GuardedDeleteDialog
+        kind="teacher"
+        target={deleting && { id: deleting.id, name: deleting.fullName }}
         title={text.deleteTitle}
         consequence={text.deleteConsequence}
-        confirmLabel={common.delete}
-        confirmIcon={<Trash2 aria-hidden="true" size={20} />}
         loading={action.isPending}
         onCancel={() => setDeleting(null)}
         onConfirm={() => deleting && action.mutate({ teacher: deleting, action: "delete" }, {
@@ -133,6 +156,8 @@ export function TeachersPage() {
           onSettled: () => setDeleting(null),
         })}
       />
+      <ArchiveBlockedDialog kind="teacher" target={archiveBlocked && { id: archiveBlocked.id, name: archiveBlocked.fullName }}
+        onClose={() => setArchiveBlocked(null)} />
     </div>
   );
 }

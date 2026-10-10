@@ -25,6 +25,7 @@ public static class DomainErrorMapping
         DomainErrorCode.MaxPerDayExceedsPeriods => ErrorCodes.MaxPerDayExceedsPeriods,
         DomainErrorCode.MaxPerWeekExceedsCapacity => ErrorCodes.MaxPerWeekExceedsCapacity,
         DomainErrorCode.ShiftNotInYear => ErrorCodes.ShiftNotInYear,
+        DomainErrorCode.SessionLessonCountMismatch => ErrorCodes.SessionLessonCountMismatch,
         _ => throw new ArgumentOutOfRangeException(nameof(code), code, "Unmapped domain error code."),
     };
 }

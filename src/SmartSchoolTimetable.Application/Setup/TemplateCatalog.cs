@@ -10,8 +10,6 @@ public sealed record BranchTemplate(string Key, string Name);
 /// <param name="BranchStem">Set for grades taught in branches: the stage is "{stem} {branch}" (e.g. "الرابع العلمي").</param>
 public sealed record GradeTemplate(string Key, string Name, string? BranchStem, IReadOnlyList<string> SchoolTypes);
 
-public sealed record SubjectGroupTemplate(IReadOnlyList<string> Stages, IReadOnlyList<string> Subjects);
-
 public sealed record PeriodPresetTemplate(string Key, string Name, string FirstStart, int LessonMinutes, int LessonCount, IReadOnlyList<BreakSlotDto> Breaks);
 
 public sealed record WorkingDayPresetTemplate(string Key, string Name, IReadOnlyList<int> Days, int WeekStart, bool IsDefault);
@@ -19,16 +17,23 @@ public sealed record WorkingDayPresetTemplate(string Key, string Name, IReadOnly
 /// <summary>Suggested break length per school type (minutes); a suggestion, never an official number.</summary>
 public sealed record BreakDefaultsTemplate(IReadOnlyDictionary<string, int> Minutes);
 
+/// <summary>A stage's weekly totals in the official template, for capacity notices before any stage exists.</summary>
+/// <param name="OfficialTotal">The printed official total.</param>
+/// <param name="AllOptionalTotal">Mandatory rows plus every optional subject of the stage.</param>
+public sealed record OfficialStageTotalTemplate(string Key, string Name, IReadOnlyList<string> SchoolTypes, int OfficialTotal, int AllOptionalTotal);
+
 public sealed record TemplateCatalogDto(
     IReadOnlyList<BranchTemplate> Branches,
     IReadOnlyList<GradeTemplate> Grades,
     IReadOnlyList<PeriodPresetTemplate> PeriodPresets,
     IReadOnlyList<WorkingDayPresetTemplate> WorkingDayPresets,
-    BreakDefaultsTemplate BreakDefaults);
+    BreakDefaultsTemplate BreakDefaults,
+    IReadOnlyList<OfficialStageTotalTemplate> OfficialStages);
 
 /// <summary>
 /// Data-driven setup templates (spec 2.5 §4.1), embedded JSON resources: Iraqi stages per school type with
-/// branches, suggested subject NAMES per stage (no official weekly counts), period and working-day presets.
+/// branches, period and working-day presets. Suggested subjects come from the official curriculum template only
+/// (<see cref="SuggestedCurriculumTemplate.MandatorySubjects"/>).
 /// </summary>
 public sealed class TemplateCatalog
 {
@@ -36,14 +41,12 @@ public sealed class TemplateCatalog
     private static readonly Lazy<TemplateCatalog> Instance = new(Load);
 
     private sealed record StagesFile(IReadOnlyList<BranchTemplate> Branches, IReadOnlyList<GradeTemplate> Grades);
-    private sealed record SubjectsFile(IReadOnlyList<SubjectGroupTemplate> Groups);
     private sealed record PresetsFile(IReadOnlyList<PeriodPresetTemplate> Periods, IReadOnlyList<WorkingDayPresetTemplate> WorkingDays, BreakDefaultsTemplate BreakDefaults);
 
-    private TemplateCatalog(StagesFile stages, SubjectsFile subjects, PresetsFile presets)
+    private TemplateCatalog(StagesFile stages, PresetsFile presets)
     {
         Branches = stages.Branches;
         Grades = stages.Grades;
-        SubjectGroups = subjects.Groups;
         PeriodPresets = presets.Periods;
         WorkingDayPresets = presets.WorkingDays;
         BreakDefaults = presets.BreakDefaults;
@@ -53,18 +56,52 @@ public sealed class TemplateCatalog
 
     public IReadOnlyList<BranchTemplate> Branches { get; }
     public IReadOnlyList<GradeTemplate> Grades { get; }
-    public IReadOnlyList<SubjectGroupTemplate> SubjectGroups { get; }
     public IReadOnlyList<PeriodPresetTemplate> PeriodPresets { get; }
     public IReadOnlyList<WorkingDayPresetTemplate> WorkingDayPresets { get; }
     public BreakDefaultsTemplate BreakDefaults { get; }
 
-    public TemplateCatalogDto ToDto() => new(Branches, Grades, PeriodPresets, WorkingDayPresets, BreakDefaults);
+    public TemplateCatalogDto ToDto() => new(Branches, Grades, PeriodPresets, WorkingDayPresets, BreakDefaults, OfficialStageTotals());
+
+    /// <summary>Every template stage (grades × branches) with its official totals, in display order.</summary>
+    private OfficialStageTotalTemplate[] OfficialStageTotals()
+    {
+        var official = SuggestedCurriculumTemplate.Current;
+        var result = new List<OfficialStageTotalTemplate>();
+        foreach (var grade in Grades)
+        {
+            foreach (var (key, name) in grade.BranchStem is null ? [Stage(grade, null)] : Branches.Select(branch => Stage(grade, branch)))
+            {
+                if (official.StageForKey(key) is not { } stage)
+                    continue;
+                var all = stage.Entries.Select(entry => entry.Subject).ToHashSet(StringComparer.Ordinal);
+                result.Add(new OfficialStageTotalTemplate(key, name, grade.SchoolTypes, stage.StatedTotal, stage.Total(all)));
+            }
+        }
+        return [.. result];
+    }
 
     /// <summary>Grades of a school type in display order (ثانوية = متوسطة + إعدادية).</summary>
     public IReadOnlyList<GradeTemplate> GradesFor(SchoolType schoolType)
     {
         var type = ApiText.ToValue(schoolType);
         return Grades.Where(grade => grade.SchoolTypes.Contains(type)).ToArray();
+    }
+
+    public IReadOnlySet<string> StageKeysFor(SchoolType schoolType)
+    {
+        var keys = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var grade in GradesFor(schoolType))
+        {
+            if (grade.BranchStem is null)
+            {
+                keys.Add(grade.Key);
+                continue;
+            }
+
+            foreach (var branch in Branches)
+                keys.Add(Stage(grade, branch).Key);
+        }
+        return keys;
     }
 
     public GradeTemplate? Grade(string? key) => Grades.FirstOrDefault(grade => grade.Key == key);
@@ -80,14 +117,8 @@ public sealed class TemplateCatalog
             : ($"{grade.Key}-{branch.Key}", $"{grade.BranchStem} {branch.Name}");
     }
 
-    /// <summary>Suggested subject names for a stage key (a branch stage falls back to its grade's list).</summary>
-    public IReadOnlyList<string> SubjectsFor(string stageKey) =>
-        SubjectGroups.FirstOrDefault(group => group.Stages.Contains(stageKey))?.Subjects
-        ?? SubjectGroups.FirstOrDefault(group => group.Stages.Any(stage => stageKey.StartsWith(stage + "-", StringComparison.Ordinal)))?.Subjects
-        ?? [];
-
     private static TemplateCatalog Load() =>
-        new(Read<StagesFile>("stages.json"), Read<SubjectsFile>("subjects.json"), Read<PresetsFile>("presets.json"));
+        new(Read<StagesFile>("stages.json"), Read<PresetsFile>("presets.json"));
 
     private static T Read<T>(string name)
     {

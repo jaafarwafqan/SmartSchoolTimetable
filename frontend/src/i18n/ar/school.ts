@@ -1,12 +1,14 @@
 // Phase 2 strings: app shell, dashboard, school profile, academic years. Numbers are passed in pre-formatted;
 // user-entered values are bidi-isolated.
 import { isolate } from "../isolate";
-import { scheduleStructure, shiftMode, stagesSections } from "./structure";
+import { scheduleStructure, sessions, shiftMode, stagesSections } from "./structure";
 import { blockedGrid, subjects } from "./subjects";
 import { teachers } from "./teachers";
 import { calendar } from "./calendar";
 import { curriculum, daily, stageCards, suggested, templates } from "./curriculum";
 import { wizard } from "./wizard";
+import { orphanOnSave, readiness, requiredResource, resources, schedulingProfile, specializations, workload } from "./phase3";
+import { backup, generation, timetable, violations } from "./phase4";
 
 export const school = {
   nav: {
@@ -22,6 +24,13 @@ export const school = {
     teachers: "المعلمون",
     calendar: "التقويم الدراسي",
     settings: "الإعدادات",
+    resources: "الموارد",
+    workload: "الأنصبة",
+    settingsGeneral: "عام",
+    schedulingProfile: "ملف الجدولة",
+    timetable: "الجدول",
+    generate: "التوليد",
+    timetables: "الجداول",
     setupWizard: "معالج الإعداد",
     sidebarLabel: "القائمة الجانبية",
     collapse: "طي القائمة",
@@ -64,6 +73,7 @@ export const school = {
       stagesSections: "إضافة المراحل والشعب",
       subjects: "إضافة المواد",
       teachers: "إضافة المعلمين",
+      workload: "تعيين المعلمين على المنهج",
     },
   },
   profile: {
@@ -91,7 +101,7 @@ export const school = {
     studyTypes: {
       morning: "صباحي",
       evening: "مسائي",
-      dual: "مزدوج",
+      dual: "ورديتان بشعب مختلفة",
     },
     numeralSystems: {
       arabicIndic: "أرقام عربية مشرقية",
@@ -196,7 +206,42 @@ export const school = {
     includeArchived: "إظهار المؤرشف",
     rowActions: (name: string) => `إجراءات ${isolate(name)}`,
   },
+  /** What depends on a record before it is deleted or archived (Phase 3 §5.3). */
+  references: {
+    checking: "جارٍ التحقق من السجلات المرتبطة...",
+    deleteBlocked: "لا يمكن الحذف لأن هذه السجلات مرتبطة به:",
+    archiveBlocked: "لا يمكن الأرشفة لأن هذه السجلات النشطة مرتبطة به:",
+    deleteHint: "يمكنك أرشفته بدلاً من حذفه، أو إزالة الارتباطات أولاً.",
+    archiveHint: "أرشف السجلات المرتبطة أو انقلها أولاً، ثم أعد المحاولة.",
+    archiveBlockedTitle: (name: string) => `تعذّرت أرشفة ${isolate(name)}`,
+    archivedPart: (count: string) => `منها ${count} في الأرشيف`,
+    more: (count: string) => `و${count} غيرها`,
+    inCurriculum: "في المنهج",
+    loadFailed: "تعذّر التحقق من السجلات المرتبطة. أعد المحاولة.",
+  },
+  /** Blocked periods left outside the grid after days or lessons changed (Phase 3 §5.5). */
+  orphanBlocked: {
+    notice: (count: string) => `عدد الحصص المحجوبة الواقعة خارج الجدول الحالي بعد تغيير الأيام أو عدد الحصص: ${count}. لن تُزال إلا بعد موافقتك.`,
+    ownerSlots: (owner: string, slots: string) => `${owner}: ${slots}`,
+    slotSeparator: "؛ ",
+    review: "مراجعة الحصص المحجوبة",
+    title: "حصص محجوبة خارج الجدول الحالي",
+    consequence: "ستُزال هذه الحصص المحجوبة من سجلات المعلمين والمواد التالية لأنها لم تعد موجودة في الجدول. لا يتغير شيء آخر.",
+    teacher: (name: string) => `المعلم ${isolate(name)}`,
+    subject: (name: string) => `مادة ${isolate(name)}`,
+    slot: (day: string, lesson: string) => `${day}، الحصة ${lesson}`,
+    remove: "إزالة الحصص المحجوبة",
+    removed: "أُزيلت الحصص المحجوبة الواقعة خارج الجدول.",
+  },
+  resources,
+  workload,
+  readiness,
+  requiredResource,
+  specializations,
+  orphanOnSave,
+  schedulingProfile,
   scheduleStructure,
+  sessions,
   shiftMode,
   stagesSections,
   subjects,
@@ -209,4 +254,8 @@ export const school = {
   wizard,
   suggested,
   daily,
+  generation,
+  timetable,
+  violations,
+  backup,
 } as const;

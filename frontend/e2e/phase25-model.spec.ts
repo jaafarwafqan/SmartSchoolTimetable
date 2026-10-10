@@ -4,7 +4,7 @@ import { arabicCount } from "../src/lib/arabicCount";
 import { createFormatter, formatNumber } from "../src/lib/format";
 import { api, prepareSchool } from "./support/api";
 import { ApiServer } from "./support/apiServer";
-import { expectNoSeriousA11yViolations, expectNoTextOverlap, goToSection, setupOwner } from "./support/flows";
+import { expectNo24HourTimes, expectNoSeriousA11yViolations, expectNoTextOverlap, goToSection, setupOwner } from "./support/flows";
 
 // Owner model changes: M1 editable breaks (ADR 0026) and M2 lessons per day per stage (ADR 0027).
 const server = new ApiServer();
@@ -36,20 +36,37 @@ test("breaks are edited per shift and stages get their own lessons per day", asy
   const fourthLesson = preview.getByRole("row", { name: new RegExp(wizard.timing.lessonRow(arab(4))) });
   await expect(preview.getByRole("row")).toHaveCount(9); // header + 7 lessons + 1 break
   await expect(fourthLesson).toContainText(format.time("10:30"));
-  await page.getByLabel(breaks.duration(arab(1))).selectOption("20");
+  await expectNo24HourTimes(page, "wizard timing step"); // R1: the preview runs past noon («١:٣٠ م», never 13:30)
+  // R2: a quick pick sets the first break to 20 minutes.
+  await page.getByRole("group", { name: breaks.quickPicks(arab(1)) }).getByRole("button", { name: format.count(20, "minute") }).click();
   await expect(fourthLesson).toContainText(format.time("10:35"));
-  await page.getByRole("button", { name: breaks.add }).click();
+  await page.getByRole("button", { name: breaks.add }).click(); // after lesson 4
   await expect(preview.getByRole("row")).toHaveCount(10);
+  // R2: no cap of three; a third break moved after lesson 1 and shortened to one minute with the stepper.
+  await page.getByRole("button", { name: breaks.add }).click(); // after lesson 5
+  await page.getByLabel(breaks.after(arab(3))).selectOption("1");
+  await page.getByRole("spinbutton", { name: breaks.duration(arab(1)) }).press("Home");
+  await expect(page.locator(".wizard-shift .breaks-clock").first()).toHaveText(breaks.clock(format.time("08:45"), format.time("08:46")));
+  await expect(preview.getByRole("row")).toHaveCount(11);
+  // R2: lowering the lessons to 4 leaves the break after lesson 4 after the last lesson: an Arabic message, «التالي» refused.
+  const lessonsName = wizard.timing.shifts.morning;
+  for (let step = 0; step < 3; step++) await page.getByRole("button", { name: wizard.timing.lessonsDecrease(lessonsName) }).click();
+  await expect(page.getByText(breaks.afterLast)).toBeVisible();
+  await page.getByRole("button", { name: wizard.next }).click();
+  await expect(page.getByText(breaks.blocked)).toBeVisible();
+  for (let step = 0; step < 3; step++) await page.getByRole("button", { name: wizard.timing.lessonsIncrease(lessonsName) }).click();
+  await expect(page.getByText(breaks.afterLast)).toBeHidden();
   await page.getByLabel(breaks.gap).selectOption("5");
-  await expect(preview.getByRole("row", { name: new RegExp(wizard.timing.lessonRow(arab(2))) })).toContainText(format.time("08:50"));
+  await expect(preview.getByRole("row", { name: new RegExp(wizard.timing.lessonRow(arab(2))) })).toContainText(format.time("08:46"));
   await expectNoSeriousA11yViolations(page, "wizard step 3 with the breaks editor");
   await expectNoTextOverlap(page.locator(".wizard-shift").first(), "breaks editor and preview");
   await page.getByRole("button", { name: wizard.next }).click();
   await expect(page.getByRole("heading", { level: 2, name: wizard.steps[4] })).toBeVisible();
   const shifts = await api<{ items: { id: number; periods: { kind: string; startTime: string; endTime: string }[] }[] }>(page, server.baseUrl, "GET", `/academic-years/${yearId}/shifts/?pageSize=100`);
   const savedBreaks = shifts.items[0].periods.filter((period) => period.kind === "break");
-  expect(savedBreaks).toHaveLength(2);
-  expect(savedBreaks[0]).toMatchObject({ startTime: "10:25", endTime: "10:45" }); // 3 lessons + 2 gaps of 5, then 20 minutes
+  expect(savedBreaks).toHaveLength(3);
+  expect(savedBreaks[0]).toMatchObject({ startTime: "08:45", endTime: "08:46" }); // after lesson 1, one minute
+  expect(savedBreaks[1]).toMatchObject({ startTime: "10:21", endTime: "10:41" }); // lessons 2–3 with a 5-minute gap, then 20 minutes
 
   // M2: the first grade teaches six lessons a day; its capacity drops, the other stage keeps the shift's 35.
   const firstCard = page.locator(".stage-card", { hasText: "الأول الابتدائي" });

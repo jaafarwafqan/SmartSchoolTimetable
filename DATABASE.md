@@ -71,8 +71,6 @@ Migration `Phase2ETeachers` adds:
 Migration `Phase2FCalendar` adds `CalendarDays`:
 - `Title`, `NormalizedTitle`, `StartDate`, `EndDate` (check `EndDate >= StartDate`, indexed together), `Kind` (enum string), `AffectsSchedule`, `Version`.
 
-Demo databases created with `--seed-demo-data` use exactly this schema (migrated on creation) in a separate file.
-
 Migration `Phase25BDayLessonsShiftModeSetup` (2.5B) adds:
 - `Shifts.Kind` (`Morning`, `Evening` or `Other`; existing rows get `Other`).
 - `ShiftDayLessons`: `ShiftId`, `Day`, `Lessons`, unique per shift and day. Only days that differ from the shift's lesson count are stored (ADR 0020).
@@ -86,7 +84,24 @@ Migration `Phase25FixStageDayLessons` adds `StageDayLessons`:
 - `StageId`, `Day`, `Lessons` (check ≥ 1), unique per stage and day (ADR 0027).
 - A working day without a row inherits the shift's count, so existing data needs no change.
 
-Migration `Phase25SuggestedCurriculum` adds `CurriculumEntries.IsSuggested` and `Stages.DayLessonsSuggested` (both boolean, default false; ADR 0029, 0030). The suggested curriculum itself is embedded data (`Application/Templates/iraq-curriculum.suggested.json`), not a table.
+Migration `Phase25SuggestedCurriculum` adds `CurriculumEntries.IsSuggested` and `Stages.DayLessonsSuggested` (both boolean, default false; ADR 0029, 0030). The curriculum template itself is embedded data (`Application/Templates/iraq-curriculum.official-2026-2027.json`, the official plan 2026-2027; ADR 0036), not a table. No migration was needed to replace it.
+
+Migration `Phase3BResourcesProfile` (Phase 3B, ADR 0031) adds:
+- `Resources`: `Name`, `NormalizedName` (unique), `Kind` (check 1–4), `Capacity` (check 1–20), `Notes`, `IsArchived` (indexed), `ArchivedAt`, `Version`.
+- `Subjects.RequiredResourceId` (nullable, `Restrict` to `Resources`, indexed).
+- `TeacherSpecializations`: key (`TeacherId`, `SubjectId`); `SubjectId` indexed, `Cascade` from both the teacher and the subject (DECISIONS_PENDING #53).
+- `SchedulingProfile` (one row, Id = 1, `ProfileVersion`, `Version`) and `SchedulingProfileRules` (`ProfileId`, `Key` ≤ 40, unique per profile, `Enabled`, `Weight` check 0–100). The row is created at start-up when missing.
+
+Migration `Phase3CWorkload` (ADR 0032) adds `WorkloadAssignments`:
+- `SectionId`, `CurriculumEntryId`, `TeacherId` (all `Restrict`), `IsArchived`, `ArchivedAt`, `Version`;
+- unique (`SectionId`, `CurriculumEntryId`) where `IsArchived = 0`;
+- indexes on `CurriculumEntryId` and (`TeacherId`, `IsArchived`).
+
+Phase 3D (ADRs 0034–0035) adds no database tables or migration. `SchedulingInput` is a canonical in-memory snapshot assembled from versioned school records; `InputHash` is computed from its scheduling-relevant values and returned with readiness. Phase 4 persists the hash with each generated timetable version, not as mutable school state.
+
+Migration `Phase3EWorkloadWizardStep` (Phase 3E) is a data-only migration: the setup wizard gained step 7 «الأنصبة», so a saved review step moves from bit 128 to bit 256 in `CompletedMask` and `SkippedMask`, and `CurrentStep` 7 becomes 8. `Down` clears bits 128 and 256 and moves 256 back to 128. Tested on a finished wizard, one in the middle, a database without a progress row, and `Down` (`WizardStepMigrationTests`).
+
+Phase 3A added no schema change. Read-only list and report queries run without change tracking (DECISIONS_PENDING #52).
 
 ## Application data
 - School profile; teachers, subjects, resources, stages, sections, workload, shifts, bell times, calendar

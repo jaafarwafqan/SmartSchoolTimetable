@@ -28,9 +28,9 @@ describe("formatting helper", () => {
     expect(gregorian.dateRange("2026-09-01", "2027-06-30")).toContain("–");
   });
 
-  it("formats lesson times on a 24-hour clock with the chosen digits", () => {
-    expect(createFormatter({ numeralSystem: "western", calendarDisplay: "gregorian", timeZone: "UTC" }).time("08:05")).toContain("08:05");
-    expect(createFormatter().time("13:40")).toContain("١٣");
+  it("formats lesson times on the 12-hour clock with ص/م and the chosen digits", () => {
+    expect(createFormatter({ numeralSystem: "western", calendarDisplay: "gregorian", timeZone: "UTC" }).time("08:05")).toBe("8:05 ص");
+    expect(createFormatter().time("13:40")).toBe("١:٤٠ م");
   });
 
   it("computes today in the school time zone", () => {

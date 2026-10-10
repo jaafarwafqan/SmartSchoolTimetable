@@ -34,8 +34,10 @@ export class ApiServer {
     const port = await freePort();
     this.baseUrl = `http://127.0.0.1:${port}`;
     this.databaseDirectory = await mkdtemp(join(tmpdir(), `smart-school-${prefix}-`));
-    const child = spawn(dotnetHost, [apiAssembly], {
-      cwd: dirname(apiAssembly),
+    // SST_RELEASE_EXE runs the published folder's executable instead (verifies the ready-to-run package, Phase 4 M6).
+    const releaseExe = process.env.SST_RELEASE_EXE;
+    const child = spawn(releaseExe ?? dotnetHost, releaseExe ? [] : [apiAssembly], {
+      cwd: dirname(releaseExe ?? apiAssembly),
       env: {
         ...process.env,
         ASPNETCORE_ENVIRONMENT: "Production",

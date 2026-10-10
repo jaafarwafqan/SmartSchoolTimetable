@@ -3,8 +3,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using SmartSchoolTimetable.Application;
 using SmartSchoolTimetable.Application.Common;
+using SmartSchoolTimetable.Application.Generation;
+using SmartSchoolTimetable.Domain.Scheduling;
 using SmartSchoolTimetable.Domain.SchoolSetup;
 using SmartSchoolTimetable.Infrastructure.Persistence;
+using SmartSchoolTimetable.Infrastructure.Solver;
 
 namespace SmartSchoolTimetable.Infrastructure;
 
@@ -37,6 +40,11 @@ public static class LocalInfrastructureRegistration
         services.AddSingleton<ICredentialHasher, Pbkdf2CredentialHasher>();
         services.AddSingleton<ILocalSessionStore, LocalSessionStore>();
         services.AddSingleton<ILoginDelay>(skipLoginDelay ? new NoLoginDelay() : new RealLoginDelay());
+        services.AddSingleton<ISolver, CpSatSolver>();
+        services.AddSingleton<ISolverInfo, OrToolsInfo>();
+        services.AddSingleton<ITimetableExporter, Export.ExcelTimetableExporter>();
+        services.AddSingleton(new LocalDatabaseLocation(fullDatabasePath, connectionString));
+        services.AddScoped<Application.Backup.IDatabaseBackup, SqliteDatabaseBackup>();
         return services;
     }
 
@@ -74,6 +82,11 @@ public static class LocalInfrastructureRegistration
         if (!await db.Set<BellSettings>().AnyAsync(cancellationToken))
         {
             db.Add(BellSettings.CreateDefault());
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        if (!await db.Set<SchedulingProfile>().AnyAsync(cancellationToken))
+        {
+            db.Add(SchedulingProfile.CreateDefault());
             await db.SaveChangesAsync(cancellationToken);
         }
         if (!await db.Set<SetupProgress>().AnyAsync(cancellationToken))

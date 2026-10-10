@@ -13,11 +13,18 @@ public sealed record CurriculumCellDto(long StageId, long? EntryId, int? WeeklyL
 /// <param name="Label">Null for the subject's main row; a repeated entry has its own label (e.g. "قواعد").</param>
 public sealed record CurriculumRowDto(long SubjectId, string SubjectName, int ColorIndex, string? Label, IReadOnlyList<CurriculumCellDto> Cells);
 
-public sealed record CurriculumTableDto(IReadOnlyList<CurriculumStageDto> Stages, IReadOnlyList<CurriculumRowDto> Rows);
+/// <param name="Cleared">The line a cell edit just cleared (soft-deleted, Phase 3 §5.4), so the screen can offer an undo.</param>
+public sealed record CurriculumTableDto(IReadOnlyList<CurriculumStageDto> Stages, IReadOnlyList<CurriculumRowDto> Rows, CurriculumEntryDto? Cleared = null);
 
-/// <param name="WeeklyLessons">Null clears the cell (the entry is deleted; nothing references entries before Phase 3).</param>
+/// <param name="WeeklyLessons">Null clears the cell: the line is archived (soft delete, undo by restoring it) unless something depends on it.</param>
 /// <param name="EntryId">The entry shown in the cell, with its <paramref name="Version"/>; null to create a new entry.</param>
-public sealed record SetCurriculumCellCommand(long StageId, long SubjectId, string? Label, int? WeeklyLessons, long? EntryId, int? Version);
+/// <param name="ConfirmWorkload">Clearing a line that has teacher assignments archives them with it only when the
+/// owner confirmed (otherwise <c>WORKLOAD_IN_USE</c>, Phase 3 §5.4).</param>
+public sealed record SetCurriculumCellCommand(long StageId, long SubjectId, string? Label, int? WeeklyLessons, long? EntryId, int? Version, bool ConfirmWorkload = false);
+
+/// <param name="ConfirmWorkload">Archiving a line with active assignments archives them too, after the owner's
+/// confirmation (Phase 3 §2.3).</param>
+public sealed record ArchiveEntryCommand(int Version, bool ConfirmWorkload = false);
 
 public sealed record CurriculumEntryDto(long Id, long StageId, long SubjectId, int WeeklyLessons, string? Label, bool NeedsDoublePeriod, string? Notes, bool IsArchived, int Version, bool IsSuggested = false);
 

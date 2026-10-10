@@ -174,6 +174,9 @@ dotnet run --project .\src\SmartSchoolTimetable.Api\SmartSchoolTimetable.Api.csp
 
 ## سادساً: البيانات التجريبية (اختياري)
 
+**ملاحظة (2026-10-09):** أُزيل أمر البيانات التجريبية `--seed-demo-data` بقرار المالك. شغّل التطبيق على ملف قاعدة بيانات جديد (`--Database:Path="$env:TEMP\sst-try\try.db"`) وأدخل البيانات بنفسك عبر المعالج، ثم نفّذ الخطوات التي تعتمد على البيانات التجريبية على هذه القاعدة.
+
+
 38. **أنشئ قاعدة تجريبية جديدة:**
     ```powershell
     dotnet run --project .\src\SmartSchoolTimetable.Api\SmartSchoolTimetable.Api.csproj --configuration Release --no-build -- --seed-demo-data "$env:TEMP\sst-demo-25\demo.db" --dual-shift

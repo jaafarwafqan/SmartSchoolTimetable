@@ -1,6 +1,6 @@
 # SmartSchoolTimetable
 
-Single-user, offline-first school timetable application for one local school and one owner account. The browser UI is served by the ASP.NET Core app, which binds only to `127.0.0.1`. Phase 1.4 (design system adoption, tag `phase-1.4`) is complete. Phase 2 checkpoints 2A–2C are implemented on `phase-2`; checkpoints 2D–2F remain (see [DELIVERY_PLAN.md](./DELIVERY_PLAN.md)). The owner merges after acceptance.
+Single-user, offline-first school timetable application for one local school and one owner account. The browser UI is served by the ASP.NET Core app, which binds only to `127.0.0.1`. Phases 0–2.5 and Phase 3 (3A–3E, `phase-3-final`) are tagged; Phase 3D/3E are on `phase-3-finish`. The owner merges after acceptance.
 
 ## Stack and environment
 - .NET SDK 9.0.318 and Node.js v24.18.0 are available in the current development environment. Node/npm are required for the React build and frontend tests.
@@ -23,8 +23,14 @@ dotnet run --project .\src\SmartSchoolTimetable.Api\SmartSchoolTimetable.Api.csp
 
 The frontend test command runs Vitest and Playwright; install Chromium once with the preceding command. While the final command is running, open <http://127.0.0.1:5080/>. The app is available only over loopback HTTP.
 
+### Dependency audit
+`npm.cmd --prefix .\frontend run audit:prod` checks only the production dependencies (the code shipped to the browser) and fails on any high-severity finding. `npm.cmd --prefix .\frontend audit` also lists development tools; the current development-only finding (`braces` through stylelint) is explained in `docs/DECISIONS_PENDING.md` #44.
+
 ### Phase 2.5 owner test
 Follow `docs/OWNER_TEST_SCRIPT_PHASE25.md` on a separate test database (`$env:Database__Path`). The results are in `docs/PHASE25_REPORT.md`.
+
+### Phase 3 readiness check
+After setup, open «جاهزية الجدولة» from the dashboard card or `/readiness`. The report uses the current academic year and the real saved curriculum, teacher assignments, availability and resources. It is a conservative preflight; timetable generation and CP-SAT remain Phase 4. The manual test script is [docs/OWNER_TEST_SCRIPT_PHASE3.md](./docs/OWNER_TEST_SCRIPT_PHASE3.md).
 
 ### Database reset and first-run setup
 Stop the running app before resetting. From the repository root, run:
@@ -48,27 +54,14 @@ The command **refuses to run while the app is running**: it checks for the app p
 - From Phase 2, the school logo and stamp are stored in the `assets` folder next to the database. Copy that folder as well, if it exists: `Copy-Item "$env:LOCALAPPDATA\SmartSchoolTimetable\assets" $dest -Recurse`.
 - Never copy the database while the app is running. The Phase 6 online backup (SQLite Online Backup API, integrity-checked) will replace this procedure.
 
-### Demo data (separate database)
-Create a fictional sample school in a NEW file. The command refuses an existing file, the default `%LOCALAPPDATA%` database and the configured `Database:Path`:
+### A separate test database
+The demo data generator (`--seed-demo-data`) was removed (2026-10-09, owner decision). To try the app without touching the real database, run it against a NEW file; the first start shows the first-run setup (owner account, recovery code, then the wizard):
 
 ```powershell
-dotnet run --project .\src\SmartSchoolTimetable.Api\SmartSchoolTimetable.Api.csproj --configuration Release --no-build -- --seed-demo-data "$env:TEMP\sst-demo\demo.db"
-# optional: add --dual-shift for a morning and an evening shift
+dotnet run --project .\src\SmartSchoolTimetable.Api\SmartSchoolTimetable.Api.csproj --configuration Release --no-build -- --Database:Path="$env:TEMP\sst-try\try.db"
 ```
 
-Then run the app against it. The first start asks you to create the owner account for the demo database:
-
-```powershell
-dotnet run --project .\src\SmartSchoolTimetable.Api\SmartSchoolTimetable.Api.csproj --configuration Release --no-build -- --Database:Path="$env:TEMP\sst-demo\demo.db"
-```
-
-The sample contains:
-- 20 teachers with varied constraints (2 fully released);
-- 10 subjects that exercise every flag;
-- 4 stages with 12 sections;
-- one shift of 7 lessons plus a break (two shifts with `--dual-shift`);
-- the 2026-2027 year with two terms;
-- 8 calendar days.
+Automated tests build their own synthetic data inside the test projects.
 
 Teacher workload is Phase 3. A manual test script in Arabic is in [docs/OWNER_TEST_SCRIPT_PHASE2.md](./docs/OWNER_TEST_SCRIPT_PHASE2.md).
 
