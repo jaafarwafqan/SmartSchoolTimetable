@@ -97,6 +97,7 @@
 .ui-tab {
   display: inline-flex;
   align-items: center;
+  gap: 0.5rem;
   min-block-size: var(--control-height-md);
   padding-inline: 0.875rem;
   border-block-end: 3px solid transparent;

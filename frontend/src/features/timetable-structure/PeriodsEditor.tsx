@@ -1,4 +1,5 @@
-import { Coffee, Plus, Save, WandSparkles } from "lucide-react";
+import { SectionTitle } from "../../components/ui/section-title";
+import { Coffee, Plus, Save, WandSparkles, Clock } from "lucide-react";
 import { useState } from "react";
 import { ConflictAlert } from "../../components/ConflictAlert";
 import { Alert } from "../../components/ui/alert";
@@ -61,7 +62,7 @@ export function PeriodsEditor({ yearId, shift, onReload, onSaved, generatorStart
   return (
     <section className="periods-editor" aria-labelledby="periods-title">
       <div className="card-header-row">
-        <h3 id="periods-title">{text.periodsFor(shift.name)}</h3>
+        <SectionTitle level={3} icon={Clock} id="periods-title">{text.periodsFor(shift.name)}</SectionTitle>
         <Button variant="secondary" icon={<WandSparkles aria-hidden="true" size={20} />} onClick={() => setGenerating(true)}>{text.generate}</Button>
       </div>
       {feedback.conflict && <ConflictAlert onReload={() => { feedback.reset(); onReload(); }} />}

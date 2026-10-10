@@ -1,3 +1,4 @@
+import { SectionTitle } from "../../components/ui/section-title";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { Alert } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
@@ -25,7 +26,7 @@ export function MonthView({ month, onMonth, onOpen }: MonthViewProps) {
     <section className="month-view" aria-labelledby="month-title">
       <div className="card-header-row">
         <Button variant="ghost" icon={<ChevronRight aria-hidden="true" size={20} />} onClick={() => onMonth(monthStart(month, -1))}>{text.previousMonth}</Button>
-        <h2 id="month-title">{format.month(month)}</h2>
+        <SectionTitle level={2} icon={CalendarDays} id="month-title">{format.month(month)}</SectionTitle>
         <Button variant="ghost" icon={<ChevronLeft aria-hidden="true" size={20} />} onClick={() => onMonth(monthStart(month, 1))}>{text.nextMonth}</Button>
       </div>
       {days.isSuccess && entries.length === 0 && <Alert tone="info" message={text.emptyMonth} />}

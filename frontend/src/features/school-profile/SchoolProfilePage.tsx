@@ -1,3 +1,5 @@
+import { SectionTitle } from "../../components/ui/section-title";
+import { Images, School } from "lucide-react";
 import { useState } from "react";
 import { Alert } from "../../components/ui/alert";
 import { Card } from "../../components/ui/card";
@@ -20,7 +22,7 @@ export function SchoolProfilePage() {
   };
   return (
     <div className="page">
-      <PageHeader title={messages.school.nav.profile} description={messages.school.profile.description} />
+      <PageHeader icon={School} title={messages.school.nav.profile} description={messages.school.profile.description} />
       {profile.isPending && <Spinner label={messages.school.common.loading} />}
       {profile.isError && <Alert tone="error" message={userErrorMessage(profile.error)} />}
       {profile.data && (
@@ -29,7 +31,7 @@ export function SchoolProfilePage() {
             <ProfileForm key={formKey} profile={profile.data} onReload={reload} reloading={profile.isFetching} />
           </Card>
           <Card className="page-card" aria-labelledby="images-title">
-            <h2 id="images-title">{messages.school.profile.imagesTitle}</h2>
+            <SectionTitle level={2} icon={Images} id="images-title">{messages.school.profile.imagesTitle}</SectionTitle>
             <div className="asset-grid">
               <AssetPanel kind="logo" profile={profile.data} onReload={reload} reloading={profile.isFetching} />
               <AssetPanel kind="stamp" profile={profile.data} onReload={reload} reloading={profile.isFetching} />

@@ -1,3 +1,5 @@
+import { SectionTitle } from "../../components/ui/section-title";
+import { Clock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { apiRequest } from "../../api";
@@ -82,7 +84,7 @@ function ShiftBlock({ kind, plan, days, presets, yearId, suggestedBreak, officia
   const name = text.timing.shifts[kind];
   return (
     <section className="wizard-shift" aria-labelledby={`wizard-shift-${kind}`}>
-      <h3 id={`wizard-shift-${kind}`}>{name}</h3>
+      <SectionTitle level={3} icon={Clock} id={`wizard-shift-${kind}`}>{name}</SectionTitle>
       <div className="form-grid">
         <Field id={`wizard-${kind}-preset`} label={messages.school.templates.presetsLabel} hint={messages.school.templates.presetsHint}>
           <Select id={`wizard-${kind}-preset`} aria-describedby={`wizard-${kind}-preset-hint`} value={plan.presetKey}

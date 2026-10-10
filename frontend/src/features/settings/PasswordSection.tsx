@@ -50,7 +50,7 @@ export function PasswordSection() {
   return (
     <SettingsSection
       id="password-section"
-      icon={<KeyRound size={20} strokeWidth={2} />}
+      icon={KeyRound}
       title={messages.app.passwordSectionTitle}
       description={messages.app.passwordSectionDescription}
     >

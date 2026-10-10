@@ -1,4 +1,5 @@
-import { Trash2 } from "lucide-react";
+import { SectionTitle } from "../../components/ui/section-title";
+import { Trash2, Layers, GraduationCap, Pencil, Link2 } from "lucide-react";
 import { useState } from "react";
 import { Alert } from "../../components/ui/alert";
 import { Card } from "../../components/ui/card";
@@ -76,7 +77,9 @@ function StageLessons({ yearId, card, shifts, days, onSaved, onError }: {
     <div className="stage-lessons">
       <div className="stage-lessons-head">
         <span className="stepper-caption" aria-hidden="true">{text.dailyLessons}</span>
-        <Badge tone={custom ? "primary" : "neutral"}>{custom ? text.ownCounts : text.inherits}</Badge>
+        {custom
+          ? <Badge tone="primary" icon={<Pencil aria-hidden="true" size={16} />}>{text.ownCounts}</Badge>
+          : <Badge icon={<Link2 aria-hidden="true" size={16} />}>{text.inherits}</Badge>}
       </div>
       <Stepper id={`stage-lessons-${card.stage.id}`} label={text.dailyLessonsFor(name)} value={daily} min={1} max={maxDaily} format={format.number}
         decreaseLabel={text.dailyDecrease(name)} increaseLabel={text.dailyIncrease(name)} disabled={save.isPending}
@@ -139,7 +142,7 @@ export function StageCardsPanel({ yearId }: { yearId: number }) {
   if (items.length === 0) return null;
   return (
     <Card className="page-card" aria-labelledby="stage-cards-title">
-      <h2 id="stage-cards-title">{text.title}</h2>
+      <SectionTitle level={2} icon={Layers} id="stage-cards-title">{text.title}</SectionTitle>
       <p className="card-note">{text.description}</p>
       {cards.isError && <Alert tone="error" message={messages.school.common.loadFailed} />}
       {shifts.isSuccess && shiftList.length === 0 && <Alert tone="warning" message={text.noShift} />}
@@ -153,7 +156,7 @@ export function StageCardsPanel({ yearId }: { yearId: number }) {
           return (
             <li key={`stage-card-${card.stage.id}`} className="stage-card">
               <div className="stage-card-header">
-                <h3>{card.stage.name}</h3>
+                <SectionTitle level={3} icon={GraduationCap}>{card.stage.name}</SectionTitle>
                 <Stepper
                   id={`stage-card-count-${card.stage.id}`}
                   label={text.sectionCount(card.stage.name)}

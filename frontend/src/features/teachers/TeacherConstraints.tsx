@@ -1,3 +1,5 @@
+import { SectionTitle } from "../../components/ui/section-title";
+import { SlidersHorizontal } from "lucide-react";
 import { DateField } from "../../components/DateField";
 import { TextField } from "../../components/TextField";
 import { Checkbox } from "../../components/ui/checkbox";
@@ -28,7 +30,7 @@ export function TeacherConstraints({ prefix, teacher, state, onChange, errors }:
 
   return (
     <section className="form-stack" aria-labelledby={`${prefix}-constraints-title`}>
-      <h3 id={`${prefix}-constraints-title`}>{text.constraints}</h3>
+      <SectionTitle level={3} icon={SlidersHorizontal} id={`${prefix}-constraints-title`}>{text.constraints}</SectionTitle>
       <fieldset className="weekday-grid" aria-describedby={errors.OffDays ? `${prefix}-off-days-error` : undefined}>
         <legend>{text.offDays}</legend>
         {days.map((day) => (

@@ -26,7 +26,7 @@ export function RecoveryCodeSection() {
   return (
     <SettingsSection
       id="recovery-section"
-      icon={<LifeBuoy size={20} strokeWidth={2} />}
+      icon={LifeBuoy}
       title={messages.app.recoverySectionTitle}
       description={messages.app.recoverySectionDescription}
     >

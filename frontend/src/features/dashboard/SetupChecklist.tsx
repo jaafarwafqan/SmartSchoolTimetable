@@ -1,4 +1,5 @@
-import { ChevronLeft, CircleCheck, CircleDashed } from "lucide-react";
+import { SectionTitle } from "../../components/ui/section-title";
+import { ChevronLeft, CircleCheck, CircleDashed, ListChecks } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Alert } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
@@ -14,7 +15,7 @@ export function SetupChecklist({ steps }: SetupChecklistProps) {
   const allDone = known.length > 0 && known.every((step) => step.done);
   return (
     <Card className="dashboard-card" aria-labelledby="checklist-title">
-      <h2 id="checklist-title">{messages.school.dashboard.checklistTitle}</h2>
+      <SectionTitle level={2} icon={ListChecks} id="checklist-title">{messages.school.dashboard.checklistTitle}</SectionTitle>
       {allDone && <Alert tone="success" message={messages.school.dashboard.checklistDone} />}
       <ol className="checklist">
         {known.map((step) => {

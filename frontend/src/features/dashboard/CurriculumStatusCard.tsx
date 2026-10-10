@@ -1,4 +1,5 @@
-import { CircleAlert, CircleCheck, CircleX } from "lucide-react";
+import { SectionTitle } from "../../components/ui/section-title";
+import { CircleAlert, CircleCheck, CircleX, BookOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Badge } from "../../components/ui/badge";
 import { Card } from "../../components/ui/card";
@@ -20,7 +21,7 @@ export function CurriculumStatusCard({ stages, format }: { stages: CurriculumSta
   const { count } = useFormatter();
   return (
     <Card className="dashboard-card" aria-labelledby="curriculum-status-title">
-      <h2 id="curriculum-status-title"><Link to="/classes/curriculum">{text.title}</Link></h2>
+      <SectionTitle level={2} icon={BookOpen} id="curriculum-status-title"><Link to="/classes/curriculum">{text.title}</Link></SectionTitle>
       {stages.length === 0 ? <p className="card-note">{text.empty}</p> : (
         <ul className="curriculum-status">
           {stages.map((stage) => (

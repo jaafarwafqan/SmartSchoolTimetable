@@ -1,4 +1,5 @@
-import { ArrowLeftRight, Check, Eye, UserMinus, UserPlus, UsersRound } from "lucide-react";
+import { SectionTitle } from "../../components/ui/section-title";
+import { ArrowLeftRight, Check, Eye, UserMinus, UserPlus, UsersRound, ClipboardList, Minus } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Alert } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
@@ -26,7 +27,9 @@ export function PlanView({ plan, format }: { plan: WorkloadPlan; format: Format 
       <ul className="reference-list plan-lines">
         {plan.lines.map((line) => (
           <li key={`${line.sectionId}-${line.entryId}`}>
-            <Badge tone={line.action === "skip" || line.action === "unchanged" ? "neutral" : line.action === "remove" ? "danger" : "primary"}>{bulk.actions[line.action]}</Badge>
+            {line.action === "skip" || line.action === "unchanged"
+              ? <Badge icon={<Minus aria-hidden="true" size={16} />}>{bulk.actions[line.action]}</Badge>
+              : <Badge tone={line.action === "remove" ? "danger" : "primary"} icon={line.action === "remove" ? <UserMinus aria-hidden="true" size={16} /> : <UserPlus aria-hidden="true" size={16} />}>{bulk.actions[line.action]}</Badge>}
             {" "}
             {bulk.lineText(bulk.sectionOption(line.stageName, line.sectionLabel), line.label ? `${line.subjectName} - ${line.label}` : line.subjectName, format.number(line.weeklyLessons))}
             {line.action !== "create" && line.action !== "remove" && line.currentTeacher && line.newTeacher && line.currentTeacher !== line.newTeacher && (
@@ -139,7 +142,7 @@ export function BulkActions({ yearId, loads, stages }: { yearId: number; loads: 
 
   return (
     <Card className="page-card" aria-labelledby="workload-bulk-title">
-      <h2 id="workload-bulk-title">{bulk.title}</h2>
+      <SectionTitle level={2} icon={ClipboardList} id="workload-bulk-title">{bulk.title}</SectionTitle>
       <p className="card-note">{bulk.description}</p>
       <BulkTool yearId={yearId} title={bulk.acrossStage} icon={<UsersRound aria-hidden="true" size={20} />}
         ready={across.teacherId !== null && across.entryId !== null}

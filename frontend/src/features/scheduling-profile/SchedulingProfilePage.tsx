@@ -1,4 +1,4 @@
-import { RotateCcw, Save } from "lucide-react";
+import { RotateCcw, Save, CircleCheck, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
 import { ConflictAlert } from "../../components/ConflictAlert";
 import { Alert } from "../../components/ui/alert";
@@ -53,7 +53,7 @@ function ProfileEditor({ profile, onReload }: { profile: SchedulingProfile; onRe
       </ul>
       <p className="card-note">
         {text.profileVersion(format.number(profile.profileVersion))}
-        {profile.isDefault && <> <Badge tone="success">{text.isDefault}</Badge></>}
+        {profile.isDefault && <> <Badge tone="success" icon={<CircleCheck aria-hidden="true" size={16} />}>{text.isDefault}</Badge></>}
       </p>
       <div className="form-actions">
         <Button icon={<Save aria-hidden="true" size={20} />} loading={save.isPending} disabled={feedback.conflict}
@@ -93,7 +93,7 @@ export function SchedulingProfilePage() {
   const profile = useSchedulingProfile();
   return (
     <div className="page">
-      <PageHeader title={text.title} description={text.description} />
+      <PageHeader icon={SlidersHorizontal} title={text.title} description={text.description} />
       {profile.isError && <Alert tone="error" message={messages.school.common.loadFailed} />}
       {profile.isPending && <Spinner label={messages.app.loadingContent} />}
       {profile.data && <ProfileEditor profile={profile.data} onReload={() => void profile.refetch()} />}

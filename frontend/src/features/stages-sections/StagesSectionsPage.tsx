@@ -1,3 +1,4 @@
+import { Layers } from "lucide-react";
 import { Alert } from "../../components/ui/alert";
 import { Card } from "../../components/ui/card";
 import { messages } from "../../i18n/messages";
@@ -18,7 +19,7 @@ export function StagesSectionsPage() {
 
   return (
     <div className="page">
-      <PageHeader title={text.title} description={text.description} />
+      <PageHeader icon={Layers} title={text.title} description={text.description} />
       {choice.years.isError && <Alert tone="error" message={messages.school.common.loadFailed} />}
       <Card className="page-card">
         <YearPicker id="stages-year" choice={choice} />

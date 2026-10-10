@@ -1,3 +1,5 @@
+import { SectionTitle } from "../../components/ui/section-title";
+import { Palette } from "lucide-react";
 import { TimetableCell } from "../../components/ui/timetable-cell";
 import { guideMessages } from "./guideMessages";
 import { GuideSection } from "./GuideSection";
@@ -31,7 +33,7 @@ export function TimetableSection() {
           </figure>
         ))}
       </div>
-      <h3>{guideMessages.subjectsHeading}</h3>
+      <SectionTitle level={3} icon={Palette}>{guideMessages.subjectsHeading}</SectionTitle>
       <div className="guide-cells">
         {sampleSubjects.map((subject) => (
           <TimetableCell

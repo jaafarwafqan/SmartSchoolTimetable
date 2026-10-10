@@ -1,4 +1,5 @@
-import { CircleAlert, CircleCheck, Eye, Save, X } from "lucide-react";
+import { SectionTitle } from "../../components/ui/section-title";
+import { CircleAlert, CircleCheck, Eye, Save, X, ListPlus } from "lucide-react";
 import { useId, useState } from "react";
 import { Alert } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
@@ -63,7 +64,7 @@ export function BulkAddPanel({ onClose, onSaved, closable = true }: BulkAddPanel
   return (
     <Card className="page-card bulk-panel" aria-labelledby="bulk-title">
       <div className="card-header-row">
-        <h2 id="bulk-title">{text.bulkTitle}</h2>
+        <SectionTitle level={2} icon={ListPlus} id="bulk-title">{text.bulkTitle}</SectionTitle>
       </div>
       <p className="ui-field-hint">{text.bulkHint}</p>
       <Alert tone="error" message={feedback.error} />

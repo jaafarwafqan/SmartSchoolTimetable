@@ -1,4 +1,5 @@
-import { Check, WandSparkles } from "lucide-react";
+import { SectionTitle } from "../../components/ui/section-title";
+import { Check, WandSparkles, Link2, Gauge, CircleAlert, Sparkles, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { Alert } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
@@ -19,7 +20,7 @@ function SuggestionPlanView({ plan }: { plan: AssignmentSuggestionPlan }) {
     <div className="form-stack">
       {plan.assignments.length > 0 && (
         <section aria-labelledby="suggestion-assignments-title">
-          <h3 id="suggestion-assignments-title">{text.assignments}</h3>
+          <SectionTitle level={3} icon={Link2} id="suggestion-assignments-title">{text.assignments}</SectionTitle>
           <ul className="reference-list plan-lines">
             {plan.assignments.map((item) => (
               <li key={`${item.sectionId}-${item.entryId}`}>
@@ -32,7 +33,7 @@ function SuggestionPlanView({ plan }: { plan: AssignmentSuggestionPlan }) {
       )}
       {plan.loads.length > 0 && (
         <section aria-labelledby="suggestion-loads-title">
-          <h3 id="suggestion-loads-title">{text.loads}</h3>
+          <SectionTitle level={3} icon={Gauge} id="suggestion-loads-title">{text.loads}</SectionTitle>
           <ul className="reference-list">
             {plan.loads.map((load) => (
               <li key={load.teacherId}>{text.loadLine(load.teacherName, format.number(load.before), format.number(load.after), format.number(load.limit))}</li>
@@ -42,11 +43,11 @@ function SuggestionPlanView({ plan }: { plan: AssignmentSuggestionPlan }) {
       )}
       {plan.unassigned.length > 0 && (
         <section aria-labelledby="suggestion-unassigned-title">
-          <h3 id="suggestion-unassigned-title">{text.unassigned}</h3>
+          <SectionTitle level={3} icon={CircleAlert} id="suggestion-unassigned-title">{text.unassigned}</SectionTitle>
           <ul className="reference-list">
             {plan.unassigned.map((item) => (
               <li key={`${item.sectionId}-${item.entryId}`}>
-                <Badge tone="warning">{text.reasons[item.reason as keyof typeof text.reasons] ?? text.reasons.fallback}</Badge>
+                <Badge tone="warning" icon={<TriangleAlert aria-hidden="true" size={16} />}>{text.reasons[item.reason as keyof typeof text.reasons] ?? text.reasons.fallback}</Badge>
                 <p>{text.unassignedLine(item.stageName, item.sectionLabel, item.label ? `${item.subjectName} - ${item.label}` : item.subjectName,
                   text.reasons[item.reason as keyof typeof text.reasons] ?? text.reasons.fallback)}</p>
               </li>
@@ -68,7 +69,7 @@ export function AssignmentSuggester({ yearId, embedded = false }: { yearId: numb
     <>
       <div>
         {/* Inside the wizard the step title is the h2, so the suggester is a sub-section. */}
-        {embedded ? <h3 id="assignment-suggester-title">{text.title}</h3> : <h2 id="assignment-suggester-title">{text.title}</h2>}
+        <SectionTitle level={embedded ? 3 : 2} icon={Sparkles} id="assignment-suggester-title">{text.title}</SectionTitle>
         <p className="card-note">{text.description}</p>
       </div>
       <div className="form-actions">

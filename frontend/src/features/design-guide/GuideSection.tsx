@@ -1,3 +1,5 @@
+import { SectionTitle } from "../../components/ui/section-title";
+import { Palette } from "lucide-react";
 import type { ReactNode } from "react";
 import { Card } from "../../components/ui/card";
 
@@ -10,7 +12,7 @@ type GuideSectionProps = {
 export function GuideSection({ id, title, children }: GuideSectionProps) {
   return (
     <Card className="guide-section" aria-labelledby={id}>
-      <h2 id={id}>{title}</h2>
+      <SectionTitle level={2} icon={Palette} id={id}>{title}</SectionTitle>
       <div className="guide-section-body">{children}</div>
     </Card>
   );

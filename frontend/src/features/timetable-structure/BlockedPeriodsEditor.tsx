@@ -1,4 +1,5 @@
-import { CircleAlert } from "lucide-react";
+import { SectionTitle } from "../../components/ui/section-title";
+import { CircleAlert, Ban } from "lucide-react";
 import { Alert } from "../../components/ui/alert";
 import { BlockedPeriodsGrid } from "../../components/ui/blocked-periods-grid";
 import { messages } from "../../i18n/messages";
@@ -35,7 +36,7 @@ export function BlockedPeriodsEditor({ id, value, onChange, error }: BlockedPeri
 
   return (
     <section className="form-stack" aria-labelledby={`${id}-title`}>
-      <h3 id={`${id}-title`}>{text.title}</h3>
+      <SectionTitle level={3} icon={Ban} id={`${id}-title`}>{text.title}</SectionTitle>
       {grid.isError && <Alert tone="error" message={messages.school.common.loadFailed} />}
       {grid.isSuccess && !hasGrid && <Alert tone="info" message={text.noGrid} />}
       {hasGrid && inside.length < value.length && <Alert tone="warning" message={text.outsideGrid} />}
