@@ -17,6 +17,7 @@ internal static class Families
     public const string ResourceCapacity = "resourceCapacity";
     public const string SubjectDailyCap = "subjectDailyCap";
     public const string DoublePeriods = "doublePeriods";
+    public const string LockedLessons = "lockedLessons";
 }
 
 internal sealed record Family(string Kind, long Id, BoolVar Literal);
@@ -50,8 +51,11 @@ internal sealed class CpSatModelBuilder
     private readonly Dictionary<long, ShiftInput> _shifts;
     private readonly Dictionary<string, Family> _families = new(StringComparer.Ordinal);
 
-    private CpSatModelBuilder(SchedulingInput input, bool doublePeriodsRequired, bool diagnostic)
+    private readonly IReadOnlyList<PlacedLesson> _locked;
+
+    private CpSatModelBuilder(SchedulingInput input, bool doublePeriodsRequired, bool diagnostic, IReadOnlyList<PlacedLesson> locked)
     {
+        _locked = locked;
         _input = input;
         _doubles = doublePeriodsRequired;
         _diagnostic = diagnostic;
@@ -62,10 +66,14 @@ internal sealed class CpSatModelBuilder
     public List<LineVars> Lines { get; } = [];
     public IReadOnlyCollection<Family> AllFamilies => _families.Values;
 
-    public static CpSatModelBuilder Build(SchedulingInput input, bool doublePeriodsRequired, bool diagnostic)
+    /// <summary>Locked lessons that have no variable (their slot is no longer allowed): not kept, and reported.</summary>
+    public int LocksDropped { get; private set; }
+
+    public static CpSatModelBuilder Build(SchedulingInput input, bool doublePeriodsRequired, bool diagnostic, IReadOnlyList<PlacedLesson>? locked = null)
     {
-        var builder = new CpSatModelBuilder(input, doublePeriodsRequired, diagnostic);
+        var builder = new CpSatModelBuilder(input, doublePeriodsRequired, diagnostic, locked ?? []);
         builder.CreateVariables();
+        builder.AddLocks();
         builder.AddHardConstraints();
         if (!diagnostic)
             builder.AddObjective();
@@ -147,6 +155,21 @@ internal sealed class CpSatModelBuilder
                 }
             }
             Lines.Add(vars);
+        }
+    }
+
+    /// <summary>«إبقاء تعديلاتي»: a locked lesson is a variable fixed to 1. Under diagnostics each section's locks sit behind one assumption literal.</summary>
+    private void AddLocks()
+    {
+        foreach (var locked in _locked)
+        {
+            var line = Lines.FirstOrDefault(item => item.Row.SectionId == locked.SectionId && item.Row.LineId == locked.LineId && item.Row.TeacherId == locked.TeacherId);
+            if (line is null || !line.Vars.TryGetValue((locked.Day, locked.Lesson), out var variable))
+            {
+                LocksDropped++;
+                continue;
+            }
+            Enforce(Model.Add(variable == 1), Families.LockedLessons, locked.SectionId);
         }
     }
 

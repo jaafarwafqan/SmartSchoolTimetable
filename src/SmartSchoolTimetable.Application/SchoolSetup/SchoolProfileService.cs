@@ -50,7 +50,7 @@ public sealed class SchoolProfileService(IDataStore store, IAssetStore assets, T
             return OperationResult.FromDomain<SchoolProfileDto>(exception);
         }
 
-        AuditTrail.Record(store, clock, "SchoolProfileUpdated", "school-profile", "School profile updated.");
+        AuditTrail.Record(store, clock, AuditEvents.SchoolProfileUpdated, "school-profile", "School profile updated.");
         return await SaveAsync(profile, cancellationToken);
     }
 
@@ -82,7 +82,7 @@ public sealed class SchoolProfileService(IDataStore store, IAssetStore assets, T
         var storedName = await assets.SaveAsync(prefix, format.Extension, content, cancellationToken);
         var now = clock.GetUtcNow();
         var previous = profile.SetAsset(kind, new SchoolAsset(storedName, format.ContentType, content.Length, now), now);
-        AuditTrail.Record(store, clock, "SchoolAssetUploaded", $"school-{prefix}", "School image uploaded.");
+        AuditTrail.Record(store, clock, AuditEvents.SchoolAssetUploaded, $"school-{prefix}", "School image uploaded.");
         var result = await SaveAsync(profile, cancellationToken, cleanupOnFailure: storedName);
         if (result.Succeeded && previous is not null)
             assets.Delete(previous);
@@ -103,7 +103,7 @@ public sealed class SchoolProfileService(IDataStore store, IAssetStore assets, T
             return OperationResult.Failure<SchoolProfileDto>(ErrorCodes.NotFound);
 
         var previous = profile.SetAsset(kind, null, clock.GetUtcNow());
-        AuditTrail.Record(store, clock, "SchoolAssetRemoved", $"school-{ApiText.ToValue(kind)}", "School image removed.");
+        AuditTrail.Record(store, clock, AuditEvents.SchoolAssetRemoved, $"school-{ApiText.ToValue(kind)}", "School image removed.");
         var result = await SaveAsync(profile, cancellationToken);
         if (result.Succeeded && previous is not null)
             assets.Delete(previous);

@@ -301,3 +301,14 @@ form.form-stack.form-wide {
 .info-row dd {
   margin: 0;
 }
+
+.page-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.page-title > svg {
+  flex-shrink: 0;
+  color: var(--color-primary);
+}

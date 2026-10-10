@@ -1,4 +1,5 @@
-import { CalendarPlus, CircleCheck, Pencil, Star, Trash2 } from "lucide-react";
+import { SectionTitle } from "../../components/ui/section-title";
+import { CalendarPlus, CircleCheck, Pencil, Star, Trash2, CalendarDays } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -62,7 +63,7 @@ export function TermsPanel({ year, onMessage, onError, onReload }: TermsPanelPro
   return (
     <Card className="page-card" aria-labelledby="terms-title">
       <div className="card-header-row">
-        <h2 id="terms-title">{text.termsOf(year.label)}</h2>
+        <SectionTitle level={2} icon={CalendarDays} id="terms-title">{text.termsOf(year.label)}</SectionTitle>
         <Button variant="secondary" icon={<CalendarPlus aria-hidden="true" size={20} />} onClick={() => { setEditing(null); setDialogOpen(true); }}>
           {text.addTerm}
         </Button>

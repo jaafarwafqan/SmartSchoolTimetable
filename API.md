@@ -291,3 +291,13 @@ Entries outside the current academic year are saved; `outsideCurrentYear: true` 
 Passwords are 8–1024 characters and usernames are 3–64 characters (`CredentialRules`). Unknown `/api` paths return 404 `NOT_FOUND`, wrong methods return 405 `METHOD_NOT_ALLOWED`, wrong content types return 415 `UNSUPPORTED_MEDIA_TYPE`, and unhandled exceptions return 500 `INTERNAL_ERROR`. The OpenAPI document is served only in the Development environment, and the frontend client is hand-written (ADR 0013).
 
 There is no user/tenant attribution in request logs. Avoid logging credentials, recovery codes, cookies, launch tokens, or timetable personal data.
+
+## M1: timetable lifecycle and audit history
+- `POST /api/v1/timetables/{id}/archive` `{version}`: Draft or Approved → Archived (final). `409 TIMETABLE_INVALID_TRANSITION` otherwise.
+- `POST /api/v1/timetables/{id}/approve` `{version}`: Draft → Approved; the previously approved version becomes Archived. Approving an approved or archived version is `409 TIMETABLE_INVALID_TRANSITION`.
+- `POST /api/v1/timetables/{id}/rollback` `{version, note?}`: creates a NEW Draft (`source: "rolledBack"`, `parentVersionId`) with the older version's lessons. `201`.
+- `GET /api/v1/timetables/{fromId}/compare/{toId}`: `{totals, sections, teachers, changes[]}`; change kinds `added | removed | moved | reassigned`. `422 TIMETABLE_COMPARE_YEAR_MISMATCH` across years.
+- Version summaries carry `status` (`draft | approved | archived`) and `archivedAt`.
+- `GET /api/v1/academic-years/{id}/generation/manual-edits`: `{edits: {versionId, number, lessons} | null}` for the latest version when it is a manual edit.
+- `POST .../generation/runs` accepts `lockFromVersionId`; runs report `lockedFromVersionId`, `lockedLessons`, `locksDropped`.
+- `GET /api/v1/audit/?category=&eventType=&page=&pageSize=`: newest first; items `{id, occurredAt, eventType, category, target, params}`. Categories: `timetable generation backup account settings import school`.

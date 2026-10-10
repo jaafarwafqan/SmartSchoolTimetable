@@ -61,7 +61,7 @@ public sealed class ResourcesService(IDataStore store, TimeProvider clock)
         if (await NameTakenAsync(null, command.Name, token))
             return OperationResult.Invalid<ResourceDto>(nameof(command.Name), ErrorCodes.DuplicateName);
         store.Add(resource!);
-        AuditTrail.Record(store, clock, "ResourceCreated", "resource", "Resource created.");
+        AuditTrail.Record(store, clock, AuditEvents.ResourceCreated, "resource", "Resource created.");
         return await store.SaveAsync(() => ToDto(resource!), nameof(command.Name), token);
     }
 
@@ -78,7 +78,7 @@ public sealed class ResourcesService(IDataStore store, TimeProvider clock)
             return OperationResult.Invalid<ResourceDto>(nameof(command.Name), ErrorCodes.DuplicateName);
         if (StoreSaving.TryDomain<ResourceDto>(() => resource.Update(command.Name, kind, command.Capacity ?? resource.Capacity, command.Notes)) is { } invalid)
             return invalid;
-        AuditTrail.Record(store, clock, "ResourceUpdated", $"resource:{id}", "Resource updated.");
+        AuditTrail.Record(store, clock, AuditEvents.ResourceUpdated, $"resource:{id}", "Resource updated.");
         return await store.SaveAsync(() => ToDto(resource), nameof(command.Name), token);
     }
 
@@ -94,7 +94,7 @@ public sealed class ResourcesService(IDataStore store, TimeProvider clock)
             resource.Archive(clock.GetUtcNow());
         else
             resource.Restore();
-        AuditTrail.Record(store, clock, archived ? "ResourceArchived" : "ResourceRestored", $"resource:{id}", archived ? "Resource archived." : "Resource restored.");
+        AuditTrail.Record(store, clock, archived ? AuditEvents.ResourceArchived : AuditEvents.ResourceRestored, $"resource:{id}", archived ? "Resource archived." : "Resource restored.");
         return await store.SaveAsync(() => ToDto(resource), "Name", token);
     }
 
@@ -107,7 +107,7 @@ public sealed class ResourcesService(IDataStore store, TimeProvider clock)
         if (await references.DeleteBlockedAsync(ReferenceKinds.Resource, id, token) is { } inUse)
             return OperationResult.Failure<bool>(inUse);
         store.Remove(resource);
-        AuditTrail.Record(store, clock, "ResourceDeleted", $"resource:{id}", "Resource deleted.");
+        AuditTrail.Record(store, clock, AuditEvents.ResourceDeleted, $"resource:{id}", "Resource deleted.");
         return await store.SaveAsync(() => true, "Name", token);
     }
 

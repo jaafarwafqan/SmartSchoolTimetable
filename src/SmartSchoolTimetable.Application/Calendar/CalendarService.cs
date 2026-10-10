@@ -51,7 +51,7 @@ public sealed class CalendarService(IDataStore store, TimeProvider clock)
         if (StoreSaving.TryDomain<CalendarDayDto>(() => day = CalendarDay.Create(command.Title, start, end, kind, command.AffectsSchedule)) is { } invalid)
             return invalid;
         store.Add(day!);
-        AuditTrail.Record(store, clock, "CalendarDayCreated", "calendar-day", "Calendar day created.");
+        AuditTrail.Record(store, clock, AuditEvents.CalendarDayCreated, "calendar-day", "Calendar day created.");
         var mapper = await MapperAsync(token);
         return await store.SaveAsync(() => mapper(day!), nameof(command.Title), token);
     }
@@ -69,7 +69,7 @@ public sealed class CalendarService(IDataStore store, TimeProvider clock)
             return OperationResult.Failure<CalendarDayDto>(ErrorCodes.Conflict);
         if (StoreSaving.TryDomain<CalendarDayDto>(() => day.Update(command.Title, start, end, kind, command.AffectsSchedule)) is { } invalid)
             return invalid;
-        AuditTrail.Record(store, clock, "CalendarDayUpdated", $"calendar-day:{id}", "Calendar day updated.");
+        AuditTrail.Record(store, clock, AuditEvents.CalendarDayUpdated, $"calendar-day:{id}", "Calendar day updated.");
         var mapper = await MapperAsync(token);
         return await store.SaveAsync(() => mapper(day), nameof(command.Title), token);
     }
@@ -81,7 +81,7 @@ public sealed class CalendarService(IDataStore store, TimeProvider clock)
         if (!day.IsVersion(version))
             return OperationResult.Failure<bool>(ErrorCodes.Conflict);
         store.Remove(day);
-        AuditTrail.Record(store, clock, "CalendarDayDeleted", $"calendar-day:{id}", "Calendar day deleted.");
+        AuditTrail.Record(store, clock, AuditEvents.CalendarDayDeleted, $"calendar-day:{id}", "Calendar day deleted.");
         return await store.SaveAsync(() => true, "Title", token);
     }
 

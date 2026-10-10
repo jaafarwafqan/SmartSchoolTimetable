@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using SmartSchoolTimetable.Application.Common;
 using SmartSchoolTimetable.Domain;
 
 namespace SmartSchoolTimetable.Application;
@@ -63,7 +64,7 @@ public sealed class LocalAuthService(
 
             await ownerRepository.CreateOwnerAsync(
                 owner,
-                LocalAuditEntry.Create(now, "OwnerAccountCreated", "owner-account", "Initial owner setup completed."),
+                AuditTrail.Entry(now, AuditEvents.OwnerAccountCreated, "owner-account", "Initial owner setup completed."),
                 cancellationToken);
             var sessionId = sessionStore.Issue(owner.Username, recoveryCodeIssued: true);
             return new AuthOperationResult(
@@ -152,7 +153,7 @@ public sealed class LocalAuthService(
             owner.ReplaceRecoveryCode(salt, hash, now);
             await ownerRepository.SaveOwnerAsync(
                 owner,
-                LocalAuditEntry.Create(now, "RecoveryCodeRegenerated", "owner-account", "Recovery code regenerated."),
+                AuditTrail.Entry(now, AuditEvents.RecoveryCodeRegenerated, "owner-account", "Recovery code regenerated."),
                 cancellationToken);
             sessionStore.MarkRecoveryCodeIssued(sessionId);
             return new AuthOperationResult(true, RecoveryCode: recoveryCode);
@@ -222,7 +223,7 @@ public sealed class LocalAuthService(
 
             await ownerRepository.SaveOwnerAsync(
                 owner,
-                LocalAuditEntry.Create(now, "PasswordChanged", "owner-account", "Password reset using recovery code."),
+                AuditTrail.Entry(now, AuditEvents.PasswordChanged, "owner-account", "Password reset using recovery code."),
                 cancellationToken);
             return new AuthOperationResult(
                 true,
@@ -270,7 +271,7 @@ public sealed class LocalAuthService(
 
             await ownerRepository.SaveOwnerAsync(
                 owner,
-                LocalAuditEntry.Create(now, "PasswordChanged", "owner-account", "Owner password changed."),
+                AuditTrail.Entry(now, AuditEvents.PasswordChanged, "owner-account", "Owner password changed."),
                 cancellationToken);
             return new AuthOperationResult(true);
         }
@@ -301,7 +302,7 @@ public sealed class LocalAuthService(
             owner.SetInactivityTimeout(minutes, now);
             await ownerRepository.SaveOwnerAsync(
                 owner,
-                LocalAuditEntry.Create(now, "InactivityTimeoutChanged", "owner-account", "Inactivity auto-lock changed."),
+                AuditTrail.Entry(now, AuditEvents.InactivityTimeoutChanged, "owner-account", "Inactivity auto-lock changed."),
                 cancellationToken);
             return new AuthOperationResult(true, SessionId: sessionId, InactivityTimeout: EffectiveTimeout(owner));
         }

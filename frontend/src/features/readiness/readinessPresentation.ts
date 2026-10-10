@@ -79,7 +79,7 @@ export function fixHref(fix: string): string {
   if (["raiseTeacherLimit", "checkRelease", "removeTeacherBlocks"].includes(fix)) return "/teachers/list";
   if (["removeSubjectBlocks", "enableDistribution", "turnOffDoublePeriod"].includes(fix)) return "/classes/subjects";
   if (["raiseResourceCapacity", "restoreResource"].includes(fix)) return "/classes/resources";
-  if (fix === "raiseTimeLimit") return "/timetable/generate";
+  if (fix === "raiseTimeLimit" || fix === "unlockEdits") return "/timetable/generate";
   if (fix === "reviewWarnings") return "/readiness";
   return "/school/timing";
 }

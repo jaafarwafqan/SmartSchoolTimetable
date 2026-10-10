@@ -1,3 +1,4 @@
+import { Clock } from "lucide-react";
 import { OrphanBlockedNotice } from "./OrphanBlockedNotice";
 import { Alert } from "../../components/ui/alert";
 import { Card } from "../../components/ui/card";
@@ -21,7 +22,7 @@ export function ScheduleStructurePage() {
 
   return (
     <div className="page">
-      <PageHeader title={text.title} description={text.description} />
+      <PageHeader icon={Clock} title={text.title} description={text.description} />
       <OrphanBlockedNotice />
       {(week.isError || bells.isError || choice.years.isError) && <Alert tone="error" message={messages.school.common.loadFailed} />}
       {week.data && <WorkingDaysCard week={week.data} onReload={() => void week.refetch()} />}

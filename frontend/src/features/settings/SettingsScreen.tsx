@@ -1,3 +1,4 @@
+import { Settings } from "lucide-react";
 import { messages } from "../../i18n/messages";
 import { PageHeader } from "../../layout/PageHeader";
 import type { Bootstrap } from "../../lib/bootstrapQuery";
@@ -10,7 +11,7 @@ import { SetupWizardSection } from "./SetupWizardSection";
 export function SettingsScreen({ bootstrap }: { bootstrap: Bootstrap }) {
   return (
     <div className="page">
-      <PageHeader title={messages.app.settings} description={messages.app.settingsDescription} />
+      <PageHeader icon={Settings} title={messages.app.settings} description={messages.app.settingsDescription} />
       <div className="settings-grid">
         <InactivitySection bootstrap={bootstrap} />
         <RecoveryCodeSection />

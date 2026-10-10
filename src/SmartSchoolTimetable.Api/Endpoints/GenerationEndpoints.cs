@@ -20,6 +20,8 @@ public static class GenerationEndpoints
             ApiResults.From(context, await service.StartAsync(yearId, command, token), value => Results.Accepted($"/api/v1/generation/runs/{value.Id}", value)));
         runs.MapGet("/runs", async (long yearId, [AsParameters] ListQuery query, GenerationService service, CancellationToken token) =>
             Results.Ok(await service.ListAsync(yearId, query, token)));
+        runs.MapGet("/manual-edits", async (long yearId, GenerationService service, CancellationToken token) =>
+            Results.Ok(await service.ManualEditsOfLatestAsync(yearId, token)));
         runs.MapGet("/current", async (long yearId, GenerationService service, CancellationToken token) =>
             Results.Ok(new CurrentRunDto(await service.CurrentAsync(yearId, token))));
         return endpoints;
@@ -42,6 +44,12 @@ public static class GenerationEndpoints
             ApiResults.From(context, await service.SaveEditAsync(id, command, token), value => Results.Created($"/api/v1/timetables/{value.Id}", value)));
         timetables.MapGet("/{id:long}/export.xlsx", async (long id, int? term, HttpContext context, TimetableExportService service, CancellationToken token) =>
             ApiResults.From(context, await service.ExcelAsync(id, token, term ?? 1), file => Results.File(file.Content, file.ContentType, file.FileName)));
+        timetables.MapGet("/{fromId:long}/compare/{toId:long}", async (long fromId, long toId, HttpContext context, TimetableService service, CancellationToken token) =>
+            ApiResults.Ok(context, await service.CompareAsync(fromId, toId, token)));
+        timetables.MapPost("/{id:long}/archive", async (long id, ArchiveTimetableCommand command, HttpContext context, TimetableService service, CancellationToken token) =>
+            ApiResults.Ok(context, await service.ArchiveAsync(id, command, token)));
+        timetables.MapPost("/{id:long}/rollback", async (long id, RollbackTimetableCommand command, HttpContext context, TimetableService service, CancellationToken token) =>
+            ApiResults.From(context, await service.RollbackAsync(id, command, token), value => Results.Created($"/api/v1/timetables/{value.Id}", value)));
         timetables.MapPost("/{id:long}/approve", async (long id, ApproveTimetableCommand command, HttpContext context, TimetableService service, CancellationToken token) =>
             ApiResults.Ok(context, await service.ApproveAsync(id, command, token)));
         return endpoints;

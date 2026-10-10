@@ -53,7 +53,7 @@ public sealed class OrphanBlockedPeriodsService(IDataStore store, TimeProvider c
                 return OperationResult.Failure<OrphanBlockedPeriodsDto>(ErrorCodes.Conflict);
             var removed = drop();
             if (removed.Count > 0)
-                AuditTrail.Record(store, clock, "OrphanBlockedPeriodsRemoved", $"{owner.Kind}:{owner.Id}", $"Removed {removed.Count} blocked periods outside the timetable grid.");
+                AuditTrail.Record(store, clock, AuditEvents.OrphanBlockedPeriodsRemoved, $"{owner.Kind}:{owner.Id}", $"Removed {removed.Count} blocked periods outside the timetable grid.", new { count = removed.Count });
         }
         return await store.SaveAsync(() => Report(grid, teachers, subjects), "BlockedPeriods", token);
     }

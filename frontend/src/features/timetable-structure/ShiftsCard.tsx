@@ -1,4 +1,5 @@
-import { CalendarClock, Pencil, Plus, Trash2 } from "lucide-react";
+import { SectionTitle } from "../../components/ui/section-title";
+import { CalendarClock, Pencil, Plus, Trash2, Layers } from "lucide-react";
 import { GuardedDeleteDialog } from "../../components/References";
 import { useState } from "react";
 import { Alert } from "../../components/ui/alert";
@@ -61,7 +62,7 @@ export function ShiftsCard({ yearId }: { yearId: number }) {
   return (
     <Card className="page-card" aria-labelledby="shifts-title">
       <div className="card-header-row">
-        <h2 id="shifts-title">{text.shifts}</h2>
+        <SectionTitle level={2} icon={Layers} id="shifts-title">{text.shifts}</SectionTitle>
         <Button variant="secondary" icon={<Plus aria-hidden="true" size={20} />} onClick={() => openDialog(null)}>{text.addShift}</Button>
       </div>
       {shifts.isError && <Alert tone="error" message={messages.school.common.loadFailed} />}

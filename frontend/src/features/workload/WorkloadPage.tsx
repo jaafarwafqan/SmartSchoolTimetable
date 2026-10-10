@@ -1,4 +1,4 @@
-import { Grid3x3, UsersRound } from "lucide-react";
+import { Grid3x3, UsersRound, Gauge } from "lucide-react";
 import { useState } from "react";
 import { Alert } from "../../components/ui/alert";
 import { Card } from "../../components/ui/card";
@@ -44,7 +44,7 @@ export function WorkloadPage() {
   const teacherLoads = (loads.data ?? []).filter((load) => !load.released || load.assignedLessons > 0);
   return (
     <div className="page">
-      <PageHeader title={text.title} description={text.description} />
+      <PageHeader icon={Gauge} title={text.title} description={text.description} />
       <Card className="page-card">
         <YearPicker id="workload-year" choice={choice} />
       </Card>

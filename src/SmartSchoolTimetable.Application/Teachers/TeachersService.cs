@@ -54,7 +54,7 @@ public sealed class TeachersService(IDataStore store, TimeProvider clock)
         if (await ShortNameTakenAsync(null, command.ShortName, token))
             return OperationResult.Invalid<TeacherDto>(nameof(command.ShortName), ErrorCodes.DuplicateName);
         store.Add(teacher!);
-        AuditTrail.Record(store, clock, "TeacherCreated", "teacher", "Teacher created.");
+        AuditTrail.Record(store, clock, AuditEvents.TeacherCreated, "teacher", "Teacher created.");
         return await store.SaveAsync(() => ToDto(teacher!), nameof(command.ShortName), token);
     }
 
@@ -76,7 +76,7 @@ public sealed class TeachersService(IDataStore store, TimeProvider clock)
         var grid = await ScheduleGrids.LoadAsync(store, token);
         if (StoreSaving.TryDomain<TeacherDto>(() => teacher.Update(details, grid)) is { } invalid)
             return invalid;
-        AuditTrail.Record(store, clock, "TeacherUpdated", $"teacher:{id}", "Teacher updated.");
+        AuditTrail.Record(store, clock, AuditEvents.TeacherUpdated, $"teacher:{id}", "Teacher updated.");
         return await store.SaveAsync(() => ToDto(teacher), nameof(command.ShortName), token);
     }
 
@@ -92,7 +92,7 @@ public sealed class TeachersService(IDataStore store, TimeProvider clock)
             teacher.Archive(clock.GetUtcNow());
         else
             teacher.Restore();
-        AuditTrail.Record(store, clock, archived ? "TeacherArchived" : "TeacherRestored", $"teacher:{id}", archived ? "Teacher archived." : "Teacher restored.");
+        AuditTrail.Record(store, clock, archived ? AuditEvents.TeacherArchived : AuditEvents.TeacherRestored, $"teacher:{id}", archived ? "Teacher archived." : "Teacher restored.");
         return await store.SaveAsync(() => ToDto(teacher), "ShortName", token);
     }
 
@@ -105,7 +105,7 @@ public sealed class TeachersService(IDataStore store, TimeProvider clock)
         if (await references.DeleteBlockedAsync(ReferenceKinds.Teacher, id, token) is { } inUse)
             return OperationResult.Failure<bool>(inUse);
         store.Remove(teacher);
-        AuditTrail.Record(store, clock, "TeacherDeleted", $"teacher:{id}", "Teacher deleted.");
+        AuditTrail.Record(store, clock, AuditEvents.TeacherDeleted, $"teacher:{id}", "Teacher deleted.");
         return await store.SaveAsync(() => true, "ShortName", token);
     }
 
@@ -135,7 +135,7 @@ public sealed class TeachersService(IDataStore store, TimeProvider clock)
         var grid = await ScheduleGrids.LoadAsync(store, token);
         foreach (var line in lines)
             store.Add(Teacher.Create(new TeacherDetails(line.FullName, line.ShortName, null, null, false, null, null, null, null, null, null), grid));
-        AuditTrail.Record(store, clock, "TeachersBulkCreated", "teacher", $"{lines.Count} teachers created.");
+        AuditTrail.Record(store, clock, AuditEvents.TeachersBulkCreated, "teacher", $"{lines.Count} teachers created.", new { count = lines.Count });
         return await store.SaveAsync(() => new BulkCreatedDto(lines.Count), "Names", token);
     }
 
@@ -172,7 +172,7 @@ public sealed class TeachersService(IDataStore store, TimeProvider clock)
             return OperationResult.Invalid<TeacherDto>("SubjectId", ErrorCodes.InvalidOption);
         if (StoreSaving.TryDomain<TeacherDto>(() => teacher.AddSpecialization(subjectId)) is { } invalid)
             return invalid;
-        AuditTrail.Record(store, clock, "TeacherSpecializationAdded", $"teacher:{id}", "Specialization added.");
+        AuditTrail.Record(store, clock, AuditEvents.TeacherSpecializationAdded, $"teacher:{id}", "Specialization added.");
         return await store.SaveAsync(() => ToDto(teacher), "SpecializationIds", token);
     }
 

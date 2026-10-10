@@ -69,7 +69,7 @@ public sealed class ShiftModeService(IDataStore store, TimeProvider clock)
             store.Remove(shift);
         foreach (var kind in plan.Create)
             store.Add(Shift.Create(plan.Year.Id, kind == ShiftKind.Morning ? MorningName : EveningName, kind == ShiftKind.Morning ? 1 : 2, kind));
-        AuditTrail.Record(store, clock, "ShiftModeChanged", $"academic-year:{plan.Year.Id}", $"Shift mode set to {plan.Mode}.");
+        AuditTrail.Record(store, clock, AuditEvents.ShiftModeChanged, $"academic-year:{plan.Year.Id}", $"Shift mode set to {plan.Mode}.");
         var saved = await store.SaveAsync(() => true, "Mode", token);
         if (!saved.Succeeded)
             return saved.Cast<ShiftModeDto>();

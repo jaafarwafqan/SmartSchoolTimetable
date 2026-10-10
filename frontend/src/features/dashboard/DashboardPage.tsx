@@ -1,4 +1,5 @@
-import { RefreshCw, Wand2 } from "lucide-react";
+import { SectionTitle } from "../../components/ui/section-title";
+import { RefreshCw, Wand2, Rocket, ChartColumn, LayoutDashboard } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Alert } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
@@ -20,7 +21,7 @@ export function DashboardPage() {
   const format = useFormatter();
   return (
     <div className="page">
-      <PageHeader title={messages.school.nav.dashboard} description={messages.school.dashboard.description} />
+      <PageHeader icon={LayoutDashboard} title={messages.school.nav.dashboard} description={messages.school.dashboard.description} />
       {summary.isPending && <Spinner label={messages.school.common.loading} />}
       {summary.isError && (
         <Alert tone="error" message={userErrorMessage(summary.error)}>
@@ -35,7 +36,7 @@ export function DashboardPage() {
         <div className="dashboard-grid">
           {!summary.data.setupFinished && (
             <Card className="dashboard-card setup-resume" aria-labelledby="setup-resume-title">
-              <h2 id="setup-resume-title">{messages.school.wizard.title}</h2>
+              <SectionTitle level={2} icon={Rocket} id="setup-resume-title">{messages.school.wizard.title}</SectionTitle>
               <p className="card-note">{messages.school.wizard.openHint}</p>
               <Link className="ui-button ui-button-primary ui-button-md setup-resume-link" to="/setup">
                 <Wand2 aria-hidden="true" size={20} />
@@ -46,7 +47,7 @@ export function DashboardPage() {
           <SetupChecklist steps={summary.data.checklist} />
           <ReadinessCard />
           <Card className="dashboard-card" aria-labelledby="counts-title">
-            <h2 id="counts-title">{messages.school.dashboard.countsTitle}</h2>
+            <SectionTitle level={2} icon={ChartColumn} id="counts-title">{messages.school.dashboard.countsTitle}</SectionTitle>
             <dl className="count-grid">
               {summary.data.counts.filter((count) => countItems[count.key]).map((count) => (
                 <div key={count.key} className="count-item">

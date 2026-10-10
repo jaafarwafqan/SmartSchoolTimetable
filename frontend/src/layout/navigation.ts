@@ -1,4 +1,7 @@
-import { CalendarRange, LayoutDashboard, Library, School, Settings, UsersRound, type LucideIcon } from "lucide-react";
+import {
+  BookOpen, CalendarCheck, CalendarDays, CalendarRange, Clock, Cpu, DoorOpen, Gauge, LayoutDashboard, Layers, Library, School,
+  ScrollText, Settings, SlidersHorizontal, UsersRound, type LucideIcon,
+} from "lucide-react";
 import { messages } from "../i18n/messages";
 
 export type NavItem = {
@@ -9,7 +12,7 @@ export type NavItem = {
   end?: boolean;
 };
 
-export type NavTab = { to: string; label: string };
+export type NavTab = { to: string; label: string; icon: LucideIcon };
 export type NavGroup = { root: string; label: string; tabs: readonly NavTab[] };
 
 const nav = messages.school.nav;
@@ -20,44 +23,45 @@ export const navGroups: readonly NavGroup[] = [
     root: "/school",
     label: nav.school,
     tabs: [
-      { to: "/school/profile", label: nav.profile },
-      { to: "/school/year", label: nav.academicYears },
-      { to: "/school/timing", label: nav.scheduleStructure },
-      { to: "/school/calendar", label: nav.calendar },
+      { to: "/school/profile", label: nav.profile, icon: School },
+      { to: "/school/year", label: nav.academicYears, icon: CalendarDays },
+      { to: "/school/timing", label: nav.scheduleStructure, icon: Clock },
+      { to: "/school/calendar", label: nav.calendar, icon: CalendarRange },
     ],
   },
   {
     root: "/classes",
     label: nav.classes,
     tabs: [
-      { to: "/classes/stages", label: nav.stagesSections },
-      { to: "/classes/subjects", label: nav.subjects },
-      { to: "/classes/curriculum", label: nav.curriculum },
-      { to: "/classes/resources", label: nav.resources },
+      { to: "/classes/stages", label: nav.stagesSections, icon: Layers },
+      { to: "/classes/subjects", label: nav.subjects, icon: Library },
+      { to: "/classes/curriculum", label: nav.curriculum, icon: BookOpen },
+      { to: "/classes/resources", label: nav.resources, icon: DoorOpen },
     ],
   },
   {
     root: "/teachers",
     label: nav.teachers,
     tabs: [
-      { to: "/teachers/list", label: nav.teachers },
-      { to: "/teachers/workload", label: nav.workload },
+      { to: "/teachers/list", label: nav.teachers, icon: UsersRound },
+      { to: "/teachers/workload", label: nav.workload, icon: Gauge },
     ],
   },
   {
     root: "/timetable",
     label: nav.timetable,
     tabs: [
-      { to: "/timetable/generate", label: nav.generate },
-      { to: "/timetable/view", label: nav.timetables },
+      { to: "/timetable/generate", label: nav.generate, icon: Cpu },
+      { to: "/timetable/view", label: nav.timetables, icon: CalendarCheck },
     ],
   },
   {
     root: "/settings",
     label: nav.settings,
     tabs: [
-      { to: "/settings/general", label: nav.settingsGeneral },
-      { to: "/settings/scheduling", label: nav.schedulingProfile },
+      { to: "/settings/general", label: nav.settingsGeneral, icon: Settings },
+      { to: "/settings/scheduling", label: nav.schedulingProfile, icon: SlidersHorizontal },
+      { to: "/settings/history", label: nav.settingsHistory, icon: ScrollText },
     ],
   },
 ];

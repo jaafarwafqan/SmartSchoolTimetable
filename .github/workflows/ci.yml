@@ -1,0 +1,71 @@
+name: CI
+
+# No secrets are used. Third-party actions are pinned to full commit SHAs (the comment names the release tag).
+on:
+  push:
+    branches: ["master", "work/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: "9.0.x"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # Warnings are errors (Directory.Build.props). The API project also runs `npm ci` and the frontend build.
+      - name: dotnet build (Release)
+        run: dotnet build SmartSchoolTimetable.sln --configuration Release
+
+      - name: dotnet test (performance tests skipped)
+        run: dotnet test SmartSchoolTimetable.sln --configuration Release --no-build --filter "Category!=Performance"
+
+      - name: ESLint
+        working-directory: frontend
+        run: npx eslint .
+
+      - name: Stylelint
+        working-directory: frontend
+        run: npx stylelint "src/**/*.css"
+
+      - name: Vitest
+        working-directory: frontend
+        run: npx vitest run
+
+      - name: Install Playwright Chromium
+        working-directory: frontend
+        run: npx playwright install chromium
+
+      - name: Playwright + axe
+        working-directory: frontend
+        run: npx playwright test
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: playwright-results
+          path: frontend/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
+      # Policy (docs/DECISIONS_LOG / DECISIONS_PENDING #44): production dependencies must have no high findings;
+      # the dev-only stylelint chain is a documented accepted risk.
+      - name: npm audit (production dependencies)
+        working-directory: frontend
+        run: npm run audit:prod

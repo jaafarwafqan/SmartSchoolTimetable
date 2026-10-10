@@ -1,4 +1,5 @@
-import { ArrowDownToLine, Save } from "lucide-react";
+import { SectionTitle } from "../../components/ui/section-title";
+import { ArrowDownToLine, Save, ListOrdered } from "lucide-react";
 import { useState } from "react";
 import { ConflictAlert } from "../../components/ConflictAlert";
 import { Alert } from "../../components/ui/alert";
@@ -32,7 +33,7 @@ export function DayLessonsEditor({ yearId, shift, onSaved, onReload }: DayLesson
 
   return (
     <section className="day-lessons" aria-labelledby={`day-lessons-${shift.id}`}>
-      <h3 id={`day-lessons-${shift.id}`}>{text.dayLessonsTitle}</h3>
+      <SectionTitle level={3} icon={ListOrdered} id={`day-lessons-${shift.id}`}>{text.dayLessonsTitle}</SectionTitle>
       <p className="ui-field-hint">{text.dayLessonsHint}</p>
       {feedback.conflict && <ConflictAlert onReload={() => { feedback.reset(); onReload(); }} />}
       <Alert tone="error" message={feedback.error} />

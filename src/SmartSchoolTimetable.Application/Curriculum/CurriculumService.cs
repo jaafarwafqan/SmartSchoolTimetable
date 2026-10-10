@@ -38,14 +38,14 @@ public sealed class CurriculumService(IDataStore store, TimeProvider clock)
                 // notice. Assignments of the line are archived with it only after the owner confirmed.
                 if (await ArchiveWorkloadAsync(entry, command.ConfirmWorkload, token) is { } inUse)
                     return OperationResult.Failure<CurriculumTableDto>(inUse);
-                AuditTrail.Record(store, clock, "CurriculumEntryCleared", $"curriculum-entry:{entryId}", "Curriculum cell cleared (line archived).");
+                AuditTrail.Record(store, clock, AuditEvents.CurriculumEntryCleared, $"curriculum-entry:{entryId}", "Curriculum cell cleared (line archived).");
                 return await store.SaveAsync(async ct => await GetTableAsync(yearId, ct) with { Cleared = ToDto(entry) }, "WeeklyLessons", token);
             }
             else
             {
                 if (StoreSaving.TryDomain<CurriculumTableDto>(() => entry.SetWeeklyLessons(command.WeeklyLessons.Value)) is { } invalid)
                     return invalid;
-                AuditTrail.Record(store, clock, "CurriculumEntryUpdated", $"curriculum-entry:{entryId}", "Weekly lessons changed.");
+                AuditTrail.Record(store, clock, AuditEvents.CurriculumEntryUpdated, $"curriculum-entry:{entryId}", "Weekly lessons changed.");
             }
         }
         else if (command.WeeklyLessons is { } lessons)
@@ -54,7 +54,7 @@ public sealed class CurriculumService(IDataStore store, TimeProvider clock)
             if (StoreSaving.TryDomain<CurriculumTableDto>(() => created = CurriculumEntry.Create(stage.Id, subject.Id, lessons, command.Label, subject.RequiresDoublePeriod, null)) is { } invalid)
                 return invalid;
             store.Add(created!);
-            AuditTrail.Record(store, clock, "CurriculumEntryCreated", $"stage:{stage.Id}", "Curriculum entry created.");
+            AuditTrail.Record(store, clock, AuditEvents.CurriculumEntryCreated, $"stage:{stage.Id}", "Curriculum entry created.");
         }
         return await store.SaveAsync(ct => GetTableAsync(yearId, ct), "WeeklyLessons", token);
     }
@@ -68,7 +68,7 @@ public sealed class CurriculumService(IDataStore store, TimeProvider clock)
             return OperationResult.Failure<CurriculumEntryDto>(ErrorCodes.Conflict);
         if (StoreSaving.TryDomain<CurriculumEntryDto>(() => entry.Update(command.WeeklyLessons, command.Label, command.NeedsDoublePeriod, command.Notes)) is { } invalid)
             return invalid;
-        AuditTrail.Record(store, clock, "CurriculumEntryUpdated", $"curriculum-entry:{id}", "Curriculum entry updated.");
+        AuditTrail.Record(store, clock, AuditEvents.CurriculumEntryUpdated, $"curriculum-entry:{id}", "Curriculum entry updated.");
         return await store.SaveAsync(() => ToDto(entry), "WeeklyLessons", token);
     }
 
@@ -90,7 +90,7 @@ public sealed class CurriculumService(IDataStore store, TimeProvider clock)
             return OperationResult.Failure<CurriculumEntryDto>(inUse);
         if (!archived)
             await RestoreWorkloadAsync(entry, token);
-        AuditTrail.Record(store, clock, archived ? "CurriculumEntryArchived" : "CurriculumEntryRestored", $"curriculum-entry:{id}", "Curriculum entry archive state changed.");
+        AuditTrail.Record(store, clock, archived ? AuditEvents.CurriculumEntryArchived : AuditEvents.CurriculumEntryRestored, $"curriculum-entry:{id}", "Curriculum entry archive state changed.");
         return await store.SaveAsync(() => ToDto(entry), "WeeklyLessons", token);
     }
 
@@ -103,7 +103,7 @@ public sealed class CurriculumService(IDataStore store, TimeProvider clock)
         if (await references.DeleteBlockedAsync(ReferenceKinds.CurriculumEntry, id, token) is { } inUse)
             return OperationResult.Failure<bool>(inUse);
         store.Remove(entry);
-        AuditTrail.Record(store, clock, "CurriculumEntryDeleted", $"curriculum-entry:{id}", "Curriculum entry deleted.");
+        AuditTrail.Record(store, clock, AuditEvents.CurriculumEntryDeleted, $"curriculum-entry:{id}", "Curriculum entry deleted.");
         return await store.SaveAsync(() => true, "WeeklyLessons", token);
     }
 
@@ -121,7 +121,7 @@ public sealed class CurriculumService(IDataStore store, TimeProvider clock)
         foreach (var assignment in assignments)
             assignment.Archive(now);
         if (assignments.Count > 0)
-            AuditTrail.Record(store, clock, "WorkloadArchivedWithLine", $"curriculum-entry:{entry.Id}", $"{assignments.Count} assignments archived with the line.");
+            AuditTrail.Record(store, clock, AuditEvents.WorkloadArchivedWithLine, $"curriculum-entry:{entry.Id}", $"{assignments.Count} assignments archived with the line.", new { count = assignments.Count });
         return null;
     }
 

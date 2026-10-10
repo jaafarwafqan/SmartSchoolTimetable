@@ -1,4 +1,4 @@
-import { CalendarDays, CalendarPlus, List, Pencil, Trash2, TriangleAlert } from "lucide-react";
+import { CalendarDays, CalendarPlus, List, Pencil, Trash2, TriangleAlert, CalendarCheck, CalendarX, CalendarRange } from "lucide-react";
 import { useState } from "react";
 import { DateField } from "../../components/DateField";
 import { InlineAddForm } from "../../components/InlineAddForm";
@@ -54,7 +54,9 @@ export function CalendarPage() {
       header: common.status,
       cell: (day) => (
         <span className="row-actions">
-          <Badge tone={day.affectsSchedule ? "primary" : "neutral"}>{day.affectsSchedule ? text.affects : text.noEffect}</Badge>
+          {day.affectsSchedule
+            ? <Badge tone="primary" icon={<CalendarCheck aria-hidden="true" size={16} />}>{text.affects}</Badge>
+            : <Badge icon={<CalendarX aria-hidden="true" size={16} />}>{text.noEffect}</Badge>}
           {day.outsideCurrentYear && <Badge tone="warning" icon={<TriangleAlert aria-hidden="true" size={16} />}>{text.outsideYear}</Badge>}
         </span>
       ),
@@ -73,7 +75,7 @@ export function CalendarPage() {
 
   return (
     <div className="page">
-      <PageHeader title={text.title} description={text.description}
+      <PageHeader icon={CalendarRange} title={text.title} description={text.description}
         actions={<Button icon={<CalendarPlus aria-hidden="true" size={20} />} onClick={() => openDialog(null)}>{text.add}</Button>} />
       <Card className="page-card">
         <Alert tone="success" message={addFeedback.success} />

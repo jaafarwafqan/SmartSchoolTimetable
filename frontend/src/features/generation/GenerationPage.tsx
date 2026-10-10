@@ -1,4 +1,5 @@
-import { CalendarRange, ChevronDown, CircleAlert, CircleCheck, ExternalLink, Play, ShieldCheck, Square } from "lucide-react";
+import { SectionTitle } from "../../components/ui/section-title";
+import { CalendarRange, ChevronDown, CircleAlert, CircleCheck, ExternalLink, Hand, Lock, Play, RefreshCw, ShieldCheck, Square, LoaderCircle, ClipboardCheck, Stethoscope, SlidersHorizontal, History, TriangleAlert, Info, Cpu } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { Link } from "react-router-dom";
 import { userErrorMessage } from "../../api";
@@ -8,6 +9,7 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { Checkbox } from "../../components/ui/checkbox";
 import { ChoiceCards } from "../../components/ui/choice-cards";
+import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { Field } from "../../components/ui/field";
 import { Input } from "../../components/ui/input";
 import { DataTable } from "../../components/ui/table";
@@ -23,13 +25,23 @@ import { useFormFeedback } from "../../lib/useFormFeedback";
 import { errorCount, fixHref, warningCount } from "../readiness/readinessPresentation";
 import { useReadiness } from "../readiness/readinessApi";
 import {
-  isActive, useCancelGeneration, useCurrentRun, useEngine, useRunHistory, useStartGeneration,
-  type GenerationMode, type GenerationRun,
+  isActive, useCancelGeneration, useCurrentRun, useEngine, useManualEdits, useRunHistory, useStartGeneration,
+  type GenerationMode, type GenerationRun, type RunStatus,
 } from "./generationApi";
 import { diagnosticMessage, elapsedSeconds, phaseIndex, phaseOrder, seconds, statusNote, statusTone, timeLimitChoices } from "./generationPresentation";
 
 const text = messages.school.generation;
 const readinessText = messages.school.readiness;
+const lifecycle = messages.school.lifecycle;
+
+type EditsChoice = "keep" | "discard";
+
+/** Run status as a badge: the icon repeats the colour's meaning. */
+function StatusBadge({ status }: { status: RunStatus }) {
+  const tone = statusTone(status);
+  const icon = tone === "success" ? <CircleCheck aria-hidden="true" size={16} /> : tone === "danger" ? <CircleAlert aria-hidden="true" size={16} /> : tone === "warning" ? <TriangleAlert aria-hidden="true" size={16} /> : <Info aria-hidden="true" size={16} />;
+  return <Badge tone={tone === "neutral" ? "primary" : tone} icon={icon}>{text.statuses[status]}</Badge>;
+}
 
 /** Re-renders every second while a run is active, for the real elapsed timer. */
 function useNow(active: boolean): number {
@@ -50,7 +62,7 @@ function ProgressPanel({ run, format, onStop, stopping }: { run: GenerationRun; 
   return (
     <Card className="page-card generation-progress" aria-labelledby="generation-progress-title">
       <div className="generation-heading">
-        <h2 id="generation-progress-title">{text.progressTitle}</h2>
+        <SectionTitle level={2} icon={LoaderCircle} id="generation-progress-title">{text.progressTitle}</SectionTitle>
         <Button variant="danger" icon={<Square aria-hidden="true" size={18} />} loading={stopping} onClick={onStop}>{stopping ? text.stopping : text.stop}</Button>
       </div>
       <ol className="generation-steps">
@@ -78,13 +90,17 @@ function ResultPanel({ run, format }: { run: GenerationRun; format: Formatter })
   return (
     <Card className="page-card generation-result" aria-labelledby="generation-result-title">
       <div className="generation-heading">
-        <h2 id="generation-result-title">{text.resultTitle}</h2>
+        <SectionTitle level={2} icon={ClipboardCheck} id="generation-result-title">{text.resultTitle}</SectionTitle>
         <Badge tone={tone} icon={tone === "success" ? <CircleCheck aria-hidden="true" size={16} /> : <CircleAlert aria-hidden="true" size={16} />}>
           {text.statuses[run.status]}
         </Badge>
       </div>
       <p>{statusNote(run)}</p>
       {run.errorCode && run.status === "failed" && <Alert tone="error" message={messages.errors[run.errorCode as keyof typeof messages.errors] ?? messages.errors.UNKNOWN_ERROR} />}
+      {run.lockedLessons > 0 && (
+        <p className="generation-verified"><Lock aria-hidden="true" size={18} /><span>{lifecycle.locksKept(format.count(run.lockedLessons - run.locksDropped, "lesson"))}</span></p>
+      )}
+      {run.locksDropped > 0 && <Alert tone="warning" message={lifecycle.locksDropped(format.count(run.locksDropped, "lesson"))} />}
       <dl className="generation-stats">
         <div><dt>{text.lessonsPlaced}</dt><dd>{format.count(run.lessonsPlaced, "lesson")}</dd></div>
         {run.score && <div><dt>{text.totalScore}</dt><dd>{format.number(run.score.total)}</dd></div>}
@@ -121,7 +137,7 @@ function DiagnosticsPanel({ run, format }: { run: GenerationRun; format: Formatt
   const isTimeout = run.status === "timedOut";
   return (
     <Card className="page-card generation-diagnostics" aria-labelledby="generation-diagnostics-title">
-      <h2 id="generation-diagnostics-title">{text.diagnosticsTitle}</h2>
+      <SectionTitle level={2} icon={Stethoscope} id="generation-diagnostics-title">{text.diagnosticsTitle}</SectionTitle>
       {!isTimeout && <p className="card-note">{diagnostics.minimal ? text.diagnosticsMinimal : text.diagnosticsNotMinimal}</p>}
       <ul className="readiness-finding-list">
         {diagnostics.findings.map((finding, index) => (
@@ -159,6 +175,9 @@ export function GenerationPage() {
   const current = useCurrentRun(yearId);
   const history = useRunHistory(yearId);
   const start = useStartGeneration(yearId);
+  const manualEdits = useManualEdits(yearId);
+  const [asking, setAsking] = useState(false);
+  const [editsChoice, setEditsChoice] = useState<EditsChoice>("keep");
   const cancel = useCancelGeneration();
   const feedback = useFormFeedback();
   const advancedId = useId();
@@ -171,21 +190,38 @@ export function GenerationPage() {
 
   // A finished run refreshes the readiness and the saved versions it may have created.
   useEffect(() => {
-    if (run && !active) void history.refetch();
+    if (run && !active) {
+      void history.refetch();
+      void manualEdits.refetch();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run?.status]);
 
-  function onStart() {
+  const edits = manualEdits.data?.edits ?? null;
+
+  /** Starts a generation; `keepFrom` is the version whose manual edits stay locked (null discards them). */
+  function begin(keepFrom: number | null) {
     feedback.reset();
+    setAsking(false);
     start.mutate(
-      { mode, timeLimitSeconds: timeLimit, deterministic, seed: seedValue, workers: workers ?? engine.data?.defaultWorkers ?? 1 },
+      { mode, timeLimitSeconds: timeLimit, deterministic, seed: seedValue, workers: workers ?? engine.data?.defaultWorkers ?? 1, ...(keepFrom === null ? {} : { lockFromVersionId: keepFrom }) },
       { onSuccess: () => feedback.showSuccess(text.started), onError: feedback.showError },
     );
   }
 
+  // The latest version is a manual edit: ask what to do with the lessons the owner moved by hand before regenerating over them.
+  function onStart() {
+    if (edits) {
+      setEditsChoice("keep");
+      setAsking(true);
+    } else {
+      begin(null);
+    }
+  }
+
   return (
     <div className="page">
-      <PageHeader title={text.title} description={text.description} />
+      <PageHeader icon={Cpu} title={text.title} description={text.description} />
       {!yearId && school.isSuccess && <Alert tone="warning" message={readinessText.noYear} />}
       {engine.data && !engineReady && <Alert tone="error" message={messages.errors.SOLVER_UNAVAILABLE} />}
       {current.isError && <Alert tone="error" message={text.loadFailed}>{userErrorMessage(current.error)}</Alert>}
@@ -195,7 +231,7 @@ export function GenerationPage() {
       {yearId && (
         <Card className="page-card readiness-summary" aria-labelledby="generation-readiness-title">
           <div className="generation-heading">
-            <h2 id="generation-readiness-title">{text.readinessTitle}</h2>
+            <SectionTitle level={2} icon={ShieldCheck} id="generation-readiness-title">{text.readinessTitle}</SectionTitle>
             <Link className="link-button" to="/readiness"><ExternalLink aria-hidden="true" size={16} /><span>{text.openReadiness}</span></Link>
           </div>
           {readiness.isPending && <p>{readinessText.loading}</p>}
@@ -207,7 +243,7 @@ export function GenerationPage() {
                 <strong>{readiness.data.ready ? text.readinessReady : text.readinessBlocked}</strong>
               </p>
               <div className="readiness-counts">
-                <Badge tone={readiness.data.errors ? "danger" : "success"}>{errorCount(readiness.data.errors, format)}</Badge>
+                <Badge tone={readiness.data.errors ? "danger" : "success"} icon={readiness.data.errors ? <CircleAlert aria-hidden="true" size={16} /> : <CircleCheck aria-hidden="true" size={16} />}>{errorCount(readiness.data.errors, format)}</Badge>
                 <Badge>{warningCount(readiness.data.warnings, format)}</Badge>
               </div>
             </>
@@ -217,7 +253,7 @@ export function GenerationPage() {
 
       {yearId && !active && (
         <Card className="page-card generation-options" aria-labelledby="generation-options-title">
-          <h2 id="generation-options-title">{text.optionsTitle}</h2>
+          <SectionTitle level={2} icon={SlidersHorizontal} id="generation-options-title">{text.optionsTitle}</SectionTitle>
           <ChoiceCards<GenerationMode>
             name="generation-mode"
             legend={text.mode}
@@ -263,6 +299,19 @@ export function GenerationPage() {
         </Card>
       )}
 
+      {edits && (
+        <ConfirmDialog open={asking} title={lifecycle.keepEditsTitle}
+          consequence={lifecycle.keepEditsBody(format.number(edits.number), format.count(edits.lessons, "lesson"))}
+          confirmLabel={lifecycle.keepEditsConfirm} confirmIcon={<Play aria-hidden="true" size={18} />}
+          onCancel={() => setAsking(false)} onConfirm={() => begin(editsChoice === "keep" ? edits.versionId : null)}>
+          <ChoiceCards<EditsChoice> name="manual-edits-choice" legend={lifecycle.keepEditsLegend} value={editsChoice} onChange={setEditsChoice}
+            choices={[
+              { value: "keep", label: lifecycle.keepEditsKeep, description: lifecycle.keepEditsKeepHint, icon: <Hand aria-hidden="true" size={20} /> },
+              { value: "discard", label: lifecycle.keepEditsDiscard, description: lifecycle.keepEditsDiscardHint, icon: <RefreshCw aria-hidden="true" size={20} /> },
+            ]} />
+        </ConfirmDialog>
+      )}
+
       {run && active && (
         <ProgressPanel run={run} format={format} stopping={cancel.isPending}
           onStop={() => cancel.mutate(run.id, { onSuccess: () => feedback.showSuccess(text.stopRequested), onError: feedback.showError })} />
@@ -272,11 +321,11 @@ export function GenerationPage() {
 
       {history.data && history.data.items.length > 1 && (
         <Card className="page-card" aria-labelledby="generation-history-title">
-          <h2 id="generation-history-title">{text.history}</h2>
+          <SectionTitle level={2} icon={History} id="generation-history-title">{text.history}</SectionTitle>
           <DataTable caption={text.history} rows={history.data.items} rowKey={(item) => String(item.id)} columns={[
             { key: "date", header: text.startedAt, cell: (item) => format.date(item.queuedAt.slice(0, 10)) },
             { key: "mode", header: text.mode, cell: (item) => text.modes[item.mode] },
-            { key: "status", header: text.resultTitle, cell: (item) => <Badge tone={statusTone(item.status)}>{text.statuses[item.status]}</Badge> },
+            { key: "status", header: text.resultTitle, cell: (item) => <StatusBadge status={item.status} /> },
             { key: "score", header: text.totalScore, numeric: true, cell: (item) => (item.score ? format.number(item.score.total) : text.none) },
           ]} />
 

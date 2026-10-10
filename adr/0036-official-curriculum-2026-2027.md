@@ -31,7 +31,7 @@ The owner supplied the Ministry of Education's official study plans for 2026-202
   - Entry lines gain `inStatedTotal` and `note`.
 
 ## Consequences
-- Open questions for the owner are in DECISIONS_PENDING #66–#68.
+- Open questions for the owner are in DECISIONS_LOG #66–#68.
 - How to change: replace the JSON (bump `templateVersion` and the loader check), `SuggestedCurriculumTemplate`, `SuggestedCurriculumService`, `SuggestedCurriculumPanel`.
 
 ## Addendum (2026-10-09): owner decisions #66–#68

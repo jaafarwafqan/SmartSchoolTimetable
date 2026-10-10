@@ -70,12 +70,12 @@ public sealed class WorkloadService(IDataStore store, TimeProvider clock)
             if (command.TeacherId is { } next)
             {
                 if (current.Reassign(next))
-                    AuditTrail.Record(store, clock, "WorkloadReassigned", $"workload:{current.Id}", "Assignment given to another teacher.");
+                    AuditTrail.Record(store, clock, AuditEvents.WorkloadReassigned, $"workload:{current.Id}", "Assignment given to another teacher.");
             }
             else
             {
                 current.Archive(clock.GetUtcNow());
-                AuditTrail.Record(store, clock, "WorkloadCleared", $"workload:{current.Id}", "Assignment cleared.");
+                AuditTrail.Record(store, clock, AuditEvents.WorkloadCleared, $"workload:{current.Id}", "Assignment cleared.");
             }
         }
         else if (command.TeacherId is { } teacher)
@@ -84,7 +84,7 @@ public sealed class WorkloadService(IDataStore store, TimeProvider clock)
             if (current is not null)
                 return OperationResult.Failure<WorkloadStageDto>(ErrorCodes.Conflict);
             store.Add(WorkloadAssignment.Create(section.Id, entry.Id, teacher));
-            AuditTrail.Record(store, clock, "WorkloadAssigned", $"section:{section.Id}", "Line assigned to a teacher.");
+            AuditTrail.Record(store, clock, AuditEvents.WorkloadAssigned, $"section:{section.Id}", "Line assigned to a teacher.");
         }
         var stageId = section.StageId;
         return await store.SaveAsync(async ct => StageMatrix((await WorkloadData.LoadAsync(store, yearId, forUpdate: false, ct))!, data.Stages.First(stage => stage.Id == stageId)), "TeacherId", token);
@@ -93,7 +93,7 @@ public sealed class WorkloadService(IDataStore store, TimeProvider clock)
     public Task<OperationResult<WorkloadPlanDto>> AssignAcrossStageAsync(long yearId, AssignAcrossStageCommand command, bool apply, CancellationToken token)
     {
         ArgumentNullException.ThrowIfNull(command);
-        return PlanAsync(yearId, apply, "WorkloadAssignedAcrossStage", data =>
+        return PlanAsync(yearId, apply, AuditEvents.WorkloadAssignedAcrossStage, data =>
         {
             if (!ActiveTeacher(data, command.TeacherId))
                 return OperationResult.Invalid<IReadOnlyList<Change>>(nameof(command.TeacherId), ErrorCodes.InvalidOption);
@@ -107,7 +107,7 @@ public sealed class WorkloadService(IDataStore store, TimeProvider clock)
     public Task<OperationResult<WorkloadPlanDto>> ClassTeacherAsync(long yearId, ClassTeacherCommand command, bool apply, CancellationToken token)
     {
         ArgumentNullException.ThrowIfNull(command);
-        return PlanAsync(yearId, apply, "WorkloadClassTeacher", data =>
+        return PlanAsync(yearId, apply, AuditEvents.WorkloadClassTeacher, data =>
         {
             if (!ActiveTeacher(data, command.TeacherId))
                 return OperationResult.Invalid<IReadOnlyList<Change>>(nameof(command.TeacherId), ErrorCodes.InvalidOption);
@@ -124,7 +124,7 @@ public sealed class WorkloadService(IDataStore store, TimeProvider clock)
     public Task<OperationResult<WorkloadPlanDto>> TransferAsync(long yearId, TransferWorkloadCommand command, bool apply, CancellationToken token)
     {
         ArgumentNullException.ThrowIfNull(command);
-        return PlanAsync(yearId, apply, "WorkloadTransferred", data =>
+        return PlanAsync(yearId, apply, AuditEvents.WorkloadTransferred, data =>
         {
             if (!data.Teachers.ContainsKey(command.FromTeacherId))
                 return OperationResult.Invalid<IReadOnlyList<Change>>(nameof(command.FromTeacherId), ErrorCodes.InvalidOption);
@@ -138,7 +138,7 @@ public sealed class WorkloadService(IDataStore store, TimeProvider clock)
     public Task<OperationResult<WorkloadPlanDto>> RemoveAsync(long yearId, RemoveWorkloadCommand command, bool apply, CancellationToken token)
     {
         ArgumentNullException.ThrowIfNull(command);
-        return PlanAsync(yearId, apply, "WorkloadRemoved", data =>
+        return PlanAsync(yearId, apply, AuditEvents.WorkloadRemoved, data =>
         {
             if (!data.Teachers.ContainsKey(command.TeacherId))
                 return OperationResult.Invalid<IReadOnlyList<Change>>(nameof(command.TeacherId), ErrorCodes.InvalidOption);
@@ -159,7 +159,7 @@ public sealed class WorkloadService(IDataStore store, TimeProvider clock)
 
         foreach (var suggestion in plan.Assignments)
             store.Add(WorkloadAssignment.Create(suggestion.SectionId, suggestion.EntryId, suggestion.TeacherId));
-        AuditTrail.Record(store, clock, "WorkloadAssignmentsSuggested", $"academic-year:{yearId}", $"{plan.Assignments.Count} workload assignments suggested.");
+        AuditTrail.Record(store, clock, AuditEvents.WorkloadAssignmentsSuggested, $"academic-year:{yearId}", $"{plan.Assignments.Count} workload assignments suggested.", new { count = plan.Assignments.Count });
         return await store.SaveAsync(() => plan, "Confirm", token);
     }
 
@@ -266,7 +266,7 @@ public sealed class WorkloadService(IDataStore store, TimeProvider clock)
                     break;
             }
         }
-        AuditTrail.Record(store, clock, auditEvent, $"academic-year:{yearId}", $"{dto.Changes} workload changes.");
+        AuditTrail.Record(store, clock, auditEvent, $"academic-year:{yearId}", $"{dto.Changes} workload changes.", new { changes = dto.Changes });
         return await store.SaveAsync(() => dto, "TeacherId", token);
     }
 

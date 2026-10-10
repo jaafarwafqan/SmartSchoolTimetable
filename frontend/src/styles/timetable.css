@@ -387,3 +387,59 @@
   margin: 0;
   font-size: var(--text-lg);
 }
+
+/* ---------- M1: version actions and comparison ---------- */
+.version-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.version-comparison {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.version-comparison > * {
+  min-inline-size: 0;
+}
+
+.comparison-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.comparison-legend,
+.comparison-changes {
+  display: grid;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.comparison-legend {
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+
+.comparison-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--text-sm);
+}
+
+.comparison-changes li {
+  padding-block: 0.25rem;
+  border-block-end: 1px solid var(--color-line);
+}
+
+@media print {
+  body:has(.timetable-print-root) .version-comparison,
+  body:has(.timetable-print-root) .version-actions {
+    display: none;
+  }
+}

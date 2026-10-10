@@ -1,4 +1,5 @@
-import { CircleAlert, CircleCheck, ChevronLeft } from "lucide-react";
+import { SectionTitle } from "../../components/ui/section-title";
+import { CircleAlert, CircleCheck, ChevronLeft, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Alert } from "../../components/ui/alert";
 import { Card } from "../../components/ui/card";
@@ -17,7 +18,7 @@ export function ReadinessCard() {
   const readiness = useReadiness(yearId);
   return (
     <Card className="dashboard-card readiness-card" aria-labelledby="readiness-card-title">
-      <h2 id="readiness-card-title">{text.title}</h2>
+      <SectionTitle level={2} icon={ShieldCheck} id="readiness-card-title">{text.title}</SectionTitle>
       {!yearId && <Alert tone="warning" message={text.noYear} />}
       {readiness.isPending && yearId !== undefined && <p>{text.loading}</p>}
       {readiness.isError && <Alert tone="error" message={text.loadFailed} />}

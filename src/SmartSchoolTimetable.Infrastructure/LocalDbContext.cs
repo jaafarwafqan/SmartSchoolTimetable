@@ -40,6 +40,8 @@ public sealed class LocalDbContext(DbContextOptions<LocalDbContext> options) : D
             entity.Property(entry => entry.EventType).HasMaxLength(64).IsRequired();
             entity.Property(entry => entry.Target).HasMaxLength(128).IsRequired();
             entity.Property(entry => entry.Summary).HasMaxLength(512).IsRequired();
+            entity.Property(entry => entry.ParamsJson).HasMaxLength(LocalAuditEntry.ParamsMaxLength);
+            entity.HasIndex(entry => new { entry.EventType, entry.OccurredAt });
             entity.HasIndex(entry => entry.OccurredAt);
         });
 

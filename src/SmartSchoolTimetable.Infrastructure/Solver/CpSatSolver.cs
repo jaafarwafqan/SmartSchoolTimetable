@@ -76,7 +76,8 @@ public sealed class CpSatSolver : ISolver
         var clock = Stopwatch.StartNew();
         if (token.IsCancellationRequested)
             return new SolverResult(SolverStatus.Cancelled, [], null, null, 0, null, 0, null);
-        var builder = CpSatModelBuilder.Build(input, settings.DoublePeriodsRequired, diagnostic: false);
+        var builder = CpSatModelBuilder.Build(input, settings.DoublePeriodsRequired, diagnostic: false, settings.Locked);
+        var dropped = builder.LocksDropped;
         var solver = new CpSolver { StringParameters = Parameters(settings, settings.TimeLimitSeconds) };
         var callback = new ProgressCallback(clock, progress);
         CpSolverStatus status;
@@ -94,19 +95,19 @@ public sealed class CpSatSolver : ISolver
                     .ToArray();
                 var resultStatus = cancelled ? SolverStatus.Cancelled : status == CpSolverStatus.Optimal ? SolverStatus.Optimal : SolverStatus.Feasible;
                 return new SolverResult(resultStatus, lessons, (long)Math.Round(solver.ObjectiveValue), (long)Math.Round(solver.BestObjectiveBound),
-                    callback.Improvements, callback.FirstSolutionSeconds, elapsed, null);
+                    callback.Improvements, callback.FirstSolutionSeconds, elapsed, null, LocksDropped: dropped);
             case CpSolverStatus.Infeasible:
                 var diagnostics = CpSatDiagnostics.Explain(input, settings, settings.TimeLimitSeconds * DiagnosticsShare, token);
-                return new SolverResult(SolverStatus.Infeasible, [], null, null, callback.Improvements, null, clock.Elapsed.TotalSeconds, diagnostics);
+                return new SolverResult(SolverStatus.Infeasible, [], null, null, callback.Improvements, null, clock.Elapsed.TotalSeconds, diagnostics, LocksDropped: dropped);
             case CpSolverStatus.Unknown:
                 if (cancelled)
-                    return new SolverResult(SolverStatus.Cancelled, [], null, null, 0, null, elapsed, null);
+                    return new SolverResult(SolverStatus.Cancelled, [], null, null, 0, null, elapsed, null, LocksDropped: dropped);
                 var advice = new SolverFinding(DiagnosticCodes.TimeoutNoSolution, new FindingEntity(FindingEntities.School, 0, string.Empty), [],
                     settings.TimeLimitSeconds, null, ["raiseTimeLimit", "reviewWarnings"], null);
                 var bound = double.IsFinite(solver.BestObjectiveBound) ? (long?)Math.Round(solver.BestObjectiveBound) : null;
-                return new SolverResult(SolverStatus.TimedOut, [], null, bound, 0, null, elapsed, new SolverDiagnostics([advice], Minimal: false));
+                return new SolverResult(SolverStatus.TimedOut, [], null, bound, 0, null, elapsed, new SolverDiagnostics([advice], Minimal: false), LocksDropped: dropped);
             default:
-                return new SolverResult(SolverStatus.Failed, [], null, null, 0, null, elapsed, null, Application.ErrorCodes.SolverFailed);
+                return new SolverResult(SolverStatus.Failed, [], null, null, 0, null, elapsed, null, Application.ErrorCodes.SolverFailed, dropped);
         }
     }
 

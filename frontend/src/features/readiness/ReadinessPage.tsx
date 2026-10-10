@@ -1,4 +1,5 @@
-import { CircleAlert, CircleCheck, ExternalLink, RefreshCw } from "lucide-react";
+import { SectionTitle } from "../../components/ui/section-title";
+import { CircleAlert, CircleCheck, ExternalLink, RefreshCw, ListChecks, FolderOpen, TriangleAlert, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { userErrorMessage } from "../../api";
@@ -35,7 +36,7 @@ export function ReadinessPage() {
   const checked = readiness.data ? localDateTime(readiness.data.checkedAt) : null;
   return (
     <div className="page">
-      <PageHeader title={text.title} description={text.description} actions={(
+      <PageHeader icon={ShieldCheck} title={text.title} description={text.description} actions={(
         <Button icon={<RefreshCw aria-hidden="true" size={18} />} loading={readiness.isFetching} disabled={!yearId} onClick={() => void readiness.refetch()}>
           {text.refresh}
         </Button>
@@ -58,19 +59,19 @@ export function ReadinessPage() {
               <strong>{readiness.data.ready ? text.ready : text.blocked}</strong>
             </p>
             <div className="readiness-counts">
-              <Badge tone={readiness.data.errors ? "danger" : "success"}>{errorCount(readiness.data.errors, format)}</Badge>
+              <Badge tone={readiness.data.errors ? "danger" : "success"} icon={readiness.data.errors ? <CircleAlert aria-hidden="true" size={16} /> : <CircleCheck aria-hidden="true" size={16} />}>{errorCount(readiness.data.errors, format)}</Badge>
               <Badge>{warningCount(readiness.data.warnings, format)}</Badge>
             </div>
             <p className="readiness-meta"><span>{text.checkedSummary(format.date(checked!.date), format.time(checked!.time))}</span>
               <span>{text.hashLabel} <LtrText>{text.shortHash(readiness.data.inputHash.slice(0, 12))}</LtrText></span></p>
           </Card>
           <section className="readiness-findings" aria-labelledby="readiness-findings-title">
-            <h2 id="readiness-findings-title">{text.findings}</h2>
+            <SectionTitle level={2} icon={ListChecks} id="readiness-findings-title">{text.findings}</SectionTitle>
             {groups.length === 0 && <Alert tone="success" message={text.noFindings} />}
             {groups.map((group) => (
               <Card className="page-card readiness-group" key={group.key}>
                 <div className="readiness-group-heading">
-                  <h3>{group.entity.name ? isolate(group.entity.name) : text.title}</h3>
+                  <SectionTitle level={3} icon={FolderOpen}>{group.entity.name ? isolate(group.entity.name) : text.title}</SectionTitle>
                   <Link className="link-button" to={entityHref(group.entity.kind)}>
                     <span>{messages.school.dashboard.openStep}</span><ExternalLink aria-hidden="true" size={16} />
                   </Link>
@@ -79,7 +80,7 @@ export function ReadinessPage() {
                 <ul className="readiness-finding-list">
                   {group.findings.map((finding, index) => (
                     <li key={`${finding.code}-${index}`}>
-                      <Badge tone={finding.severity === "error" ? "danger" : "warning"}>
+                      <Badge tone={finding.severity === "error" ? "danger" : "warning"} icon={finding.severity === "error" ? <CircleAlert aria-hidden="true" size={16} /> : <TriangleAlert aria-hidden="true" size={16} />}>
                         {finding.severity === "error" ? text.errors : text.warnings}
                       </Badge>
                       <p>{findingMessage(finding, format)}</p>

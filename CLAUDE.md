@@ -4,7 +4,10 @@
 Single-user local Smart School Timetable application. One school, exactly one owner account, browser-based login, Arabic-first RTL, offline operation, and Kestrel bound only to `127.0.0.1`.
 
 ## Active phase
-Phases 0–4 and the follow-up R1–R3 are delivered and merged to `master` (latest tag `phase-4i`). New work goes on a separate branch, following the owner's autonomy protocol; never commit it to `master`. The owner merges after acceptance.
+Phases 0–4 and the follow-up R1–R3 are delivered and merged to `master` (latest tag `phase-4i`). New work goes on a `work/<name>` branch, following the owner's autonomy protocol; never commit it to `master`. The owner merges after acceptance.
+
+## Naming (mandatory)
+- Branches are `work/<name>`. Tags are `phase-N[x]`. A branch and a tag never share a name (a shared name makes `git checkout`/`git push` ambiguous).
 
 ## Scope and security
 - One local owner only. No multi-tenancy, roles/RBAC, permission matrix, refresh-token rotation, remote sync, or concurrent-user support.
@@ -41,4 +44,4 @@ Phases 0–4 and the follow-up R1–R3 are delivered and merged to `master` (lat
 - Delivered through Phase 4 and R1–R3 (tag `phase-4i`). See `CHANGELOG.md` and `docs/PHASE4G_REPORT.md`.
 - New EF migrations: `dotnet tool restore`, then `dotnet ef migrations add <Name> -p src/SmartSchoolTimetable.Infrastructure -s src/SmartSchoolTimetable.Infrastructure`.
 - Error codes are added only in `ErrorCodes` + `ApiErrorCodes.StatusByCode` + the Arabic dictionary (enforced by `ErrorContractTests`). Builds treat warnings as errors.
-- Preserve the existing decisions (ADRs and `docs/DECISIONS_PENDING.md`); do not change approved behaviour silently.
+- Preserve the existing decisions (ADRs, `docs/DECISIONS_PENDING.md` for open items and `docs/DECISIONS_LOG.md` for closed ones); do not change approved behaviour silently.

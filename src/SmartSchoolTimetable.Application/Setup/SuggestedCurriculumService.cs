@@ -110,7 +110,7 @@ public sealed class SuggestedCurriculumService(IDataStore store, SubjectsService
                     store.Add(CurriculumEntry.CreateSuggested(stage.Id, subject.Id, entry.Lessons));
                 }
             }
-            AuditTrail.Record(store, clock, "SuggestedCurriculumApplied", $"academic-year:{yearId}",
+            AuditTrail.Record(store, clock, AuditEvents.SuggestedCurriculumApplied, $"academic-year:{yearId}",
                 $"Suggested curriculum v{Template.Version} applied ({created} subjects created).");
             await store.SaveChangesAsync(token);
             return preview.Value;
@@ -152,7 +152,7 @@ public sealed class SuggestedCurriculumService(IDataStore store, SubjectsService
                 else if (existing.WeeklyLessons != entry.Lessons || !existing.IsSuggested)
                     existing.ResetToSuggestion(entry.Lessons);
             }
-            AuditTrail.Record(store, clock, "SuggestedCurriculumStageReset", $"stage:{stageId}", "Stage curriculum reset to the suggestion after confirmation.");
+            AuditTrail.Record(store, clock, AuditEvents.SuggestedCurriculumStageReset, $"stage:{stageId}", "Stage curriculum reset to the suggestion after confirmation.");
             await store.SaveChangesAsync(token);
             return preview.Value;
         }, token);

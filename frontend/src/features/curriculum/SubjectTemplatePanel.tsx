@@ -77,7 +77,7 @@ export function SubjectTemplatePanel({ yearId, format, open = false }: { yearId:
               <li key={`school-subject-${subject.id}`} className="subject-chip is-added">
                 <CircleCheck aria-hidden="true" size={16} />
                 <span className="subject-chip-name">{subject.name}</span>
-                <Badge tone="success">{text.addedBadge}</Badge>
+                <Badge tone="success" icon={<CircleCheck aria-hidden="true" size={16} />}>{text.addedBadge}</Badge>
                 <IconButton aria-label={text.removeSubject(subject.name)} title={text.removeSubject(subject.name)} icon={<X size={16} />}
                   disabled={archive.isPending} onClick={() => remove(subject)} />
               </li>

@@ -1,4 +1,4 @@
-import { CalendarRange, GraduationCap, Menu as MenuIcon, X } from "lucide-react";
+import { CalendarRange, GraduationCap, Menu as MenuIcon, X, CalendarDays } from "lucide-react";
 import type { RefObject } from "react";
 import { Link } from "react-router-dom";
 import { Badge } from "../components/ui/badge";
@@ -44,7 +44,7 @@ export function TopBar({ username, menuOpen, menuButtonRef, onToggleMenu, onErro
         <Badge tone={year ? "primary" : "neutral"} icon={<CalendarRange aria-hidden="true" size={16} />}>
           {year ? messages.school.shell.currentYear(year.name) : messages.school.shell.noCurrentYear}
         </Badge>
-        <Badge tone={term ? "primary" : "neutral"}>
+        <Badge tone={term ? "primary" : "neutral"} icon={<CalendarDays aria-hidden="true" size={16} />}>
           {term ? messages.school.shell.currentTerm(term.name) : messages.school.shell.noCurrentTerm}
         </Badge>
       </div>

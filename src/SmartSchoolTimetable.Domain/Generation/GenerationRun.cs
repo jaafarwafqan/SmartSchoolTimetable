@@ -61,12 +61,22 @@ public sealed class GenerationRun : VersionedEntity
     public string? ErrorCode { get; private set; }
     public long? TimetableVersionId { get; private set; }
 
+    /// <summary>The version whose manual edits were kept as locked lessons («إبقاء تعديلاتي»), or null.</summary>
+    public long? LockedFromVersionId { get; private set; }
+
+    /// <summary>How many manual lessons were asked to stay in place.</summary>
+    public int LockedLessons { get; private set; }
+
+    /// <summary>How many of them could not be kept (the assignment or the slot changed since the edit).</summary>
+    public int LocksDropped { get; private set; }
+
     public static readonly IReadOnlyList<GenerationStatus> ActiveStatuses = [GenerationStatus.Queued, GenerationStatus.Validating, GenerationStatus.Generating];
 
     public bool IsActive => ActiveStatuses.Contains(Status);
 
     public static GenerationRun Queue(long academicYearId, string mode, int timeLimitSeconds, int seed, int workers, bool deterministic,
-        string solverVersion, string solverParameters, string inputHash, int profileVersion, DateTimeOffset now)
+        string solverVersion, string solverParameters, string inputHash, int profileVersion, DateTimeOffset now,
+        long? lockedFromVersionId = null, int lockedLessons = 0)
     {
         new DomainErrors()
             .When(academicYearId <= 0, nameof(AcademicYearId), DomainErrorCode.Required)
@@ -88,6 +98,8 @@ public sealed class GenerationRun : VersionedEntity
             InputHash = Truncate(inputHash, HashMaxLength),
             ProfileVersion = profileVersion,
             QueuedAt = now,
+            LockedFromVersionId = lockedFromVersionId,
+            LockedLessons = lockedLessons,
         };
     }
 
@@ -116,7 +128,8 @@ public sealed class GenerationRun : VersionedEntity
 
     /// <summary>Ends the run with its final status and the real counters of the solve.</summary>
     public void Finish(GenerationStatus status, DateTimeOffset now, double elapsedSeconds, long? objective, long? bound, bool optimal, int improvements,
-        double? firstSolutionSeconds, int lessonsPlaced, string? scoreJson, string? diagnosticsJson, string? errorCode, long? timetableVersionId)
+        double? firstSolutionSeconds, int lessonsPlaced, string? scoreJson, string? diagnosticsJson, string? errorCode, long? timetableVersionId,
+        int locksDropped = 0)
     {
         new DomainErrors().When(ActiveStatuses.Contains(status), nameof(Status), DomainErrorCode.InvalidOption).ThrowIfAny();
         Status = status;
@@ -133,6 +146,7 @@ public sealed class GenerationRun : VersionedEntity
         DiagnosticsJson = diagnosticsJson;
         ErrorCode = errorCode is null ? null : Truncate(errorCode, CodeMaxLength);
         TimetableVersionId = timetableVersionId;
+        LocksDropped = locksDropped;
         Touch();
     }
 

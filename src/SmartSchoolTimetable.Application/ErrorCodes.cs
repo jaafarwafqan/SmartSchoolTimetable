@@ -83,6 +83,12 @@ public static class ErrorCodes
     public const string GenerationNotReady = "GENERATION_NOT_READY";
     public const string TimetableVerificationFailed = "TIMETABLE_VERIFICATION_FAILED";
     public const string TimetableHasViolations = "TIMETABLE_HAS_VIOLATIONS";
+
+    // M1: timetable lifecycle.
+    public const string TimetableInvalidTransition = "TIMETABLE_INVALID_TRANSITION";
+    public const string TimetableCompareYearMismatch = "TIMETABLE_COMPARE_YEAR_MISMATCH";
+    public const string AuditFilterInvalid = "AUDIT_FILTER_INVALID";
+
     public const string BackupPathInvalid = "BACKUP_PATH_INVALID";
     public const string BackupFileExists = "BACKUP_FILE_EXISTS";
     public const string BackupFailed = "BACKUP_FAILED";

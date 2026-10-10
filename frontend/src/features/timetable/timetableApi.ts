@@ -1,11 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../../api";
 
 export type TimetableVersionSummary = {
   id: number;
   version: number;
   number: number;
-  source: "generated" | "edited";
+  source: "generated" | "edited" | "rolledBack";
   generationRunId: number | null;
   parentVersionId: number | null;
   mode: "standard" | "doublePeriods";
@@ -16,7 +16,12 @@ export type TimetableVersionSummary = {
   approvedAt: string | null;
   note: string | null;
   stale: boolean;
+  /** M1 lifecycle: only a draft can still be approved; approved and archived versions never change. */
+  status: TimetableStatus;
+  archivedAt: string | null;
 };
+
+export type TimetableStatus = "draft" | "approved" | "archived";
 
 export type GridLessonTime = { number: number; startMinute: number; endMinute: number };
 export type GridShift = { id: number; name: string; lessons: GridLessonTime[] };
@@ -70,11 +75,69 @@ export function useTimetable(id: number | undefined) {
   });
 }
 
+/** A lifecycle change also changes what the generation screen offers to keep and what the history lists. */
+function refreshLifecycle(client: QueryClient) {
+  void client.invalidateQueries({ queryKey: ["timetable"] });
+  void client.invalidateQueries({ queryKey: ["generation"] });
+  void client.invalidateQueries({ queryKey: ["audit"] });
+}
+
 export function useApproveTimetable() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (version: TimetableVersionSummary) => apiRequest<TimetableVersionSummary>(`/api/v1/timetables/${version.id}/approve`, "POST", { version: version.version }),
-    onSuccess: () => void client.invalidateQueries({ queryKey: ["timetable"] }),
+    onSuccess: () => refreshLifecycle(client),
+  });
+}
+
+export function useArchiveTimetable() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (version: TimetableVersionSummary) => apiRequest<TimetableVersionSummary>(`/api/v1/timetables/${version.id}/archive`, "POST", { version: version.version }),
+    onSuccess: () => refreshLifecycle(client),
+  });
+}
+
+/** Restores an older version as a NEW draft version (the older one never changes). */
+export function useRollbackTimetable() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (version: TimetableVersionSummary) => apiRequest<TimetableVersionSummary>(`/api/v1/timetables/${version.id}/rollback`, "POST", { version: version.version, note: null }),
+    onSuccess: () => refreshLifecycle(client),
+  });
+}
+
+export type ChangeKind = "added" | "removed" | "moved" | "reassigned";
+
+export type LessonChange = {
+  kind: ChangeKind;
+  sectionId: number;
+  lineId: number;
+  subjectId: number;
+  fromTeacherId: number | null;
+  toTeacherId: number | null;
+  fromDay: number | null;
+  fromLesson: number | null;
+  toDay: number | null;
+  toLesson: number | null;
+};
+
+export type Comparison = {
+  fromVersionId: number;
+  toVersionId: number;
+  fromNumber: number;
+  toNumber: number;
+  totals: { added: number; removed: number; moved: number; reassigned: number; unchanged: number };
+  sections: { sectionId: number; added: number; removed: number; moved: number; reassigned: number }[];
+  teachers: { teacherId: number; gained: number; lost: number; moved: number }[];
+  changes: LessonChange[];
+};
+
+export function useComparison(fromId: number | undefined, toId: number | undefined) {
+  return useQuery({
+    queryKey: ["timetable", "compare", fromId ?? 0, toId ?? 0],
+    queryFn: () => apiRequest<Comparison>(`/api/v1/timetables/${fromId}/compare/${toId}`),
+    enabled: fromId !== undefined && toId !== undefined,
   });
 }
 
@@ -102,7 +165,7 @@ export function useSaveEdit() {
   return useMutation({
     mutationFn: ({ id, lessons, note }: { id: number; lessons: GridLesson[]; note: string | null }) =>
       apiRequest<TimetableVersionSummary>(`/api/v1/timetables/${id}/edits`, "POST", { lessons, note }),
-    onSuccess: () => void client.invalidateQueries({ queryKey: ["timetable"] }),
+    onSuccess: () => refreshLifecycle(client),
   });
 }
 
