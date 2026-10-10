@@ -1,6 +1,22 @@
 # SmartSchoolTimetable
 
-Single-user, offline-first school timetable application for one local school and one owner account. The browser UI is served by the ASP.NET Core app, which binds only to `127.0.0.1`. Phases 0–2.5 and Phase 3 (3A–3E, `phase-3-final`) are tagged; Phase 3D/3E are on `phase-3-finish`. The owner merges after acceptance.
+Single-user, offline-first school timetable application for one local school and one owner account. The browser UI is served by the ASP.NET Core app, which binds only to `127.0.0.1`.
+
+**Status:** Phases 0–4 are delivered on `master`; the latest tag is `phase-4i`.
+- School setup, curriculum, teachers, workload and readiness.
+- CP-SAT timetable generation with an independent verifier.
+- Viewer by section, teacher and school; manual editing and approval.
+- Printing (A4, PDF through the browser) and Excel export.
+- In-app backup and restore.
+- 12-hour times, flexible breaks, and the double shift (دوام مزدوج) with a day→session mapping per semester.
+
+The change history is in [CHANGELOG.md](./CHANGELOG.md), and the latest report is [docs/PHASE4G_REPORT.md](./docs/PHASE4G_REPORT.md).
+
+## For the school: the ready-to-run program
+1. On the development machine, from the repository root, run `powershell -ExecutionPolicy Bypass -File tools\Publish-Release.ps1`. It writes a new folder `artifacts\release\SmartSchoolTimetable-<date-time>` (self-contained win-x64, about 200 MB). The folder is not stored in git.
+2. Copy that folder to the school computer. No .NET installation is needed.
+3. Double-click «تشغيل البرنامج.bat». The browser opens `http://127.0.0.1:5080/`; keep the black window open while working.
+4. The first run shows the owner setup (account, recovery code), then the wizard. The short Arabic guide is [docs/USER_GUIDE_AR.md](./docs/USER_GUIDE_AR.md).
 
 ## Stack and environment
 - .NET SDK 9.0.318 and Node.js v24.18.0 are available in the current development environment. Node/npm are required for the React build and frontend tests.
@@ -26,11 +42,15 @@ The frontend test command runs Vitest and Playwright; install Chromium once with
 ### Dependency audit
 `npm.cmd --prefix .\frontend run audit:prod` checks only the production dependencies (the code shipped to the browser) and fails on any high-severity finding. `npm.cmd --prefix .\frontend audit` also lists development tools; the current development-only finding (`braces` through stylelint) is explained in `docs/DECISIONS_PENDING.md` #44.
 
-### Phase 2.5 owner test
-Follow `docs/OWNER_TEST_SCRIPT_PHASE25.md` on a separate test database (`$env:Database__Path`). The results are in `docs/PHASE25_REPORT.md`.
+### Owner test scripts
+Run them on a separate test database (see below), never on the school's real data. The current one is [docs/OWNER_TEST_SCRIPT_PHASE4.md](./docs/OWNER_TEST_SCRIPT_PHASE4.md) (steps 1–34). It covers setup, generation, the viewer, edits, approval, printing, Excel, backup and restore, the release folder, and the double shift. The earlier scripts are for Phases 2, 2.5 and 3 (`docs/OWNER_TEST_SCRIPT_PHASE*.md`).
 
-### Phase 3 readiness check
-After setup, open «جاهزية الجدولة» from the dashboard card or `/readiness`. The report uses the current academic year and the real saved curriculum, teacher assignments, availability and resources. It is a conservative preflight; timetable generation and CP-SAT remain Phase 4. The manual test script is [docs/OWNER_TEST_SCRIPT_PHASE3.md](./docs/OWNER_TEST_SCRIPT_PHASE3.md).
+### Readiness and generation
+- «جاهزية الجدولة» (`/readiness`) checks the current year's real data before generation.
+- «الجدول ← التوليد» runs the CP-SAT solver with real progress and can be stopped at any time. An independent verifier checks every timetable.
+- «الجدول ← الجداول» shows the saved versions, the views, manual editing, approval, printing and Excel.
+
+Solver design: [docs/SOLVER.md](./docs/SOLVER.md). Measured performance: [docs/PERFORMANCE.md](./docs/PERFORMANCE.md).
 
 ### Database reset and first-run setup
 Stop the running app before resetting. From the repository root, run:
@@ -41,18 +61,12 @@ dotnet run --project .\src\SmartSchoolTimetable.Api\SmartSchoolTimetable.Api.csp
 
 The app displays the resolved database path and the prompts in Arabic, and asks for the exact confirmation `RESET` (kept ASCII so it can be typed on any keyboard layout); any other input cancels. It removes the database and SQLite sidecar files only. The console is switched to UTF-8; if Arabic shows as boxes, use Windows Terminal or a console font with Arabic glyphs. This permanently deletes the local owner account and all local data. Start the app using the run command above to return to first-run setup.
 
-### Interim database backup (until Phase 6)
-There is no in-app backup yet. **Stop the app first** (close the console or press Ctrl+C), then run this from the folder where the backup should be created:
-
-```powershell
-if (Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'SmartSchoolTimetable.Api.exe' -or ($_.Name -eq 'dotnet.exe' -and $_.CommandLine -like '*SmartSchoolTimetable.Api.dll*') }) { Write-Error 'التطبيق يعمل. أوقفه أولاً ثم أعد تنفيذ النسخ الاحتياطي.' } else { $db = "$env:LOCALAPPDATA\SmartSchoolTimetable\timetable.db"; $dest = ".\timetable-backup-$(Get-Date -Format yyyyMMdd-HHmmss)"; New-Item -ItemType Directory $dest | Out-Null; Copy-Item "$db*" $dest; Get-ChildItem $dest }
-```
-
-The command **refuses to run while the app is running**: it checks for the app process, because the app does not keep the database file locked between requests, so a file-lock check cannot detect it. Once the app is stopped it copies `timetable.db` together with `timetable.db-wal` and `timetable.db-shm` (present after an unclean shutdown) into a timestamped folder, and lists what was copied. Both cases were verified in Phase 1.4. Paste the command into PowerShell directly; script files may be blocked by the execution policy.
-- Restore: stop the app and copy all files from a backup folder back into `%LOCALAPPDATA%\SmartSchoolTimetable\`.
-- If `Database:Path` is configured, use that path instead.
-- From Phase 2, the school logo and stamp are stored in the `assets` folder next to the database. Copy that folder as well, if it exists: `Copy-Item "$env:LOCALAPPDATA\SmartSchoolTimetable\assets" $dest -Recurse`.
-- Never copy the database while the app is running. The Phase 6 online backup (SQLite Online Backup API, integrity-checked) will replace this procedure.
+### Backup and restore
+- In the app: «الإعدادات ← عام ← النسخ الاحتياطي والاستعادة».
+- **Backup** writes a new, consistent file (`timetable-backup-<date-time>.db`) to a folder you choose. It never overwrites a file.
+- **Restore** needs two confirmations. It first saves an automatic copy of the current data (`backups\pre-restore-<date-time>.db` next to the database). It upgrades an older backup to the current schema, then signs you out.
+- No backup is ever deleted by the app. Details: [adr/0042-backup-restore-and-release-folder.md](./adr/0042-backup-restore-and-release-folder.md).
+- The school logo and stamp are in the `assets` folder next to the database. Copy that folder too when moving data to another computer.
 
 ### A separate test database
 The demo data generator (`--seed-demo-data`) was removed (2026-10-09, owner decision). To try the app without touching the real database, run it against a NEW file; the first start shows the first-run setup (owner account, recovery code, then the wizard):
@@ -61,9 +75,9 @@ The demo data generator (`--seed-demo-data`) was removed (2026-10-09, owner deci
 dotnet run --project .\src\SmartSchoolTimetable.Api\SmartSchoolTimetable.Api.csproj --configuration Release --no-build -- --Database:Path="$env:TEMP\sst-try\try.db"
 ```
 
-Automated tests build their own synthetic data inside the test projects.
+The published launcher accepts the same option. For example, `SmartSchoolTimetable.Api.exe --Database:Path=...` from the release folder.
 
-Teacher workload is Phase 3. A manual test script in Arabic is in [docs/OWNER_TEST_SCRIPT_PHASE2.md](./docs/OWNER_TEST_SCRIPT_PHASE2.md).
+Automated tests build their own synthetic data inside the test projects and never touch the real database.
 
 ### Style guide (`/design`, development only)
 ```powershell
@@ -84,5 +98,7 @@ First run creates one local owner and signs in automatically. Before entering th
 Passwords must be 8–1024 characters and use PBKDF2-HMAC-SHA-256 with 600,000 iterations. Failed login uses a fixed one-second delay, with no escalating delay or temporary lockout. Sessions use an HttpOnly, SameSite=Strict cookie; inactivity auto-lock supports a configured duration or `Never`. Kestrel validates Host/Origin and a per-launch token on state-changing requests. Details are in [SECURITY.md](./SECURITY.md).
 
 ## Phase 0 validation notes
-- The Google.OrTools and QuestPDF feasibility spikes are isolated under `spikes/CSharpSpikes/`; the Arabic PDF proof was run with .NET 9, QuestPDF 2026.9.1, and Noto Naskh Arabic. QuestPDF licensing clearance and packaged-runtime visual validation remain pre-Phase-6 gates.
-- Phase 4 retains the open risk that the exploratory 40-section/54-teacher input found no feasible solution in 30 seconds. The plan requires an independently verified feasible baseline and measured comparisons before acceptance.
+- The Google.OrTools and QuestPDF feasibility spikes are kept under `spikes/CSharpSpikes/` as history.
+  - The product uses OR-Tools CP-SAT 9.15 ([ADR 0037](./adr/0037-or-tools-dependency-and-in-process-generation.md)).
+  - It does not use QuestPDF: printing and PDF go through the browser's print dialog, and Excel uses ClosedXML ([ADR 0041](./adr/0041-excel-export-closedxml.md)).
+- The Phase 0 risk was that a 40-section/54-teacher input found no timetable in 30 s. It did not show in Phase 4: [docs/PERFORMANCE.md](./docs/PERFORMANCE.md) records a first timetable after about 3.4 s on synthetic 40/54 and 40/60 schools. That is one seed per size, and real data with tight availability can be harder.

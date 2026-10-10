@@ -4,7 +4,7 @@
 Single-user local Smart School Timetable application. One school, exactly one owner account, browser-based login, Arabic-first RTL, offline operation, and Kestrel bound only to `127.0.0.1`.
 
 ## Active phase
-Phase 2 (core school data) on branch `phase-2`, in checkpoints 2A–2F, following the owner's autonomy protocol. Never commit Phase 2 work to `master`.
+Phases 0–4 and the follow-up R1–R3 are delivered and merged to `master` (latest tag `phase-4i`). New work goes on a separate branch, following the owner's autonomy protocol; never commit it to `master`. The owner merges after acceptance.
 
 ## Scope and security
 - One local owner only. No multi-tenancy, roles/RBAC, permission matrix, refresh-token rotation, remote sync, or concurrent-user support.
@@ -38,7 +38,7 @@ Phase 2 (core school data) on branch `phase-2`, in checkpoints 2A–2F, followin
 - Mirror directional icons in RTL. Keep icon dimensions/stroke consistent and verify WCAG AA contrast.
 
 ## Current status
-- Phase 1.4 (design system adoption) is tagged `phase-1.4`. See `CHANGELOG.md`.
+- Delivered through Phase 4 and R1–R3 (tag `phase-4i`). See `CHANGELOG.md` and `docs/PHASE4G_REPORT.md`.
 - New EF migrations: `dotnet tool restore`, then `dotnet ef migrations add <Name> -p src/SmartSchoolTimetable.Infrastructure -s src/SmartSchoolTimetable.Infrastructure`.
 - Error codes are added only in `ErrorCodes` + `ApiErrorCodes.StatusByCode` + the Arabic dictionary (enforced by `ErrorContractTests`). Builds treat warnings as errors.
-- Preserve the existing Phase 0/1 decisions and do not implement Phase 2 features.
+- Preserve the existing decisions (ADRs and `docs/DECISIONS_PENDING.md`); do not change approved behaviour silently.
