@@ -1,4 +1,5 @@
-import { ArrowLeftRight, CircleAlert, CircleCheck, Redo2, Save, Undo2, X } from "lucide-react";
+import { SectionTitle } from "../../components/ui/section-title";
+import { ArrowLeftRight, CircleAlert, CircleCheck, Redo2, Save, Undo2, X, Pencil } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Alert } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
@@ -133,7 +134,7 @@ export function TimetableEditor({ timetable, sectionId, format, look, lessonCoun
 
   return (
     <div className="timetable-editor">
-      <h3>{text.editTitle}</h3>
+      <SectionTitle level={3} icon={Pencil}>{text.editTitle}</SectionTitle>
       <p className="card-note">{text.editHint}</p>
       <Alert tone="error" message={feedback.error} />
       <div className="timetable-editor-bar">

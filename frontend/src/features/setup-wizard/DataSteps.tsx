@@ -1,4 +1,5 @@
-import { CircleAlert, CircleCheck, Flag } from "lucide-react";
+import { SectionTitle } from "../../components/ui/section-title";
+import { CircleAlert, CircleCheck, Flag, ListChecks, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { Alert } from "../../components/ui/alert";
 import { Spinner } from "../../components/ui/spinner";
@@ -135,7 +136,7 @@ export function ReviewStep({ progress, onBack, onFinished }: { progress: SetupPr
       {data && (
         <>
           <section aria-labelledby="review-counts">
-            <h3 id="review-counts">{text.review.counts}</h3>
+            <SectionTitle level={3} icon={ListChecks} id="review-counts">{text.review.counts}</SectionTitle>
             <dl className="count-grid">
               {counts.map(([label, value]) => (
                 <div key={`review-${label}`} className="count-item">
@@ -146,7 +147,7 @@ export function ReviewStep({ progress, onBack, onFinished }: { progress: SetupPr
             </dl>
           </section>
           <section aria-labelledby="review-warnings">
-            <h3 id="review-warnings">{text.review.warnings}</h3>
+            <SectionTitle level={3} icon={TriangleAlert} id="review-warnings">{text.review.warnings}</SectionTitle>
             {data.warnings.length === 0
               ? <p className="review-ok"><CircleCheck aria-hidden="true" size={18} /><span>{text.review.noWarnings}</span></p>
               : (

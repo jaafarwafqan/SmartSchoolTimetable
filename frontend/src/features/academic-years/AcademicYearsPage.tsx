@@ -1,4 +1,4 @@
-import { CalendarPlus, CircleCheck, Pencil, Star, Trash2 } from "lucide-react";
+import { CalendarPlus, CircleCheck, Pencil, Star, Trash2, CalendarDays } from "lucide-react";
 import { useState } from "react";
 import { ConflictAlert } from "../../components/ConflictAlert";
 import { SearchField } from "../../components/SearchField";
@@ -76,7 +76,7 @@ export function AcademicYearsPage() {
   return (
     <div className="page">
       <PageHeader
-        title={messages.school.nav.academicYears}
+        icon={CalendarDays} title={messages.school.nav.academicYears}
         description={text.description}
         actions={<Button icon={<CalendarPlus aria-hidden="true" size={20} />} onClick={() => setDialog({ open: true, year: null })}>{text.add}</Button>}
       />

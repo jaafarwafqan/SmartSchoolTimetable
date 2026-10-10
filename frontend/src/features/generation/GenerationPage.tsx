@@ -1,4 +1,5 @@
-import { CalendarRange, ChevronDown, CircleAlert, CircleCheck, ExternalLink, Play, ShieldCheck, Square } from "lucide-react";
+import { SectionTitle } from "../../components/ui/section-title";
+import { CalendarRange, ChevronDown, CircleAlert, CircleCheck, ExternalLink, Play, ShieldCheck, Square, LoaderCircle, ClipboardCheck, Stethoscope, SlidersHorizontal, History, TriangleAlert, Info, Cpu } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { Link } from "react-router-dom";
 import { userErrorMessage } from "../../api";
@@ -24,12 +25,19 @@ import { errorCount, fixHref, warningCount } from "../readiness/readinessPresent
 import { useReadiness } from "../readiness/readinessApi";
 import {
   isActive, useCancelGeneration, useCurrentRun, useEngine, useRunHistory, useStartGeneration,
-  type GenerationMode, type GenerationRun,
+  type GenerationMode, type GenerationRun, type RunStatus,
 } from "./generationApi";
 import { diagnosticMessage, elapsedSeconds, phaseIndex, phaseOrder, seconds, statusNote, statusTone, timeLimitChoices } from "./generationPresentation";
 
 const text = messages.school.generation;
 const readinessText = messages.school.readiness;
+
+/** Run status as a badge: the icon repeats the colour's meaning. */
+function StatusBadge({ status }: { status: RunStatus }) {
+  const tone = statusTone(status);
+  const icon = tone === "success" ? <CircleCheck aria-hidden="true" size={16} /> : tone === "danger" ? <CircleAlert aria-hidden="true" size={16} /> : tone === "warning" ? <TriangleAlert aria-hidden="true" size={16} /> : <Info aria-hidden="true" size={16} />;
+  return <Badge tone={tone === "neutral" ? "primary" : tone} icon={icon}>{text.statuses[status]}</Badge>;
+}
 
 /** Re-renders every second while a run is active, for the real elapsed timer. */
 function useNow(active: boolean): number {
@@ -50,7 +58,7 @@ function ProgressPanel({ run, format, onStop, stopping }: { run: GenerationRun; 
   return (
     <Card className="page-card generation-progress" aria-labelledby="generation-progress-title">
       <div className="generation-heading">
-        <h2 id="generation-progress-title">{text.progressTitle}</h2>
+        <SectionTitle level={2} icon={LoaderCircle} id="generation-progress-title">{text.progressTitle}</SectionTitle>
         <Button variant="danger" icon={<Square aria-hidden="true" size={18} />} loading={stopping} onClick={onStop}>{stopping ? text.stopping : text.stop}</Button>
       </div>
       <ol className="generation-steps">
@@ -78,7 +86,7 @@ function ResultPanel({ run, format }: { run: GenerationRun; format: Formatter })
   return (
     <Card className="page-card generation-result" aria-labelledby="generation-result-title">
       <div className="generation-heading">
-        <h2 id="generation-result-title">{text.resultTitle}</h2>
+        <SectionTitle level={2} icon={ClipboardCheck} id="generation-result-title">{text.resultTitle}</SectionTitle>
         <Badge tone={tone} icon={tone === "success" ? <CircleCheck aria-hidden="true" size={16} /> : <CircleAlert aria-hidden="true" size={16} />}>
           {text.statuses[run.status]}
         </Badge>
@@ -121,7 +129,7 @@ function DiagnosticsPanel({ run, format }: { run: GenerationRun; format: Formatt
   const isTimeout = run.status === "timedOut";
   return (
     <Card className="page-card generation-diagnostics" aria-labelledby="generation-diagnostics-title">
-      <h2 id="generation-diagnostics-title">{text.diagnosticsTitle}</h2>
+      <SectionTitle level={2} icon={Stethoscope} id="generation-diagnostics-title">{text.diagnosticsTitle}</SectionTitle>
       {!isTimeout && <p className="card-note">{diagnostics.minimal ? text.diagnosticsMinimal : text.diagnosticsNotMinimal}</p>}
       <ul className="readiness-finding-list">
         {diagnostics.findings.map((finding, index) => (
@@ -185,7 +193,7 @@ export function GenerationPage() {
 
   return (
     <div className="page">
-      <PageHeader title={text.title} description={text.description} />
+      <PageHeader icon={Cpu} title={text.title} description={text.description} />
       {!yearId && school.isSuccess && <Alert tone="warning" message={readinessText.noYear} />}
       {engine.data && !engineReady && <Alert tone="error" message={messages.errors.SOLVER_UNAVAILABLE} />}
       {current.isError && <Alert tone="error" message={text.loadFailed}>{userErrorMessage(current.error)}</Alert>}
@@ -195,7 +203,7 @@ export function GenerationPage() {
       {yearId && (
         <Card className="page-card readiness-summary" aria-labelledby="generation-readiness-title">
           <div className="generation-heading">
-            <h2 id="generation-readiness-title">{text.readinessTitle}</h2>
+            <SectionTitle level={2} icon={ShieldCheck} id="generation-readiness-title">{text.readinessTitle}</SectionTitle>
             <Link className="link-button" to="/readiness"><ExternalLink aria-hidden="true" size={16} /><span>{text.openReadiness}</span></Link>
           </div>
           {readiness.isPending && <p>{readinessText.loading}</p>}
@@ -207,7 +215,7 @@ export function GenerationPage() {
                 <strong>{readiness.data.ready ? text.readinessReady : text.readinessBlocked}</strong>
               </p>
               <div className="readiness-counts">
-                <Badge tone={readiness.data.errors ? "danger" : "success"}>{errorCount(readiness.data.errors, format)}</Badge>
+                <Badge tone={readiness.data.errors ? "danger" : "success"} icon={readiness.data.errors ? <CircleAlert aria-hidden="true" size={16} /> : <CircleCheck aria-hidden="true" size={16} />}>{errorCount(readiness.data.errors, format)}</Badge>
                 <Badge>{warningCount(readiness.data.warnings, format)}</Badge>
               </div>
             </>
@@ -217,7 +225,7 @@ export function GenerationPage() {
 
       {yearId && !active && (
         <Card className="page-card generation-options" aria-labelledby="generation-options-title">
-          <h2 id="generation-options-title">{text.optionsTitle}</h2>
+          <SectionTitle level={2} icon={SlidersHorizontal} id="generation-options-title">{text.optionsTitle}</SectionTitle>
           <ChoiceCards<GenerationMode>
             name="generation-mode"
             legend={text.mode}
@@ -272,11 +280,11 @@ export function GenerationPage() {
 
       {history.data && history.data.items.length > 1 && (
         <Card className="page-card" aria-labelledby="generation-history-title">
-          <h2 id="generation-history-title">{text.history}</h2>
+          <SectionTitle level={2} icon={History} id="generation-history-title">{text.history}</SectionTitle>
           <DataTable caption={text.history} rows={history.data.items} rowKey={(item) => String(item.id)} columns={[
             { key: "date", header: text.startedAt, cell: (item) => format.date(item.queuedAt.slice(0, 10)) },
             { key: "mode", header: text.mode, cell: (item) => text.modes[item.mode] },
-            { key: "status", header: text.resultTitle, cell: (item) => <Badge tone={statusTone(item.status)}>{text.statuses[item.status]}</Badge> },
+            { key: "status", header: text.resultTitle, cell: (item) => <StatusBadge status={item.status} /> },
             { key: "score", header: text.totalScore, numeric: true, cell: (item) => (item.score ? format.number(item.score.total) : text.none) },
           ]} />
 

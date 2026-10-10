@@ -1,4 +1,5 @@
-import { BookOpen, Layers3, Undo2 } from "lucide-react";
+import { SectionTitle } from "../../components/ui/section-title";
+import { BookOpen, Layers3, Undo2, Wrench } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ConflictAlert } from "../../components/ConflictAlert";
@@ -47,7 +48,7 @@ export function CurriculumEditor({ yearId, children }: { yearId: number; childre
   return (
     <>
       <Card className="page-card" aria-labelledby="curriculum-title">
-        <h2 id="curriculum-title">{text.title}</h2>
+        <SectionTitle level={2} icon={BookOpen} id="curriculum-title">{text.title}</SectionTitle>
         <p id="curriculum-cell-hint" className="card-note">{text.cellHint(format.number(minLessons), format.number(maxLessons))}</p>
         {children}
         {data && data.stages.length > 0 && <SuggestedCurriculumPanel yearId={yearId} />}
@@ -94,7 +95,7 @@ export function CurriculumEditor({ yearId, children }: { yearId: number; childre
       </Card>
       {data && data.stages.length > 0 && data.rows.length > 0 && (
         <Card className="page-card" aria-labelledby="curriculum-helpers-title">
-          <h2 id="curriculum-helpers-title">{text.helpers}</h2>
+          <SectionTitle level={2} icon={Wrench} id="curriculum-helpers-title">{text.helpers}</SectionTitle>
           <AddRepeatForm yearId={yearId} table={data} />
           <CopyCurriculumTool yearId={yearId} table={data} format={format.number} />
           <SetAcrossTool yearId={yearId} table={data} format={format.number} />
@@ -127,7 +128,7 @@ export function CurriculumPage() {
 
   return (
     <div className="page">
-      <PageHeader title={text.title} description={text.description} />
+      <PageHeader icon={BookOpen} title={text.title} description={text.description} />
       {choice.years.isError && <Alert tone="error" message={messages.school.common.loadFailed} />}
       <Card className="page-card">
         <YearPicker id="curriculum-year" choice={choice} />

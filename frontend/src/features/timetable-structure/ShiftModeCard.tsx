@@ -1,4 +1,5 @@
-import { Moon, Sun, SunMoon, Check } from "lucide-react";
+import { SectionTitle } from "../../components/ui/section-title";
+import { Moon, Sun, SunMoon, Check, Split } from "lucide-react";
 import { useState } from "react";
 import { ConflictAlert } from "../../components/ConflictAlert";
 import { userErrorMessage } from "../../api";
@@ -33,7 +34,7 @@ export function ShiftModeCard() {
 
   return (
     <Card className="page-card" aria-labelledby="shift-mode-title">
-      <h2 id="shift-mode-title">{text.title}</h2>
+      <SectionTitle level={2} icon={Split} id="shift-mode-title">{text.title}</SectionTitle>
       <p className="ui-field-hint">{text.description}</p>
       {feedback.conflict && <ConflictAlert onReload={() => { feedback.reset(); void profile.refetch(); }} />}
       <Alert tone="success" message={feedback.success} />

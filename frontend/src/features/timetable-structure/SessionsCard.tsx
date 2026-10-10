@@ -3,6 +3,7 @@ import { useState } from "react";
 import { ConflictAlert } from "../../components/ConflictAlert";
 import { TimeField } from "../../components/TimeField";
 import { userErrorMessage } from "../../api";
+import { SectionTitle } from "../../components/ui/section-title";
 import { Alert } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
@@ -35,7 +36,7 @@ function MorningSummary({ plan }: { plan: SessionPlan }) {
   const lessons = rows.filter((row) => row.kind === "lesson");
   return (
     <section className="sessions-block" aria-labelledby="sessions-morning-title">
-      <h3 id="sessions-morning-title"><Sun aria-hidden="true" size={18} /><span>{text.morningTiming}</span></h3>
+      <SectionTitle level={3} icon={Sun} id="sessions-morning-title">{text.morningTiming}</SectionTitle>
       {lessons.length > 0
         ? <p>{text.morningSummary(format.time(lessons[0].startTime), format.time(lessons[lessons.length - 1].endTime), format.count(lessons.length, "lesson"))}</p>
         : <Alert tone="warning" message={text.noMorningPeriods} />}
@@ -95,7 +96,7 @@ function SessionsForm({ plan, feedback }: { plan: SessionPlan; feedback: ReturnT
         <div className="sessions-editor">
           <MorningSummary plan={plan} />
           <section className="sessions-block" aria-labelledby="sessions-evening-title">
-            <h3 id="sessions-evening-title"><Moon aria-hidden="true" size={18} /><span>{text.eveningTiming}</span></h3>
+            <SectionTitle level={3} icon={Moon} id="sessions-evening-title">{text.eveningTiming}</SectionTitle>
             <p className="card-note">{text.eveningHint}</p>
             <div className="form-grid">
               <TimeField id="evening-first-start" label={text.firstStart} value={evening.firstStart} required
@@ -127,7 +128,7 @@ function SessionsForm({ plan, feedback }: { plan: SessionPlan; feedback: ReturnT
             )}
           </section>
           <section className="sessions-block" aria-labelledby="sessions-mapping-title">
-            <h3 id="sessions-mapping-title"><SunMoon aria-hidden="true" size={18} /><span>{text.mapping}</span></h3>
+            <SectionTitle level={3} icon={SunMoon} id="sessions-mapping-title">{text.mapping}</SectionTitle>
             {([1, 2] as const).map((term) => (
               <div key={term} className="sessions-term">
                 <h4>{term === 1 ? text.term1 : text.term2}</h4>
@@ -165,7 +166,7 @@ export function SessionsCard() {
   const feedback = useFormFeedback();
   return (
     <Card className="page-card" aria-labelledby="sessions-title">
-      <h2 id="sessions-title">{text.title}</h2>
+      <SectionTitle level={2} icon={SunMoon} id="sessions-title">{text.title}</SectionTitle>
       <p className="ui-field-hint">{text.description}</p>
       {plan.isError && <Alert tone="error" message={userErrorMessage(plan.error)} />}
       {plan.data && !plan.data.available && <Alert tone="info" message={text.unavailable} />}

@@ -1,4 +1,4 @@
-import { Save, Warehouse, X } from "lucide-react";
+import { Save, Warehouse, X, DoorOpen } from "lucide-react";
 import { useRef, useState, type FormEvent } from "react";
 import { ConflictAlert } from "../../components/ConflictAlert";
 import { InlineAddForm } from "../../components/InlineAddForm";
@@ -121,7 +121,7 @@ export function ResourcesPage() {
 
   return (
     <div className="page">
-      <PageHeader title={text.title} description={text.description} />
+      <PageHeader icon={DoorOpen} title={text.title} description={text.description} />
       <Card className="page-card">
         <Alert tone="success" message={addFeedback.success} />
         <Alert tone="error" message={addFeedback.error} />

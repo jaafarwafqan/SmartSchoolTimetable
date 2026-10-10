@@ -1,9 +1,11 @@
+import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { Card } from "../../components/ui/card";
+import { SectionTitle } from "../../components/ui/section-title";
 
 type SettingsSectionProps = {
   id: string;
-  icon: ReactNode;
+  icon: LucideIcon;
   title: string;
   description: string;
   children: ReactNode;
@@ -13,9 +15,8 @@ export function SettingsSection({ id, icon, title, description, children }: Sett
   return (
     <Card className="settings-section" aria-labelledby={`${id}-title`}>
       <header className="settings-section-header">
-        <span className="icon-badge" aria-hidden="true">{icon}</span>
         <div>
-          <h2 id={`${id}-title`}>{title}</h2>
+          <SectionTitle level={2} icon={icon} id={`${id}-title`}>{title}</SectionTitle>
           <p>{description}</p>
         </div>
       </header>

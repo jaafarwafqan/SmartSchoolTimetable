@@ -1,4 +1,5 @@
-import { BadgeCheck, FileDown, PencilLine, Play, Printer, ShieldCheck, Stamp } from "lucide-react";
+import { SectionTitle } from "../../components/ui/section-title";
+import { BadgeCheck, FileDown, PencilLine, Play, Printer, ShieldCheck, Stamp, History, CalendarRange, CalendarCheck } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { userErrorMessage } from "../../api";
@@ -151,7 +152,7 @@ export function TimetablePage() {
 
   return (
     <div className="page timetable-print-root">
-      <PageHeader title={text.title} description={text.description} />
+      <PageHeader icon={CalendarCheck} title={text.title} description={text.description} />
       {!yearId && school.isSuccess && <Alert tone="warning" message={messages.school.readiness.noYear} />}
       {versions.isError && <Alert tone="error" message={text.loadFailed}>{userErrorMessage(versions.error)}</Alert>}
       <Alert tone="error" message={feedback.error} />
@@ -165,7 +166,7 @@ export function TimetablePage() {
       {list.length > 0 && (
         <div className="timetable-layout">
           <Card className="page-card timetable-versions" aria-labelledby="timetable-versions-title">
-            <h2 id="timetable-versions-title">{text.versions}</h2>
+            <SectionTitle level={2} icon={History} id="timetable-versions-title">{text.versions}</SectionTitle>
             <VersionsTable versions={list} selectedId={selectedId} onSelect={(id) => setParams({ version: String(id) })} />
           </Card>
           <Card className="page-card timetable-main" aria-labelledby="timetable-main-title">
@@ -173,7 +174,7 @@ export function TimetablePage() {
             {summary && timetable.data && (
               <>
                 <div className="generation-heading">
-                  <h2 id="timetable-main-title">{text.version(format.number(summary.number))}</h2>
+                  <SectionTitle level={2} icon={CalendarRange} id="timetable-main-title">{text.version(format.number(summary.number))}</SectionTitle>
                   <div className="page-header-actions">
                     {summary.isApproved
                       ? <Badge tone="success" icon={<BadgeCheck aria-hidden="true" size={16} />}>{text.approved}</Badge>

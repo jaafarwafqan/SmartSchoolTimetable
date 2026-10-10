@@ -1,5 +1,6 @@
 import { CalendarRange, Check, CircleAlert, CircleCheck, CircleSlash, Hand, Sparkles } from "lucide-react";
 import { useState, type ReactNode } from "react";
+import { SectionTitle } from "../../components/ui/section-title";
 import { Alert } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -72,7 +73,7 @@ export function DailySuggestionPanel({ yearId }: { yearId: number }) {
 
   return (
     <Card className="page-card" aria-labelledby="daily-suggestion-title">
-      <h2 id="daily-suggestion-title" className="tool-title"><CalendarRange aria-hidden="true" size={22} />{text.title}</h2>
+      <SectionTitle level={2} icon={CalendarRange} id="daily-suggestion-title" className="tool-title">{text.title}</SectionTitle>
       <p className="card-note">{text.description}</p>
       {suggestion.isError && <Alert tone="error" message={messages.school.common.loadFailed} />}
       <Alert tone="success" message={feedback.success} />

@@ -1,4 +1,4 @@
-import { BookOpen } from "lucide-react";
+import { BookOpen, Wrench, Library } from "lucide-react";
 import { useAllResources } from "../resources/resourcesApi";
 import { OrphanBlockedNotice } from "../timetable-structure/OrphanBlockedNotice";
 import { ArchiveBlockedDialog, GuardedDeleteDialog, isReferenceError } from "../../components/References";
@@ -69,7 +69,7 @@ export function SubjectsPage() {
 
   return (
     <div className="page">
-      <PageHeader title={text.title} description={text.description} />
+      <PageHeader icon={Library} title={text.title} description={text.description} />
       <OrphanBlockedNotice />
       <Card className="page-card">
         <Alert tone="success" message={addFeedback.success} />
@@ -101,7 +101,7 @@ export function SubjectsPage() {
                   <strong>{subject.name}</strong>
                   <Badge>{text.priorityValue(format.number(subject.priority))}</Badge>
                   {subject.blockedPeriods.length > 0 && <Badge>{text.blockedSummary(format.number(subject.blockedPeriods.length))}</Badge>}
-                  {resourceName(subject.requiredResourceId) && <Badge tone="primary">{messages.school.requiredResource.badge(resourceName(subject.requiredResourceId) ?? "")}</Badge>}
+                  {resourceName(subject.requiredResourceId) && <Badge tone="primary" icon={<Wrench aria-hidden="true" size={16} />}>{messages.school.requiredResource.badge(resourceName(subject.requiredResourceId) ?? "")}</Badge>}
                   <ArchiveBadge archived={subject.isArchived} />
                 </span>
               )}

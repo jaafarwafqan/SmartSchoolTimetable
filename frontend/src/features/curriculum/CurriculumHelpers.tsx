@@ -1,3 +1,4 @@
+import { SectionTitle } from "../../components/ui/section-title";
 import { Check, CopyPlus, Eye, ListChecks, Repeat2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { InlineAddForm } from "../../components/InlineAddForm";
@@ -60,7 +61,7 @@ export function AddRepeatForm({ yearId, table }: Omit<HelperProps, "format">) {
 
   return (
     <section className="tool-section" aria-labelledby="repeat-title">
-      <h3 id="repeat-title" className="tool-title"><Repeat2 aria-hidden="true" size={20} />{text.addRepeatTitle}</h3>
+      <SectionTitle level={3} icon={Repeat2} id="repeat-title" className="tool-title">{text.addRepeatTitle}</SectionTitle>
       <Alert tone="success" message={feedback.success} />
       <Alert tone="error" message={feedback.error} />
       <InlineAddForm label={text.addRepeatTitle} buttonLabel={text.addRepeat} pending={save.isPending} formRef={formRef}

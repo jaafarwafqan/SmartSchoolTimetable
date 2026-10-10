@@ -1,4 +1,4 @@
-import { ListPlus, UsersRound } from "lucide-react";
+import { ListPlus, UsersRound, GraduationCap } from "lucide-react";
 import { LoadStatusBadge } from "../../components/LoadBar";
 import { useSubjects } from "../subjects/subjectsApi";
 import { useTeacherLoads } from "../workload/workloadApi";
@@ -84,7 +84,7 @@ export function TeachersPage() {
 
   return (
     <div className="page">
-      <PageHeader title={text.title} description={text.description}
+      <PageHeader icon={UsersRound} title={text.title} description={text.description}
         actions={<Button variant="secondary" icon={<ListPlus aria-hidden="true" size={20} />} aria-expanded={bulk.open}
           onClick={() => setBulk((current) => ({ open: !current.open, key: current.key + 1 }))}>{text.bulkAdd}</Button>} />
       <OrphanBlockedNotice />
@@ -128,7 +128,7 @@ export function TeachersPage() {
                   )}
                   {loadOf(teacher.id) && loadOf(teacher.id)?.status !== "within" && <LoadStatusBadge status={loadOf(teacher.id)?.status ?? "within"} />}
                   {teacher.specializationIds.length > 0 && subjects.isSuccess && (
-                    <Badge tone="primary">{messages.school.specializations.summary(specializationSummary(teacher.specializationIds))}</Badge>
+                    <Badge tone="primary" icon={<GraduationCap aria-hidden="true" size={16} />}>{messages.school.specializations.summary(specializationSummary(teacher.specializationIds))}</Badge>
                   )}
                   {teacher.fullyReleased && <Badge tone="warning" icon={<UsersRound aria-hidden="true" size={16} />}>{text.releasedBadge}</Badge>}
                   <ArchiveBadge archived={teacher.isArchived} />

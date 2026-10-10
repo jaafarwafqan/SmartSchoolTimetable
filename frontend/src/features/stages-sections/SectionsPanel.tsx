@@ -1,4 +1,5 @@
-import { Plus, UsersRound } from "lucide-react";
+import { SectionTitle } from "../../components/ui/section-title";
+import { Plus, UsersRound, LayoutGrid } from "lucide-react";
 import { ArchiveBlockedDialog, GuardedDeleteDialog, isReferenceError } from "../../components/References";
 import { useState } from "react";
 import { ConflictAlert } from "../../components/ConflictAlert";
@@ -65,7 +66,7 @@ export function SectionsPanel({ yearId, stage, includeArchived }: SectionsPanelP
   return (
     <Card className="page-card" aria-labelledby="sections-title">
       <div className="card-header-row">
-        <h2 id="sections-title">{text.sectionsOf(stage.name)}</h2>
+        <SectionTitle level={2} icon={LayoutGrid} id="sections-title">{text.sectionsOf(stage.name)}</SectionTitle>
         <Button variant="secondary" icon={<Plus aria-hidden="true" size={20} />} disabled={!canAdd} onClick={() => openDialog(null)}>{text.addSection}</Button>
       </div>
       {(sections.isError || shifts.isError) && <Alert tone="error" message={messages.school.common.loadFailed} />}

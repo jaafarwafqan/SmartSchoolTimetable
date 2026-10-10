@@ -61,7 +61,7 @@ export function InactivitySection({ bootstrap }: { bootstrap: Bootstrap }) {
   return (
     <SettingsSection
       id="session-section"
-      icon={<Clock size={20} strokeWidth={2} />}
+      icon={Clock}
       title={messages.app.sessionSectionTitle}
       description={messages.app.sessionSectionDescription}
     >

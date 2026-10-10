@@ -1,4 +1,5 @@
-import { Save } from "lucide-react";
+import { SectionTitle } from "../../components/ui/section-title";
+import { Save, School, Paintbrush } from "lucide-react";
 import type { FormEvent } from "react";
 import { ConflictAlert } from "../../components/ConflictAlert";
 import { SelectField } from "../../components/SelectField";
@@ -48,7 +49,7 @@ export function ProfileForm({ profile, onReload, reloading }: ProfileFormProps) 
       {feedback.conflict && <ConflictAlert onReload={onReload} loading={reloading} />}
       <Alert tone="success" message={feedback.success} />
       <Alert tone="error" message={feedback.error} />
-      <h2>{text.detailsTitle}</h2>
+      <SectionTitle level={2} icon={School}>{text.detailsTitle}</SectionTitle>
       <TextField id="schoolName" label={text.name} defaultValue={profile.name} maxLength={200} required field="Name" errors={feedback.fieldErrors} />
       <div className="form-grid">
         <SelectField id="schoolType" label={text.schoolType} options={options(profile.options.schoolTypes, text.schoolTypes)} defaultValue={profile.schoolType} required field="SchoolType" errors={feedback.fieldErrors} />
@@ -56,7 +57,7 @@ export function ProfileForm({ profile, onReload, reloading }: ProfileFormProps) 
         <TextField id="principalName" label={text.principalName} defaultValue={profile.principalName ?? ""} maxLength={150} field="PrincipalName" errors={feedback.fieldErrors} />
         <TextField id="scheduleOfficerName" label={text.scheduleOfficerName} defaultValue={profile.scheduleOfficerName ?? ""} maxLength={150} field="ScheduleOfficerName" errors={feedback.fieldErrors} />
       </div>
-      <h2>{text.displayTitle}</h2>
+      <SectionTitle level={2} icon={Paintbrush}>{text.displayTitle}</SectionTitle>
       <div className="form-grid">
         <SelectField id="timeZone" label={text.timeZone} options={options(profile.options.timeZones, text.timeZones)} defaultValue={profile.timeZone} required field="TimeZone" errors={feedback.fieldErrors} />
         <SelectField id="numeralSystem" label={text.numeralSystem} options={options(profile.options.numeralSystems, text.numeralSystems)} defaultValue={profile.numeralSystem} required field="NumeralSystem" errors={feedback.fieldErrors} />

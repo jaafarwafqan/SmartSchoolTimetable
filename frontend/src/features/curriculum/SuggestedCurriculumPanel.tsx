@@ -1,4 +1,4 @@
-import { Check, CircleAlert, ClipboardList, RotateCcw, TriangleAlert } from "lucide-react";
+import { Check, CircleAlert, ClipboardList, RotateCcw, TriangleAlert, Sparkles, CircleCheck, Plus } from "lucide-react";
 import { useState } from "react";
 import { Alert } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
@@ -99,7 +99,7 @@ export function SuggestedCurriculumPanel({ yearId, open = false }: { yearId: num
       <summary>
         <ClipboardList aria-hidden="true" size={20} />
         <span>{text.open}</span>
-        <Badge tone="primary">{text.badge}</Badge>
+        <Badge tone="primary" icon={<Sparkles aria-hidden="true" size={16} />}>{text.badge}</Badge>
       </summary>
       <div className="form-stack">
         <Alert tone="info" message={text.provenance} />
@@ -143,7 +143,7 @@ export function SuggestedCurriculumPanel({ yearId, open = false }: { yearId: num
                 {plan.subjects.filter((line) => line.included).map((line) => (
                   <li key={`suggested-subject-${line.name}`} className={`subject-chip${line.action === "exists" ? " is-added" : ""}`}>
                     <span className="subject-chip-name">{line.name}</span>
-                    <Badge tone={line.action === "exists" ? "success" : "primary"}>
+                    <Badge tone={line.action === "exists" ? "success" : "primary"} icon={line.action === "exists" ? <CircleCheck aria-hidden="true" size={16} /> : <Plus aria-hidden="true" size={16} />}>
                       {line.action === "create" ? text.subjectCreate : line.existingName && line.existingName !== line.name ? text.subjectAlias(line.existingName) : text.subjectExists}
                     </Badge>
                   </li>

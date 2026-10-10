@@ -1,3 +1,4 @@
+import { SectionTitle } from "../../components/ui/section-title";
 import { CalendarDays, Save } from "lucide-react";
 import { type FormEvent } from "react";
 import { ConflictAlert } from "../../components/ConflictAlert";
@@ -35,7 +36,7 @@ export function WorkingDaysCard({ week, onReload }: WorkingDaysCardProps) {
 
   return (
     <Card className="page-card" aria-labelledby="working-days-title">
-      <h2 id="working-days-title">{text.workingDays}</h2>
+      <SectionTitle level={2} icon={CalendarDays} id="working-days-title">{text.workingDays}</SectionTitle>
       {feedback.conflict && <ConflictAlert onReload={() => { feedback.reset(); onReload(); }} />}
       <Alert tone="success" message={feedback.success} />
       <Alert tone="error" message={feedback.error} />

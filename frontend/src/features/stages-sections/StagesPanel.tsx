@@ -1,4 +1,5 @@
-import { Layers3, Plus } from "lucide-react";
+import { SectionTitle } from "../../components/ui/section-title";
+import { Layers3, Plus, Layers } from "lucide-react";
 import { ArchiveBlockedDialog, GuardedDeleteDialog, isReferenceError } from "../../components/References";
 import { useState, type ReactNode } from "react";
 import { ConflictAlert } from "../../components/ConflictAlert";
@@ -68,7 +69,7 @@ export function StagesPanel({ yearId, renderSelected }: StagesPanelProps) {
     <>
       <Card className="page-card" aria-labelledby="stages-title">
         <div className="card-header-row">
-          <h2 id="stages-title">{text.stages}</h2>
+          <SectionTitle level={2} icon={Layers} id="stages-title">{text.stages}</SectionTitle>
           <Button icon={<Plus aria-hidden="true" size={20} />} onClick={() => openDialog(null)}>{text.addStage}</Button>
         </div>
         {stages.isError && <Alert tone="error" message={messages.school.common.loadFailed} />}

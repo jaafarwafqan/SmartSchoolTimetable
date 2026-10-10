@@ -1,7 +1,9 @@
+import { CalendarRange, ClipboardCheck, Clock, Gauge, GraduationCap, Layers, School, UsersRound, type LucideIcon, Wand2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Alert } from "../../components/ui/alert";
 import { Card } from "../../components/ui/card";
+import { SectionTitle } from "../../components/ui/section-title";
 import { Spinner } from "../../components/ui/spinner";
 import { messages } from "../../i18n/messages";
 import { PageHeader } from "../../layout/PageHeader";
@@ -14,6 +16,9 @@ import { useSetupProgress } from "./wizardApi";
 import { YearStep } from "./YearStep";
 
 const text = messages.school.wizard;
+const stepIcons: Record<WizardStep, LucideIcon> = {
+  1: School, 2: CalendarRange, 3: Clock, 4: Layers, 5: GraduationCap, 6: UsersRound, 7: Gauge, 8: ClipboardCheck,
+};
 const asStep = (value: number): WizardStep => wizardSteps.find((step) => step === value) ?? 1;
 
 /**
@@ -44,14 +49,14 @@ export function SetupWizardPage() {
 
   return (
     <div className="page">
-      <PageHeader title={text.title} description={text.description} />
+      <PageHeader icon={Wand2} title={text.title} description={text.description} />
       {progress.isPending && <Spinner label={messages.app.loadingContent} />}
       {progress.isError && <Alert tone="error" message={messages.school.common.loadFailed} />}
       {data && (
         <div className="wizard-layout">
           <WizardProgress step={step} progress={data} format={format.number} />
           <Card className="page-card wizard-card" aria-labelledby="wizard-step-title">
-            <h2 id="wizard-step-title" ref={headingRef} tabIndex={-1}>{text.steps[step]}</h2>
+            <SectionTitle level={2} icon={stepIcons[step]} id="wizard-step-title" ref={headingRef} tabIndex={-1}>{text.steps[step]}</SectionTitle>
             {step === 1 && <SchoolStep onBack={back} onDone={done} />}
             {step === 2 && <YearStep onBack={back} onDone={done} />}
             {step === 3 && <TimingStep progress={data} onBack={back} onDone={done} />}

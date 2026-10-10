@@ -139,6 +139,24 @@ const designSystemPlugin = {
         };
       },
     },
+    "no-raw-headings": {
+      meta: {
+        type: "problem",
+        schema: [],
+        messages: { raw: "Feature code renders section headings with SectionTitle (icon + title), not a raw <{{name}}>." },
+      },
+      create(context) {
+        const filename = context.filename.replaceAll("\\", "/");
+        if (!filename.includes("/src/features/")) return {};
+        return {
+          JSXOpeningElement(node) {
+            if (node.name.type === "JSXIdentifier" && (node.name.name === "h2" || node.name.name === "h3")) {
+              context.report({ node, messageId: "raw", data: { name: node.name.name } });
+            }
+          },
+        };
+      },
+    },
     "no-native-date-time": {
       meta: {
         type: "problem",
@@ -212,6 +230,7 @@ export default tseslint.config(
       "localized-ui/no-hardcoded-ui-text": "error",
       "design-system/no-arbitrary-colors": "error",
       "design-system/no-raw-form-elements": "error",
+      "design-system/no-raw-headings": "error",
       "design-system/lucide-icons-only": "error",
       "design-system/no-native-date-time": "error",
       "design-system/no-drawers": "error",

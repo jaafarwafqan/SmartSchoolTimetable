@@ -1,4 +1,5 @@
-import { ImageOff, Trash2 } from "lucide-react";
+import { SectionTitle } from "../../components/ui/section-title";
+import { ImageOff, Trash2, Image } from "lucide-react";
 import { useState } from "react";
 import { ConflictAlert } from "../../components/ConflictAlert";
 import { Alert } from "../../components/ui/alert";
@@ -33,7 +34,7 @@ export function AssetPanel({ kind, profile, onReload, reloading }: AssetPanelPro
 
   return (
     <section className="asset-panel" aria-labelledby={`${kind}-title`}>
-      <h3 id={`${kind}-title`}>{label}</h3>
+      <SectionTitle level={3} icon={Image} id={`${kind}-title`}>{label}</SectionTitle>
       <div className="asset-preview">
         {hasImage
           ? <img src={`/api/v1/school-profile/${kind}?v=${profile.version}`} alt={text.imageAlt(label)} />

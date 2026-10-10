@@ -1,4 +1,5 @@
-import { BellRing, Info, Save, Volume2 } from "lucide-react";
+import { SectionTitle } from "../../components/ui/section-title";
+import { BellRing, Info, Save, Volume2, Bell } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { ConflictAlert } from "../../components/ConflictAlert";
 import { Alert } from "../../components/ui/alert";
@@ -48,7 +49,7 @@ export function BellSettingsCard({ settings, onReload }: BellSettingsCardProps) 
   return (
     <Card className="page-card" aria-labelledby="bell-title">
       <div className="card-header-row">
-        <h2 id="bell-title">{text.bellSettings}</h2>
+        <SectionTitle level={2} icon={Bell} id="bell-title">{text.bellSettings}</SectionTitle>
         <BellRing aria-hidden="true" size={20} />
       </div>
       {feedback.conflict && <ConflictAlert onReload={() => { feedback.reset(); onReload(); }} />}

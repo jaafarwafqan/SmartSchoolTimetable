@@ -1,3 +1,4 @@
+import { SectionTitle } from "../../components/ui/section-title";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArchiveRestore, DatabaseBackup, HardDriveDownload } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -41,7 +42,7 @@ export function BackupSection() {
   });
 
   return (
-    <SettingsSection id="backup-section" icon={<DatabaseBackup size={20} strokeWidth={2} />} title={text.title} description={text.description}>
+    <SettingsSection id="backup-section" icon={DatabaseBackup} title={text.title} description={text.description}>
       <Alert tone="error" message={backupFeedback.error} />
       <Alert tone="success" message={backupFeedback.success} />
       <div className="form-stack">
@@ -56,7 +57,7 @@ export function BackupSection() {
         </div>
       </div>
 
-      <h3 className="settings-subtitle">{text.restoreTitle}</h3>
+      <SectionTitle level={3} icon={ArchiveRestore} className="settings-subtitle">{text.restoreTitle}</SectionTitle>
       <Alert tone="error" message={restoreFeedback.error} />
       <div className="form-stack">
         <Field id="restore-file" label={text.restoreFile} hint={text.restoreFileHint}>

@@ -603,3 +603,14 @@
   gap: 0.5rem;
   min-inline-size: 0;
 }
+
+.ui-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ui-section-title > svg {
+  flex-shrink: 0;
+  color: var(--color-primary);
+}
