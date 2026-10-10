@@ -9,13 +9,14 @@ using SmartSchoolTimetable.Domain.Text;
 
 namespace SmartSchoolTimetable.Application.Setup;
 
+/// <param name="ShiftMode">Optional: the system (morning, evening, dual); null keeps the current one. The timing step is where it is chosen now.</param>
 public sealed record WizardSchoolCommand(string? Name, string? SchoolType, string? ShiftMode, string? PrincipalName);
 
 public sealed record WizardTermInput(string? Name, string? StartDate, string? EndDate);
 
 public sealed record WizardYearCommand(string? Label, string? StartDate, string? EndDate, IReadOnlyList<WizardTermInput>? Terms);
 
-/// <param name="Kind">morning or evening; one block per shift of the chosen shift mode.</param>
+/// <param name="Kind">morning or evening (kept for compatibility; the system decides which shift it is).</param>
 public sealed record WizardShiftInput(
     string? Kind,
     string? FirstStartTime,
@@ -25,7 +26,11 @@ public sealed record WizardShiftInput(
     IReadOnlyList<DayLessonsDto>? DayLessons,
     int GapMinutes = 0);
 
-public sealed record WizardTimingCommand(IReadOnlyList<int>? Days, int WeekStartDay, IReadOnlyList<WizardShiftInput>? Shifts);
+/// <param name="System">morning, evening or dual (دوام مزدوج). MF7: one shift in every case.</param>
+/// <param name="Main">The shift's timing (morning, or evening for an evening school).</param>
+/// <param name="Evening">Double only: the evening session's timing.</param>
+/// <param name="SessionDays">Double only: the session of each working day in each semester.</param>
+public sealed record WizardTimingCommand(IReadOnlyList<int>? Days, int WeekStartDay, string? System, WizardShiftInput? Main, WizardShiftInput? Evening, IReadOnlyList<SessionDayInput>? SessionDays);
 
 /// <param name="Code">emptyCurriculum, noSections, under or over (the UI writes the Arabic text).</param>
 public sealed record SetupWarningDto(string Code, string StageName, string? ShiftName, int Value);
@@ -51,8 +56,7 @@ public sealed class SetupWizardService(
     IDataStore store,
     SchoolProfileService profiles,
     AcademicYearService years,
-    TimetableStructureService structure,
-    ShiftModeService shiftMode,
+    ShiftSystemService shiftSystem,
     SetupProgressService progress)
 {
     public const int SchoolStep = 1;
@@ -67,11 +71,17 @@ public sealed class SetupWizardService(
         {
             var profile = await profiles.GetAsync(token);
             var saved = SetupTransaction.Require(await profiles.UpdateAsync(new UpdateSchoolProfileCommand(
-                command.Name, command.SchoolType, command.ShiftMode, command.PrincipalName, profile.ScheduleOfficerName,
+                command.Name, command.SchoolType, profile.StudyType, command.PrincipalName, profile.ScheduleOfficerName,
                 profile.TimeZone, profile.NumeralSystem, profile.CalendarDisplay, profile.Version), token));
-            // With a current year, the shifts follow the chosen mode now; otherwise the timing step creates them.
-            if (await SchoolContextService.CurrentYearAsync(store, token) is not null)
-                SetupTransaction.Require(await shiftMode.SetAsync(new SetShiftModeCommand(saved.StudyType, saved.Version), token));
+            // The system of work is chosen once, in the timing step. An explicit value here (older clients) applies it now.
+            if (command.ShiftMode is not null)
+            {
+                var mode = ShiftSystems.Parse(command.ShiftMode);
+                if (mode is null)
+                    return SetupTransaction.Require(OperationResult.Invalid<SetupProgressDto>(nameof(command.ShiftMode), ErrorCodes.InvalidOption));
+                await shiftSystem.ApplyModeInTransactionAsync(mode.Value, token);
+            }
+            _ = saved;
             return await CompleteAsync(SchoolStep, token);
         }, token);
     }
@@ -107,26 +117,7 @@ public sealed class SetupWizardService(
         ArgumentNullException.ThrowIfNull(command);
         return SetupTransaction.RunAsync(store, async () =>
         {
-            if (await SchoolContextService.CurrentYearAsync(store, token) is not { } year)
-                return SetupTransaction.Require(OperationResult.Failure<SetupProgressDto>(ErrorCodes.NoCurrentYear));
-            var week = await structure.GetWorkingWeekAsync(token);
-            SetupTransaction.Require(await structure.UpdateWorkingWeekAsync(new UpdateWorkingWeekCommand(command.Days, command.WeekStartDay, week.Version), token));
-            var profile = await profiles.GetAsync(token);
-            var shifts = SetupTransaction.Require(await shiftMode.SetAsync(new SetShiftModeCommand(profile.StudyType, profile.Version), token)).Shifts;
-
-            var inputs = command.Shifts ?? [];
-            if (inputs.Select(input => input.Kind).Distinct().Count() != inputs.Count || inputs.Any(input => shifts.All(shift => shift.Kind != input.Kind)))
-                return SetupTransaction.Require(OperationResult.Invalid<SetupProgressDto>("Shifts", ErrorCodes.InvalidOption));
-            foreach (var input in inputs)
-            {
-                var shift = shifts.Single(item => item.Kind == input.Kind);
-                var periods = SetupTransaction.Require(TimetableStructureService.Generate(new GeneratePeriodsCommand(
-                    input.FirstStartTime, input.LessonMinutes, input.LessonCount, 0, null, input.Breaks ?? [], input.GapMinutes)));
-                shift = SetupTransaction.Require(await structure.ReplacePeriodsAsync(year.Id, shift.Id, new ReplacePeriodsCommand(
-                    periods.Periods.Select(period => new PeriodInput(period.Kind, period.StartTime, period.EndTime, period.StartBell, period.EndBell)).ToArray(),
-                    shift.Version), token));
-                SetupTransaction.Require(await structure.SetDayLessonsAsync(year.Id, shift.Id, new SetDayLessonsCommand(input.DayLessons ?? [], shift.Version), token));
-            }
+            await shiftSystem.SaveInTransactionAsync(new SaveShiftSystemCommand(command.System, command.Days, command.WeekStartDay, command.Main, command.Evening, command.SessionDays), token);
             return await CompleteAsync(TimingStep, token);
         }, token);
     }

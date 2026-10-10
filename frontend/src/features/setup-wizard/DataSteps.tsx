@@ -12,8 +12,7 @@ import { SubjectTemplatePanel } from "../curriculum/SubjectTemplatePanel";
 import { StageCardsPanel } from "../stages-sections/StageCardsPanel";
 import { StageTemplatePanel } from "../stages-sections/StageTemplatePanel";
 import { BulkAddPanel } from "../teachers/BulkAddPanel";
-import { AssignmentSuggester } from "../workload/AssignmentSuggester";
-import { useWorkloadMatrix } from "../workload/workloadApi";
+import { WorkloadTable } from "../workload/WorkloadTable";
 import { WizardFooter } from "./WizardFrame";
 import { useRecordStep, useSetupReview, type SetupProgress, type SetupWarning } from "./wizardApi";
 
@@ -89,17 +88,13 @@ export function TeachersStep({ progress, onBack, onDone }: DataStepProps) {
 }
 
 /** Step 7: optional assignment suggestions with live assigned/total line counts. */
+/** Step 7 (MF2): the flat «الأنصبة» table — every section × subject with its teacher, filters, statuses and loads. */
 export function WorkloadStep({ progress, onBack, onDone }: DataStepProps) {
-  const format = useFormatter();
   const yearId = useSchoolContext().data?.currentYear?.id ?? null;
-  const matrix = useWorkloadMatrix(yearId, null);
   const step = useStepRecorder(progress, 7, onDone);
-  const assigned = matrix.data?.stages.reduce((total, stage) => total + stage.assignedCells, 0) ?? 0;
-  const total = matrix.data?.stages.reduce((sum, stage) => sum + stage.totalCells, 0) ?? 0;
   return (
     <div className="form-stack">
-      <p className="card-note">{text.workload.counts(format.number(assigned), format.number(total))}</p>
-      {yearId === null ? <NoYear /> : <AssignmentSuggester yearId={yearId} embedded />}
+      {yearId === null ? <NoYear /> : <WorkloadTable yearId={yearId} />}
       <WizardFooter step={7} pending={step.pending} error={step.feedback.error} onBack={onBack} onNext={() => step.next()} onSkip={() => step.next(true)} />
     </div>
   );

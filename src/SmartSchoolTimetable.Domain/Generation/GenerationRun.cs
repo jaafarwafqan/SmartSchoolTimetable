@@ -64,6 +64,12 @@ public sealed class GenerationRun : VersionedEntity
     /// <summary>The version whose manual edits were kept as locked lessons («إبقاء تعديلاتي»), or null.</summary>
     public long? LockedFromVersionId { get; private set; }
 
+    /// <summary>
+    /// MF11: this run repairs <see cref="LockedFromVersionId"/> against today's data: every lesson that still fits stays in place
+    /// (instead of the version's manual edits) and the result is saved as a new draft with that version as its parent.
+    /// </summary>
+    public bool IsRepair { get; private set; }
+
     /// <summary>How many manual lessons were asked to stay in place.</summary>
     public int LockedLessons { get; private set; }
 
@@ -76,7 +82,7 @@ public sealed class GenerationRun : VersionedEntity
 
     public static GenerationRun Queue(long academicYearId, string mode, int timeLimitSeconds, int seed, int workers, bool deterministic,
         string solverVersion, string solverParameters, string inputHash, int profileVersion, DateTimeOffset now,
-        long? lockedFromVersionId = null, int lockedLessons = 0)
+        long? lockedFromVersionId = null, int lockedLessons = 0, bool isRepair = false)
     {
         new DomainErrors()
             .When(academicYearId <= 0, nameof(AcademicYearId), DomainErrorCode.Required)
@@ -100,6 +106,7 @@ public sealed class GenerationRun : VersionedEntity
             QueuedAt = now,
             LockedFromVersionId = lockedFromVersionId,
             LockedLessons = lockedLessons,
+            IsRepair = isRepair,
         };
     }
 

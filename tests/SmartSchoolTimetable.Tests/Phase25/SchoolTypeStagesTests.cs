@@ -56,7 +56,8 @@ public sealed class SchoolTypeStagesTests
         {
             days = WorkingDays,
             weekStartDay = 7,
-            shifts = new[] { new { kind = "morning", firstStartTime = "08:00", lessonMinutes = 45, lessonCount = 6 } },
+            system = "morning",
+            main = new { kind = "morning", firstStartTime = "08:00", lessonMinutes = 45, lessonCount = 6 },
         }, token));
         var year = (await ReadAsync<PagedResult<AcademicYearDto>>(await host.Client.GetAsync("/api/v1/academic-years/"))).Items.Single();
         var root = $"/api/v1/academic-years/{year.Id}";

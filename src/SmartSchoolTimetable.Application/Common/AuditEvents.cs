@@ -33,6 +33,8 @@ public static class AuditEvents
     public const string CalendarDayCreated = "CalendarDayCreated";
     public const string CalendarDayDeleted = "CalendarDayDeleted";
     public const string CalendarDayUpdated = "CalendarDayUpdated";
+    public const string CalendarDayEnabledChanged = "CalendarDayEnabledChanged";
+    public const string CalendarHolidaysImported = "CalendarHolidaysImported";
     public const string CurriculumCopied = "CurriculumCopied";
     public const string CurriculumEntryArchived = "CurriculumEntryArchived";
     public const string CurriculumEntryCleared = "CurriculumEntryCleared";
@@ -75,6 +77,7 @@ public static class AuditEvents
     public const string ShiftDeleted = "ShiftDeleted";
     public const string ShiftModeChanged = "ShiftModeChanged";
     public const string ShiftPeriodsUpdated = "ShiftPeriodsUpdated";
+    public const string ShiftSystemConverted = "ShiftSystemConverted";
     public const string ShiftUpdated = "ShiftUpdated";
     public const string StageArchived = "StageArchived";
     public const string StageCreated = "StageCreated";
@@ -107,6 +110,8 @@ public static class AuditEvents
     public const string TimetableEdited = "TimetableEdited";
     public const string TimetableGenerated = "TimetableGenerated";
     public const string TimetableRolledBack = "TimetableRolledBack";
+    public const string TimetableRepaired = "TimetableRepaired";
+    public const string TimetableTeacherReplaced = "TimetableTeacherReplaced";
     public const string WorkingWeekUpdated = "WorkingWeekUpdated";
     public const string WorkloadArchivedWithLine = "WorkloadArchivedWithLine";
     public const string WorkloadAssigned = "WorkloadAssigned";
@@ -130,6 +135,8 @@ public static class AuditEvents
         [CalendarDayCreated] = AuditCategories.School,
         [CalendarDayDeleted] = AuditCategories.School,
         [CalendarDayUpdated] = AuditCategories.School,
+        [CalendarDayEnabledChanged] = AuditCategories.School,
+        [CalendarHolidaysImported] = AuditCategories.School,
         [CurriculumCopied] = AuditCategories.School,
         [CurriculumEntryArchived] = AuditCategories.School,
         [CurriculumEntryCleared] = AuditCategories.School,
@@ -172,6 +179,7 @@ public static class AuditEvents
         [ShiftDeleted] = AuditCategories.School,
         [ShiftModeChanged] = AuditCategories.School,
         [ShiftPeriodsUpdated] = AuditCategories.School,
+        [ShiftSystemConverted] = AuditCategories.School,
         [ShiftUpdated] = AuditCategories.School,
         [StageArchived] = AuditCategories.School,
         [StageCreated] = AuditCategories.School,
@@ -204,6 +212,8 @@ public static class AuditEvents
         [TimetableEdited] = AuditCategories.Timetable,
         [TimetableGenerated] = AuditCategories.Timetable,
         [TimetableRolledBack] = AuditCategories.Timetable,
+        [TimetableRepaired] = AuditCategories.Timetable,
+        [TimetableTeacherReplaced] = AuditCategories.Timetable,
         [WorkingWeekUpdated] = AuditCategories.School,
         [WorkloadArchivedWithLine] = AuditCategories.School,
         [WorkloadAssigned] = AuditCategories.School,

@@ -10,7 +10,8 @@ public sealed record BranchTemplate(string Key, string Name);
 /// <param name="BranchStem">Set for grades taught in branches: the stage is "{stem} {branch}" (e.g. "الرابع العلمي").</param>
 public sealed record GradeTemplate(string Key, string Name, string? BranchStem, IReadOnlyList<string> SchoolTypes);
 
-public sealed record PeriodPresetTemplate(string Key, string Name, string FirstStart, int LessonMinutes, int LessonCount, IReadOnlyList<BreakSlotDto> Breaks);
+/// <param name="Session">morning or evening: the timing list shows a template only for its own session (MF1).</param>
+public sealed record PeriodPresetTemplate(string Key, string Name, string FirstStart, int LessonMinutes, int LessonCount, IReadOnlyList<BreakSlotDto> Breaks, string Session = "morning");
 
 public sealed record WorkingDayPresetTemplate(string Key, string Name, IReadOnlyList<int> Days, int WeekStart, bool IsDefault);
 

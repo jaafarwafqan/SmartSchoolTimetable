@@ -3,6 +3,7 @@ import { isolate } from "../isolate";
 // Shared application strings (authentication, shell, settings). Arabic only; no hard-coded digits.
 export const app = {
   dateParts: { day: "اليوم", month: "الشهر", year: "السنة", separator: "/" },
+  datePicker: { open: "اختيار من التقويم", label: "تقويم لاختيار التاريخ", previousMonth: "الشهر السابق", nextMonth: "الشهر التالي", today: "اليوم", close: "إغلاق التقويم" },
   timeParts: { hours: "الساعة", minutes: "الدقيقة", separator: ":", meridiem: "الفترة", am: "ص", pm: "م", amLong: "صباحاً", pmLong: "مساءً", empty: "—" },
   brand: "الجدول الذكي",
   tagline: "نظام محلي لإدارة الجداول المدرسية",

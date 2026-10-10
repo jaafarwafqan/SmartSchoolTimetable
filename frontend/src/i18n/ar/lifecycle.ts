@@ -3,6 +3,9 @@
 
 export const lifecycle = {
   statuses: { draft: "مسودة", approved: "معتمد", archived: "مؤرشف" },
+  versionOption: (number: string, date: string, status: string, source: string) => `الإصدار ${number} — ${date} — ${status} (${source})`,
+  allVersions: (count: string) => `كل الإصدارات (${count})`,
+  editingHint: "أنت تعدّل الجدول. احفظ التعديلات لإنشاء إصدار جديد، أو ألغِها.",
   statusHints: {
     draft: "يمكن اعتماده أو أرشفته.",
     approved: "هذا هو الجدول المعتمد. لا يتغير، ويمكن أرشفته.",

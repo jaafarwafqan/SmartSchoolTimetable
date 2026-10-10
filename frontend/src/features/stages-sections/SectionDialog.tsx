@@ -1,7 +1,6 @@
 import { Save, X } from "lucide-react";
 import { useId, type FormEvent } from "react";
 import { ConflictAlert } from "../../components/ConflictAlert";
-import { SelectField } from "../../components/SelectField";
 import { TextField } from "../../components/TextField";
 import { Alert } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
@@ -44,7 +43,7 @@ export function SectionDialog({ open, yearId, stageId, section, shiftOptions, on
       id: section?.id ?? null,
       input: {
         label: String(form.get("sectionLabel") ?? ""),
-        shiftId: Number(form.get("sectionShift") || 0),
+        shiftId: section?.shiftId ?? Number(shiftOptions[0]?.value ?? 0),
         studentCount: students ? Number(students) : null,
         version: section?.version ?? 0,
       },
@@ -71,7 +70,6 @@ export function SectionDialog({ open, yearId, stageId, section, shiftOptions, on
         {feedback.conflict && <ConflictAlert onReload={() => { feedback.reset(); onReload(); }} />}
         <Alert tone="error" message={feedback.error} />
         <TextField id="sectionLabel" label={text.label} defaultValue={section?.label ?? ""} maxLength={40} required field="Label" errors={feedback.fieldErrors} />
-        <SelectField id="sectionShift" label={text.shift} options={shiftOptions} defaultValue={String(section?.shiftId ?? shiftOptions[0]?.value ?? "")} required field="ShiftId" errors={feedback.fieldErrors} />
         <TextField id="sectionStudents" type="number" min={0} max={200} label={text.students} defaultValue={section?.studentCount === null || !section ? "" : String(section.studentCount)} field="StudentCount" errors={feedback.fieldErrors} />
       </form>
     </Dialog>

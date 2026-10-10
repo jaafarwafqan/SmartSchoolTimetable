@@ -70,6 +70,26 @@ public sealed record ViolationDto(string Code, string Rule, long? SectionId, lon
 
 public sealed record TimetableCheckDto(IReadOnlyList<ViolationDto> Violations, TimetableScore Score);
 
+public sealed record NamedItem(long Id, string Name);
+
+public sealed record NamedSection(long Id, string StageName, string Label);
+
+/// <summary>Names for the ids in a current-data check: today's names, and the snapshot's for things that no longer exist.</summary>
+public sealed record CurrentCheckNames(IReadOnlyList<NamedItem> Teachers, IReadOnlyList<NamedSection> Sections, IReadOnlyList<NamedItem> Subjects,
+    IReadOnlyList<NamedItem> Stages, IReadOnlyList<NamedItem> Resources, IReadOnlyList<NamedItem> Shifts);
+
+/// <summary>
+/// MF11: a SAVED version checked against TODAY's school data (the version itself never changes). <paramref name="Findings"/> are the hard
+/// problems (empty: it still fits); <paramref name="Changes"/> is what changed in the scheduling input since the version was made.
+/// </summary>
+/// <param name="Stale">The school data changed after this version was made (the input hash differs).</param>
+/// <param name="CanReplaceTeachers">Teacher changes are the only problem and putting the new teachers in the same slots breaks nothing.</param>
+/// <param name="CanRepair">There is something to repair (any finding); «إصلاح بأقل تغيير» keeps every lesson that still fits.</param>
+public sealed record CurrentCheckDto(long VersionId, bool Stale, IReadOnlyList<CurrentFinding> Findings, IReadOnlyList<InputChange> Changes,
+    bool CanReplaceTeachers, bool CanRepair, CurrentCheckNames Names);
+
+public sealed record ReplaceTeachersCommand(int Version);
+
 /// <summary>«الجداول» (Phase 4 M3): saved versions, the grids, and «اعتماد هذا الإصدار» (one approved version per year).</summary>
 public sealed class TimetableService(IDataStore store, TimeProvider clock)
 {
@@ -107,6 +127,10 @@ public sealed class TimetableService(IDataStore store, TimeProvider clock)
             return OperationResult.Failure<TimetableVersionSummary>(ErrorCodes.Conflict);
         if (!TimetableTransitions.IsValid(version.Status, TimetableStatus.Approved))
             return OperationResult.Failure<TimetableVersionSummary>(ErrorCodes.TimetableInvalidTransition);
+        // MF11: a version that conflicts with today's school data is not approved; one whose data merely changed (no conflict) is.
+        if (await SchedulingInputBuilder.BuildAsync(store, version.AcademicYearId, token) is { } today
+            && CurrentDataAnalyzer.Analyze(today, PlacedOf(version), version.Mode == GenerationModes.DoublePeriods).HasConflicts)
+            return OperationResult.Failure<TimetableVersionSummary>(ErrorCodes.TimetableConflictsWithCurrentData);
         await store.ExecuteInTransactionAsync(async () =>
         {
             // The filtered unique index allows one approved version per year: the old approved version is archived first.
@@ -123,6 +147,74 @@ public sealed class TimetableService(IDataStore store, TimeProvider clock)
             await store.SaveChangesAsync(token);
         }, token);
         return OperationResult.Success(Summary(version, version.InputHash));
+    }
+
+    /// <summary>MF11: «الفحص على البيانات الحالية» and what changed since the version was made. Read-only: saved and approved versions never change by themselves.</summary>
+    public async Task<OperationResult<CurrentCheckDto>> CurrentCheckAsync(long versionId, CancellationToken token)
+    {
+        if (await store.FirstOrDefaultAsync(store.Read<TimetableVersion>().Where(item => item.Id == versionId), token) is not { } version)
+            return OperationResult.Failure<CurrentCheckDto>(ErrorCodes.NotFound);
+        if (await SchedulingInputBuilder.BuildAsync(store, version.AcademicYearId, token) is not { } today)
+            return OperationResult.Failure<CurrentCheckDto>(ErrorCodes.NotFound);
+        var snapshot = SnapshotOf(version);
+        var analysis = CurrentDataAnalyzer.Analyze(today, PlacedOf(version), version.Mode == GenerationModes.DoublePeriods);
+        var stale = !string.Equals(version.InputHash, SchedulingInputHash.Compute(today), StringComparison.Ordinal);
+        var changes = InputDiff.Compare(snapshot, today).ToList();
+        if (stale && changes.Count == 0)
+            changes.Add(new InputChange(InputChangeCodes.OtherChange));
+        return OperationResult.Success(new CurrentCheckDto(version.Id, stale, analysis.Findings, changes, analysis.Reassigned > 0 && analysis.OnlyReassignments, analysis.HasConflicts, NamesOf(snapshot, today)));
+    }
+
+    /// <summary>
+    /// MF11 «استبدال المعلم في الجدول»: puts today's teacher into the lessons whose assignment changed, in the same slots, as a NEW
+    /// draft made from today's data. Refused (the owner is sent to the repair) when that would break any rule.
+    /// </summary>
+    public async Task<OperationResult<TimetableVersionSummary>> ReplaceTeachersAsync(long versionId, ReplaceTeachersCommand command, CancellationToken token)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        if (await store.FirstOrDefaultAsync(store.Read<TimetableVersion>().Where(item => item.Id == versionId), token) is not { } version)
+            return OperationResult.Failure<TimetableVersionSummary>(ErrorCodes.NotFound);
+        if (!version.IsVersion(command.Version))
+            return OperationResult.Failure<TimetableVersionSummary>(ErrorCodes.Conflict);
+        if (await SchedulingInputBuilder.BuildAsync(store, version.AcademicYearId, token) is not { } today)
+            return OperationResult.Failure<TimetableVersionSummary>(ErrorCodes.NotFound);
+        var doubles = version.Mode == GenerationModes.DoublePeriods;
+        var analysis = CurrentDataAnalyzer.Analyze(today, PlacedOf(version), doubles);
+        if (analysis.Reassigned == 0)
+            return OperationResult.Failure<TimetableVersionSummary>(ErrorCodes.TimetableNothingToReplace);
+        if (!analysis.OnlyReassignments)
+            return OperationResult.Failure<TimetableVersionSummary>(ErrorCodes.TimetableReplaceConflict);
+        var score = TimetableScorer.Score(today, analysis.Candidate, doubles);
+        var number = await GenerationService.NextNumberAsync(store, version.AcademicYearId, token);
+        var replaced = TimetableVersion.Create(version.AcademicYearId, number, TimetableSource.TeacherReplaced, version.GenerationRunId, version.Id, version.Mode,
+            SchedulingInputHash.Compute(today), GenerationJson.Serialize(today), score.Total, GenerationJson.Serialize(score), null,
+            analysis.Candidate.Select(lesson => new TimetableLesson(lesson.SectionId, lesson.LineId, lesson.TeacherId, lesson.Day, lesson.Lesson)), clock.GetUtcNow());
+        store.Add(replaced);
+        AuditTrail.Record(store, clock, AuditEvents.TimetableTeacherReplaced, $"timetable:{version.Id}", $"Timetable version {number} saved from version {version.Number} with {analysis.Reassigned} lessons given to their new teacher.",
+            new { number, from = version.Number, replaced = analysis.Reassigned });
+        await store.SaveChangesAsync(token);
+        return OperationResult.Success(Summary(replaced, replaced.InputHash));
+    }
+
+    public static IReadOnlyList<PlacedLesson> PlacedOf(TimetableVersion version)
+    {
+        ArgumentNullException.ThrowIfNull(version);
+        return version.Lessons.Select(lesson => new PlacedLesson(lesson.SectionId, lesson.CurriculumEntryId, lesson.TeacherId, lesson.Day, lesson.LessonNumber)).ToArray();
+    }
+
+    private static CurrentCheckNames NamesOf(SchedulingInput snapshot, SchedulingInput today)
+    {
+        static IReadOnlyList<NamedItem> Merge(IEnumerable<NamedItem> current, IEnumerable<NamedItem> old) =>
+            current.Concat(old).GroupBy(item => item.Id).Select(group => group.First()).OrderBy(item => item.Id).ToArray();
+        var stagesNow = today.Stages ?? today.Sections.GroupBy(section => section.StageId).Select(group => new StageInput(group.Key, group.First().StageName)).ToArray();
+        var stagesOld = snapshot.Stages ?? snapshot.Sections.GroupBy(section => section.StageId).Select(group => new StageInput(group.Key, group.First().StageName)).ToArray();
+        return new CurrentCheckNames(
+            Merge(today.Teachers.Select(item => new NamedItem(item.Id, item.Name)), snapshot.Teachers.Select(item => new NamedItem(item.Id, item.Name))),
+            today.Sections.Concat(snapshot.Sections).GroupBy(section => section.Id).Select(group => new NamedSection(group.Key, group.First().StageName, group.First().Label)).OrderBy(item => item.Id).ToArray(),
+            Merge(today.Subjects.Select(item => new NamedItem(item.Id, item.Name)), snapshot.Subjects.Select(item => new NamedItem(item.Id, item.Name))),
+            Merge(stagesNow.Select(item => new NamedItem(item.Id, item.Name)), stagesOld.Select(item => new NamedItem(item.Id, item.Name))),
+            Merge(today.Resources.Select(item => new NamedItem(item.Id, item.Name)), snapshot.Resources.Select(item => new NamedItem(item.Id, item.Name))),
+            Merge(today.Shifts.Select(item => new NamedItem(item.Id, item.Name)), snapshot.Shifts.Select(item => new NamedItem(item.Id, item.Name))));
     }
 
     /// <summary>Draft or Approved → Archived (final). The version itself is never deleted or changed otherwise.</summary>

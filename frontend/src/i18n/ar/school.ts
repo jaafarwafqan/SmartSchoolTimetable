@@ -10,6 +10,10 @@ import { wizard } from "./wizard";
 import { orphanOnSave, readiness, requiredResource, resources, schedulingProfile, specializations, workload } from "./phase3";
 import { audit } from "./audit";
 import { lifecycle } from "./lifecycle";
+import { shiftSystem } from "./shiftSystem";
+import { workloadTable } from "./workloadTable";
+import { printing } from "./printing";
+import { currentCheck } from "./currentCheck";
 import { backup, generation, timetable, violations } from "./phase4";
 
 export const school = {
@@ -30,7 +34,8 @@ export const school = {
     workload: "الأنصبة",
     settingsGeneral: "عام",
     settingsHistory: "سجل التغييرات",
-    schedulingProfile: "ملف الجدولة",
+    settingsAdvanced: "متقدم",
+    settingsAdvancedDescription: "إعدادات لا تحتاج إلى تغييرها عادةً.",
     timetable: "الجدول",
     generate: "التوليد",
     timetables: "الجداول",
@@ -56,6 +61,13 @@ export const school = {
   dashboard: {
     description: "ملخص بيانات المدرسة من قاعدة البيانات المحلية وخطوات الإعداد المتبقية.",
     countsTitle: "الأرقام الحالية",
+    holiday: {
+      title: "العطلة القادمة",
+      none: "لا توجد عطلة مسجلة خلال الأشهر الأربعة القادمة.",
+      now: "العطلة جارية الآن",
+      today: "تبدأ اليوم",
+      inDays: (days: string) => `بعد ${days}`,
+    },
     checklistTitle: "خطوات الإعداد",
     checklistDone: "اكتملت جميع خطوات الإعداد المتاحة.",
     stepDone: "مكتملة",
@@ -261,6 +273,10 @@ export const school = {
   timetable,
   audit,
   lifecycle,
+  currentCheck,
+  shiftSystem,
+  workloadTable,
+  printing,
   violations,
   backup,
 } as const;

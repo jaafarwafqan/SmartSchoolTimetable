@@ -1,12 +1,14 @@
 import { SectionTitle } from "../../components/ui/section-title";
 import { Archive, ArchiveRestore, BadgeCheck, CalendarCheck, CalendarRange, FileDown, FilePen, GitCompareArrows, History, PencilLine, Play, Printer, ShieldCheck, Stamp } from "lucide-react";
-import { useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { userErrorMessage } from "../../api";
 import { Alert } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
+import { Checkbox } from "../../components/ui/checkbox";
 import { ChipGroup } from "../../components/ui/chip-group";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { Field } from "../../components/ui/field";
@@ -16,23 +18,68 @@ import { messages } from "../../i18n/messages";
 import { PageHeader } from "../../layout/PageHeader";
 import { useFormatter, useSchoolContext } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
-import { useApproveTimetable, useArchiveTimetable, useRollbackTimetable, useTimetable, useTimetableVersions, type Term, type Timetable, type TimetableVersionSummary } from "./timetableApi";
+import { useStartRepair } from "../generation/generationApi";
+import { useApproveTimetable, useArchiveTimetable, useCurrentCheck, useReplaceTeachers, useRollbackTimetable, useTimetable, useTimetableVersions, type Term, type Timetable, type TimetableVersionSummary } from "./timetableApi";
 import { VersionComparison } from "./VersionComparison";
-import { lookups, MasterGrid, sessionViewOf, WeekGrid } from "./TimetableGrids";
+import { PrintDocument } from "./PrintDocument";
+import { defaultOptions, type Orientation, type PaperSize, type PrintOptions, type PrintScope } from "./printing";
+import { CurrentDataCheck } from "./CurrentDataCheck";
+import { flaggedSlots, slotKey, type FindingItem } from "./currentCheck";
+import { cellFor, lookups, MasterGrid, sessionViewOf, WeekGrid } from "./TimetableGrids";
 import { TimetableEditor } from "./TimetableEditor";
 
 const text = messages.school.timetable;
 const lifecycle = messages.school.lifecycle;
+const currentText = messages.school.currentCheck;
 
 type View = "section" | "teacher" | "master";
 
-function TimetableViews({ timetable, onSaved }: { timetable: Timetable; onSaved: (versionId: number) => void }) {
+type ViewsProps = {
+  timetable: Timetable;
+  /** MF4: the page owns the editing state, so it can hide «اعتماد» and the other version actions while editing. */
+  editing: boolean;
+  onEditingChange: (editing: boolean) => void;
+  onSaved: (versionId: number) => void;
+  /** MF11: slots ("section:day:lesson") that conflict with today's school data; marked on the grids outside the editor. */
+  flagged: ReadonlySet<string>;
+  /** MF11: «عرض في الجدول»: switch to the finding's section (or teacher) and focus its cell. `nonce` makes a repeated request count. */
+  focusRequest: { nonce: number; item: FindingItem } | null;
+};
+
+function TimetableViews({ timetable, editing, onEditingChange, onSaved, flagged, focusRequest }: ViewsProps) {
   const format = useFormatter();
   const look = useMemo(() => lookups(timetable), [timetable]);
-  const [view, setView] = useState<View>("section");
+  const [chosenView, setView] = useState<View>("section");
+  // The manual editor works on one section at a time, so editing always shows the section view.
+  const view: View = editing ? "section" : chosenView;
+  const setEditing = onEditingChange;
   const [sectionId, setSectionId] = useState<number>(timetable.sections[0]?.id ?? 0);
   const [teacherId, setTeacherId] = useState<number>(timetable.teachers[0]?.id ?? 0);
-  const [editing, setEditing] = useState(false);
+  // «عرض في الجدول»: adjust the view while rendering when a new request arrives (no effect needed for state).
+  const [seenRequest, setSeenRequest] = useState(0);
+  if (focusRequest && focusRequest.nonce !== seenRequest) {
+    setSeenRequest(focusRequest.nonce);
+    const { sectionId: wantedSection, teacherId: wantedTeacher } = focusRequest.item;
+    if (wantedSection !== null && timetable.sections.some((item) => item.id === wantedSection)) {
+      setView("section");
+      setSectionId(wantedSection);
+    } else if (wantedTeacher !== null && timetable.teachers.some((item) => item.id === wantedTeacher)) {
+      setView("teacher");
+      setTeacherId(wantedTeacher);
+    }
+  }
+  useEffect(() => {
+    if (!focusRequest) return undefined;
+    const { day, lesson } = focusRequest.item;
+    const handle = window.setTimeout(() => {
+      const row = day === null ? -1 : timetable.days.indexOf(day);
+      const exact = row >= 0 && lesson !== null ? document.querySelector<HTMLElement>(`.timetable-views [data-cell="${row}:${lesson - 1}"] .ui-tt-cell`) : null;
+      const target = exact ?? document.querySelector<HTMLElement>(".timetable-views .ui-tt-cell.is-conflict");
+      target?.scrollIntoView({ block: "center" });
+      target?.focus();
+    }, 60);
+    return () => window.clearTimeout(handle);
+  }, [focusRequest, timetable.days]);
   // R3: two-session schools choose the semester; the grid is the same, the clock follows the day's session. It opens on
   // the current semester when the year's dates tell it, otherwise on semester 1 (#86).
   const [term, setTerm] = useState<Term>(timetable.sessions?.currentTerm ?? 1);
@@ -43,16 +90,21 @@ function TimetableViews({ timetable, onSaved }: { timetable: Timetable; onSaved:
   const teacherShifts = [...new Set(teacherLessons.map((lesson) => look.section(lesson.sectionId)?.shiftId ?? 0))];
   const lessonCountOf = (shiftId: number) => Math.max(1, shifts.get(shiftId)?.lessons.length ?? 0,
     ...timetable.sections.filter((item) => item.shiftId === shiftId).flatMap((item) => item.allowedByDay.map((day) => day.lessons)));
-  const school = useSchoolContext();
-  const viewTitle = view === "master" ? text.views.master : view === "teacher" ? teacher?.name ?? "" : section ? look.sectionName(section.id) : "";
+  // MF5: the print job follows the owner's defaults for what is printed, and can be changed before printing.
+  const [print, setPrint] = useState<PrintOptions>(() => defaultOptions("current", "section"));
+  const chooseView = (next: View) => { setView(next); setEditing(false); setPrint((options) => defaultOptions(options.scope, next)); };
+  // The print document is built only while the print options are open or the browser is printing (Ctrl+P included).
+  const [printPanelOpen, setPrintPanelOpen] = useState(false);
+  const [browserPrinting, setBrowserPrinting] = useState(false);
+  useEffect(() => {
+    const before = () => flushSync(() => setBrowserPrinting(true));
+    const after = () => setBrowserPrinting(false);
+    window.addEventListener("beforeprint", before);
+    window.addEventListener("afterprint", after);
+    return () => { window.removeEventListener("beforeprint", before); window.removeEventListener("afterprint", after); };
+  }, []);
   return (
-    <div className={`timetable-views${view === "master" ? " is-landscape" : ""}`}>
-      <div className="timetable-print-header">
-        <strong>{school.data?.schoolName ?? ""}</strong>
-        <span>{text.printYear(school.data?.currentYear?.name ?? "", school.data?.currentTerm?.name ?? "")}</span>
-        <span>{text.printVersion(format.number(timetable.summary.number), viewTitle)}</span>
-        {timetable.sessions && <span>{text.printSemester(text.terms[term])}</span>}
-      </div>
+    <div className="timetable-views">
       {timetable.sessions && (
         <div className="timetable-controls timetable-term">
           <ChipGroup label={text.termLabel} caption={text.termLabel} value={term} onChange={(value) => setTerm(value === 2 ? 2 : 1)}
@@ -62,16 +114,15 @@ function TimetableViews({ timetable, onSaved }: { timetable: Timetable; onSaved:
       )}
       {!editing && (
         <div className="timetable-controls">
-          <Button variant="secondary" icon={<Printer aria-hidden="true" size={18} />} onClick={() => window.print()}>{text.print}</Button>
           <a className="link-button" href={`/api/v1/timetables/${timetable.summary.id}/export.xlsx${timetable.sessions ? `?term=${term}` : ""}`} download>
             <FileDown aria-hidden="true" size={18} /><span>{text.exportExcel}</span>
           </a>
-          <span className="card-note">{text.printHint}</span>
         </div>
       )}
+      {!editing && <PrintPanel options={print} view={view} onChange={setPrint} onToggle={setPrintPanelOpen} />}
       <div className="timetable-controls">
         <Field id="timetable-view" label={text.viewsLabel}>
-          <Select id="timetable-view" value={view} onChange={(event) => { setView(event.target.value as View); setEditing(false); }}
+          <Select id="timetable-view" value={view} onChange={(event) => chooseView(event.target.value as View)}
             options={(["section", "teacher", "master"] as const).map((value) => ({ value, label: text.views[value] }))} />
         </Field>
         {view === "section" && (
@@ -87,11 +138,6 @@ function TimetableViews({ timetable, onSaved }: { timetable: Timetable; onSaved:
           </Field>
         )}
       </div>
-      {view === "section" && section && !editing && (
-        <div>
-          <Button variant="secondary" icon={<PencilLine aria-hidden="true" size={18} />} onClick={() => setEditing(true)}>{text.edit}</Button>
-        </div>
-      )}
       {view === "section" && section && editing && (
         <TimetableEditor timetable={timetable} sectionId={section.id} format={format} look={look} lessonCount={lessonCountOf(section.shiftId)}
           sessions={sessionViewOf(timetable, section.shiftId, term)}
@@ -101,7 +147,8 @@ function TimetableViews({ timetable, onSaved }: { timetable: Timetable; onSaved:
         <WeekGrid caption={look.sectionName(section.id)} days={timetable.days} shift={shifts.get(section.shiftId)} format={format} look={look}
           lessonCount={lessonCountOf(section.shiftId)} lessons={timetable.lessons.filter((lesson) => lesson.sectionId === section.id)}
           sessions={sessionViewOf(timetable, section.shiftId, term)}
-          secondLine={(lesson) => look.teacher(lesson.teacherId)?.shortName ?? ""} />
+          secondLine={(lesson) => look.teacher(lesson.teacherId)?.shortName ?? ""}
+          cell={(lesson, day, number) => flagCell(cellFor(lesson, day, number, format, look, (item) => look.teacher(item.teacherId)?.shortName ?? ""), flagged.has(slotKey(section.id, day, number)))} />
       )}
       {view === "teacher" && teacher && (
         <>
@@ -111,12 +158,53 @@ function TimetableViews({ timetable, onSaved }: { timetable: Timetable; onSaved:
               days={timetable.days} shift={shifts.get(shiftId)} format={format} look={look} lessonCount={lessonCountOf(shiftId)}
               sessions={sessionViewOf(timetable, shiftId, term)}
               lessons={teacherLessons.filter((lesson) => look.section(lesson.sectionId)?.shiftId === shiftId)}
-              secondLine={(lesson) => look.sectionName(lesson.sectionId)} />
+              secondLine={(lesson) => look.sectionName(lesson.sectionId)}
+              cell={(lesson, day, number) => flagCell(cellFor(lesson, day, number, format, look, (item) => look.sectionName(item.sectionId)),
+                lesson !== undefined && flagged.has(slotKey(lesson.sectionId, day, number)))} />
           ))}
         </>
       )}
-      {view === "master" && <MasterGrid timetable={timetable} format={format} look={look} term={term} />}
+      {view === "master" && <MasterGrid timetable={timetable} format={format} look={look} term={term} flagged={editing ? undefined : flagged} />}
+      {!editing && (printPanelOpen || browserPrinting) && <PrintDocument timetable={timetable} options={print} term={term} format={format} look={look}
+        current={{ view, sectionId: section?.id, teacherId: teacher?.id }} />}
     </div>
+  );
+}
+
+/** MF11: marks a cell that conflicts with today's data (icon and border, with the reason in its description). */
+function flagCell<T extends { state?: string; description: string }>(cell: T, flagged: boolean): T {
+  return flagged ? { ...cell, state: "conflict", description: currentText.cellConflict(cell.description) } : cell;
+}
+
+const printText = messages.school.printing;
+
+/** MF5: what to print, on which paper and orientation, and «ملاءمة الصفحة»; choosing what to print restores its defaults. */
+type PrintPanelProps = { options: PrintOptions; view: View; onChange: (options: PrintOptions) => void; onToggle: (open: boolean) => void };
+
+function PrintPanel({ options, view, onChange, onToggle }: PrintPanelProps) {
+  return (
+    <details className="advanced-options tool-panel print-options" onToggle={(event) => onToggle(event.currentTarget.open)}>
+      <summary><Printer aria-hidden="true" size={18} /><span>{printText.title}</span></summary>
+      <div className="print-options-fields">
+        <Field id="print-scope" label={printText.scope}>
+          <Select id="print-scope" value={options.scope} onChange={(event) => onChange(defaultOptions(event.target.value as PrintScope, view))}
+            options={(["current", "sections", "teachers", "school"] as const).map((value) => ({ value, label: printText.scopes[value] }))} />
+        </Field>
+        <Field id="print-paper" label={printText.paper}>
+          <Select id="print-paper" value={options.paper} onChange={(event) => onChange({ ...options, paper: event.target.value as PaperSize })}
+            options={(["A4", "A3"] as const).map((value) => ({ value, label: value }))} />
+        </Field>
+        <Field id="print-orientation" label={printText.orientation}>
+          <Select id="print-orientation" value={options.orientation} onChange={(event) => onChange({ ...options, orientation: event.target.value as Orientation })}
+            options={(["portrait", "landscape"] as const).map((value) => ({ value, label: printText.orientations[value] }))} />
+        </Field>
+      </div>
+      <Checkbox checked={options.fit} onChange={(event) => onChange({ ...options, fit: event.target.checked })}>{printText.fit}</Checkbox>
+      <div>
+        <Button icon={<Printer aria-hidden="true" size={18} />} onClick={() => window.print()}>{printText.print}</Button>
+      </div>
+      <p className="card-note">{printText.hint}</p>
+    </details>
   );
 }
 
@@ -156,20 +244,31 @@ export function TimetablePage() {
   const rollback = useRollbackTimetable();
   const feedback = useFormFeedback();
   const [confirming, setConfirming] = useState<"approve" | "archive" | "rollback" | null>(null);
+  const [editing, setEditing] = useState(false);
   const summary = timetable.data?.summary;
+  // MF11: the saved version against today's data; read fresh on every visit.
+  const currentCheck = useCurrentCheck(selectedId);
+  const replaceTeachers = useReplaceTeachers();
+  const startRepair = useStartRepair(yearId);
+  const navigate = useNavigate();
+  const [focusRequest, setFocusRequest] = useState<{ nonce: number; item: FindingItem } | null>(null);
+  const flagged = useMemo(() => flaggedSlots(currentCheck.data?.findings ?? [], timetable.data?.lessons ?? []), [currentCheck.data, timetable.data]);
+  const hasConflicts = (currentCheck.data?.findings.length ?? 0) > 0;
   // Comparison: the version in the URL (?compare=) is the older side; it defaults to the parent, else the previous version.
   const compareParam = Number(params.get("compare")) || undefined;
   const defaultBase = (current: TimetableVersionSummary) =>
     list.find((item) => item.id === current.parentVersionId)?.id ?? list.find((item) => item.number < current.number)?.id ?? list.find((item) => item.id !== current.id)?.id;
   const compareBase = summary && compareParam !== undefined && list.some((item) => item.id === compareParam && item.id !== summary.id) ? compareParam : undefined;
-  const selectVersion = (id: number) => setParams({ version: String(id) });
+  const selectVersion = (id: number) => { setEditing(false); setParams({ version: String(id) }); };
+  const versionLabel = (row: TimetableVersionSummary) =>
+    lifecycle.versionOption(format.number(row.number), format.date(row.createdAt.slice(0, 10)), lifecycle.statuses[row.status], text.sources[row.source]);
   const startCompare = () => {
     const base = summary ? defaultBase(summary) : undefined;
     if (summary && base !== undefined) setParams({ version: String(summary.id), compare: String(base) });
   };
 
   return (
-    <div className="page timetable-print-root">
+    <div className="page">
       <PageHeader icon={CalendarCheck} title={text.title} description={text.description} />
       {!yearId && school.isSuccess && <Alert tone="warning" message={messages.school.readiness.noYear} />}
       {versions.isError && <Alert tone="error" message={text.loadFailed}>{userErrorMessage(versions.error)}</Alert>}
@@ -187,45 +286,74 @@ export function TimetablePage() {
           onClose={() => setParams({ version: String(summary.id) })} />
       )}
       {list.length > 0 && (
-        <div className="timetable-layout">
-          <Card className="page-card timetable-versions" aria-labelledby="timetable-versions-title">
-            <SectionTitle level={2} icon={History} id="timetable-versions-title">{text.versions}</SectionTitle>
+        <Card className="page-card timetable-versions" aria-labelledby="timetable-versions-title">
+          <SectionTitle level={2} icon={History} id="timetable-versions-title">{text.versions}</SectionTitle>
+          <div className="version-bar">
+            <Field id="timetable-version" label={text.versionColumn}>
+              <Select id="timetable-version" value={selectedId === undefined ? "" : String(selectedId)} disabled={editing}
+                onChange={(event) => selectVersion(Number(event.target.value))}
+                options={list.map((row) => ({ value: String(row.id), label: versionLabel(row) }))} />
+            </Field>
+            {summary && <StatusBadge status={summary.status} />}
+            {summary && !editing && (
+              <div className="version-actions">
+                {summary.status !== "archived" && (
+                  <Button icon={<PencilLine aria-hidden="true" size={18} />} onClick={() => setEditing(true)}>{text.edit}</Button>
+                )}
+                {summary.status === "draft" && <Button icon={<Stamp aria-hidden="true" size={18} />} disabled={hasConflicts} aria-describedby={hasConflicts ? "approval-blocked" : undefined}
+                  onClick={() => setConfirming("approve")}>{text.approve}</Button>}
+                {summary.status !== "archived" && (
+                  <Button variant="secondary" icon={<Archive aria-hidden="true" size={18} />} onClick={() => setConfirming("archive")}>{lifecycle.archive}</Button>
+                )}
+                <Button variant="secondary" icon={<ArchiveRestore aria-hidden="true" size={18} />} onClick={() => setConfirming("rollback")}>{lifecycle.rollback}</Button>
+                {defaultBase(summary) !== undefined && (
+                  <Button variant="secondary" icon={<GitCompareArrows aria-hidden="true" size={18} />} onClick={startCompare}>{lifecycle.compare}</Button>
+                )}
+              </div>
+            )}
+          </div>
+          {summary && <p className="card-note">{editing ? lifecycle.editingHint : lifecycle.statusHints[summary.status]}</p>}
+          {summary && summary.status === "draft" && hasConflicts && !editing && <Alert tone="warning" message={currentText.approvalBlocked} />}
+          <details className="advanced-options tool-panel">
+            <summary><History aria-hidden="true" size={18} /><span>{lifecycle.allVersions(format.count(list.length, "version"))}</span></summary>
             <VersionsTable versions={list} selectedId={selectedId} onSelect={selectVersion} />
-          </Card>
+          </details>
+        </Card>
+      )}
+      {list.length > 0 && (
           <Card className="page-card timetable-main" aria-labelledby="timetable-main-title">
             {timetable.isError && <Alert tone="error" message={text.loadFailed}>{userErrorMessage(timetable.error)}</Alert>}
             {summary && timetable.data && (
               <>
                 <div className="generation-heading">
                   <SectionTitle level={2} icon={CalendarRange} id="timetable-main-title">{text.version(format.number(summary.number))}</SectionTitle>
-                  <StatusBadge status={summary.status} />
-                </div>
-                <p className="card-note">{lifecycle.statusHints[summary.status]}</p>
-                <div className="timetable-controls version-actions">
-                  {summary.status === "draft" && <Button icon={<Stamp aria-hidden="true" size={18} />} onClick={() => setConfirming("approve")}>{text.approve}</Button>}
-                  {summary.status !== "archived" && (
-                    <Button variant="secondary" icon={<Archive aria-hidden="true" size={18} />} onClick={() => setConfirming("archive")}>{lifecycle.archive}</Button>
-                  )}
-                  <Button variant="secondary" icon={<ArchiveRestore aria-hidden="true" size={18} />} onClick={() => setConfirming("rollback")}>{lifecycle.rollback}</Button>
-                  {defaultBase(summary) !== undefined
-                    ? <Button variant="secondary" icon={<GitCompareArrows aria-hidden="true" size={18} />} onClick={startCompare}>{lifecycle.compare}</Button>
-                    : <span className="card-note">{lifecycle.compareNone}</span>}
                 </div>
                 {timetable.data.violations === 0
                   ? <p className="generation-verified"><ShieldCheck aria-hidden="true" size={18} /><span>{text.verified}</span></p>
                   : <Alert tone="error" message={messages.errors.TIMETABLE_VERIFICATION_FAILED} />}
-                {summary.stale && <Alert tone="warning" message={text.stale} />}
-                <TimetableViews key={summary.id} timetable={timetable.data}
-                  onSaved={(id) => { setParams({ version: String(id) }); feedback.showSuccess(text.savedEdit); }} />
+                {!editing && (
+                  <CurrentDataCheck version={summary} check={currentCheck}
+                    onShow={(item) => setFocusRequest((current) => ({ nonce: (current?.nonce ?? 0) + 1, item }))}
+                    repairing={startRepair.isPending} replacing={replaceTeachers.isPending}
+                    onRepair={() => { feedback.reset(); startRepair.mutate(summary.id, { onSuccess: () => navigate("/timetable/generate"), onError: feedback.showError }); }}
+                    onReplace={() => {
+                      feedback.reset();
+                      replaceTeachers.mutate(summary, {
+                        onSuccess: (created) => { setParams({ version: String(created.id) }); feedback.showSuccess(currentText.replaced); },
+                        onError: (error) => { feedback.showError(error); void currentCheck.refetch(); },
+                      });
+                    }} />
+                )}
+                <TimetableViews key={summary.id} timetable={timetable.data} editing={editing} onEditingChange={setEditing} flagged={flagged} focusRequest={focusRequest}
+                  onSaved={(id) => { setEditing(false); setParams({ version: String(id) }); feedback.showSuccess(text.savedEdit); }} />
               </>
             )}
             {!summary && timetable.isPending && <p>{messages.app.loading}</p>}
           </Card>
-        </div>
       )}
       {summary && (
         <>
-          <ConfirmDialog open={confirming === "approve"} title={text.approveConfirmTitle} consequence={text.approveConfirm(format.number(summary.number))}
+          <ConfirmDialog open={confirming === "approve"} title={text.approveConfirmTitle} consequence={`${text.approveConfirm(format.number(summary.number))}${currentCheck.data?.stale && !hasConflicts ? ` ${currentText.approvalWarning}` : ""}`}
             confirmLabel={text.approve} confirmIcon={<Stamp aria-hidden="true" size={18} />} loading={approve.isPending}
             onCancel={() => setConfirming(null)}
             onConfirm={() => approve.mutate(summary, {

@@ -3,6 +3,7 @@
   "periods": [
     {
       "key": "single-break-after-3",
+      "session": "morning",
       "name": "استراحة واحدة بعد الحصة الثالثة",
       "firstStart": "08:00",
       "lessonMinutes": 45,
@@ -11,6 +12,7 @@
     },
     {
       "key": "single-break-after-4",
+      "session": "morning",
       "name": "استراحة واحدة بعد الحصة الرابعة",
       "firstStart": "08:00",
       "lessonMinutes": 45,
@@ -19,6 +21,7 @@
     },
     {
       "key": "short-every-two",
+      "session": "morning",
       "name": "فرصة قصيرة بعد كل حصتين",
       "firstStart": "08:00",
       "lessonMinutes": 40,
@@ -27,6 +30,7 @@
     },
     {
       "key": "evening-single-break",
+      "session": "evening",
       "name": "دوام مسائي مع استراحة واحدة",
       "firstStart": "13:00",
       "lessonMinutes": 40,

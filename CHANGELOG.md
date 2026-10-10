@@ -12,6 +12,17 @@
 - Compare two versions (`GET /timetables/{from}/compare/{to}`): added, removed, moved and teacher-changed lessons, per section and per teacher, with a marked grid (icon + outline) and an Arabic change list.
 - Manual editor: Ctrl+Z, Ctrl+Y and Ctrl+Shift+Z (any keyboard layout). Regenerating over a manual edit asks: keep the moved lessons locked, or discard them (`lockFromVersionId`; locks that no longer fit are dropped and reported; new diagnostic `CORE_LOCKED_LESSONS`).
 - Audit history: event codes + parameters (`AuditEvents`, 94 events in 7 categories), `GET /audit` (paged, newest first, filter), screen «سجل التغييرات» under الإعدادات. Restores are audited too.
+### MF owner testing feedback (branch `work/phase-5`, ADRs 0045–0049)
+- **MF1 / MF6 / MF7 one shift system (ADR 0046, reverses #82):** «نظام الدوام» صباحي / مسائي / مزدوج in one merged component (wizard «الدوام» step and «المدرسة › الدوام والحصص والجرس»); no shift on sections or teachers; timing templates by session with «بدون قالب (أبدأ من الصفر)» first; the school type is chosen once; a legacy two-shift database is converted after an automatic backup (`SHIFT_SYSTEM_LEGACY` until then).
+- **MF2 workload step:** one inline table (section × subject × teacher select), filters, a status icon per row, «اقتراح تلقائي» for empty rows only, a per-teacher load summary; fresh rows on every mount (the old «٠ من ٠» was a stale cache).
+- **MF3 generation result in plain Arabic:** headline, friendly sentence, improvement notes as sentences with links; the solver numbers collapse under «تفاصيل تقنية».
+- **MF4 timetable page:** versions as a compact select on top, full-width grid (no horizontal scroll from 1366 px, sticky day column below), «تعديل يدوي» always visible, approval hidden while editing.
+- **MF5 official printing (ADR 0048):** logo, school, «جدول الدروس الأسبوعي», year and semester, section or teacher; signature footer and page numbers; A4/A3, portrait/landscape, «ملاءمة الصفحة»; batch jobs (all sections, all teachers, whole school); Excel header and footer to match. Verified with `page.pdf`.
+- **MF8 Iraqi holidays (ADR 0049, `docs/IRAQ_HOLIDAYS.md`):** a reviewed template per year with Umm al-Qura dates marked approximate; entries editable, deletable and disable-able; one «إضافة يوم» entry with a date picker; kind icons and colours; «العطلة القادمة» on the dashboard. Migration `Phase5CalendarHolidays`. The list needs the owner's review (#87).
+- **MF9 «أولويات الجدول» (ADR 0045):** three levels per rule (غير مهم / مهم / مهم جداً = off / 20 / 40) with a plain-Arabic sentence each, under Settings › «متقدم».
+- **MF10 backups (ADR 0049):** an in-app folder picker (typed path as fallback) and a restore chosen from the list of backups (restorable or not), including the automatic ones.
+- **MF11 stale timetable vs current data (ADR 0047):** «الفحص على البيانات الحالية» with each conflict as a sentence that opens its cell, «ما الذي تغيّر منذ التوليد», «إصلاح بأقل تغيير», «استبدال المعلم في الجدول», and approval blocked on conflicts. Migration `Phase5RepairedVersions`.
+- Removed (owner-approved paths): `ShiftModeService`, `ShiftModeCard`, `shiftModeApi`, `SessionsCard`, `ShiftDialog`.
 ### M4a icons everywhere (merged into `work/phase-5`)
 - `SectionTitle` (required icon) replaces every raw h2/h3 in `features/` (lint rule `no-raw-headings` plus a test); `PageHeader` and tabs have required icons; non-neutral `Badge` requires an icon (types). Details: `docs/M4A_ICON_CHANGES.md`.
 ### Phase 4 follow-up: owner decisions on R3 (tag `phase-4i`)

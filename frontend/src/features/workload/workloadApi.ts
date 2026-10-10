@@ -55,6 +55,21 @@ export function useWorkloadMatrix(yearId: number | null, stageId: number | null)
   });
 }
 
+/** MF2: one row per section × curriculum line of the year (all stages), always fetched fresh when the screen opens. */
+export type WorkloadRow = {
+  sectionId: number; stageId: number; stageName: string; sectionLabel: string; entryId: number; subjectId: number; subjectName: string; label: string | null;
+  weeklyLessons: number; assignmentId: number | null; teacherId: number | null; version: number | null; outsideSpecialization: boolean;
+};
+
+export function useWorkloadRows(yearId: number | null) {
+  return useQuery({
+    queryKey: [...workloadKey, "rows", yearId],
+    queryFn: () => apiRequest<WorkloadRow[]>(`${workloadPath(yearId ?? 0)}/rows`),
+    enabled: yearId !== null,
+    refetchOnMount: "always",
+  });
+}
+
 export function useTeacherLoads(yearId: number | null) {
   return useQuery({
     queryKey: [...workloadKey, "teachers", yearId],

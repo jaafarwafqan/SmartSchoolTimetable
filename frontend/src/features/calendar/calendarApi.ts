@@ -11,8 +11,17 @@ export type CalendarDay = {
   kind: CalendarKind;
   affectsSchedule: boolean;
   outsideCurrentYear: boolean;
+  /** MF8: typed by the owner, or added from the Iraqi official-holidays template. */
+  source: "manual" | "iraqTemplate";
+  /** MF8: a Hijri date calculated with Umm al-Qura; the official announcement may differ. */
+  isApproximate: boolean;
+  /** MF8: a disabled entry stays in the list but is not counted as a holiday. */
+  isEnabled: boolean;
   version: number;
 };
+export type IraqHolidayPreview = { key: string; title: string; startDate: string; endDate: string; approximate: boolean; alreadyAdded: boolean };
+export type IraqHolidayPreviewResponse = { yearLabel: string; holidays: IraqHolidayPreview[] };
+export type ImportIraqHolidaysResult = { added: number; skipped: number };
 export type CalendarDayInput = { title: string; startDate: string; endDate: string | null; kind: CalendarKind; affectsSchedule: boolean; version: number };
 
 const calendarKey = ["calendar-days"] as const;
@@ -44,6 +53,25 @@ export function useSaveCalendarDay() {
     id === null
       ? apiRequest<CalendarDay>(`${calendarPath}/`, "POST", input)
       : apiRequest<CalendarDay>(`${calendarPath}/${id}`, "PUT", input));
+}
+
+export function useSetCalendarDayEnabled() {
+  return useCalendarMutation((input: { day: CalendarDay; enabled: boolean }) =>
+    apiRequest<CalendarDay>(`${calendarPath}/${input.day.id}/enabled`, "PUT", { enabled: input.enabled, version: input.day.version }));
+}
+
+/** The template's holidays inside an academic year (nothing is saved). */
+export function useIraqHolidayPreview(yearId: number | null) {
+  return useQuery({
+    queryKey: [...calendarKey, "iraq-holidays", yearId],
+    queryFn: () => apiRequest<IraqHolidayPreviewResponse>(`${calendarPath}/iraq-holidays?yearId=${yearId}`),
+    enabled: yearId !== null,
+    refetchOnMount: "always",
+  });
+}
+
+export function useImportIraqHolidays() {
+  return useCalendarMutation((yearId: number) => apiRequest<ImportIraqHolidaysResult>(`${calendarPath}/iraq-holidays`, "POST", { yearId }));
 }
 
 export function useDeleteCalendarDay() {

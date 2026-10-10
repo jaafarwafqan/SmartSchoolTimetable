@@ -6,6 +6,7 @@ import { seedReadySchool } from "./support/readySchool";
 
 const server = new ApiServer();
 const sessions = messages.school.sessions;
+const system = messages.school.shiftSystem;
 const breaksText = messages.school.scheduleStructure.breaks;
 const days = messages.school.scheduleStructure.days;
 const generation = messages.school.generation;
@@ -16,46 +17,48 @@ const timetable = messages.school.timetable;
  * semester 1 (Sunday and Monday morning) and reverses them for semester 2 in one click; ONE timetable is generated,
  * and the viewer, print header and Excel show the clock of each day's session in the chosen semester (12-hour).
  */
-test("(R3) double shift: map the days, generate once, read semester 1 and 2", async ({ browser, page }, testInfo) => {
+test("(R3, MF7) double shift: one card, map the days, generate once, read semester 1 and 2", async ({ browser, page }, testInfo) => {
   test.setTimeout(240_000);
   await server.start(browser, "phase4-sessions");
   try {
     await setupOwner(page, server.baseUrl, "owner", "Sessions-Owner-1");
     await seedReadySchool(page, server.baseUrl);
 
+    // MF7: one card «نظام الدوام والأوقات»; «مزدوج» shows the morning and evening timings side by side.
     await page.goto(`${server.baseUrl}/school/timing`);
-    const card = page.locator(".page-card", { has: page.getByRole("heading", { name: sessions.title }) });
+    const card = page.locator(".page-card", { has: page.getByRole("heading", { name: system.title }) });
     await expect(card).toBeVisible();
-    await card.locator(".ui-choice-card", { hasText: sessions.twoSessions }).click();
-    await expect(card.getByText(sessions.threeSessionsSoon)).toBeVisible();
+    await expect(page.getByText(sessions.unavailable)).toHaveCount(0);
+    await card.getByRole("radio", { name: system.systems.dual }).check();
 
-    // Evening timing: 1:00 pm, a break after lesson 3; the lesson count is fixed to the morning's.
-    await fillTime(card, sessions.firstStart, "13:00");
-    const evening = card.locator("section", { has: page.getByRole("heading", { name: sessions.eveningTiming }) });
+    // Evening timing: 1:00 pm, a break after lesson 3; the lesson count is the morning's.
+    const evening = card.locator(".shift-system-block").nth(1);
+    await fillTime(evening, system.firstStart(system.sessions.evening), "13:00");
     await evening.getByRole("button", { name: breaksText.add }).click();
-    await expect(evening.getByRole("list", { name: sessions.preview })).toContainText("١:٠٠ م");
+    await expect(evening.getByRole("list", { name: system.preview(system.sessions.evening) })).toContainText("١:٠٠ م");
     await expectNo24HourTimes(page, "evening timing");
 
     // Semester 1: Sunday and Monday morning (Tuesday is turned off); semester 2 is the reverse, in one click.
-    const term1 = card.getByRole("group", { name: `${sessions.term1}: ${sessions.chooseMorning}` });
-    const term2 = card.getByRole("group", { name: `${sessions.term2}: ${sessions.chooseMorning}` });
-    await term1.getByRole("button", { name: days.tuesday }).click();
+    const term1 = card.getByRole("group", { name: `${system.term1}: ${system.chooseMorning}` });
+    const term2 = card.getByRole("group", { name: `${system.term2}: ${system.chooseMorning}` });
+    if ((await term1.getByRole("button", { name: days.tuesday }).getAttribute("aria-pressed")) === "true")
+      await term1.getByRole("button", { name: days.tuesday }).click();
     await expect(term1.getByRole("button", { name: days.sunday })).toHaveAttribute("aria-pressed", "true");
     await expect(term1.getByRole("button", { name: days.tuesday })).toHaveAttribute("aria-pressed", "false");
-    await card.getByRole("button", { name: sessions.reverse }).click();
+    await card.getByRole("button", { name: system.reverse }).click();
     for (const day of [days.tuesday, days.wednesday, days.thursday])
       await expect(term2.getByRole("button", { name: day })).toHaveAttribute("aria-pressed", "true");
     await expect(term2.getByRole("button", { name: days.sunday })).toHaveAttribute("aria-pressed", "false");
-    await expect(card).toContainText(sessions.eveningDays([days.tuesday, days.wednesday, days.thursday].join(sessions.daysSeparator)));
-    await expectNoSeriousA11yViolations(page, "daily sessions card");
-    for (const width of [375, 1280]) {
+    await expect(card).toContainText(system.eveningDays([days.tuesday, days.wednesday, days.thursday].join(system.daysSeparator)));
+    await expectNoSeriousA11yViolations(page, "shift system card");
+    for (const width of [375, 1024, 1280]) {
       await page.setViewportSize({ width, height: 900 });
-      await expectNoPageScrollX(page, `daily sessions at ${width}px`);
+      await expectNoPageScrollX(page, `shift system at ${width}px`);
     }
     await page.setViewportSize({ width: 1280, height: 900 });
-    await card.screenshot({ path: testInfo.outputPath("r3-sessions-card.png") });
-    await card.getByRole("button", { name: sessions.save }).click();
-    await expect(card.getByText(sessions.saved)).toBeVisible();
+    await card.screenshot({ path: testInfo.outputPath("mf7-shift-system-card.png") });
+    await card.getByRole("button", { name: system.save }).click();
+    await expect(card.getByText(system.saved)).toBeVisible();
 
     // Generate ONCE.
     await page.goto(`${server.baseUrl}/timetable/generate`);
@@ -97,9 +100,11 @@ test("(R3) double shift: map the days, generate once, read semester 1 and 2", as
     await expect(master.locator("thead")).toContainText("١:٠٠ م");
     await expectNo24HourTimes(page, "master timetable, semester 2");
 
-    // Print names the semester; Excel exports the chosen semester.
+    // The official print (MF5) names the semester and shows its evening clock; Excel exports the chosen semester.
+    await page.getByText(messages.school.printing.title).click();
     await page.emulateMedia({ media: "print" });
-    await expect(page.locator(".timetable-print-header")).toContainText(timetable.printSemester(timetable.terms[2]));
+    await expect(page.locator(".print-page-header")).toContainText(timetable.terms[2]);
+    await expect(page.locator(".print-document thead")).toContainText("١:٠٠ م");
     await page.emulateMedia({ media: "screen" });
     const download = page.waitForEvent("download");
     await page.getByRole("link", { name: timetable.exportExcel }).click();

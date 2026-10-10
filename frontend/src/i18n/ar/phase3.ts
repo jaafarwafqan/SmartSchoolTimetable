@@ -49,26 +49,31 @@ export const specializations = {
 export const orphanOnSave = (count: string) => `عدد الحصص المحجوبة الواقعة خارج الجدول الحالي: ${count}. ستُزال عند الحفظ.`;
 
 export const schedulingProfile = {
-  title: "ملف الجدولة",
-  description: "قواعد مرنة يوازن بينها التوليد بعد احترام القيود الإلزامية دائماً. الوزن من صفر إلى مئة؛ الأعلى أهم.",
+  title: "أولويات الجدول",
+  description: "اختر أهمية كل أمر يراعيه النظام عند توليد الجدول. القيود الإلزامية، مثل عدم تعارض المعلم، تُحترم دائماً مهما اخترت هنا؛ هذه الأولويات تحسّن الجدول فقط.",
   rules: {
     spreadSubjectsAcrossDays: "توزيع حصص المادة على أيام الأسبوع",
     avoidTeacherGaps: "تقليل الفراغات بين حصص المعلم",
     heavySubjectsEarly: "المواد الثقيلة في الحصص الأولى",
-    avoidSameSubjectRepeated: "تجنّب تكرار المادة في اليوم نفسه",
+    avoidSameSubjectRepeated: "تجنّب تكرار المادة في حصتين متتاليتين",
     keepDoubleLessonsTogether: "إبقاء الحصة المزدوجة متتالية",
   },
-  enabled: "مفعّلة",
-  weight: "الوزن",
-  weightOf: (rule: string) => `الوزن: ${rule}`,
-  defaultWeight: (weight: string) => `الافتراضي: ${weight}`,
-  save: "حفظ ملف الجدولة",
-  saved: "حُفظ ملف الجدولة.",
-  profileVersion: (version: string) => `إصدار الملف: ${version}`,
+  hints: {
+    spreadSubjectsAcrossDays: "يحاول ألا تتجمع حصص المادة الواحدة في أيام قليلة، فتتوزع على أيام الأسبوع.",
+    avoidTeacherGaps: "يحاول ألا تكون بين حصص المعلم في اليوم الواحد حصص فارغة ينتظر فيها.",
+    heavySubjectsEarly: "يحاول وضع المواد المعلَّمة «ثقيلة» في الحصص الأولى من اليوم.",
+    avoidSameSubjectRepeated: "يحاول ألا تأتي المادة نفسها في حصتين متتاليتين لنفس الشعبة، إلا المواد التي تحتاج حصة مزدوجة.",
+    keepDoubleLessonsTogether: "للمواد التي تحتاج حصة مزدوجة، يحاول أن تكون الحصتان متتاليتين.",
+  },
+  levels: { notImportant: "غير مهم", important: "مهم", veryImportant: "مهم جداً" },
+  levelOf: (rule: string) => `الأهمية: ${rule}`,
+  save: "حفظ الأولويات",
+  saved: "حُفظت أولويات الجدول.",
+  profileVersion: (version: string) => `إصدار الأولويات: ${version}`,
   isDefault: "الإعدادات الافتراضية مطبّقة.",
   restore: "استعادة الإعدادات الافتراضية",
   restoreTitle: "استعادة الإعدادات الافتراضية",
-  restoreConsequence: "ستعود كل القواعد مفعّلة بأوزانها الافتراضية، ويُنشأ إصدار جديد للملف.",
+  restoreConsequence: "ستعود كل الأولويات إلى قيمها الافتراضية، ويُنشأ إصدار جديد.",
   restored: "استُعيدت الإعدادات الافتراضية.",
 } as const;
 

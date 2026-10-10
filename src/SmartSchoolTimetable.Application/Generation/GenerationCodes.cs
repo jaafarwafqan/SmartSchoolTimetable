@@ -48,3 +48,64 @@ public static class DiagnosticCodes
         LockedLessons, Fundamental, TimeoutNoSolution,
     ];
 }
+
+/// <summary>Stable codes of findings that only exist against current data (MF11); the rest reuse <see cref="ViolationCodes"/>.</summary>
+public static class CurrentFindingCodes
+{
+    /// <summary>The curriculum line of the section is now taught by another teacher than the one in the saved timetable.</summary>
+    public const string TeacherReassigned = "TEACHER_REASSIGNED";
+
+    /// <summary>The (section, curriculum line) of a saved lesson no longer has any teacher assignment (or no longer exists).</summary>
+    public const string AssignmentRemoved = "ASSIGNMENT_REMOVED";
+
+    public static readonly IReadOnlyList<string> All = [TeacherReassigned, AssignmentRemoved];
+}
+
+/// <summary>Stable codes of the school-data changes shown under «ما الذي تغيّر منذ التوليد» (MF11). The screen turns each into one Arabic sentence.</summary>
+public static class InputChangeCodes
+{
+    // Teacher assignments
+    public const string AssignmentTeacherChanged = "ASSIGNMENT_TEACHER_CHANGED";
+    public const string AssignmentAdded = "ASSIGNMENT_ADDED";
+    public const string AssignmentRemoved = "ASSIGNMENT_REMOVED";
+
+    // Availability
+    public const string TeacherOffDaysChanged = "TEACHER_OFF_DAYS_CHANGED";
+    public const string TeacherBlockedChanged = "TEACHER_BLOCKED_CHANGED";
+    public const string TeacherReleasedChanged = "TEACHER_RELEASED_CHANGED";
+    public const string TeacherArchivedChanged = "TEACHER_ARCHIVED_CHANGED";
+    public const string TeacherSpecializationsChanged = "TEACHER_SPECIALIZATIONS_CHANGED";
+
+    // Loads
+    public const string TeacherDayLimitChanged = "TEACHER_DAY_LIMIT_CHANGED";
+    public const string TeacherWeekLimitChanged = "TEACHER_WEEK_LIMIT_CHANGED";
+
+    // Curriculum hours
+    public const string LessonsPerWeekChanged = "LESSONS_PER_WEEK_CHANGED";
+    public const string LineAdded = "LINE_ADDED";
+    public const string LineRemoved = "LINE_REMOVED";
+    public const string LineDoubleChanged = "LINE_DOUBLE_CHANGED";
+
+    // Timing and sections
+    public const string WorkingDaysChanged = "WORKING_DAYS_CHANGED";
+    public const string ShiftTimingChanged = "SHIFT_TIMING_CHANGED";
+    public const string SectionAdded = "SECTION_ADDED";
+    public const string SectionRemoved = "SECTION_REMOVED";
+    public const string SectionDaysChanged = "SECTION_DAYS_CHANGED";
+
+    // Subjects, resources, priorities
+    public const string SubjectRulesChanged = "SUBJECT_RULES_CHANGED";
+    public const string ResourceChanged = "RESOURCE_CHANGED";
+    public const string PrioritiesChanged = "PRIORITIES_CHANGED";
+
+    /// <summary>The hash differs but no listed field does (a safety net so the screen never says "changed" with nothing to show).</summary>
+    public const string OtherChange = "OTHER_CHANGE";
+
+    public static readonly IReadOnlyList<string> All =
+    [
+        AssignmentTeacherChanged, AssignmentAdded, AssignmentRemoved, TeacherOffDaysChanged, TeacherBlockedChanged, TeacherReleasedChanged,
+        TeacherArchivedChanged, TeacherSpecializationsChanged, TeacherDayLimitChanged, TeacherWeekLimitChanged, LessonsPerWeekChanged, LineAdded,
+        LineRemoved, LineDoubleChanged, WorkingDaysChanged, ShiftTimingChanged, SectionAdded, SectionRemoved, SectionDaysChanged,
+        SubjectRulesChanged, ResourceChanged, PrioritiesChanged, OtherChange,
+    ];
+}

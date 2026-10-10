@@ -1,12 +1,11 @@
-import { Check, Eye, LayoutTemplate, Sparkles } from "lucide-react";
+import { Check, Eye, LayoutTemplate, Pencil, School, Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useState } from "react";
 import { Alert } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { Checkbox } from "../../components/ui/checkbox";
-import { Field } from "../../components/ui/field";
-import { Select } from "../../components/ui/select";
 import { Stepper } from "../../components/ui/stepper";
 import { userErrorMessage } from "../../api";
 import { messages } from "../../i18n/messages";
@@ -14,7 +13,7 @@ import { useFormatter } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
 import { useOutOfTypeStages, useStageTemplate, useTemplateCatalog, type LabelStyle, type StageTemplateInput } from "../curriculum/curriculumApi";
 import { PlanList } from "../curriculum/PlanList";
-import { useSchoolProfile, useUpdateProfile } from "../school-profile/profileApi";
+import { useSchoolProfile } from "../school-profile/profileApi";
 import { useShifts } from "../timetable-structure/scheduleApi";
 import { NewSectionOptions } from "./StageCardsPanel";
 
@@ -34,17 +33,13 @@ export function StageTemplatePanel({ yearId, open = false }: { yearId: number; o
   const profile = useSchoolProfile();
   const shifts = useShifts(yearId);
   const template = useStageTemplate(yearId);
-  const updateProfile = useUpdateProfile();
   const [skipped, setSkipped] = useState<ReadonlySet<string>>(new Set());
   const [sections, setSections] = useState(2);
-  const [shiftChoice, setShiftChoice] = useState<number | null>(null);
   const [style, setStyle] = useState<LabelStyle>("arabic");
-  /** Dual shift: the shift of each grade's new sections (spec 2.5 §5 step 4). */
-  const [gradeShifts, setGradeShifts] = useState<Readonly<Record<string, number>>>({});
   const profileType = profile.data?.schoolType;
   const schoolType = isTemplateType(profileType) ? profileType : null;
   const shiftList = shifts.data?.items ?? [];
-  const shiftId = shiftList.find((shift) => shift.id === shiftChoice)?.id ?? shiftList[0]?.id ?? null;
+  const shiftId = shiftList[0]?.id ?? null;
   const grades = (catalog.data?.grades ?? []).filter((grade) => schoolType !== null && grade.schoolTypes.includes(schoolType));
   const branches = catalog.data?.branches ?? [];
   const outOfTypeStages = useOutOfTypeStages(yearId, schoolType);
@@ -60,31 +55,6 @@ export function StageTemplatePanel({ yearId, open = false }: { yearId: number; o
     return next;
   }));
 
-  function saveSchoolType(value: string) {
-    if (!isTemplateType(value) || !profile.data || updateProfile.isPending || value === profile.data.schoolType)
-      return;
-    template.preview.reset();
-    feedback.reset();
-    const current = profile.data;
-    updateProfile.mutate({
-      name: current.name,
-      schoolType: value,
-      studyType: current.studyType,
-      principalName: current.principalName,
-      scheduleOfficerName: current.scheduleOfficerName,
-      timeZone: current.timeZone,
-      numeralSystem: current.numeralSystem,
-      calendarDisplay: current.calendarDisplay,
-      version: current.version,
-    }, {
-      onSuccess: () => {
-        setSkipped(new Set());
-        feedback.showSuccess(text.schoolTypeSaved);
-      },
-      onError: feedback.showError,
-    });
-  }
-
   const selectedGrades = grades.filter((grade) =>
     !skipped.has(grade.key) &&
     (grade.branchStem === null || branches.some((branch) => !skipped.has(`${grade.key}-${branch.key}`))));
@@ -94,7 +64,7 @@ export function StageTemplatePanel({ yearId, open = false }: { yearId: number; o
       gradeKey: grade.key,
       branches: grade.branchStem ? branches.map((branch) => branch.key).filter((key) => !skipped.has(`${grade.key}-${key}`)) : [],
       sections,
-      shiftId: shiftList.find((shift) => shift.id === gradeShifts[grade.key])?.id ?? shiftId,
+      shiftId,
       labelStyle: style,
     })),
   };
@@ -110,14 +80,11 @@ export function StageTemplatePanel({ yearId, open = false }: { yearId: number; o
         </summary>
         <div className="form-stack">
           <p className="card-note">{text.stagesDescription}</p>
-          <Field id="template-school-type" label={text.schoolType}>
-            <Select id="template-school-type" value={schoolType ?? ""} disabled={!profile.data || updateProfile.isPending}
-              onChange={(event) => saveSchoolType(event.target.value)}
-              options={[
-                ...(!schoolType ? [{ value: "", label: text.chooseSchoolType }] : []),
-                ...schoolTypes.map((value) => ({ value, label: messages.school.profile.schoolTypes[value] })),
-              ]} />
-          </Field>
+          <p className="school-type-readonly">
+            <School aria-hidden="true" size={18} />
+            <span>{schoolType ? text.schoolTypeIs(messages.school.profile.schoolTypes[schoolType]) : text.schoolTypeMissing}</span>
+            <Link className="link-button" to="/school/profile"><Pencil aria-hidden="true" size={16} /><span>{text.changeSchoolType}</span></Link>
+          </p>
           {!schoolType && <Alert tone="info" message={text.schoolTypeRequired} />}
           {outOfTypeStages.isError && <Alert tone="error" message={userErrorMessage(outOfTypeStages.error)} />}
           {outOfTypeStages.data && outOfTypeStages.data.length > 0 && (
@@ -132,13 +99,6 @@ export function StageTemplatePanel({ yearId, open = false }: { yearId: number; o
             {grades.map((grade) => (
               <div key={`grade-${grade.key}`} className="choice-group-item">
                 <Checkbox checked={!skipped.has(grade.key)} onChange={() => toggle(grade.key)}>{grade.name}</Checkbox>
-                {shiftList.length > 1 && !skipped.has(grade.key) && (
-                  <Field id={`grade-shift-${grade.key}`} label={text.gradeShift(grade.name)}>
-                    <Select id={`grade-shift-${grade.key}`} value={String(gradeShifts[grade.key] ?? shiftId ?? "")}
-                      onChange={(event) => edit((id: number) => setGradeShifts((current) => ({ ...current, [grade.key]: id })))(Number(event.target.value))}
-                      options={shiftList.map((shift) => ({ value: String(shift.id), label: shift.name }))} />
-                  </Field>
-                )}
                 {grade.branchStem && !skipped.has(grade.key) && (
                   <fieldset className="choice-group choice-group-nested">
                     <legend>{text.branches(grade.name)}</legend>
@@ -156,15 +116,15 @@ export function StageTemplatePanel({ yearId, open = false }: { yearId: number; o
             <Stepper id="template-sections" label={text.sectionsPerStage} value={sections} min={0} max={30} format={format.number}
               decreaseLabel={text.sectionsDecrease} increaseLabel={text.sectionsIncrease} onChange={edit(setSections)} />
           </div>
-          <NewSectionOptions idPrefix="template" shifts={shiftList} shiftId={shiftId} style={style} onShift={edit(setShiftChoice)} onStyle={edit(setStyle)} />
+          <NewSectionOptions idPrefix="template" style={style} onStyle={edit(setStyle)} />
           {nothingSelected && schoolType && <Alert tone="info" message={text.nothingSelected} />}
           <Alert tone="success" message={feedback.success} />
           <Alert tone="error" message={feedback.error} />
           <div className="form-actions">
-            <Button variant="secondary" icon={<Eye aria-hidden="true" size={20} />} disabled={!schoolType || nothingSelected || updateProfile.isPending} loading={template.preview.isPending}
+            <Button variant="secondary" icon={<Eye aria-hidden="true" size={20} />} disabled={!schoolType || nothingSelected} loading={template.preview.isPending}
               onClick={() => { feedback.reset(); template.preview.mutate(input, { onError: feedback.showError }); }}>{text.preview}</Button>
             {plan && plan.changes > 0 && schoolType && (
-              <Button icon={<Check aria-hidden="true" size={20} />} loading={template.apply.isPending} disabled={updateProfile.isPending}
+              <Button icon={<Check aria-hidden="true" size={20} />} loading={template.apply.isPending}
                 onClick={() => template.apply.mutate(input, {
                   onSuccess: (result) => { template.preview.reset(); feedback.showSuccess(text.applied(format.number(result.changes))); },
                   onError: feedback.showError,

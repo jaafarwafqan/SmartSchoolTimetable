@@ -26,10 +26,10 @@ public sealed class ReferenceProtectionTests
     internal static async Task<School> SeedAsync(TestHost host)
     {
         var (token, _) = await SetupOwnerAsync(host);
-        await host.PutAsync("/api/v1/setup-wizard/school", new { name = "متوسطة الرافدين", schoolType = "intermediate", shiftMode = "single" }, token);
+        await host.PutAsync("/api/v1/setup-wizard/school", new { name = "متوسطة الرافدين", schoolType = "intermediate", shiftMode = "morning" }, token);
         await host.PutAsync("/api/v1/setup-wizard/year", new { label = "2026-2027", startDate = "2026-09-01", endDate = "2027-06-30", terms = Array.Empty<object>() }, token);
         var shiftsInput = new[] { new { kind = "morning", firstStartTime = "08:00", lessonMinutes = 40, lessonCount = 6, breaks = Array.Empty<object>(), dayLessons = Array.Empty<object>() } };
-        await ReadAsync<SetupProgressDto>(await host.PutAsync("/api/v1/setup-wizard/timing", new { days = SundayToThursday, weekStartDay = 7, shifts = shiftsInput }, token));
+        await ReadAsync<SetupProgressDto>(await host.PutAsync("/api/v1/setup-wizard/timing", new { days = SundayToThursday, weekStartDay = 7, system = "morning", main = shiftsInput[0] }, token));
         var year = (await ReadAsync<PagedResult<AcademicYearDto>>(await host.Client.GetAsync("/api/v1/academic-years/"))).Items.Single();
         var root = $"/api/v1/academic-years/{year.Id}";
         var shift = (await ReadAsync<PagedResult<ShiftDto>>(await host.Client.GetAsync($"{root}/shifts/"))).Items.Single();

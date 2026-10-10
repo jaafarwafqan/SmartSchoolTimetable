@@ -29,6 +29,16 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                     b.Property<DateOnly>("EndDate")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("IsApproximate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("IsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
                     b.Property<string>("Kind")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -39,7 +49,18 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                         .HasMaxLength(120)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("Manual");
+
                     b.Property<DateOnly>("StartDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TemplateKey")
+                        .HasMaxLength(64)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Title")
@@ -155,6 +176,9 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsRepair")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("LessonsPlaced")
                         .HasColumnType("INTEGER");
@@ -314,7 +338,7 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                         {
                             t.HasCheckConstraint("CK_TimetableVersions_ApprovedFlag", "(\"Status\" = 2) = (\"IsApproved\" = 1)");
 
-                            t.HasCheckConstraint("CK_TimetableVersions_Source", "\"Source\" BETWEEN 1 AND 3");
+                            t.HasCheckConstraint("CK_TimetableVersions_Source", "\"Source\" BETWEEN 1 AND 5");
 
                             t.HasCheckConstraint("CK_TimetableVersions_Status", "\"Status\" BETWEEN 1 AND 3");
                         });

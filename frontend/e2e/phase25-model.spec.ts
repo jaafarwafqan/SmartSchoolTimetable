@@ -10,6 +10,7 @@ import { expectNo24HourTimes, expectNoSeriousA11yViolations, expectNoTextOverlap
 const server = new ApiServer();
 const school = messages.school;
 const wizard = school.wizard;
+const shiftText = school.shiftSystem;
 const breaks = school.scheduleStructure.breaks;
 const cards = school.stageCards;
 const curriculum = school.curriculum;
@@ -32,34 +33,34 @@ test("breaks are edited per shift and stages get their own lessons per day", asy
   await page.goto(`${server.baseUrl}/setup`);
   await page.getByRole("button", { name: wizard.back }).click();
   await expect(page.getByRole("heading", { level: 2, name: wizard.steps[3] })).toBeVisible();
-  const preview = page.getByRole("table", { name: wizard.timing.previewTitle(wizard.timing.shifts.morning) });
-  const fourthLesson = preview.getByRole("row", { name: new RegExp(wizard.timing.lessonRow(arab(4))) });
-  await expect(preview.getByRole("row")).toHaveCount(9); // header + 7 lessons + 1 break
+  const preview = page.getByRole("list", { name: shiftText.preview(shiftText.sessions.morning) });
+  const rowsOf = () => preview.getByRole("listitem");
+  const fourthLesson = rowsOf().filter({ hasText: `الحصة ${arab(4)}:` });
+  await expect(rowsOf()).toHaveCount(8); // 7 lessons + 1 break
   await expect(fourthLesson).toContainText(format.time("10:30"));
   await expectNo24HourTimes(page, "wizard timing step"); // R1: the preview runs past noon («١:٣٠ م», never 13:30)
   // R2: a quick pick sets the first break to 20 minutes.
   await page.getByRole("group", { name: breaks.quickPicks(arab(1)) }).getByRole("button", { name: format.count(20, "minute") }).click();
   await expect(fourthLesson).toContainText(format.time("10:35"));
   await page.getByRole("button", { name: breaks.add }).click(); // after lesson 4
-  await expect(preview.getByRole("row")).toHaveCount(10);
+  await expect(rowsOf()).toHaveCount(9);
   // R2: no cap of three; a third break moved after lesson 1 and shortened to one minute with the stepper.
   await page.getByRole("button", { name: breaks.add }).click(); // after lesson 5
   await page.getByLabel(breaks.after(arab(3))).selectOption("1");
   await page.getByRole("spinbutton", { name: breaks.duration(arab(1)) }).press("Home");
-  await expect(page.locator(".wizard-shift .breaks-clock").first()).toHaveText(breaks.clock(format.time("08:45"), format.time("08:46")));
-  await expect(preview.getByRole("row")).toHaveCount(11);
+  await expect(page.locator(".shift-system-block .breaks-clock").first()).toHaveText(breaks.clock(format.time("08:45"), format.time("08:46")));
+  await expect(rowsOf()).toHaveCount(10);
   // R2: lowering the lessons to 4 leaves the break after lesson 4 after the last lesson: an Arabic message, «التالي» refused.
-  const lessonsName = wizard.timing.shifts.morning;
-  for (let step = 0; step < 3; step++) await page.getByRole("button", { name: wizard.timing.lessonsDecrease(lessonsName) }).click();
+  for (let step = 0; step < 3; step++) await page.getByRole("button", { name: shiftText.lessonsDecrease }).click();
   await expect(page.getByText(breaks.afterLast)).toBeVisible();
   await page.getByRole("button", { name: wizard.next }).click();
   await expect(page.getByText(breaks.blocked)).toBeVisible();
-  for (let step = 0; step < 3; step++) await page.getByRole("button", { name: wizard.timing.lessonsIncrease(lessonsName) }).click();
+  for (let step = 0; step < 3; step++) await page.getByRole("button", { name: shiftText.lessonsIncrease }).click();
   await expect(page.getByText(breaks.afterLast)).toBeHidden();
   await page.getByLabel(breaks.gap).selectOption("5");
-  await expect(preview.getByRole("row", { name: new RegExp(wizard.timing.lessonRow(arab(2))) })).toContainText(format.time("08:46"));
+  await expect(rowsOf().filter({ hasText: `الحصة ${arab(2)}:` })).toContainText(format.time("08:46"));
   await expectNoSeriousA11yViolations(page, "wizard step 3 with the breaks editor");
-  await expectNoTextOverlap(page.locator(".wizard-shift").first(), "breaks editor and preview");
+  await expectNoTextOverlap(page.locator(".shift-system-block").first(), "breaks editor and preview");
   await page.getByRole("button", { name: wizard.next }).click();
   await expect(page.getByRole("heading", { level: 2, name: wizard.steps[4] })).toBeVisible();
   const shifts = await api<{ items: { id: number; periods: { kind: string; startTime: string; endTime: string }[] }[] }>(page, server.baseUrl, "GET", `/academic-years/${yearId}/shifts/?pageSize=100`);

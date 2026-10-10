@@ -1,5 +1,8 @@
 # ADR 0006: Separate generation worker and PostgreSQL lock
 
+> **Superseded — historical.** Kept for the record only; the product is single-user and local-only (see [ADR 0008](../../adr/0008-single-user-local-architecture.md)). Do not implement.
+
+
 - Status: Superseded by ADR 0008
 - Date: 2026-10-03
 

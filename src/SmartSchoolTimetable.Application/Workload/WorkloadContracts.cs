@@ -16,6 +16,11 @@ public sealed record WorkloadStageDto(long StageId, string StageName, IReadOnlyL
 public sealed record WorkloadStageSummaryDto(long StageId, string StageName, int AssignedCells, int TotalCells);
 
 /// <param name="Stage">The chosen stage's matrix (the first stage when none was chosen), or null without stages.</param>
+/// <summary>MF2: one row per section × curriculum line of the year (all stages), for the flat «الأنصبة» table.</summary>
+public sealed record WorkloadRowDto(
+    long SectionId, long StageId, string StageName, string SectionLabel, long EntryId, long SubjectId, string SubjectName, string? Label,
+    int WeeklyLessons, long? AssignmentId, long? TeacherId, int? Version, bool OutsideSpecialization);
+
 public sealed record WorkloadMatrixDto(IReadOnlyList<WorkloadStageSummaryDto> Stages, WorkloadStageDto? Stage);
 
 /// <summary>One assignment in a teacher's load list.</summary>

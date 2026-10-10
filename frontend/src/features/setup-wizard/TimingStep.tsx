@@ -1,54 +1,27 @@
-import { SectionTitle } from "../../components/ui/section-title";
-import { Clock } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { apiRequest } from "../../api";
-import { TimeField } from "../../components/TimeField";
 import { Alert } from "../../components/ui/alert";
 import { Checkbox } from "../../components/ui/checkbox";
 import { Field } from "../../components/ui/field";
 import { Select } from "../../components/ui/select";
-import { Stepper } from "../../components/ui/stepper";
-import { DataTable } from "../../components/ui/table";
+import { Spinner } from "../../components/ui/spinner";
 import { messages } from "../../i18n/messages";
 import { useFormatter, useSchoolContext } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
-import { useTemplateCatalog, type OfficialStageTotal, type PeriodPreset } from "../curriculum/curriculumApi";
-import { useShifts, useWorkingWeek, type Period } from "../timetable-structure/scheduleApi";
+import { useTemplateCatalog, type OfficialStageTotal, type TemplateCatalog } from "../curriculum/curriculumApi";
+import { useShifts, useWorkingWeek } from "../timetable-structure/scheduleApi";
+import { useSessionPlan } from "../timetable-structure/sessionPlanApi";
+import { initialValue, toCommand, type ShiftSystemValue } from "../timetable-structure/shiftSystem";
+import { useShiftSystem } from "../timetable-structure/shiftSystemApi";
+import { hasBreakIssues, LegacyConversion } from "../timetable-structure/ShiftSystemCard";
+import { ShiftSystemEditor } from "../timetable-structure/ShiftSystemEditor";
 import { weekdayLabel, weekdaysFrom } from "../timetable-structure/weekdays";
-import { breakIssues, BreaksEditor, validBreaks } from "../timetable-structure/BreaksEditor";
-import { lessonMinuteChoices, lessonsOn, maxLessonsPerDay, planFromPreset, planFromShift, toShiftInput, weeklyLessons, type ShiftPlan } from "./timingPlan";
+import { weeklyLessons } from "./timingPlan";
 import { WizardFooter } from "./WizardFrame";
 import { useSaveTimingStep, type SetupProgress } from "./wizardApi";
 
 const text = messages.school.wizard;
 const customDays = "custom";
 type Kind = "morning" | "evening";
-const defaultStart: Record<Kind, string> = { morning: "08:00", evening: "13:00" };
-const kindsFor = (mode: SetupProgress["shiftMode"]): Kind[] => (mode === "dual" ? ["morning", "evening"] : [mode]);
-
-/** Live preview of the periods a plan generates (server generator, nothing saved). */
-function PeriodsPreview({ yearId, kind, plan }: { yearId: number; kind: Kind; plan: ShiftPlan }) {
-  const format = useFormatter();
-  const body = { firstStartTime: plan.firstStartTime, lessonMinutes: plan.lessonMinutes, lessonCount: plan.lessonCount, breakMinutes: 0, breakAfterLesson: null,
-    breaks: validBreaks(plan.lessonCount, plan.breaks), gapMinutes: plan.gapMinutes };
-  const preview = useQuery({
-    queryKey: ["wizard-periods", yearId, body],
-    queryFn: () => apiRequest<{ periods: Period[] }>(`/api/v1/academic-years/${yearId}/shifts/generate-periods`, "POST", body),
-    retry: false,
-  });
-  const rows = preview.data?.periods ?? [];
-  let lesson = 0;
-  const numbered = rows.map((period) => ({ ...period, lesson: period.kind === "lesson" ? ++lesson : null }));
-  return (
-    <DataTable caption={text.timing.previewTitle(text.timing.shifts[kind])} rows={numbered} rowKey={(row) => `${kind}-${row.position}`} loading={preview.isPending}
-      columns={[
-        { key: "period", header: text.timing.period, cell: (row) => (row.lesson === null ? text.timing.breakRow : text.timing.lessonRow(format.number(row.lesson))) },
-        { key: "from", header: text.timing.from, cell: (row) => format.time(row.startTime), numeric: true },
-        { key: "to", header: text.timing.to, cell: (row) => format.time(row.endTime), numeric: true },
-      ]} />
-  );
-}
 
 /**
  * A notice that never blocks: for the school type's stages with optional subjects, the total once they are all ticked
@@ -77,67 +50,60 @@ function OptionalCapacity({ kind, stages, capacity, days }: { kind: Kind; stages
   );
 }
 
-function ShiftBlock({ kind, plan, days, presets, yearId, suggestedBreak, officialStages, onChange }: {
-  kind: Kind; plan: ShiftPlan; days: number[]; presets: PeriodPreset[]; yearId: number | null; suggestedBreak: number; officialStages: OfficialStageTotal[]; onChange: (plan: ShiftPlan) => void;
-}) {
-  const format = useFormatter();
-  const name = text.timing.shifts[kind];
+/** The system and timings, once what is stored has loaded (the editor then keeps its own state). */
+function SystemForm({ progress, days, weekStartDay, onBack, onDone }: { progress: SetupProgress; days: number[]; weekStartDay: number; onBack: () => void; onDone: () => void }) {
+  const feedback = useFormFeedback();
+  const save = useSaveTimingStep();
+  const catalog = useTemplateCatalog();
+  const context = useSchoolContext();
+  const yearId = context.data?.currentYear?.id ?? null;
+  const state = useShiftSystem();
+  const shifts = useShifts(yearId);
+  const plan = useSessionPlan();
+  const ready = state.data && (yearId === null || shifts.data) && (yearId === null || plan.data);
+  if (!ready) return <Spinner label={messages.app.loadingContent} />;
+  if (state.data!.legacy) return <LegacyConversion state={state.data!} />;
   return (
-    <section className="wizard-shift" aria-labelledby={`wizard-shift-${kind}`}>
-      <SectionTitle level={3} icon={Clock} id={`wizard-shift-${kind}`}>{name}</SectionTitle>
-      <div className="form-grid">
-        <Field id={`wizard-${kind}-preset`} label={messages.school.templates.presetsLabel} hint={messages.school.templates.presetsHint}>
-          <Select id={`wizard-${kind}-preset`} aria-describedby={`wizard-${kind}-preset-hint`} value={plan.presetKey}
-            onChange={(event) => onChange({ ...planFromPreset(presets.find((item) => item.key === event.target.value), plan.firstStartTime), dayLessons: plan.dayLessons })}
-            options={[...(plan.presetKey ? [] : [{ value: "", label: messages.school.templates.presetNone }]), ...presets.map((item) => ({ value: item.key, label: item.name }))]} />
-        </Field>
-        <TimeField id={`wizard-${kind}-start`} label={text.timing.firstStart(name)} value={plan.firstStartTime} onChange={(time) => onChange({ ...plan, firstStartTime: time })} />
-        <Field id={`wizard-${kind}-minutes`} label={text.timing.minutes(name)}>
-          <Select id={`wizard-${kind}-minutes`} value={String(plan.lessonMinutes)} onChange={(event) => onChange({ ...plan, lessonMinutes: Number(event.target.value) })}
-            options={[...new Set([...lessonMinuteChoices, plan.lessonMinutes])].sort((a, b) => a - b).map((minutes) => ({ value: String(minutes), label: format.count(minutes, "minute") }))} />
-        </Field>
-        <div className="ui-field">
-          <span className="stepper-caption" aria-hidden="true">{text.timing.lessons(name)}</span>
-          <Stepper id={`wizard-${kind}-lessons`} label={text.timing.lessons(name)} value={plan.lessonCount} min={1} max={maxLessonsPerDay} format={format.number}
-            decreaseLabel={text.timing.lessonsDecrease(name)} increaseLabel={text.timing.lessonsIncrease(name)} onChange={(lessonCount) => onChange({ ...plan, lessonCount })} />
-        </div>
-      </div>
-      <BreaksEditor idPrefix={`wizard-${kind}`} lessonCount={plan.lessonCount} breaks={plan.breaks} gapMinutes={plan.gapMinutes}
-        firstStartTime={plan.firstStartTime} lessonMinutes={plan.lessonMinutes}
-        suggestedMinutes={suggestedBreak} onChange={(breaks, gapMinutes) => onChange({ ...plan, breaks, gapMinutes })} />
-      <details className="advanced-options">
-        <summary>{text.timing.perDay}</summary>
-        <ul className="day-lessons-list form-stack">
-          {days.map((day) => (
-            <li key={`${kind}-day-${day}`}>
-              <span className="day-lessons-day">{weekdayLabel(day)}</span>
-              <Stepper id={`wizard-${kind}-day-${day}`} label={messages.school.scheduleStructure.dayLessonsFor(weekdayLabel(day))} value={lessonsOn(plan, day)} min={0} max={plan.lessonCount}
-                format={format.number} decreaseLabel={messages.school.scheduleStructure.decreaseFor(weekdayLabel(day))} increaseLabel={messages.school.scheduleStructure.increaseFor(weekdayLabel(day))}
-                onChange={(lessons) => onChange({ ...plan, dayLessons: { ...plan.dayLessons, [day]: lessons } })} />
-            </li>
-          ))}
-        </ul>
-      </details>
-      <p className="card-note">{text.timing.weekly(format.number(weeklyLessons(plan, days)))}</p>
-      <OptionalCapacity kind={kind} stages={officialStages} capacity={weeklyLessons(plan, days)} days={days.length} />
-      {yearId !== null && <PeriodsPreview yearId={yearId} kind={kind} plan={plan} />}
-    </section>
+    <SystemEditorForm key={`${state.data!.system}-${shifts.data?.items[0]?.version ?? 0}-${plan.data?.version ?? 0}`}
+      start={initialValue(progress.shiftMode === "dual" ? "dual" : progress.shiftMode, shifts.data?.items[0], plan.data, days)}
+      days={days} weekStartDay={weekStartDay} progress={progress} catalog={catalog.data} feedback={feedback} save={save} onBack={onBack} onDone={onDone} />
+  );
+}
+
+function SystemEditorForm({ start, days, weekStartDay, progress, catalog, feedback, save, onBack, onDone }: {
+  start: ShiftSystemValue; days: number[]; weekStartDay: number; progress: SetupProgress; catalog: TemplateCatalog | undefined;
+  feedback: ReturnType<typeof useFormFeedback>; save: ReturnType<typeof useSaveTimingStep>; onBack: () => void; onDone: () => void;
+}) {
+  const [value, setValue] = useState(start);
+  return (
+    <>
+      <ShiftSystemEditor idPrefix="wizard" value={value} days={days} presets={catalog?.periodPresets ?? []}
+        suggestedBreak={catalog?.breakDefaults.minutes[progress.schoolType] ?? 15} onChange={(next) => { feedback.reset(); setValue(next); }} />
+      <OptionalCapacity kind={value.system === "evening" ? "evening" : "morning"}
+        stages={(catalog?.officialStages ?? []).filter((stage) => stage.schoolTypes.includes(progress.schoolType))}
+        capacity={weeklyLessons(value.main, days)} days={days.length} />
+      <WizardFooter step={3} pending={save.isPending} error={feedback.error} onBack={onBack}
+        onNext={() => {
+          feedback.reset();
+          if (hasBreakIssues(value)) {
+            feedback.setError(messages.school.scheduleStructure.breaks.blocked);
+            return;
+          }
+          save.mutate({ days, weekStartDay, ...toCommand(value, days) }, { onSuccess: onDone, onError: feedback.showError });
+        }} />
+    </>
   );
 }
 
 /** Step 3: working days, then one block per shift of the chosen mode with a live period preview. */
 export function TimingStep({ progress, onBack, onDone }: { progress: SetupProgress; onBack: () => void; onDone: () => void }) {
-  const feedback = useFormFeedback();
-  const save = useSaveTimingStep();
   const catalog = useTemplateCatalog();
-  const context = useSchoolContext();
   const week = useWorkingWeek();
+  const context = useSchoolContext();
   const yearId = context.data?.currentYear?.id ?? null;
   const shifts = useShifts(yearId);
   const [daysChoice, setDaysChoice] = useState<string | null>(null);
   const [customSet, setCustomSet] = useState<number[] | null>(null);
-  const [plans, setPlans] = useState<Partial<Record<Kind, ShiftPlan>>>({});
-  const presets = catalog.data?.periodPresets ?? [];
   const dayPresets = catalog.data?.workingDayPresets ?? [];
   const weekStart = week.data?.weekStartDay ?? 7;
   const savedDays = week.data?.days ?? [];
@@ -145,11 +111,6 @@ export function TimingStep({ progress, onBack, onDone }: { progress: SetupProgre
   const dayKey = daysChoice ?? matchingPreset?.key ?? (savedDays.length > 0 ? customDays : dayPresets.find((preset) => preset.isDefault)?.key ?? customDays);
   const chosenPreset = dayPresets.find((preset) => preset.key === dayKey);
   const days = weekdaysFrom(chosenPreset?.weekStart ?? weekStart).filter((day) => (chosenPreset ? chosenPreset.days : customSet ?? savedDays).includes(day));
-  const kinds = kindsFor(progress.shiftMode);
-  const planFor = (kind: Kind): ShiftPlan => {
-    const stored = shifts.data?.items.find((shift) => shift.kind === kind);
-    return plans[kind] ?? (stored && planFromShift(stored)) ?? planFromPreset(presets[0], presets[0] && kind === "morning" ? presets[0].firstStart : defaultStart[kind]);
-  };
   const hasStoredPeriods = (shifts.data?.items ?? []).some((shift) => shift.periods.length > 0);
 
   function toggleDay(day: number) {
@@ -158,7 +119,7 @@ export function TimingStep({ progress, onBack, onDone }: { progress: SetupProgre
   }
 
   return (
-    <form ref={feedback.formRef} className="form-stack" noValidate onSubmit={(event) => event.preventDefault()}>
+    <form className="form-stack" noValidate onSubmit={(event) => event.preventDefault()}>
       <Field id="wizard-days" label={text.timing.days} hint={text.suggestion}>
         <Select id="wizard-days" value={dayKey} aria-describedby="wizard-days-hint" onChange={(event) => { setDaysChoice(event.target.value); setCustomSet(event.target.value === customDays ? days : null); }}
           options={[...dayPresets.map((preset) => ({ value: preset.key, label: preset.name })), { value: customDays, label: text.timing.customDays }]} />
@@ -172,24 +133,7 @@ export function TimingStep({ progress, onBack, onDone }: { progress: SetupProgre
         </fieldset>
       )}
       {hasStoredPeriods && <Alert tone="info" message={text.timing.replaceNote} />}
-      {kinds.map((kind) => (
-        <ShiftBlock key={`wizard-shift-${kind}`} kind={kind} plan={planFor(kind)} days={days} presets={presets} yearId={yearId}
-          suggestedBreak={catalog.data?.breakDefaults.minutes[progress.schoolType] ?? 15}
-          officialStages={(catalog.data?.officialStages ?? []).filter((stage) => stage.schoolTypes.includes(progress.schoolType))}
-          onChange={(plan) => setPlans((current) => ({ ...current, [kind]: plan }))} />
-      ))}
-      <WizardFooter step={3} pending={save.isPending} error={feedback.error} onBack={onBack}
-        onNext={() => {
-          feedback.reset();
-          if (kinds.some((kind) => breakIssues(planFor(kind).lessonCount, planFor(kind).breaks).some((issue) => issue !== null))) {
-            feedback.setError(messages.school.scheduleStructure.breaks.blocked);
-            return;
-          }
-          save.mutate(
-            { days, weekStartDay: chosenPreset?.weekStart ?? weekStart, shifts: kinds.map((kind) => toShiftInput(kind, planFor(kind), days)) },
-            { onSuccess: onDone, onError: feedback.showError },
-          );
-        }} />
+      {week.data && <SystemForm progress={progress} days={days} weekStartDay={chosenPreset?.weekStart ?? weekStart} onBack={onBack} onDone={onDone} />}
     </form>
   );
 }

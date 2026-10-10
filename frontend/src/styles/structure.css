@@ -140,18 +140,117 @@
 .month-entry {
   justify-content: start;
   max-inline-size: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  block-size: auto;
+  min-block-size: 2rem;
+  text-align: start;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* MF8: each kind has its own icon, colour and start border (never colour alone); an approximate or disabled entry says so. */
+.month-entry,
+.calendar-kind {
+  border-inline-start: 0.25rem solid var(--color-line-strong);
 }
 
 .month-entry.kind-officialHoliday,
-.month-entry.kind-schoolHoliday {
+.calendar-kind.kind-officialHoliday {
+  border-inline-start-color: var(--color-warning);
   background: var(--color-warning-soft);
 }
 
-.month-entry.kind-exam {
+.month-entry.kind-schoolHoliday,
+.calendar-kind.kind-schoolHoliday {
+  border-inline-start-color: var(--color-success);
+  background: var(--color-success-soft);
+}
+
+.month-entry.kind-exam,
+.calendar-kind.kind-exam {
+  border-inline-start-color: var(--color-primary);
   background: var(--color-primary-soft);
+}
+
+.month-entry.kind-specialDay,
+.calendar-kind.kind-specialDay {
+  border-inline-start-color: var(--color-ink-muted);
+  background: var(--color-subject-5);
+}
+
+.month-entry.is-disabled,
+.calendar-title.is-disabled {
+  background: var(--color-surface-muted);
+  color: var(--color-ink-subtle);
+  text-decoration: line-through;
+}
+
+.calendar-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-sm);
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+}
+
+.calendar-title {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+/* MF10: the folder picker and the backup folder shown as text. */
+.folder-path {
+  display: inline-block;
+  max-inline-size: 100%;
+  overflow-wrap: anywhere;
+  font-size: var(--text-sm);
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.folder-current {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.folder-list {
+  display: grid;
+  gap: 0.25rem;
+  max-block-size: 18rem;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.folder-list .ui-button {
+  inline-size: 100%;
+  justify-content: start;
+}
+
+.holiday-preview {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.holiday-preview li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-block: 0.375rem;
+  border-block-end: 1px solid var(--color-line);
 }
 
 @media (max-width: 767px) {
@@ -163,4 +262,52 @@
   .month-head {
     font-size: var(--text-xs);
   }
+}
+
+/* ---------- MF7: «نظام الدوام» (one component in the wizard and the timing page) ---------- */
+.shift-system {
+  display: grid;
+  gap: 1.25rem;
+  container-type: inline-size;
+}
+
+.shift-system-sessions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.25rem;
+}
+
+/* Side by side only when the component itself is wide enough (the timing page); stacked inside the wizard card. */
+@container (min-width: 60rem) {
+  .shift-system-sessions.is-dual,
+  .shift-system-terms {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.shift-system-block {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  min-inline-size: 0;
+}
+
+.shift-system-terms {
+  display: grid;
+  gap: 1rem;
+}
+
+.school-type-readonly {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-weight: 600;
+}
+
+.legacy-conversion .reference-list {
+  margin-block: 0;
 }

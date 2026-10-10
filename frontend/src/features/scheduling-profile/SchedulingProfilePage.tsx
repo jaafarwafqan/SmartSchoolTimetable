@@ -5,16 +5,16 @@ import { Alert } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
-import { Checkbox } from "../../components/ui/checkbox";
+import { ChipGroup } from "../../components/ui/chip-group";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
-import { Select } from "../../components/ui/select";
+import { SectionTitle } from "../../components/ui/section-title";
 import { Spinner } from "../../components/ui/spinner";
 import { messages } from "../../i18n/messages";
 import { PageHeader } from "../../layout/PageHeader";
 import { useFormatter } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
 import { useSyncedState } from "../../lib/useSyncedState";
-import { useRestoreDefaults, useSaveProfile, useSchedulingProfile, weightChoices, type RuleInput, type SchedulingProfile } from "./profileApi";
+import { levelOf, priorityLevels, useRestoreDefaults, useSaveProfile, useSchedulingProfile, withLevel, type RuleInput, type SchedulingProfile } from "./profileApi";
 
 const text = messages.school.schedulingProfile;
 
@@ -29,7 +29,9 @@ function ProfileEditor({ profile, onReload }: { profile: SchedulingProfile; onRe
   const update = (index: number, change: Partial<RuleInput>) => setRules(rules.map((rule, at) => (at === index ? { ...rule, ...change } : rule)));
 
   return (
-    <Card className="page-card" aria-label={text.title}>
+    <Card className="page-card" aria-labelledby="priorities-title">
+      <SectionTitle level={2} icon={SlidersHorizontal} id="priorities-title">{text.title}</SectionTitle>
+      <p className="card-note">{text.description}</p>
       {feedback.conflict && <ConflictAlert onReload={() => { feedback.reset(); onReload(); }} />}
       <Alert tone="success" message={feedback.success} />
       <Alert tone="error" message={feedback.error} />
@@ -39,14 +41,13 @@ function ProfileEditor({ profile, onReload }: { profile: SchedulingProfile; onRe
           const current = rules[index] ?? rule;
           return (
             <li key={rule.key} className="profile-rule">
-              <Checkbox checked={current.enabled} onChange={(event) => update(index, { enabled: event.target.checked })}>{name}</Checkbox>
-              <span className="profile-weight">
-                <label htmlFor={`weight-${rule.key}`}>{text.weight}</label>
-                <Select id={`weight-${rule.key}`} aria-label={text.weightOf(name)} value={String(current.weight)} disabled={!current.enabled}
-                  options={weightChoices(current.weight).map((value) => ({ value: String(value), label: format.number(value) }))}
-                  onChange={(event) => update(index, { weight: Number(event.target.value) })} />
-                <span className="card-note">{text.defaultWeight(format.number(rule.defaultWeight))}</span>
+              <span className="profile-rule-text">
+                <strong>{name}</strong>
+                <span className="card-note">{text.hints[rule.key]}</span>
               </span>
+              <ChipGroup label={text.levelOf(name)} value={priorityLevels.indexOf(levelOf(current))}
+                options={priorityLevels.map((level, rank) => ({ value: rank, label: text.levels[level] }))}
+                onChange={(rank) => update(index, withLevel(current, priorityLevels[rank]))} />
             </li>
           );
         })}
@@ -88,12 +89,12 @@ function ProfileEditor({ profile, onReload }: { profile: SchedulingProfile; onRe
   );
 }
 
-/** «ملف الجدولة» in Settings (Phase 3 §2.4): switch soft rules on or off and choose their weights. */
+/** «أولويات الجدول» under Settings › «متقدم» (MF9): how much each soft rule matters, in three plain levels. */
 export function SchedulingProfilePage() {
   const profile = useSchedulingProfile();
   return (
     <div className="page">
-      <PageHeader icon={SlidersHorizontal} title={text.title} description={text.description} />
+      <PageHeader icon={SlidersHorizontal} title={messages.school.nav.settingsAdvanced} description={messages.school.nav.settingsAdvancedDescription} />
       {profile.isError && <Alert tone="error" message={messages.school.common.loadFailed} />}
       {profile.isPending && <Spinner label={messages.app.loadingContent} />}
       {profile.data && <ProfileEditor profile={profile.data} onReload={() => void profile.refetch()} />}

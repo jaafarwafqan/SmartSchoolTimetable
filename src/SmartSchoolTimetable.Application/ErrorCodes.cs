@@ -89,6 +89,12 @@ public static class ErrorCodes
     public const string TimetableCompareYearMismatch = "TIMETABLE_COMPARE_YEAR_MISMATCH";
     public const string AuditFilterInvalid = "AUDIT_FILTER_INVALID";
 
+    // MF11: a saved timetable against today's data.
+    public const string TimetableConflictsWithCurrentData = "TIMETABLE_CONFLICTS_WITH_CURRENT_DATA";
+    public const string TimetableReplaceConflict = "TIMETABLE_REPLACE_CONFLICT";
+    public const string TimetableNothingToReplace = "TIMETABLE_NOTHING_TO_REPLACE";
+    public const string TimetableNothingToRepair = "TIMETABLE_NOTHING_TO_REPAIR";
+
     public const string BackupPathInvalid = "BACKUP_PATH_INVALID";
     public const string BackupFileExists = "BACKUP_FILE_EXISTS";
     public const string BackupFailed = "BACKUP_FAILED";
@@ -99,4 +105,7 @@ public static class ErrorCodes
     // Phase 4 follow-up R3: daily sessions (دوام مزدوج).
     public const string SessionLessonCountMismatch = "SESSION_LESSON_COUNT_MISMATCH";
     public const string SessionsNeedOneShift = "SESSIONS_NEED_ONE_SHIFT";
+
+    // MF7: one shift per year.
+    public const string ShiftSystemLegacy = "SHIFT_SYSTEM_LEGACY";
 }

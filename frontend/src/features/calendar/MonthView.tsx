@@ -1,5 +1,5 @@
 import { SectionTitle } from "../../components/ui/section-title";
-import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarClock, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { Alert } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import { messages } from "../../i18n/messages";
@@ -7,6 +7,7 @@ import { useFormatter } from "../../lib/schoolContext";
 import { useWorkingWeek } from "../timetable-structure/scheduleApi";
 import { weekdayLabel, weekdaysFrom } from "../timetable-structure/weekdays";
 import { useCalendarDays, type CalendarDay } from "./calendarApi";
+import { kindIcons } from "./calendarKinds";
 import { monthEnd, monthGrid, monthStart } from "./monthGrid";
 
 const text = messages.school.calendar;
@@ -37,12 +38,15 @@ export function MonthView({ month, onMonth, onOpen }: MonthViewProps) {
           : (
             <div key={date} className="month-cell" role="listitem" aria-label={format.date(date)}>
               <span className="month-day-number">{format.number(Number(date.slice(8)))}</span>
-              {entriesOn(date).map((entry) => (
-                <Button key={entry.id} size="sm" variant="ghost" className={`month-entry kind-${entry.kind}`}
-                  icon={<CalendarDays aria-hidden="true" size={16} />} onClick={() => onOpen(entry)}>
-                  {entry.title}
-                </Button>
-              ))}
+              {entriesOn(date).map((entry) => {
+                const Icon = entry.isApproximate ? CalendarClock : kindIcons[entry.kind];
+                return (
+                  <Button key={entry.id} size="sm" variant="ghost" className={`month-entry kind-${entry.kind}${entry.isEnabled ? "" : " is-disabled"}`}
+                    title={entry.isApproximate ? text.approximate : undefined} icon={<Icon aria-hidden="true" size={16} />} onClick={() => onOpen(entry)}>
+                    {entry.title}
+                  </Button>
+                );
+              })}
             </div>
           ))}
       </div>

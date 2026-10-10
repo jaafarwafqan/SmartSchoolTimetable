@@ -39,6 +39,27 @@ public sealed record RestoreResultDto(string RestoredFrom, string AutomaticBacku
 
 public sealed record BackupDefaultsDto(string SuggestedFolder);
 
+/// <summary>A subfolder in the folder picker (MF10).</summary>
+public sealed record FolderEntryDto(string Name, string Path);
+
+/// <param name="Kind">"documents", "desktop" or "drive": the starting places shown before any folder is opened.</param>
+public sealed record FolderPlaceDto(string Kind, string Name, string Path);
+
+/// <summary>
+/// The folder picker's view of one folder (MF10): its subfolders only (never files), where to go up to, or, with no
+/// path, the starting places (documents, desktop, drives).
+/// </summary>
+/// <param name="Path">The listed folder, or null at the starting places.</param>
+/// <param name="Parent">The folder above, or null at a drive root (up goes back to the starting places).</param>
+public sealed record FolderListingDto(string? Path, string? Parent, IReadOnlyList<FolderEntryDto> Folders, IReadOnlyList<FolderPlaceDto> Places);
+
+/// <param name="Kind">"manual" (made with «إنشاء نسخة»), "preRestore", "preConversion" or "other".</param>
+/// <param name="Source">"folder" (the chosen folder) or "automatic" (the folder next to the database).</param>
+/// <param name="Restorable">A readable database of this app with an owner account and only migrations this build knows.</param>
+public sealed record BackupFileDto(string Name, string Path, long SizeBytes, DateTimeOffset ModifiedAt, string Kind, string Source, bool Restorable);
+
+public sealed record BackupListingDto(string Folder, string AutomaticFolder, IReadOnlyList<BackupFileDto> Files);
+
 /// <summary>
 /// «النسخ الاحتياطي والاستعادة» (Phase 4 M6). A backup is a new file in a folder the owner chooses; a restore checks
 /// the file, takes an automatic backup of the current data first, replaces the data, and signs the owner out. No
@@ -112,6 +133,106 @@ public sealed class BackupService(IDatabaseBackup backup, IDataStore store, ILoc
         sessions.RevokeAll();
         return OperationResult.Success(new RestoreResultDto(command.FilePath!, automatic));
     }
+
+    /// <summary>MF10: the subfolders of a folder for the picker; with no path, the starting places. Files are never listed.</summary>
+    public static OperationResult<FolderListingDto> BrowseFolders(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            var places = new List<FolderPlaceDto>();
+            AddPlace(places, "documents", Environment.SpecialFolder.MyDocuments);
+            AddPlace(places, "desktop", Environment.SpecialFolder.DesktopDirectory);
+            try
+            {
+                places.AddRange(DriveInfo.GetDrives().Where(drive => drive.IsReady && drive.DriveType is DriveType.Fixed or DriveType.Removable or DriveType.Network)
+                    .Select(drive => new FolderPlaceDto("drive", drive.Name, drive.RootDirectory.FullName)));
+            }
+            catch (IOException)
+            {
+                // A drive that vanishes while listing is simply not offered.
+            }
+            return OperationResult.Success(new FolderListingDto(null, null, [], places));
+        }
+        if (!IsUsablePath(path) || !Directory.Exists(path))
+            return OperationResult.Invalid<FolderListingDto>("path", ErrorCodes.BackupPathInvalid);
+        var folders = new List<FolderEntryDto>();
+        try
+        {
+            foreach (var directory in Directory.EnumerateDirectories(path).Select(item => new DirectoryInfo(item))
+                         .Where(item => !item.Attributes.HasFlag(FileAttributes.Hidden) && !item.Attributes.HasFlag(FileAttributes.System))
+                         .OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase).Take(MaxFolders))
+                folders.Add(new FolderEntryDto(directory.Name, directory.FullName));
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return OperationResult.Invalid<FolderListingDto>("path", ErrorCodes.BackupPathInvalid);
+        }
+        return OperationResult.Success(new FolderListingDto(Path.GetFullPath(path), Directory.GetParent(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))?.FullName, folders, []));
+    }
+
+    /// <summary>
+    /// MF10: the backups the owner can restore: the database files of the chosen folder plus the automatic ones kept next to
+    /// the database, newest first. A file that is not usable is still listed (with <c>Restorable = false</c>) so the owner sees it.
+    /// </summary>
+    public async Task<OperationResult<BackupListingDto>> ListFilesAsync(string? folder, CancellationToken token)
+    {
+        if (!string.IsNullOrWhiteSpace(folder) && !IsUsablePath(folder))
+            return OperationResult.Invalid<BackupListingDto>(FolderField, ErrorCodes.BackupPathInvalid);
+        var files = new List<BackupFileDto>();
+        if (!string.IsNullOrWhiteSpace(folder))
+            files.AddRange(await ReadFolderAsync(folder, "folder", token));
+        if (!string.Equals(Path.TrimEndingDirectorySeparator(folder ?? string.Empty), Path.TrimEndingDirectorySeparator(backup.AutomaticBackupFolder), StringComparison.OrdinalIgnoreCase))
+            files.AddRange(await ReadFolderAsync(backup.AutomaticBackupFolder, "automatic", token));
+        return OperationResult.Success(new BackupListingDto(folder ?? string.Empty, backup.AutomaticBackupFolder, files.OrderByDescending(file => file.ModifiedAt).ToList()));
+    }
+
+    private const int MaxFolders = 500;
+    private const int MaxBackupFiles = 200;
+
+    private static void AddPlace(List<FolderPlaceDto> places, string kind, Environment.SpecialFolder folder)
+    {
+        var path = Environment.GetFolderPath(folder);
+        if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
+            places.Add(new FolderPlaceDto(kind, Path.GetFileName(path), path));
+    }
+
+    private async Task<List<BackupFileDto>> ReadFolderAsync(string folder, string source, CancellationToken token)
+    {
+        var result = new List<BackupFileDto>();
+        if (!Directory.Exists(folder))
+            return result;
+        List<FileInfo> candidates;
+        try
+        {
+            candidates = new DirectoryInfo(folder).EnumerateFiles("*.db").OrderByDescending(file => file.LastWriteTimeUtc).Take(MaxBackupFiles).ToList();
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return result;
+        }
+        foreach (var file in candidates)
+        {
+            var restorable = false;
+            try
+            {
+                var inspection = await backup.InspectAsync(file.FullName, token);
+                restorable = inspection.IsDatabase && inspection.HasOwner && inspection.Migrations.Count > 0
+                    && inspection.Migrations.All(migration => backup.KnownMigrations.Contains(migration));
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                // Unreadable (locked, no permission): listed as not restorable.
+            }
+            result.Add(new BackupFileDto(file.Name, file.FullName, file.Length, new DateTimeOffset(file.LastWriteTimeUtc, TimeSpan.Zero), KindOf(file.Name), source, restorable));
+        }
+        return result;
+    }
+
+    private static string KindOf(string name) =>
+        name.StartsWith("timetable-backup-", StringComparison.OrdinalIgnoreCase) ? "manual"
+        : name.StartsWith("pre-restore-", StringComparison.OrdinalIgnoreCase) ? "preRestore"
+        : name.StartsWith("pre-conversion-", StringComparison.OrdinalIgnoreCase) ? "preConversion"
+        : "other";
 
     private static bool IsUsablePath(string? path)
     {

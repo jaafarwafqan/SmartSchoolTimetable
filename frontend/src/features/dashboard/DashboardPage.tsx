@@ -13,6 +13,7 @@ import { CurriculumStatusCard } from "./CurriculumStatusCard";
 import { ReadinessCard } from "../readiness/ReadinessCard";
 import { countItems } from "./dashboardItems";
 import { SetupChecklist } from "./SetupChecklist";
+import { UpcomingHolidayCard } from "./UpcomingHolidayCard";
 import { useDashboard } from "./useDashboard";
 
 /** Dashboard: real counts from the database and the computed setup checklist (no placeholder statistics). */
@@ -58,6 +59,7 @@ export function DashboardPage() {
             </dl>
           </Card>
           <CurriculumStatusCard stages={summary.data.curriculum} format={format.number} />
+          <UpcomingHolidayCard />
         </div>
       )}
     </div>

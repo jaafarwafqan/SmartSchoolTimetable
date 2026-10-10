@@ -1,6 +1,8 @@
 using System.Net;
 using SmartSchoolTimetable.Application;
+using SmartSchoolTimetable.Application.Common;
 using SmartSchoolTimetable.Application.SchoolSetup;
+using SmartSchoolTimetable.Application.Setup;
 using SmartSchoolTimetable.Domain.Common;
 using SmartSchoolTimetable.Domain.SchoolSetup;
 using SmartSchoolTimetable.Domain.Teachers;
@@ -88,69 +90,26 @@ public sealed class DayLessonsAndShiftModeTests
         Assert.Throws<DomainValidationException>(() => profile.SetSchoolType((SchoolType)9, DateTimeOffset.UnixEpoch));
     }
 
-    private static async Task<(ShiftModeService Mode, FakeDataStore Store, AcademicYear Year)> SeedModeAsync(bool withYear = true)
-    {
-        var store = new FakeDataStore();
-        store.Add(SchoolProfile.CreateDefault(DateTimeOffset.UnixEpoch));
-        store.Add(WorkingWeek.CreateDefault());
-        var year = AcademicYear.Create("2026-2027", new DateOnly(2026, 9, 1), new DateOnly(2027, 6, 30));
-        year.MarkCurrent(withYear);
-        store.Add(year);
-        await store.SaveChangesAsync(default);
-        return (new ShiftModeService(store, TimeProvider.System), store, year);
-    }
-
-    [Fact]
-    public async Task ShiftModeCreatesAdoptsAndRemovesShiftsSafely()
-    {
-        var (noYear, _, _) = await SeedModeAsync(withYear: false);
-        Assert.Equal(ErrorCodes.NoCurrentYear, (await noYear.GetImpactAsync("morning", default)).ErrorCode);
-
-        var (service, store, year) = await SeedModeAsync();
-        Assert.Contains((await service.GetImpactAsync("weekend", default)).FieldErrors, error => error is { Field: "Mode", Code: ErrorCodes.InvalidOption });
-        store.Add(Shift.Create(year.Id, ShiftModeService.MorningName, 1)); // a Phase 2 shift with the standard name is adopted
-        await store.SaveChangesAsync(default);
-
-        var dual = (await service.SetAsync(new SetShiftModeCommand("dual", 1), default)).Value!;
-        Assert.Equal(["morning", "evening"], dual.Shifts.Select(shift => shift.Kind));
-        Assert.Equal(ErrorCodes.Conflict, (await service.SetAsync(new SetShiftModeCommand("morning", 1), default)).ErrorCode);
-
-        var evening = store.Query<Shift>().Single(shift => shift.Kind == ShiftKind.Evening);
-        var stage = Stage.Create(year.Id, "الأول المتوسط", 1);
-        store.Add(stage);
-        await store.SaveChangesAsync(default);
-        store.Add(Section.Create(stage.Id, evening.Id, "أ", null));
-        await store.SaveChangesAsync(default);
-
-        var impact = (await service.GetImpactAsync("morning", default)).Value!;
-        Assert.False(impact.Allowed);
-        Assert.Equal(["الدوام المسائي"], impact.ShiftsToRemove);
-        Assert.Equal(("الأول المتوسط", "أ"), (impact.AffectedSections[0].StageName, impact.AffectedSections[0].Label));
-        Assert.Equal(ErrorCodes.ShiftModeInUse, (await service.SetAsync(new SetShiftModeCommand("morning", dual.ProfileVersion), default)).ErrorCode);
-
-        store.Remove(store.Query<Section>().Single());
-        await store.SaveChangesAsync(default);
-        var morning = (await service.SetAsync(new SetShiftModeCommand("morning", dual.ProfileVersion), default)).Value!;
-        Assert.Equal(["morning"], morning.Shifts.Select(shift => shift.Kind));
-        Assert.Equal("evening", (await service.GetImpactAsync("evening", default)).Value!.ShiftsToCreate.Single());
-    }
-
     [Fact]
     public async Task DayLessonsAndSetupProgressRoutesValidateAndPersist()
     {
         await using var host = new TestHost();
         Assert.Equal(HttpStatusCode.Unauthorized, (await host.Client.GetAsync("/api/v1/setup-progress/")).StatusCode);
         var (token, _) = await SetupOwnerAsync(host);
-        Assert.Equal(HttpStatusCode.Forbidden, (await host.PostWithoutTokenAsync("/api/v1/shift-mode/", new { mode = "morning" })).StatusCode);
-        await AssertApiErrorAsync(await host.Client.GetAsync("/api/v1/shift-mode/impact?mode=morning"), "NO_CURRENT_YEAR");
+        Assert.Equal(HttpStatusCode.Forbidden, (await host.PostWithoutTokenAsync("/api/v1/shift-system/convert", new { targetSystem = "morning" })).StatusCode);
+        await AssertApiErrorAsync(await host.PutAsync("/api/v1/shift-system/", new { system = "morning" }, token), "NO_CURRENT_YEAR");
 
         var year = await AcademicYearApiTests.CreateYearAsync(host, token, "2026-2027", "2026-09-01", "2027-06-30");
         var progress = await ReadAsync<SetupProgressDto>(await host.Client.GetAsync("/api/v1/setup-progress/"));
-        var mode = await ReadAsync<ShiftModeDto>(await host.PutAsync("/api/v1/shift-mode/", new { mode = "dual", version = 1 }, token));
-        Assert.Equal(2, mode.Shifts.Count);
-        var morning = mode.Shifts.Single(shift => shift.Kind == "morning");
-        var lessons = Enumerable.Range(0, 7).Select(index => new { kind = "lesson", startTime = $"{8 + index:00}:00", endTime = $"{8 + index:00}:45", startBell = true, endBell = true }).ToArray();
-        var withPeriods = await ReadAsync<ShiftDto>(await host.PutAsync($"/api/v1/academic-years/{year.Id}/shifts/{morning.Id}/periods", new { periods = lessons, version = morning.Version }, token));
+        var system = await ReadAsync<ShiftSystemDto>(await host.PutAsync("/api/v1/shift-system/", new
+        {
+            system = "morning",
+            main = new { kind = "morning", firstStartTime = "08:00", lessonMinutes = 45, lessonCount = 7, breaks = Array.Empty<object>(), dayLessons = Array.Empty<object>() },
+        }, token));
+        Assert.Equal(("morning", false), (system.System, system.Legacy));
+        var morning = (await ReadAsync<PagedResult<ShiftDto>>(await host.Client.GetAsync($"/api/v1/academic-years/{year.Id}/shifts/"))).Items.Single();
+        Assert.Equal("morning", morning.Kind);
+        var withPeriods = morning;
 
         var invalid = await host.PutAsync($"/api/v1/academic-years/{year.Id}/shifts/{morning.Id}/day-lessons", new { dayLessons = new[] { new { day = 4, lessons = 9 } }, version = withPeriods.Version }, token);
         Assert.Contains((await AssertApiErrorAsync(invalid, "VALIDATION_FAILED")).Errors, issue => issue is { Field: "DayLessons", Code: "VALUE_OUT_OF_RANGE" });
@@ -162,7 +121,7 @@ public sealed class DayLessonsAndShiftModeTests
         Assert.Equal((7, 6, 34), (grid.LessonsPerDay, grid.LessonsByDay.Single(day => day.Day == 4).Lessons, grid.MaxWeeklyLessons));
 
         var stepped = await ReadAsync<SetupProgressDto>(await host.PutAsync("/api/v1/setup-progress/", new { currentStep = 3, completedSteps = FirstTwoSteps, skippedSteps = Array.Empty<int>(), isFinished = false, version = progress.Version }, token));
-        Assert.Equal((3, "dual"), (stepped.CurrentStep, stepped.ShiftMode));
+        Assert.Equal((3, "morning"), (stepped.CurrentStep, stepped.ShiftMode));
         Assert.Equal(HttpStatusCode.Conflict, (await host.PutAsync("/api/v1/setup-progress/", new { currentStep = 4, isFinished = false, version = progress.Version }, token)).StatusCode);
         var outOfRange = await host.PutAsync("/api/v1/setup-progress/", new { currentStep = 9, isFinished = false, version = stepped.Version }, token);
         Assert.Contains((await AssertApiErrorAsync(outOfRange, "VALIDATION_FAILED")).Errors, issue => issue.Field == "CurrentStep");

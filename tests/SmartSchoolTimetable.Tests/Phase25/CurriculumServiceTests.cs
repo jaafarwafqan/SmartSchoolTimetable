@@ -1,5 +1,6 @@
 using System.Net;
 using SmartSchoolTimetable.Application;
+using SmartSchoolTimetable.Application.Common;
 using SmartSchoolTimetable.Application.Curriculum;
 using SmartSchoolTimetable.Application.SchoolSetup;
 using SmartSchoolTimetable.Application.Setup;
@@ -230,10 +231,11 @@ public sealed class CurriculumServiceTests
         Assert.Equal(HttpStatusCode.Unauthorized, (await host.Client.GetAsync("/api/v1/templates/")).StatusCode);
         var (token, _) = await SetupOwnerAsync(host);
         var year = await AcademicYearApiTests.CreateYearAsync(host, token, "2026-2027", "2026-09-01", "2027-06-30");
-        var mode = await ReadAsync<ShiftModeDto>(await host.PutAsync("/api/v1/shift-mode/", new { mode = "morning", version = 1 }, token));
-        var shiftId = mode.Shifts.Single().Id;
+        Assert.Equal(HttpStatusCode.OK, (await host.PutAsync("/api/v1/shift-system/", new { system = "morning" }, token)).StatusCode);
+        var shift = (await ReadAsync<PagedResult<ShiftDto>>(await host.Client.GetAsync($"/api/v1/academic-years/{year.Id}/shifts/"))).Items.Single();
+        var shiftId = shift.Id;
         var lessons = Enumerable.Range(0, 7).Select(index => new { kind = "lesson", startTime = $"{8 + index:00}:00", endTime = $"{8 + index:00}:45", startBell = true, endBell = true }).ToArray();
-        Assert.Equal(HttpStatusCode.OK, (await host.PutAsync($"/api/v1/academic-years/{year.Id}/shifts/{shiftId}/periods", new { periods = lessons, version = mode.Shifts.Single().Version }, token)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await host.PutAsync($"/api/v1/academic-years/{year.Id}/shifts/{shiftId}/periods", new { periods = lessons, version = shift.Version }, token)).StatusCode);
         var root = $"/api/v1/academic-years/{year.Id}";
         Assert.NotEmpty((await ReadAsync<TemplateCatalogDto>(await host.Client.GetAsync("/api/v1/templates/"))).Grades);
         var preset = (await ReadAsync<TemplateCatalogDto>(await host.Client.GetAsync("/api/v1/templates/"))).PeriodPresets.First(item => item.Breaks.Count > 1);

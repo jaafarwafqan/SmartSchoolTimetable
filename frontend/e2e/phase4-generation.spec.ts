@@ -25,9 +25,15 @@ test("(4) generate a timetable with real progress, read it three ways and approv
     // Real progress: the stepper, then the result with the verifier badge (no fake percentage anywhere).
     await expect(page.getByRole("heading", { name: generation.resultTitle })).toBeVisible({ timeout: 90_000 });
     await expect(page.getByText(generation.statuses.completed)).toBeVisible();
+    // MF3: plain Arabic first (headline, sentence, what could be better); the solver's numbers under «تفاصيل تقنية».
+    await expect(page.getByText(generation.plain.ready, { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: generation.plain.notesTitle })).toBeVisible();
+    await expect(page.getByText(generation.verified)).toBeHidden();
+    await page.getByText(generation.plain.technical).click();
     await expect(page.getByText(generation.verified)).toBeVisible();
     await expect(page.getByRole("table", { name: generation.scoreTitle })).toBeVisible();
     await expect(page.locator("main")).not.toContainText("%");
+    await page.screenshot({ path: test.info().outputPath("mf3-generation-result.png"), fullPage: true });
     await expectNoSeriousA11yViolations(page, "generation result");
     for (const width of breakpoints) {
       await page.setViewportSize({ width, height: 900 });
@@ -65,19 +71,41 @@ test("(4) generate a timetable with real progress, read it three ways and approv
     }
     await page.setViewportSize({ width: 1280, height: 900 });
 
+    // MF4: the version is chosen from a compact bar at the top; editing hides «اعتماد» and shows «حفظ التعديلات» / «إلغاء».
+    await expect(page.locator("#timetable-version")).toBeVisible();
+    await page.getByRole("button", { name: timetable.edit }).click();
+    await expect(page.getByRole("button", { name: timetable.approve })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: timetable.saveEdit })).toBeVisible();
+    await page.getByRole("button", { name: timetable.cancelEdit }).click();
+    await expect(page.getByRole("button", { name: timetable.approve })).toBeVisible();
+    // The section grid is full width: every lesson visible without sideways scroll at 1366 and 1920; at 1024 the day column stays put.
+    await page.getByLabel(timetable.viewsLabel).selectOption("section");
+    for (const width of [1366, 1920]) {
+      await page.setViewportSize({ width, height: 900 });
+      const overflow = await page.locator(".timetable-main .ui-tt-grid-container").first().evaluate((element) => element.scrollWidth - element.clientWidth);
+      expect(overflow, `section grid scrolls sideways at ${width}px`).toBeLessThanOrEqual(0);
+      await page.screenshot({ path: test.info().outputPath(`mf4-timetable-${width}.png`), fullPage: true });
+    }
+    await page.setViewportSize({ width: 1024, height: 900 });
+    expect(await page.locator(".timetable-main .ui-tt-grid tbody th").first().evaluate((element) => getComputedStyle(element).position)).toBe("sticky");
+    await page.screenshot({ path: test.info().outputPath("mf4-timetable-1024.png"), fullPage: true });
+    await page.setViewportSize({ width: 1280, height: 900 });
     await page.getByRole("button", { name: timetable.approve }).click();
     await page.getByRole("dialog").getByRole("button", { name: timetable.approve }).click();
     await expect(page.getByText(timetable.approvedDone)).toBeVisible();
-    await expect(page.getByText(timetable.approved).first()).toBeVisible();
+    await expect(page.locator(".version-bar .ui-badge", { hasText: timetable.approved })).toBeVisible();
 
-    // Printing (M5): print media hides the shell and controls and shows the school header; the grid stays.
+    // Official printing (MF5): with the print options open, print media shows only the print document.
+    await page.getByText(messages.school.printing.title).click();
     await page.emulateMedia({ media: "print" });
-    await expect(page.locator(".app-sidebar")).toBeHidden();
-    await expect(page.locator(".timetable-controls").first()).toBeHidden();
-    await expect(page.locator(".timetable-print-header")).toBeVisible();
-    await expect(page.locator(".ui-tt-grid").first()).toBeVisible();
+    await expect(page.locator("#root")).toBeHidden();
+    await expect(page.locator(".print-page-header")).toContainText(messages.school.printing.documentTitle);
+    await expect(page.locator(".print-document .ui-tt-grid")).toBeVisible();
+    await expect(page.locator(".print-page-footer")).toContainText(messages.school.printing.stamp);
     await page.emulateMedia({ media: "screen" });
-    await expect(page.locator(".timetable-print-header")).toBeHidden();
+    await expect(page.locator(".print-document")).toBeHidden();
+    await page.getByText(messages.school.printing.title).click();
+    await expect(page.locator(".print-document")).toHaveCount(0);
     // Excel (M5): the workbook downloads from the version.
     const download = page.waitForEvent("download");
     await page.getByRole("link", { name: timetable.exportExcel }).click();

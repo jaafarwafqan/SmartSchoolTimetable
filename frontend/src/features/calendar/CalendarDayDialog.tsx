@@ -10,6 +10,7 @@ import { Checkbox } from "../../components/ui/checkbox";
 import { Dialog } from "../../components/ui/dialog";
 import { messages } from "../../i18n/messages";
 import { useFormFeedback } from "../../lib/useFormFeedback";
+import { useWorkingWeek } from "../timetable-structure/scheduleApi";
 import { useSaveCalendarDay, type CalendarDay, type CalendarKind } from "./calendarApi";
 
 const text = messages.school.calendar;
@@ -30,6 +31,7 @@ export function CalendarDayDialog({ open, day, defaultDate, onClose, onSaved, on
   const feedback = useFormFeedback();
   const save = useSaveCalendarDay();
   const [affects, setAffects] = useState(day?.affectsSchedule ?? true);
+  const picker = { weekStart: useWorkingWeek().data?.weekStartDay ?? 7 };
 
   function close() {
     feedback.reset();
@@ -72,9 +74,9 @@ export function CalendarDayDialog({ open, day, defaultDate, onClose, onSaved, on
         {feedback.conflict && <ConflictAlert onReload={() => { feedback.reset(); onReload(); }} />}
         <Alert tone="error" message={feedback.error} />
         <TextField id="calendarTitle" label={text.titleField} defaultValue={day?.title ?? ""} maxLength={120} required field="Title" errors={feedback.fieldErrors} />
-        <div className="form-grid">
-          <DateField id="calendarStart" label={text.startDate} defaultValue={day?.startDate ?? defaultDate ?? ""} required field="StartDate" errors={feedback.fieldErrors} />
-          <DateField id="calendarEnd" label={text.endDate} hint={text.endDateHint} defaultValue={day && day.endDate !== day.startDate ? day.endDate : ""} field="EndDate" errors={feedback.fieldErrors} />
+        <div className="form-stack">
+          <DateField id="calendarStart" label={text.startDate} defaultValue={day?.startDate ?? defaultDate ?? ""} required field="StartDate" errors={feedback.fieldErrors} picker={picker} />
+          <DateField id="calendarEnd" label={text.endDate} hint={text.endDateHint} defaultValue={day && day.endDate !== day.startDate ? day.endDate : ""} field="EndDate" errors={feedback.fieldErrors} picker={picker} />
         </div>
         <SelectField id="calendarKind" label={text.kind} options={kindOptions} defaultValue={day?.kind ?? "officialHoliday"} required field="Kind" errors={feedback.fieldErrors} />
         <Checkbox checked={affects} onChange={(event) => setAffects(event.target.checked)}>{text.affectsSchedule}</Checkbox>

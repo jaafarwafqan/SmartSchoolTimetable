@@ -73,6 +73,8 @@ export type GenerationRun = {
   live: LiveProgress | null;
   /** «إبقاء تعديلاتي»: the version whose manual lessons were locked, how many, and how many could not be kept. */
   lockedFromVersionId: number | null;
+  /** MF11: this run repairs `lockedFromVersionId` against today's data. */
+  isRepair: boolean;
   lockedLessons: number;
   locksDropped: number;
 };
@@ -95,6 +97,8 @@ export type StartGeneration = {
   workers: number;
   /** Keep this version's manual edits as locked lessons; omit to discard them. */
   lockFromVersionId?: number;
+  /** MF11 «إصلاح بأقل تغيير»: repair this version against today's data; every lesson that still fits stays in place. */
+  repairFromVersionId?: number;
 };
 
 /** The latest version of the year when it is a manual edit, and how many lessons were moved by hand. */
@@ -155,6 +159,18 @@ export function useStartGeneration(yearId: number | undefined) {
       void client.invalidateQueries({ queryKey: ["generation", "history"] });
     },
   });
+}
+
+/** MF11 «إصلاح بأقل تغيير»: the server takes the mode from the version and keeps every lesson that still fits. */
+export function useStartRepair(yearId: number | undefined) {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: (versionId: number) => apiRequest<GenerationRun>(`/api/v1/academic-years/${yearId}/generation/runs`, "POST", { repairFromVersionId: versionId }),
+        onSuccess: (run) => {
+            client.setQueryData(generationKeys.current(run.academicYearId), { run });
+            void client.invalidateQueries({ queryKey: ["generation", "history"] });
+        },
+    });
 }
 
 export function useCancelGeneration() {

@@ -33,7 +33,7 @@ internal sealed class TimetableVersionConfiguration : IEntityTypeConfiguration<T
     {
         builder.ToTable("TimetableVersions", table =>
         {
-            table.HasCheckConstraint("CK_TimetableVersions_Source", "\"Source\" BETWEEN 1 AND 3");
+            table.HasCheckConstraint("CK_TimetableVersions_Source", "\"Source\" BETWEEN 1 AND 5");
             table.HasCheckConstraint("CK_TimetableVersions_Status", "\"Status\" BETWEEN 1 AND 3");
             // The approved flag (which backs the unique index) can never disagree with the status.
             table.HasCheckConstraint("CK_TimetableVersions_ApprovedFlag", "(\"Status\" = 2) = (\"IsApproved\" = 1)");

@@ -182,13 +182,16 @@ public sealed class SuggestedCurriculumTests
         var (token, _) = await SetupOwnerAsync(host);
         await host.PutAsync("/api/v1/setup-wizard/school", new { name = "مدرسة المنهج", schoolType, shiftMode = mode }, token);
         await host.PutAsync("/api/v1/setup-wizard/year", new { label = "2026-2027", startDate = "2026-09-01", endDate = "2027-06-30", terms = Array.Empty<object>() }, token);
-        var kinds = mode == "dual" ? new[] { ("morning", 7), ("evening", 6) } : new[] { (mode, 7) };
-        await ReadAsync<SetupProgressDto>(await host.PutAsync("/api/v1/setup-wizard/timing", new
+        var mapping = SundayToThursday.SelectMany((day, index) => new[]
         {
-            days = SundayToThursday,
-            weekStartDay = 7,
-            shifts = kinds.Select(kind => new { kind = kind.Item1, firstStartTime = kind.Item1 == "evening" ? "13:00" : "08:00", lessonMinutes = 40, lessonCount = kind.Item2, breaks = Array.Empty<object>(), dayLessons = Array.Empty<object>() }),
-        }, token));
+            new { term = 1, day, session = index < 3 ? "morning" : "evening" },
+            new { term = 2, day, session = index < 3 ? "evening" : "morning" },
+        }).ToArray();
+        object main(string kind) => new { kind, firstStartTime = kind == "evening" ? "13:00" : "08:00", lessonMinutes = 40, lessonCount = 7, breaks = Array.Empty<object>(), dayLessons = Array.Empty<object>() };
+        object timing = mode == "dual"
+            ? new { days = SundayToThursday, weekStartDay = 7, system = "dual", main = main("morning"), evening = main("evening"), sessionDays = mapping }
+            : new { days = SundayToThursday, weekStartDay = 7, system = mode, main = main(mode) };
+        await ReadAsync<SetupProgressDto>(await host.PutAsync("/api/v1/setup-wizard/timing", timing, token));
         var year = (await ReadAsync<PagedResult<AcademicYearDto>>(await host.Client.GetAsync("/api/v1/academic-years/"))).Items.Single();
         var root = $"/api/v1/academic-years/{year.Id}";
         var shifts = (await ReadAsync<PagedResult<ShiftDto>>(await host.Client.GetAsync($"{root}/shifts/?pageSize=100"))).Items;
@@ -310,13 +313,11 @@ public sealed class SuggestedCurriculumTests
         await ReadAsync<SuggestedCurriculumPlanDto>(await host.PostAsync($"{root}/curriculum/suggested", new { optionalSubjects = KurdishAndFrench }, token)); // adds Kurdish and French only
         Assert.Equal(SecondaryWithKurdishAndFrench, await PlannedAsync(host, root));
 
-        // A stage with sections in both shifts must fit the smaller one (morning 7, evening 6 → 30 a week).
-        var cards = await ReadAsync<List<StageCardDto>>(await host.Client.GetAsync($"{root}/stage-cards"));
-        var evening = shifts.Single(shift => shift.Kind == "evening");
-        await ReadAsync<StageCardDto>(await host.PutAsync($"{root}/stage-cards/{cards[0].Stage.Id}/section-count", new { count = 2, shiftId = evening.Id }, token));
+        // MF7: the double system is one shift with the same lessons in both sessions, so every stage gets 7 × 5 = 35 a week.
+        Assert.Single(shifts);
         var daily = await ReadAsync<DailySuggestionDto>(await host.Client.GetAsync($"{root}/daily-suggestion"));
-        Assert.Equal((30, "aboveCapacity"), (daily.Stages[0].Capacity, daily.Stages[0].Status)); // 32 lessons with French
-        Assert.Equal((35, "apply"), (daily.Stages[1].Capacity, daily.Stages[1].Status));
+        Assert.All(daily.Stages, stage => Assert.Equal(35, stage.Capacity));
+        Assert.Equal("apply", daily.Stages[0].Status); // 32 lessons with French fit
     }
 
     [Fact]

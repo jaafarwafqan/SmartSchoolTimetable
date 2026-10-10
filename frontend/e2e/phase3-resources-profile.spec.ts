@@ -6,7 +6,7 @@ import { ApiServer } from "./support/apiServer";
 import { breakpoints, expectBreakpointScreenshots, expectNoPageScrollX, expectNoSeriousA11yViolations, expectNoTextOverlap, goToSection, setupOwner } from "./support/flows";
 
 // Phase 3B screens on a fresh temporary database: «الموارد» (quick add, required by a subject, protected delete)
-// and «ملف الجدولة» (weights, profile version, restore defaults).
+// and «أولويات الجدول» (three levels, profile version, restore defaults).
 const school = messages.school;
 const resources = school.resources;
 const profile = school.schedulingProfile;
@@ -60,18 +60,22 @@ test("(3B) resources: quick add, a subject requires one, delete is protected; th
     await expectBreakpointScreenshots(page, "phase3-resources");
     await page.setViewportSize({ width: 1280, height: 900 });
 
-    // Profile: change one weight (version 2), then restore the defaults (version 3).
-    await goToSection(page, school.nav.schedulingProfile);
+    // Priorities (MF9): three plain levels per rule under Settings › «متقدم»; change one (version 2), restore the defaults (version 3).
+    await goToSection(page, school.nav.settingsAdvanced);
+    const gaps = page.getByRole("group", { name: profile.levelOf(profile.rules.avoidTeacherGaps) });
     await expect(page.getByText(profile.profileVersion(arab(1)))).toBeVisible();
-    await page.getByLabel(profile.weightOf(profile.rules.avoidTeacherGaps)).selectOption(String(60));
+    await expect(gaps.getByRole("button", { name: profile.levels.veryImportant })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByText(profile.hints.avoidTeacherGaps)).toBeVisible();
+    await gaps.getByRole("button", { name: profile.levels.notImportant }).click();
     await page.getByRole("button", { name: profile.save }).click();
     await expect(page.getByRole("status").filter({ hasText: profile.saved })).toBeVisible();
     await expect(page.getByText(profile.profileVersion(arab(2)))).toBeVisible();
+    await expect(gaps.getByRole("button", { name: profile.levels.notImportant })).toHaveAttribute("aria-pressed", "true");
     await page.getByRole("button", { name: profile.restore }).click();
     await page.getByRole("dialog", { name: profile.restoreTitle }).getByRole("button", { name: profile.restore }).click();
     await expect(page.getByRole("status").filter({ hasText: profile.restored })).toBeVisible();
     await expect(page.getByText(profile.profileVersion(arab(3)))).toBeVisible();
-    await expect(page.getByLabel(profile.weightOf(profile.rules.avoidTeacherGaps))).toHaveValue("30");
+    await expect(gaps.getByRole("button", { name: profile.levels.veryImportant })).toHaveAttribute("aria-pressed", "true");
     await expectNoSeriousA11yViolations(page, "scheduling profile");
     for (const width of breakpoints) {
       await page.setViewportSize({ width, height: 900 });
