@@ -71,10 +71,29 @@ test("(4) generate a timetable with real progress, read it three ways and approv
     }
     await page.setViewportSize({ width: 1280, height: 900 });
 
+    // MF4: the version is chosen from a compact bar at the top; editing hides «اعتماد» and shows «حفظ التعديلات» / «إلغاء».
+    await expect(page.locator("#timetable-version")).toBeVisible();
+    await page.getByRole("button", { name: timetable.edit }).click();
+    await expect(page.getByRole("button", { name: timetable.approve })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: timetable.saveEdit })).toBeVisible();
+    await page.getByRole("button", { name: timetable.cancelEdit }).click();
+    await expect(page.getByRole("button", { name: timetable.approve })).toBeVisible();
+    // The section grid is full width: every lesson visible without sideways scroll at 1366 and 1920; at 1024 the day column stays put.
+    await page.getByLabel(timetable.viewsLabel).selectOption("section");
+    for (const width of [1366, 1920]) {
+      await page.setViewportSize({ width, height: 900 });
+      const overflow = await page.locator(".timetable-main .ui-tt-grid-container").first().evaluate((element) => element.scrollWidth - element.clientWidth);
+      expect(overflow, `section grid scrolls sideways at ${width}px`).toBeLessThanOrEqual(0);
+      await page.screenshot({ path: test.info().outputPath(`mf4-timetable-${width}.png`), fullPage: true });
+    }
+    await page.setViewportSize({ width: 1024, height: 900 });
+    expect(await page.locator(".timetable-main .ui-tt-grid tbody th").first().evaluate((element) => getComputedStyle(element).position)).toBe("sticky");
+    await page.screenshot({ path: test.info().outputPath("mf4-timetable-1024.png"), fullPage: true });
+    await page.setViewportSize({ width: 1280, height: 900 });
     await page.getByRole("button", { name: timetable.approve }).click();
     await page.getByRole("dialog").getByRole("button", { name: timetable.approve }).click();
     await expect(page.getByText(timetable.approvedDone)).toBeVisible();
-    await expect(page.getByText(timetable.approved).first()).toBeVisible();
+    await expect(page.locator(".version-bar .ui-badge", { hasText: timetable.approved })).toBeVisible();
 
     // Printing (M5): print media hides the shell and controls and shows the school header; the grid stays.
     await page.emulateMedia({ media: "print" });

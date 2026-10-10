@@ -483,3 +483,38 @@
   justify-self: start;
   text-decoration: none;
 }
+
+/* ---------- MF4: versions bar on top, the grid at full width ---------- */
+.version-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem 1rem;
+}
+
+.version-bar > .ui-field {
+  flex: 1 1 22rem;
+  min-inline-size: min(100%, 18rem);
+}
+
+/* The day column stays visible when a grid scrolls sideways (narrow screens). */
+.ui-tt-grid tbody th,
+.ui-tt-grid thead tr:first-child th:first-child {
+  position: sticky;
+  inset-inline-start: 0;
+  z-index: 1;
+  background: var(--color-surface);
+}
+
+@media (min-width: 1366px) {
+  /* A week grid (one section or teacher) fits the width with every lesson visible; the master grid keeps its own scroll. */
+  .ui-tt-grid:not(.timetable-master) {
+    inline-size: 100%;
+    table-layout: fixed;
+  }
+
+  .ui-tt-grid:not(.timetable-master) td,
+  .ui-tt-grid:not(.timetable-master) td .ui-tt-cell {
+    min-inline-size: 0;
+  }
+}

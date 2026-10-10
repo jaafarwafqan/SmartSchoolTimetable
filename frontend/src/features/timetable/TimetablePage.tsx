@@ -26,13 +26,23 @@ const lifecycle = messages.school.lifecycle;
 
 type View = "section" | "teacher" | "master";
 
-function TimetableViews({ timetable, onSaved }: { timetable: Timetable; onSaved: (versionId: number) => void }) {
+type ViewsProps = {
+  timetable: Timetable;
+  /** MF4: the page owns the editing state, so it can hide «اعتماد» and the other version actions while editing. */
+  editing: boolean;
+  onEditingChange: (editing: boolean) => void;
+  onSaved: (versionId: number) => void;
+};
+
+function TimetableViews({ timetable, editing, onEditingChange, onSaved }: ViewsProps) {
   const format = useFormatter();
   const look = useMemo(() => lookups(timetable), [timetable]);
-  const [view, setView] = useState<View>("section");
+  const [chosenView, setView] = useState<View>("section");
+  // The manual editor works on one section at a time, so editing always shows the section view.
+  const view: View = editing ? "section" : chosenView;
+  const setEditing = onEditingChange;
   const [sectionId, setSectionId] = useState<number>(timetable.sections[0]?.id ?? 0);
   const [teacherId, setTeacherId] = useState<number>(timetable.teachers[0]?.id ?? 0);
-  const [editing, setEditing] = useState(false);
   // R3: two-session schools choose the semester; the grid is the same, the clock follows the day's session. It opens on
   // the current semester when the year's dates tell it, otherwise on semester 1 (#86).
   const [term, setTerm] = useState<Term>(timetable.sessions?.currentTerm ?? 1);
@@ -87,11 +97,6 @@ function TimetableViews({ timetable, onSaved }: { timetable: Timetable; onSaved:
           </Field>
         )}
       </div>
-      {view === "section" && section && !editing && (
-        <div>
-          <Button variant="secondary" icon={<PencilLine aria-hidden="true" size={18} />} onClick={() => setEditing(true)}>{text.edit}</Button>
-        </div>
-      )}
       {view === "section" && section && editing && (
         <TimetableEditor timetable={timetable} sectionId={section.id} format={format} look={look} lessonCount={lessonCountOf(section.shiftId)}
           sessions={sessionViewOf(timetable, section.shiftId, term)}
@@ -156,13 +161,16 @@ export function TimetablePage() {
   const rollback = useRollbackTimetable();
   const feedback = useFormFeedback();
   const [confirming, setConfirming] = useState<"approve" | "archive" | "rollback" | null>(null);
+  const [editing, setEditing] = useState(false);
   const summary = timetable.data?.summary;
   // Comparison: the version in the URL (?compare=) is the older side; it defaults to the parent, else the previous version.
   const compareParam = Number(params.get("compare")) || undefined;
   const defaultBase = (current: TimetableVersionSummary) =>
     list.find((item) => item.id === current.parentVersionId)?.id ?? list.find((item) => item.number < current.number)?.id ?? list.find((item) => item.id !== current.id)?.id;
   const compareBase = summary && compareParam !== undefined && list.some((item) => item.id === compareParam && item.id !== summary.id) ? compareParam : undefined;
-  const selectVersion = (id: number) => setParams({ version: String(id) });
+  const selectVersion = (id: number) => { setEditing(false); setParams({ version: String(id) }); };
+  const versionLabel = (row: TimetableVersionSummary) =>
+    lifecycle.versionOption(format.number(row.number), format.date(row.createdAt.slice(0, 10)), lifecycle.statuses[row.status], text.sources[row.source]);
   const startCompare = () => {
     const base = summary ? defaultBase(summary) : undefined;
     if (summary && base !== undefined) setParams({ version: String(summary.id), compare: String(base) });
@@ -187,41 +195,56 @@ export function TimetablePage() {
           onClose={() => setParams({ version: String(summary.id) })} />
       )}
       {list.length > 0 && (
-        <div className="timetable-layout">
-          <Card className="page-card timetable-versions" aria-labelledby="timetable-versions-title">
-            <SectionTitle level={2} icon={History} id="timetable-versions-title">{text.versions}</SectionTitle>
+        <Card className="page-card timetable-versions" aria-labelledby="timetable-versions-title">
+          <SectionTitle level={2} icon={History} id="timetable-versions-title">{text.versions}</SectionTitle>
+          <div className="version-bar">
+            <Field id="timetable-version" label={text.versionColumn}>
+              <Select id="timetable-version" value={selectedId === undefined ? "" : String(selectedId)} disabled={editing}
+                onChange={(event) => selectVersion(Number(event.target.value))}
+                options={list.map((row) => ({ value: String(row.id), label: versionLabel(row) }))} />
+            </Field>
+            {summary && <StatusBadge status={summary.status} />}
+            {summary && !editing && (
+              <div className="version-actions">
+                {summary.status !== "archived" && (
+                  <Button icon={<PencilLine aria-hidden="true" size={18} />} onClick={() => setEditing(true)}>{text.edit}</Button>
+                )}
+                {summary.status === "draft" && <Button icon={<Stamp aria-hidden="true" size={18} />} onClick={() => setConfirming("approve")}>{text.approve}</Button>}
+                {summary.status !== "archived" && (
+                  <Button variant="secondary" icon={<Archive aria-hidden="true" size={18} />} onClick={() => setConfirming("archive")}>{lifecycle.archive}</Button>
+                )}
+                <Button variant="secondary" icon={<ArchiveRestore aria-hidden="true" size={18} />} onClick={() => setConfirming("rollback")}>{lifecycle.rollback}</Button>
+                {defaultBase(summary) !== undefined && (
+                  <Button variant="secondary" icon={<GitCompareArrows aria-hidden="true" size={18} />} onClick={startCompare}>{lifecycle.compare}</Button>
+                )}
+              </div>
+            )}
+          </div>
+          {summary && <p className="card-note">{editing ? lifecycle.editingHint : lifecycle.statusHints[summary.status]}</p>}
+          <details className="advanced-options tool-panel">
+            <summary><History aria-hidden="true" size={18} /><span>{lifecycle.allVersions(format.count(list.length, "version"))}</span></summary>
             <VersionsTable versions={list} selectedId={selectedId} onSelect={selectVersion} />
-          </Card>
+          </details>
+        </Card>
+      )}
+      {list.length > 0 && (
           <Card className="page-card timetable-main" aria-labelledby="timetable-main-title">
             {timetable.isError && <Alert tone="error" message={text.loadFailed}>{userErrorMessage(timetable.error)}</Alert>}
             {summary && timetable.data && (
               <>
                 <div className="generation-heading">
                   <SectionTitle level={2} icon={CalendarRange} id="timetable-main-title">{text.version(format.number(summary.number))}</SectionTitle>
-                  <StatusBadge status={summary.status} />
-                </div>
-                <p className="card-note">{lifecycle.statusHints[summary.status]}</p>
-                <div className="timetable-controls version-actions">
-                  {summary.status === "draft" && <Button icon={<Stamp aria-hidden="true" size={18} />} onClick={() => setConfirming("approve")}>{text.approve}</Button>}
-                  {summary.status !== "archived" && (
-                    <Button variant="secondary" icon={<Archive aria-hidden="true" size={18} />} onClick={() => setConfirming("archive")}>{lifecycle.archive}</Button>
-                  )}
-                  <Button variant="secondary" icon={<ArchiveRestore aria-hidden="true" size={18} />} onClick={() => setConfirming("rollback")}>{lifecycle.rollback}</Button>
-                  {defaultBase(summary) !== undefined
-                    ? <Button variant="secondary" icon={<GitCompareArrows aria-hidden="true" size={18} />} onClick={startCompare}>{lifecycle.compare}</Button>
-                    : <span className="card-note">{lifecycle.compareNone}</span>}
                 </div>
                 {timetable.data.violations === 0
                   ? <p className="generation-verified"><ShieldCheck aria-hidden="true" size={18} /><span>{text.verified}</span></p>
                   : <Alert tone="error" message={messages.errors.TIMETABLE_VERIFICATION_FAILED} />}
                 {summary.stale && <Alert tone="warning" message={text.stale} />}
-                <TimetableViews key={summary.id} timetable={timetable.data}
-                  onSaved={(id) => { setParams({ version: String(id) }); feedback.showSuccess(text.savedEdit); }} />
+                <TimetableViews key={summary.id} timetable={timetable.data} editing={editing} onEditingChange={setEditing}
+                  onSaved={(id) => { setEditing(false); setParams({ version: String(id) }); feedback.showSuccess(text.savedEdit); }} />
               </>
             )}
             {!summary && timetable.isPending && <p>{messages.app.loading}</p>}
           </Card>
-        </div>
       )}
       {summary && (
         <>

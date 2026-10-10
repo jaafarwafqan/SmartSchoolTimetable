@@ -110,7 +110,7 @@ test("(M1) lifecycle: compare, undo and redo, archive, restore, keep manual edit
     await page.getByRole("dialog").getByRole("button", { name: timetable.approve }).click();
     await expect(page.getByText(timetable.approvedDone)).toBeVisible();
     await expect(page.getByText(lifecycle.statusHints.approved)).toBeVisible();
-    await page.locator(".timetable-versions tbody tr").nth(1).click();
+    await page.locator("#timetable-version").selectOption({ index: 1 });
     await page.getByRole("button", { name: lifecycle.archive }).click();
     await expect(page.getByRole("dialog")).toContainText(lifecycle.archiveConfirm("١"));
     await page.getByRole("dialog").getByRole("button", { name: lifecycle.archive }).click();
