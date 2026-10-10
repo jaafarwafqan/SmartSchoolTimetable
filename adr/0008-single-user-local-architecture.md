@@ -22,4 +22,4 @@ The prior architecture described a multi-tenant service with remote synchronizat
 - Multi-user, multi-school, remote sync, and distributed execution require a new owner-approved ADR before they can be introduced.
 
 ## Superseded decisions
-ADR 0001 (tenant isolation), ADR 0003 (remote outbox/ChangeSeq sync), and ADR 0006 (distributed worker with PostgreSQL tenant lock) are retained as historical records but are superseded for this product scope.
+ADR 0001 ([tenant isolation](../docs/archive/0001-tenant-isolation.md)), ADR 0003 ([remote outbox/ChangeSeq sync](../docs/archive/0003-offline-sync.md)), and ADR 0006 ([distributed worker](../docs/archive/0006-separate-worker-and-locking.md) with PostgreSQL tenant lock) are retained as historical records but are superseded for this product scope.
