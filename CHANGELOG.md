@@ -1,6 +1,14 @@
 # Changelog
 
 ## [Unreleased]
+### M0 truth and hygiene (branch `work/phase-5`)
+- `DELIVERY_PLAN.md` rewritten to match what Phase 4 delivered and what remains; Phase 7 (attendance, monitoring) cancelled by the owner and replaced by M4; the Phase 1 acceptance table moved to `docs/PHASE1_ACCEPTANCE.md`.
+- `docs/DECISIONS_PENDING.md` now lists open decisions only; approved, decided, superseded and informational rows moved unchanged to `docs/DECISIONS_LOG.md` (numbering shared, never reused).
+- `RISKS.md` added (risk, likelihood, impact, mitigation, status).
+- GitHub Actions CI (`.github/workflows/ci.yml`) on `windows-latest`: build with warnings as errors, tests (performance skipped), ESLint, stylelint, Vitest, Playwright + axe, production `npm audit`. SHA-pinned actions, no secrets.
+- Naming rule in `CLAUDE.md`: branches `work/<name>`, tags `phase-N[x]`.
+### M4a icons everywhere (merged into `work/phase-5`)
+- `SectionTitle` (required icon) replaces every raw h2/h3 in `features/` (lint rule `no-raw-headings` plus a test); `PageHeader` and tabs have required icons; non-neutral `Badge` requires an icon (types). Details: `docs/M4A_ICON_CHANGES.md`.
 ### Phase 4 follow-up: owner decisions on R3 (tag `phase-4i`)
 - #82 approved: the old two-shift mode stays.
 - #84: copying a year's structure copies the session plan (double shift, evening timing and breaks, both semesters' mapping) onto the copied shift.
@@ -41,7 +49,7 @@
   - A background worker with one active run (database check), polling for progress, a «إيقاف» button, and start-up recovery to «انقطع».
   - Endpoints under `/api/v1/generation` and `/api/v1/academic-years/{id}/generation`, with codes `SOLVER_UNAVAILABLE`, `SOLVER_FAILED`, `GENERATION_ACTIVE`, `GENERATION_NOT_READY` and `TIMETABLE_VERIFICATION_FAILED`.
   - The screen shows readiness, options, a real progress stepper, the result with its score breakdown, and diagnostics with links.
-  - A sixth sidebar item «الجدول» (DECISIONS_PENDING #76).
+  - A sixth sidebar item «الجدول» (DECISIONS_LOG #76).
 - **M3 `phase-4c` the «الجداول» viewer:**
   - Versions list; by-section, by-teacher and master grids from each version's own input snapshot.
   - A `TimetableGrid` UI primitive with keyboard navigation.
@@ -100,7 +108,7 @@
 - **API:** the plan gains `templateVersion`, and `provenance` is an object. Subject lines gain `inStatedTotal` and `note`, stage lines gain `officialTotal` and `verificationNote`, and entry lines gain `inStatedTotal` and `note`.
 - **Tests:** template totals against the printed plan, Kurdish on/off, apply twice, unticked optional not created; Playwright: preview → French and computing ticked → apply → rows in the curriculum tab.
 - Test data follows the heavier official loads: `phase3-scenarios` (h) ticks الحاسوب, uses «التربية الفنية والنشيد» and adds a third الاجتماعيات teacher (4 lessons per intermediate grade). The curriculum, wizard step 5 and suggester screenshots were re-baselined after viewing them.
-- Open questions: DECISIONS_PENDING #66–#68.
+- Open questions: DECISIONS_LOG #66–#68.
 
 ### Phase 3E - suggester, wizard step, demo data, scenarios (tags `phase-3e`, `phase-3-final`)
 - **«اقتراح توزيع الأنصبة»:** a deterministic suggester for unassigned lines only (specialists, the lowest load share, never above the limit). Preview first, then a centred confirmation; the applied result equals the preview and existing assignments never change.
