@@ -186,7 +186,8 @@ export function GenerationPage() {
   const seedValue = seed.trim() === "" ? null : Number(seed.trim());
   const seedInvalid = seedValue !== null && (!Number.isInteger(seedValue) || seedValue < 0 || seedValue > 2147483647);
   const engineReady = engine.data?.available === true;
-  const canStart = Boolean(yearId) && engineReady && readiness.data?.ready === true && !active && !seedInvalid;
+  // Start waits for the manual-edits check, so the keep-or-discard question is never skipped by a fast click.
+  const canStart = Boolean(yearId) && engineReady && readiness.data?.ready === true && !active && !seedInvalid && manualEdits.isSuccess;
 
   // A finished run refreshes the readiness and the saved versions it may have created.
   useEffect(() => {
