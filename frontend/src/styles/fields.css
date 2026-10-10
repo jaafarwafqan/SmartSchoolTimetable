@@ -275,3 +275,63 @@
 .affected-list {
   margin: 0;
 }
+
+/* MF8: month calendar to choose a date from, inline under the date field. */
+.ui-date-picker {
+  display: grid;
+  gap: 0.5rem;
+  inline-size: min(22rem, 100%);
+  padding: 0.75rem;
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.ui-date-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.ui-date-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.25rem;
+}
+
+.ui-date-picker-head {
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+  text-align: center;
+}
+
+.ui-date-picker-day {
+  min-block-size: 2.25rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.ui-date-picker-day:hover {
+  background: var(--color-surface-muted);
+}
+
+.ui-date-picker-day.is-today {
+  border-color: var(--color-line-strong);
+}
+
+.ui-date-picker-day.is-selected {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-weight: 700;
+}
+
+.ui-date-picker-day:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}

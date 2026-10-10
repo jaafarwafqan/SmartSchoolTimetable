@@ -225,10 +225,8 @@ test("the whole setup checklist completes end to end; stale edits are caught", a
   await secondDialog.getByRole("button", { name: calendar.save }).click();
   await expect(page.getByRole("status").filter({ hasText: calendar.saved })).toBeVisible();
   await expect(page.getByText(calendar.outsideYear)).toBeVisible();
-  await page.getByLabel(calendar.titleField, { exact: true }).fill("يوم الشهيد");
-  await fillDate(page, calendar.quickDate, "2026-12-01");
-  await page.getByRole("button", { name: calendar.addButton, exact: true }).click();
-  await expect(page.getByRole("status").filter({ hasText: calendar.quickAdded })).toBeVisible();
+  // MF8: one «إضافة يوم» entry point (no second inline form).
+  await expect(page.getByRole("button", { name: calendar.add })).toHaveCount(1);
   await expectNoSeriousA11yViolations(page, "calendar list");
   await expectNoLatinText(page, "calendar", ["owner"]);
   await page.getByRole("button", { name: calendar.monthView }).click();

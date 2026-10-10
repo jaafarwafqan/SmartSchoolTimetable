@@ -33,6 +33,8 @@ public static class AuditEvents
     public const string CalendarDayCreated = "CalendarDayCreated";
     public const string CalendarDayDeleted = "CalendarDayDeleted";
     public const string CalendarDayUpdated = "CalendarDayUpdated";
+    public const string CalendarDayEnabledChanged = "CalendarDayEnabledChanged";
+    public const string CalendarHolidaysImported = "CalendarHolidaysImported";
     public const string CurriculumCopied = "CurriculumCopied";
     public const string CurriculumEntryArchived = "CurriculumEntryArchived";
     public const string CurriculumEntryCleared = "CurriculumEntryCleared";
@@ -131,6 +133,8 @@ public static class AuditEvents
         [CalendarDayCreated] = AuditCategories.School,
         [CalendarDayDeleted] = AuditCategories.School,
         [CalendarDayUpdated] = AuditCategories.School,
+        [CalendarDayEnabledChanged] = AuditCategories.School,
+        [CalendarHolidaysImported] = AuditCategories.School,
         [CurriculumCopied] = AuditCategories.School,
         [CurriculumEntryArchived] = AuditCategories.School,
         [CurriculumEntryCleared] = AuditCategories.School,

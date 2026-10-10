@@ -59,6 +59,13 @@ export const school = {
   dashboard: {
     description: "ملخص بيانات المدرسة من قاعدة البيانات المحلية وخطوات الإعداد المتبقية.",
     countsTitle: "الأرقام الحالية",
+    holiday: {
+      title: "العطلة القادمة",
+      none: "لا توجد عطلة مسجلة خلال الأشهر الأربعة القادمة.",
+      now: "العطلة جارية الآن",
+      today: "تبدأ اليوم",
+      inDays: (days: string) => `بعد ${days}`,
+    },
     checklistTitle: "خطوات الإعداد",
     checklistDone: "اكتملت جميع خطوات الإعداد المتاحة.",
     stepDone: "مكتملة",

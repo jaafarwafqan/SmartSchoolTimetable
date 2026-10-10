@@ -1,3 +1,4 @@
+import { CalendarDays } from "lucide-react";
 import { useRef, useState } from "react";
 import { messages } from "../i18n/messages";
 import type { FieldName } from "../i18n/messages";
@@ -5,6 +6,8 @@ import { numeralSystemOf } from "../lib/format";
 import { useFormatter } from "../lib/schoolContext";
 import type { FieldErrors } from "../lib/useFormFeedback";
 import { Field, fieldDescribedBy } from "./ui/field";
+import { Button } from "./ui/button";
+import { DatePicker } from "./ui/date-picker";
 import { SegmentInput } from "./ui/segment-input";
 
 type Parts = { day: number | null; month: number | null; year: number | null };
@@ -33,6 +36,8 @@ type DateFieldProps = {
   hint?: string;
   field?: FieldName;
   errors?: FieldErrors;
+  /** MF8: also offer a month calendar to choose the date from (weeks start on `weekStart`, ISO weekday). */
+  picker?: { weekStart: number };
 };
 
 /**
@@ -40,11 +45,12 @@ type DateFieldProps = {
  * typing and arrow keys, the full Arabic date as a hint, and an ISO "yyyy-MM-dd" value for the API.
  * No native date input, so no browser-locale formats.
  */
-export function DateField({ id, label, name, defaultValue, value, onChange, required, hint, field, errors }: DateFieldProps) {
+export function DateField({ id, label, name, defaultValue, value, onChange, required, hint, field, errors, picker }: DateFieldProps) {
   const format = useFormatter();
   const digits = numeralSystemOf(format.preferences.numeralSystem);
   const [parts, setParts] = useState<Parts>(() => splitDate(value ?? defaultValue));
   const [synced, setSynced] = useState(value);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const month = useRef<HTMLInputElement | null>(null);
   const year = useRef<HTMLInputElement | null>(null);
   if (value !== undefined && value !== synced) {
@@ -75,6 +81,12 @@ export function DateField({ id, label, name, defaultValue, value, onChange, requ
         <SegmentInput inputRef={year} label={`${label} - ${text.year}`} value={parts.year} min={2000} max={2100} length={4} digits={digits}
             invalid={Boolean(error)} field={field} describedBy={describedBy} onChange={(value) => update({ year: value })} />
       </div>
+      {picker && (
+        pickerOpen
+          ? <DatePicker value={iso} weekStart={picker.weekStart} onClose={() => setPickerOpen(false)}
+            onPick={(date) => { update(splitDate(date)); setPickerOpen(false); }} />
+          : <Button variant="secondary" size="sm" icon={<CalendarDays aria-hidden="true" size={18} />} onClick={() => setPickerOpen(true)}>{messages.app.datePicker.open}</Button>
+      )}
       <input type="hidden" name={name ?? id} value={iso} />
     </Field>
   );

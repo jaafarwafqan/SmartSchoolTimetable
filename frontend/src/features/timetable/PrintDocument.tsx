@@ -24,17 +24,17 @@ type Props = {
 };
 
 /**
- * The job's @page rule (paper, orientation, page numbers) as a constructed style sheet: the app's Content-Security-Policy
+ * The job's @page rule (paper, orientation, page numbers) as a constructed stylesheet: the app's Content-Security-Policy
  * blocks inline <style> elements, and the CSSOM is allowed. A layout effect, so it is in place when printing starts.
  */
 function usePageRule(options: PrintOptions, arabicIndic: boolean) {
   const css = pageCss(options, arabicIndic);
   useLayoutEffect(() => {
     if (typeof CSSStyleSheet === "undefined" || !("adoptedStyleSheets" in document)) return undefined;
-    const sheet = new CSSStyleSheet();
-    sheet.replaceSync(css);
-    document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
-    return () => { document.adoptedStyleSheets = document.adoptedStyleSheets.filter((item) => item !== sheet); };
+    const pageStyle = new CSSStyleSheet();
+    pageStyle.replaceSync(css);
+    document.adoptedStyleSheets = [...document.adoptedStyleSheets, pageStyle];
+    return () => { document.adoptedStyleSheets = document.adoptedStyleSheets.filter((item) => item !== pageStyle); };
   }, [css]);
 }
 
