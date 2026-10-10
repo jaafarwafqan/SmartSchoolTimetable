@@ -67,6 +67,7 @@ export function diagnosticMessage(finding: SolverFinding, format: Formatter): st
     case "CORE_RESOURCE_CAPACITY": return text.diagnostics.CORE_RESOURCE_CAPACITY(name, lessons(required), format.count(available, "section"));
     case "CORE_SUBJECT_DAILY_CAP": return text.diagnostics.CORE_SUBJECT_DAILY_CAP(name);
     case "CORE_DOUBLE_PERIODS": return text.diagnostics.CORE_DOUBLE_PERIODS(name);
+    case "CORE_LOCKED_LESSONS": return text.diagnostics.CORE_LOCKED_LESSONS(name);
     case "CORE_FUNDAMENTAL": return text.diagnostics.CORE_FUNDAMENTAL;
     case "TIMEOUT_NO_SOLUTION": return text.diagnostics.TIMEOUT_NO_SOLUTION(seconds(required, format));
     default: return text.unknownDiagnostic;

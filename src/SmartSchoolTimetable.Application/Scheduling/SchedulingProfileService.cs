@@ -32,7 +32,7 @@ public sealed class SchedulingProfileService(IDataStore store, TimeProvider cloc
         if (StoreSaving.TryDomain<SchedulingProfileDto>(() => changed = profile.Update(rules)) is { } invalid)
             return invalid;
         if (changed)
-            AuditTrail.Record(store, clock, "SchedulingProfileUpdated", "scheduling-profile", $"Profile version {profile.ProfileVersion}.");
+            AuditTrail.Record(store, clock, AuditEvents.SchedulingProfileUpdated, "scheduling-profile", $"Profile version {profile.ProfileVersion}.");
         return await store.SaveAsync(() => ToDto(profile), SchedulingProfile.RulesField, token);
     }
 
@@ -45,7 +45,7 @@ public sealed class SchedulingProfileService(IDataStore store, TimeProvider cloc
         if (!profile.IsVersion(command.Version))
             return OperationResult.Failure<SchedulingProfileDto>(ErrorCodes.Conflict);
         if (profile.RestoreDefaults())
-            AuditTrail.Record(store, clock, "SchedulingProfileDefaultsRestored", "scheduling-profile", $"Profile version {profile.ProfileVersion}.");
+            AuditTrail.Record(store, clock, AuditEvents.SchedulingProfileDefaultsRestored, "scheduling-profile", $"Profile version {profile.ProfileVersion}.");
         return await store.SaveAsync(() => ToDto(profile), SchedulingProfile.RulesField, token);
     }
 

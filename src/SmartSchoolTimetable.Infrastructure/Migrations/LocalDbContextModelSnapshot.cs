@@ -159,6 +159,15 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                     b.Property<int>("LessonsPlaced")
                         .HasColumnType("INTEGER");
 
+                    b.Property<long?>("LockedFromVersionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("LockedLessons")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("LocksDropped")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Mode")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -235,6 +244,9 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                     b.Property<DateTimeOffset?>("ApprovedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTimeOffset?>("ArchivedAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("TEXT");
 
@@ -277,6 +289,9 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                     b.Property<int>("Source")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
@@ -297,7 +312,11 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
 
                     b.ToTable("TimetableVersions", null, t =>
                         {
-                            t.HasCheckConstraint("CK_TimetableVersions_Source", "\"Source\" BETWEEN 1 AND 2");
+                            t.HasCheckConstraint("CK_TimetableVersions_ApprovedFlag", "(\"Status\" = 2) = (\"IsApproved\" = 1)");
+
+                            t.HasCheckConstraint("CK_TimetableVersions_Source", "\"Source\" BETWEEN 1 AND 3");
+
+                            t.HasCheckConstraint("CK_TimetableVersions_Status", "\"Status\" BETWEEN 1 AND 3");
                         });
                 });
 
@@ -315,6 +334,10 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                     b.Property<DateTimeOffset>("OccurredAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ParamsJson")
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Summary")
                         .IsRequired()
                         .HasMaxLength(512)
@@ -328,6 +351,8 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("OccurredAt");
+
+                    b.HasIndex("EventType", "OccurredAt");
 
                     b.ToTable("AuditHistory", (string)null);
                 });

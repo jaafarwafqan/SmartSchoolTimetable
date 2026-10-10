@@ -230,5 +230,6 @@ export const readiness = {
     fillCurriculum: "المنهج الدراسي",
     raiseTimeLimit: "زيادة مهلة التوليد",
     reviewWarnings: "مراجعة تنبيهات الجاهزية",
+    unlockEdits: "التوليد من جديد دون إبقاء التعديلات اليدوية",
   },
 } as const;

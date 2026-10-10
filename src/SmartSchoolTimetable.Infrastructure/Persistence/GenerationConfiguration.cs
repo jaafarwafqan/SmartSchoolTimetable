@@ -31,7 +31,13 @@ internal sealed class TimetableVersionConfiguration : IEntityTypeConfiguration<T
 {
     public void Configure(EntityTypeBuilder<TimetableVersion> builder)
     {
-        builder.ToTable("TimetableVersions", table => table.HasCheckConstraint("CK_TimetableVersions_Source", "\"Source\" BETWEEN 1 AND 2"));
+        builder.ToTable("TimetableVersions", table =>
+        {
+            table.HasCheckConstraint("CK_TimetableVersions_Source", "\"Source\" BETWEEN 1 AND 3");
+            table.HasCheckConstraint("CK_TimetableVersions_Status", "\"Status\" BETWEEN 1 AND 3");
+            // The approved flag (which backs the unique index) can never disagree with the status.
+            table.HasCheckConstraint("CK_TimetableVersions_ApprovedFlag", "(\"Status\" = 2) = (\"IsApproved\" = 1)");
+        });
         builder.HasKey(version => version.Id);
         builder.Property(version => version.Mode).HasMaxLength(GenerationRun.ModeMaxLength).IsRequired();
         builder.Property(version => version.InputHash).HasMaxLength(GenerationRun.HashMaxLength).IsRequired();

@@ -77,7 +77,7 @@ public sealed class BackupService(IDatabaseBackup backup, IDataStore store, ILoc
         {
             return OperationResult.Failure<BackupResultDto>(ErrorCodes.BackupFailed);
         }
-        AuditTrail.Record(store, clock, "BackupCreated", "database", "A database backup was created.");
+        AuditTrail.Record(store, clock, AuditEvents.BackupCreated, "database", "A database backup was created.");
         await store.SaveChangesAsync(token);
         return OperationResult.Success(new BackupResultDto(file, new FileInfo(file).Length, now));
     }
@@ -106,6 +106,9 @@ public sealed class BackupService(IDatabaseBackup backup, IDataStore store, ILoc
             return OperationResult.Failure<RestoreResultDto>(ErrorCodes.BackupFileExists);
         await backup.CreateAsync(automatic, token);
         await backup.RestoreAsync(command.FilePath!, token);
+        // The data was replaced, so the entry goes into the restored history (the old rows are not in it).
+        AuditTrail.Record(store, clock, AuditEvents.BackupRestored, "database", "A database backup was restored.");
+        await store.SaveChangesAsync(token);
         sessions.RevokeAll();
         return OperationResult.Success(new RestoreResultDto(command.FilePath!, automatic));
     }

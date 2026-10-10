@@ -53,7 +53,7 @@ public sealed class DailySuggestionService(IDataStore store, TimeProvider clock)
         foreach (var plan in selected.Where(plan => plan.Dto.Status == "apply"))
         {
             plan.Stage.ApplySuggestedDayLessons(plan.Suggestion.Days, plan.Days, plan.MaxOnDay);
-            AuditTrail.Record(store, clock, "StageDayLessonsSuggested", $"stage:{plan.Stage.Id}", "Daily lessons set from the curriculum total.");
+            AuditTrail.Record(store, clock, AuditEvents.StageDayLessonsSuggested, $"stage:{plan.Stage.Id}", "Daily lessons set from the curriculum total.");
         }
         await store.SaveChangesAsync(token);
         return OperationResult.Success(await PreviewAsync(yearId, token));

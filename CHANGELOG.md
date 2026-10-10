@@ -7,6 +7,11 @@
 - `RISKS.md` added (risk, likelihood, impact, mitigation, status).
 - GitHub Actions CI (`.github/workflows/ci.yml`) on `windows-latest`: build with warnings as errors, tests (performance skipped), ESLint, stylelint, Vitest, Playwright + axe, production `npm audit`. SHA-pinned actions, no secrets.
 - Naming rule in `CLAUDE.md`: branches `work/<name>`, tags `phase-N[x]`.
+### M1 timetable lifecycle and audit history (branch `work/phase-5`, ADR 0044)
+- Version lifecycle Draft → Approved → Archived with one table of valid transitions; approving archives the previous approved version; archived versions are final; rollback creates a NEW draft version (`rolledBack`). Corrective migration `Phase5Lifecycle`.
+- Compare two versions (`GET /timetables/{from}/compare/{to}`): added, removed, moved and teacher-changed lessons, per section and per teacher, with a marked grid (icon + outline) and an Arabic change list.
+- Manual editor: Ctrl+Z, Ctrl+Y and Ctrl+Shift+Z (any keyboard layout). Regenerating over a manual edit asks: keep the moved lessons locked, or discard them (`lockFromVersionId`; locks that no longer fit are dropped and reported; new diagnostic `CORE_LOCKED_LESSONS`).
+- Audit history: event codes + parameters (`AuditEvents`, 94 events in 7 categories), `GET /audit` (paged, newest first, filter), screen «سجل التغييرات» under الإعدادات. Restores are audited too.
 ### M4a icons everywhere (merged into `work/phase-5`)
 - `SectionTitle` (required icon) replaces every raw h2/h3 in `features/` (lint rule `no-raw-headings` plus a test); `PageHeader` and tabs have required icons; non-neutral `Badge` requires an icon (types). Details: `docs/M4A_ICON_CHANGES.md`.
 ### Phase 4 follow-up: owner decisions on R3 (tag `phase-4i`)

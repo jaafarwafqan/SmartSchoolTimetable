@@ -8,6 +8,8 @@ import { calendar } from "./calendar";
 import { curriculum, daily, stageCards, suggested, templates } from "./curriculum";
 import { wizard } from "./wizard";
 import { orphanOnSave, readiness, requiredResource, resources, schedulingProfile, specializations, workload } from "./phase3";
+import { audit } from "./audit";
+import { lifecycle } from "./lifecycle";
 import { backup, generation, timetable, violations } from "./phase4";
 
 export const school = {
@@ -27,6 +29,7 @@ export const school = {
     resources: "الموارد",
     workload: "الأنصبة",
     settingsGeneral: "عام",
+    settingsHistory: "سجل التغييرات",
     schedulingProfile: "ملف الجدولة",
     timetable: "الجدول",
     generate: "التوليد",
@@ -256,6 +259,8 @@ export const school = {
   daily,
   generation,
   timetable,
+  audit,
+  lifecycle,
   violations,
   backup,
 } as const;

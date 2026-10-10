@@ -11,6 +11,7 @@ export const diagnosticCodes = [
   "CORE_RESOURCE_CAPACITY",
   "CORE_SUBJECT_DAILY_CAP",
   "CORE_DOUBLE_PERIODS",
+  "CORE_LOCKED_LESSONS",
   "CORE_FUNDAMENTAL",
   "TIMEOUT_NO_SOLUTION",
 ] as const;
@@ -70,6 +71,10 @@ export type GenerationRun = {
   errorCode: string | null;
   timetableVersionId: number | null;
   live: LiveProgress | null;
+  /** «إبقاء تعديلاتي»: the version whose manual lessons were locked, how many, and how many could not be kept. */
+  lockedFromVersionId: number | null;
+  lockedLessons: number;
+  locksDropped: number;
 };
 
 export type EngineStatus = {
@@ -82,7 +87,18 @@ export type EngineStatus = {
   maxTimeLimit: number;
 };
 
-export type StartGeneration = { mode: GenerationMode; timeLimitSeconds: number; deterministic: boolean; seed: number | null; workers: number };
+export type StartGeneration = {
+  mode: GenerationMode;
+  timeLimitSeconds: number;
+  deterministic: boolean;
+  seed: number | null;
+  workers: number;
+  /** Keep this version's manual edits as locked lessons; omit to discard them. */
+  lockFromVersionId?: number;
+};
+
+/** The latest version of the year when it is a manual edit, and how many lessons were moved by hand. */
+export type ManualEdits = { versionId: number; number: number; lessons: number };
 
 const activeStatuses: readonly RunStatus[] = ["queued", "validating", "generating"];
 
@@ -97,7 +113,16 @@ export const generationKeys = {
   engine: ["generation", "engine"] as const,
   current: (yearId: number) => ["generation", "current", yearId] as const,
   history: (yearId: number) => ["generation", "history", yearId] as const,
+  manualEdits: (yearId: number) => ["generation", "manual-edits", yearId] as const,
 };
+
+export function useManualEdits(yearId: number | undefined) {
+  return useQuery({
+    queryKey: generationKeys.manualEdits(yearId ?? 0),
+    queryFn: () => apiRequest<{ edits: ManualEdits | null }>(`/api/v1/academic-years/${yearId}/generation/manual-edits`),
+    enabled: yearId !== undefined,
+  });
+}
 
 export function useEngine() {
   return useQuery({ queryKey: generationKeys.engine, queryFn: () => apiRequest<EngineStatus>("/api/v1/generation/engine"), staleTime: Infinity });

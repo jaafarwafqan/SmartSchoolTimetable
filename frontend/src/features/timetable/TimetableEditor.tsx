@@ -104,6 +104,23 @@ export function TimetableEditor({ timetable, sectionId, format, look, lessonCoun
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lessons, timetable.summary.id]);
 
+  // Undo and redo with the usual keys (Ctrl or Cmd + Z, Y, and Shift + Z). `code` keeps them working on an Arabic keyboard layout;
+  // text fields keep their own undo.
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey || event.defaultPrevented) return;
+      if ((event.target as HTMLElement | null)?.closest("input, textarea, select, dialog")) return;
+      const redoing = event.code === "KeyY" || (event.code === "KeyZ" && event.shiftKey);
+      const undoing = event.code === "KeyZ" && !event.shiftKey;
+      if (!redoing && !undoing) return;
+      event.preventDefault();
+      setSelected(null);
+      setHistory(redoing ? redo : undo);
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   const conflicts = useMemo(() => conflictSlots(check?.violations ?? [], lessons, sectionId), [check, lessons, sectionId]);
   const slotOptions = days.flatMap((day) => Array.from({ length: lessonCount }, (_, index) => index + 1)
     .map((lesson) => ({ value: `${day}:${lesson}`, label: text.slotLabel(weekdayLabel(day), format.number(lesson)) })));
@@ -138,10 +155,11 @@ export function TimetableEditor({ timetable, sectionId, format, look, lessonCoun
       <p className="card-note">{text.editHint}</p>
       <Alert tone="error" message={feedback.error} />
       <div className="timetable-editor-bar">
-        <Button variant="secondary" icon={<Undo2 aria-hidden="true" size={18} />} disabled={history.past.length === 0} onClick={() => setHistory(undo)}>{text.undo}</Button>
-        <Button variant="secondary" icon={<Redo2 aria-hidden="true" size={18} />} disabled={history.future.length === 0} onClick={() => setHistory(redo)}>{text.redo}</Button>
+        <Button variant="secondary" aria-keyshortcuts="Control+Z" icon={<Undo2 aria-hidden="true" size={18} />} disabled={history.past.length === 0} onClick={() => { setSelected(null); setHistory(undo); }}>{text.undo}</Button>
+        <Button variant="secondary" aria-keyshortcuts="Control+Y" icon={<Redo2 aria-hidden="true" size={18} />} disabled={history.future.length === 0} onClick={() => { setSelected(null); setHistory(redo); }}>{text.redo}</Button>
         <Badge>{text.changes(format.number(changedCount(timetable.lessons, lessons)))}</Badge>
       </div>
+      <p className="card-note">{messages.school.lifecycle.undoRedoHint}</p>
       <p aria-live="polite">{selected && selectedLesson
         ? text.selected(`${look.subject(selectedLesson.subjectId)?.name ?? ""}، ${text.slotLabel(weekdayLabel(selected.day), format.number(selected.lesson))}`)
         : text.noSelection}</p>

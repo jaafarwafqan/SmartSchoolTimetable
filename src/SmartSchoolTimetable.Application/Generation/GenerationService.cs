@@ -13,7 +13,13 @@ namespace SmartSchoolTimetable.Application.Generation;
 /// <param name="Deterministic">«نتيجة قابلة للإعادة»: one worker and the seed.</param>
 /// <param name="Seed">Optional; a random one is chosen and stored when absent.</param>
 /// <param name="Workers">Advanced; 1 to the number of logical cores.</param>
-public sealed record StartGenerationCommand(string? Mode, int? TimeLimitSeconds, bool? Deterministic, int? Seed, int? Workers);
+/// <param name="LockFromVersionId">«إبقاء تعديلاتي»: the manual edits of this version stay exactly where they are; null discards them (a normal generation).</param>
+public sealed record StartGenerationCommand(string? Mode, int? TimeLimitSeconds, bool? Deterministic, int? Seed, int? Workers, long? LockFromVersionId = null);
+
+/// <summary>The latest version of a year when it is a manual edit: how many lessons the owner moved by hand.</summary>
+public sealed record ManualEditsDto(long VersionId, int Number, int Lessons);
+
+public sealed record ManualEditsResponse(ManualEditsDto? Edits);
 
 public sealed record EngineStatusDto(bool Available, string? Version, int DefaultWorkers, int MaxWorkers, int DefaultTimeLimit, int MinTimeLimit, int MaxTimeLimit);
 
@@ -46,7 +52,10 @@ public sealed record GenerationRunDto(
     SolverDiagnostics? Diagnostics,
     string? ErrorCode,
     long? TimetableVersionId,
-    LiveDto? Live);
+    LiveDto? Live,
+    long? LockedFromVersionId = null,
+    int LockedLessons = 0,
+    int LocksDropped = 0);
 
 /// <summary>JSON of stored scores, diagnostics and input snapshots (camelCase, enums as camelCase text).</summary>
 public static class GenerationJson
@@ -71,6 +80,7 @@ public sealed class GenerationService(IDataStore store, TimeProvider clock, ISol
     private const string TimeLimitField = "timeLimitSeconds";
     private const string WorkersField = "workers";
     private const string SeedField = "seed";
+    private const string LockField = "lockFromVersionId";
 
     public EngineStatusDto Engine() => new(engine.Available, engine.Version, GenerationSettings.DefaultWorkers, Environment.ProcessorCount,
         GenerationSettings.DefaultTimeLimit, GenerationSettings.MinTimeLimit, GenerationSettings.MaxTimeLimit);
@@ -93,6 +103,15 @@ public sealed class GenerationService(IDataStore store, TimeProvider clock, ISol
             errors.Add(WorkersField, ErrorCodes.ValueOutOfRange);
         if (command.Seed is < 0)
             errors.Add(SeedField, ErrorCodes.ValueOutOfRange);
+        IReadOnlyList<TimetableLesson> manual = [];
+        if (command.LockFromVersionId is { } lockId)
+        {
+            var source = await store.FirstOrDefaultAsync(store.Read<TimetableVersion>().Where(item => item.Id == lockId), token);
+            if (source is null || source.AcademicYearId != yearId)
+                errors.Add(LockField, ErrorCodes.InvalidOption);
+            else
+                manual = await ManualEditsAsync(store, source, token);
+        }
         if (errors.Any)
             return errors.ToResult<GenerationRunDto>();
 
@@ -109,9 +128,11 @@ public sealed class GenerationService(IDataStore store, TimeProvider clock, ISol
             if (await store.AnyAsync(store.Read<GenerationRun>().Where(run => active.Contains(run.Status)), token))
                 return OperationResult.Failure<GenerationRunDto>(ErrorCodes.GenerationActive);
             var run = GenerationRun.Queue(yearId, settings.Mode, settings.TimeLimitSeconds, settings.Seed, settings.EffectiveWorkers, settings.Deterministic,
-                engine.Version ?? string.Empty, solver.Describe(settings), SchedulingInputHash.Compute(input), input.Profile.ProfileVersion, clock.GetUtcNow());
+                engine.Version ?? string.Empty, solver.Describe(settings), SchedulingInputHash.Compute(input), input.Profile.ProfileVersion, clock.GetUtcNow(),
+                manual.Count > 0 ? command.LockFromVersionId : null, manual.Count);
             store.Add(run);
-            AuditTrail.Record(store, clock, "GenerationStarted", $"academic-year:{yearId}", "Timetable generation queued.");
+            AuditTrail.Record(store, clock, AuditEvents.GenerationStarted, $"academic-year:{yearId}", "Timetable generation queued.",
+                new { mode = settings.Mode, locked = manual.Count });
             await store.SaveChangesAsync(token);
             registry.Enqueue(run.Id);
             return OperationResult.Success(ToDto(run));
@@ -122,6 +143,39 @@ public sealed class GenerationService(IDataStore store, TimeProvider clock, ISol
         }
     }
 
+
+    /// <summary>
+    /// The lessons the owner moved by hand in <paramref name="version"/>: those that are not in the generated (or restored)
+    /// version it descends from through manual edits. Empty for a version that is not a manual edit.
+    /// </summary>
+    public static async Task<IReadOnlyList<TimetableLesson>> ManualEditsAsync(IDataStore store, TimetableVersion version, CancellationToken token)
+    {
+        ArgumentNullException.ThrowIfNull(store);
+        ArgumentNullException.ThrowIfNull(version);
+        if (version.Source != TimetableSource.Edited)
+            return [];
+        var root = version;
+        for (var hops = 0; root.Source == TimetableSource.Edited && root.ParentVersionId is { } parentId && hops < 10_000; hops++)
+        {
+            var parent = await store.FirstOrDefaultAsync(store.Read<TimetableVersion>().Where(item => item.Id == parentId), token);
+            if (parent is null)
+                break;
+            root = parent;
+        }
+        var baseline = root.Lessons.ToHashSet();
+        return version.Lessons.Where(lesson => !baseline.Contains(lesson)).ToArray();
+    }
+
+    /// <summary>The year's latest version when it is a manual edit (the generation screen asks what to do with those edits).</summary>
+    public async Task<ManualEditsResponse> ManualEditsOfLatestAsync(long yearId, CancellationToken token)
+    {
+        var latest = await store.FirstOrDefaultAsync(store.Read<TimetableVersion>().Where(version => version.AcademicYearId == yearId)
+            .OrderByDescending(version => version.Number), token);
+        if (latest is null)
+            return new ManualEditsResponse(null);
+        var manual = await ManualEditsAsync(store, latest, token);
+        return new ManualEditsResponse(manual.Count == 0 ? null : new ManualEditsDto(latest.Id, latest.Number, manual.Count));
+    }
 
     public async Task<OperationResult<GenerationRunDto>> GetAsync(long runId, CancellationToken token) =>
         await store.FirstOrDefaultAsync(store.Read<GenerationRun>().Where(run => run.Id == runId), token) is { } run
@@ -150,7 +204,7 @@ public sealed class GenerationService(IDataStore store, TimeProvider clock, ISol
             run.Finish(GenerationStatus.Cancelled, clock.GetUtcNow(), 0, null, null, false, 0, null, 0, null, null, null, null);
             await store.SaveChangesAsync(token);
         }
-        AuditTrail.Record(store, clock, "GenerationCancelled", $"generation:{runId}", "Timetable generation stopped by the owner.");
+        AuditTrail.Record(store, clock, AuditEvents.GenerationCancelled, $"generation:{runId}", "Timetable generation stopped by the owner.");
         await store.SaveChangesAsync(token);
         return OperationResult.Success(ToDto(run));
     }
@@ -163,7 +217,7 @@ public sealed class GenerationService(IDataStore store, TimeProvider clock, ISol
         foreach (var run in runs)
         {
             run.Interrupt(clock.GetUtcNow());
-            AuditTrail.Record(store, clock, "GenerationInterrupted", $"generation:{run.Id}", "Generation interrupted by an application stop.");
+            AuditTrail.Record(store, clock, AuditEvents.GenerationInterrupted, $"generation:{run.Id}", "Generation interrupted by an application stop.");
         }
         if (runs.Count > 0)
             await store.SaveChangesAsync(token);
@@ -191,12 +245,24 @@ public sealed class GenerationService(IDataStore store, TimeProvider clock, ISol
                 return;
             }
             var settings = new GenerationSettings(run.Mode, run.TimeLimitSeconds, run.Seed, run.Workers, run.Deterministic);
+            var droppedBefore = 0;
+            if (run.LockedFromVersionId is { } lockedFrom
+                && await store.FirstOrDefaultAsync(store.Read<TimetableVersion>().Where(item => item.Id == lockedFrom), stopping) is { } lockSource)
+            {
+                // Keep a manual lesson only while its assignment (section, line, teacher) still exists.
+                var assignments = input.Assignments.Select(row => (row.SectionId, row.LineId, row.TeacherId)).ToHashSet();
+                var wanted = (await ManualEditsAsync(store, lockSource, stopping))
+                    .Select(lesson => new PlacedLesson(lesson.SectionId, lesson.CurriculumEntryId, lesson.TeacherId, lesson.Day, lesson.LessonNumber)).ToArray();
+                var kept = wanted.Where(lesson => assignments.Contains((lesson.SectionId, lesson.LineId, lesson.TeacherId))).ToArray();
+                droppedBefore = wanted.Length - kept.Length;
+                settings = settings with { Locked = kept };
+            }
             run.RecordInput(SchedulingInputHash.Compute(input), input.Profile.ProfileVersion);
             var progress = new Progress(registry, runId);
             var outcome = await GenerationEngine.RunAsync(solver, input, settings, progress, () => registry.Report(runId, GenerationPhases.Generating), linked.Token);
             if (outcome.Blocked)
             {
-                await FinishAsync(run, GenerationStatus.Failed, clockWatch, outcome, null, ErrorCodes.GenerationNotReady, stopping);
+                await FinishAsync(run, GenerationStatus.Failed, clockWatch, outcome, null, ErrorCodes.GenerationNotReady, stopping, droppedBefore);
                 return;
             }
             if (run.Status == GenerationStatus.Validating)
@@ -214,7 +280,7 @@ public sealed class GenerationService(IDataStore store, TimeProvider clock, ISol
                 SolverStatus.TimedOut => GenerationStatus.TimedOut,
                 _ => GenerationStatus.Failed,
             };
-            await FinishAsync(run, status, clockWatch, outcome, versionId, result.ErrorCode, stopping);
+            await FinishAsync(run, status, clockWatch, outcome, versionId, result.ErrorCode, stopping, droppedBefore + result.LocksDropped);
         }
         catch (OperationCanceledException) when (stopping.IsCancellationRequested)
         {
@@ -234,7 +300,7 @@ public sealed class GenerationService(IDataStore store, TimeProvider clock, ISol
             null, outcome.Result.Lessons.Select(lesson => new TimetableLesson(lesson.SectionId, lesson.LineId, lesson.TeacherId, lesson.Day, lesson.Lesson)),
             clock.GetUtcNow());
         store.Add(version);
-        AuditTrail.Record(store, clock, "TimetableGenerated", $"generation:{run.Id}", $"Timetable version {number} saved from a generation.");
+        AuditTrail.Record(store, clock, AuditEvents.TimetableGenerated, $"generation:{run.Id}", $"Timetable version {number} saved from a generation.", new { number });
         await store.SaveChangesAsync(token);
         return version.Id;
     }
@@ -248,14 +314,15 @@ public sealed class GenerationService(IDataStore store, TimeProvider clock, ISol
     }
 
     private async Task FinishAsync(GenerationRun run, GenerationStatus status, Stopwatch watch, GenerationOutcome? outcome, long? versionId, string? errorCode,
-        CancellationToken token)
+        CancellationToken token, int locksDropped = 0)
     {
         var result = outcome?.Result;
         run.Finish(status, clock.GetUtcNow(), watch.Elapsed.TotalSeconds, result?.Objective, result?.Bound, result?.Status == SolverStatus.Optimal,
             result?.Improvements ?? 0, result?.FirstSolutionSeconds, versionId is null ? 0 : result?.Lessons.Count ?? 0,
             outcome?.Score is null ? null : GenerationJson.Serialize(outcome.Score),
-            result?.Diagnostics is null ? null : GenerationJson.Serialize(result.Diagnostics), errorCode, versionId);
-        AuditTrail.Record(store, clock, "GenerationFinished", $"generation:{run.Id}", $"Timetable generation ended: {status}.");
+            result?.Diagnostics is null ? null : GenerationJson.Serialize(result.Diagnostics), errorCode, versionId, locksDropped);
+        AuditTrail.Record(store, clock, AuditEvents.GenerationFinished, $"generation:{run.Id}", $"Timetable generation ended: {status}.",
+            new { status = JsonNamingPolicy.CamelCase.ConvertName(status.ToString()) });
         await store.SaveChangesAsync(token);
     }
 
@@ -269,7 +336,7 @@ public sealed class GenerationService(IDataStore store, TimeProvider clock, ISol
             run.Workers, run.Deterministic, run.SolverVersion, run.InputHash, run.ProfileVersion, run.QueuedAt, run.StartedAt, run.FinishedAt, run.ElapsedSeconds,
             run.Objective, run.Bound, run.Optimal, run.Improvements, run.FirstSolutionSeconds, run.LessonsPlaced,
             GenerationJson.Deserialize<TimetableScore>(run.ScoreJson), GenerationJson.Deserialize<SolverDiagnostics>(run.DiagnosticsJson), run.ErrorCode,
-            run.TimetableVersionId, live);
+            run.TimetableVersionId, live, run.LockedFromVersionId, run.LockedLessons, run.LocksDropped);
     }
 
     /// <summary>Forwards solver events to the registry (no estimated values).</summary>

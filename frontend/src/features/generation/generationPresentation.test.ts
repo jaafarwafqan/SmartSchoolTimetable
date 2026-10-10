@@ -12,7 +12,7 @@ function run(overrides: Partial<GenerationRun>): GenerationRun {
     id: 1, academicYearId: 1, status: "completed", mode: "standard", timeLimitSeconds: 60, seed: 7, workers: 2, deterministic: false,
     solverVersion: "OR-Tools 9.15", inputHash: "abc", profileVersion: 1, queuedAt: "2026-10-09T08:00:00Z", startedAt: "2026-10-09T08:00:00Z",
     finishedAt: null, elapsedSeconds: null, objective: null, bound: null, optimal: false, improvements: 0, firstSolutionSeconds: null,
-    lessonsPlaced: 0, score: null, diagnostics: null, errorCode: null, timetableVersionId: null, live: null, ...overrides,
+    lessonsPlaced: 0, score: null, diagnostics: null, errorCode: null, timetableVersionId: null, live: null, lockedFromVersionId: null, lockedLessons: 0, locksDropped: 0, ...overrides,
   };
 }
 

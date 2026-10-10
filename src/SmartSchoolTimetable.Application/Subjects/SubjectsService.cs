@@ -53,7 +53,7 @@ public sealed class SubjectsService(IDataStore store, TimeProvider clock)
         if (await NameTakenAsync(null, command.Name, token))
             return OperationResult.Invalid<SubjectDto>(nameof(command.Name), ErrorCodes.DuplicateName);
         store.Add(subject!);
-        AuditTrail.Record(store, clock, "SubjectCreated", "subject", "Subject created.");
+        AuditTrail.Record(store, clock, AuditEvents.SubjectCreated, "subject", "Subject created.");
         return await store.SaveAsync(() => ToDto(subject!), nameof(command.Name), token);
     }
 
@@ -71,7 +71,7 @@ public sealed class SubjectsService(IDataStore store, TimeProvider clock)
         var grid = await ScheduleGrids.LoadAsync(store, token);
         if (StoreSaving.TryDomain<SubjectDto>(() => subject.Update(ToDetails(command), grid)) is { } invalid)
             return invalid;
-        AuditTrail.Record(store, clock, "SubjectUpdated", $"subject:{id}", "Subject updated.");
+        AuditTrail.Record(store, clock, AuditEvents.SubjectUpdated, $"subject:{id}", "Subject updated.");
         return await store.SaveAsync(() => ToDto(subject), nameof(command.Name), token);
     }
 
@@ -87,7 +87,7 @@ public sealed class SubjectsService(IDataStore store, TimeProvider clock)
             subject.Archive(clock.GetUtcNow());
         else
             subject.Restore();
-        AuditTrail.Record(store, clock, archived ? "SubjectArchived" : "SubjectRestored", $"subject:{id}", archived ? "Subject archived." : "Subject restored.");
+        AuditTrail.Record(store, clock, archived ? AuditEvents.SubjectArchived : AuditEvents.SubjectRestored, $"subject:{id}", archived ? "Subject archived." : "Subject restored.");
         return await store.SaveAsync(() => ToDto(subject), "Name", token);
     }
 
@@ -100,7 +100,7 @@ public sealed class SubjectsService(IDataStore store, TimeProvider clock)
         if (await references.DeleteBlockedAsync(ReferenceKinds.Subject, id, token) is { } inUse)
             return OperationResult.Failure<bool>(inUse);
         store.Remove(subject);
-        AuditTrail.Record(store, clock, "SubjectDeleted", $"subject:{id}", "Subject deleted.");
+        AuditTrail.Record(store, clock, AuditEvents.SubjectDeleted, $"subject:{id}", "Subject deleted.");
         return await store.SaveAsync(() => true, "Name", token);
     }
 

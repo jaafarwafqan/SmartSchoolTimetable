@@ -95,7 +95,7 @@ public sealed class SessionPlanService(IDataStore store, TimeProvider clock)
         var lessonCount = shift?.LessonCount ?? 0;
         if (StoreSaving.TryDomain<SessionPlanDto>(() => plan.Replace(system, timings, mapping, lessonCount, days)) is { } invalid)
             return invalid;
-        AuditTrail.Record(store, clock, "SessionPlanUpdated", $"academic-year:{year.Id}", $"Daily sessions set to {system}.");
+        AuditTrail.Record(store, clock, AuditEvents.SessionPlanUpdated, $"academic-year:{year.Id}", $"Daily sessions set to {system}.", new { system = ApiText.ToValue(system) });
         var saved = plan;
         return await store.SaveAsync(() => ToDto(shift, saved, days), nameof(command.System), token);
     }

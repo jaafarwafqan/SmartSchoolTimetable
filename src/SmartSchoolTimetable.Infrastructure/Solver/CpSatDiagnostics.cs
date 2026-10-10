@@ -21,7 +21,7 @@ internal static class CpSatDiagnostics
     {
         var clock = Stopwatch.StartNew();
         double Remaining() => Math.Max(0, budgetSeconds - clock.Elapsed.TotalSeconds);
-        var builder = CpSatModelBuilder.Build(input, settings.DoublePeriodsRequired, diagnostic: true);
+        var builder = CpSatModelBuilder.Build(input, settings.DoublePeriodsRequired, diagnostic: true, settings.Locked);
         var families = builder.AllFamilies.ToArray();
 
         var (status, core) = Run(builder, settings, families, Math.Max(MinTrySeconds, Remaining() * 0.4), wantCore: true, token);
@@ -128,6 +128,11 @@ internal static class CpSatDiagnostics
                 var required = input.Lines.Where(line => line.StageId == section.StageId).Sum(line => line.WeeklyLessons);
                 var available = section.AllowedByDay.Where(day => input.WorkingDays.Contains(day.Day)).Sum(day => day.Lessons);
                 return new SolverFinding(DiagnosticCodes.SectionPacking, SectionEntity(section), teachers, required, available, ["removeTeacherBlocks", "changeTeacher"], helps);
+            }
+            case Families.LockedLessons:
+            {
+                var section = sections[family.Id];
+                return new SolverFinding(DiagnosticCodes.LockedLessons, SectionEntity(section), [], null, null, ["unlockEdits"], helps);
             }
             case Families.StageDays:
             {

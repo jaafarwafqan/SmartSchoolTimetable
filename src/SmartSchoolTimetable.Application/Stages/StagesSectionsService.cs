@@ -66,7 +66,7 @@ public sealed class StagesSectionsService(IDataStore store, TimeProvider clock)
         if (await StageNameTakenAsync(yearId, null, command.Name, token))
             return OperationResult.Invalid<StageDto>(nameof(command.Name), ErrorCodes.DuplicateName);
         store.Add(stage!);
-        AuditTrail.Record(store, clock, "StageCreated", $"academic-year:{yearId}", "Stage created.");
+        AuditTrail.Record(store, clock, AuditEvents.StageCreated, $"academic-year:{yearId}", "Stage created.");
         return await store.SaveAsync(() => ToDto(stage!), nameof(command.Name), token);
     }
 
@@ -81,7 +81,7 @@ public sealed class StagesSectionsService(IDataStore store, TimeProvider clock)
             return OperationResult.Invalid<StageDto>(nameof(command.Name), ErrorCodes.DuplicateName);
         if (StoreSaving.TryDomain<StageDto>(() => stage.Update(command.Name, command.DisplayOrder)) is { } invalid)
             return invalid;
-        AuditTrail.Record(store, clock, "StageUpdated", $"stage:{id}", "Stage updated.");
+        AuditTrail.Record(store, clock, AuditEvents.StageUpdated, $"stage:{id}", "Stage updated.");
         return await store.SaveAsync(() => ToDto(stage), nameof(command.Name), token);
     }
 
@@ -98,7 +98,7 @@ public sealed class StagesSectionsService(IDataStore store, TimeProvider clock)
             stage.Archive(clock.GetUtcNow());
         else
             stage.Restore();
-        AuditTrail.Record(store, clock, archived ? "StageArchived" : "StageRestored", $"stage:{id}", archived ? "Stage archived." : "Stage restored.");
+        AuditTrail.Record(store, clock, archived ? AuditEvents.StageArchived : AuditEvents.StageRestored, $"stage:{id}", archived ? "Stage archived." : "Stage restored.");
         return await store.SaveAsync(() => ToDto(stage), "Name", token);
     }
 
@@ -112,7 +112,7 @@ public sealed class StagesSectionsService(IDataStore store, TimeProvider clock)
         if (await references.DeleteBlockedAsync(ReferenceKinds.Stage, id, token) is { } inUse)
             return OperationResult.Failure<bool>(inUse);
         store.Remove(stage);
-        AuditTrail.Record(store, clock, "StageDeleted", $"stage:{id}", "Stage deleted.");
+        AuditTrail.Record(store, clock, AuditEvents.StageDeleted, $"stage:{id}", "Stage deleted.");
         return await store.SaveAsync(() => true, "Name", token);
     }
 
@@ -129,7 +129,7 @@ public sealed class StagesSectionsService(IDataStore store, TimeProvider clock)
         if (await CheckSectionReferencesAsync(yearId, stageId, null, command, token) is { } rejected)
             return rejected;
         store.Add(section!);
-        AuditTrail.Record(store, clock, "SectionCreated", $"stage:{stageId}", "Section created.");
+        AuditTrail.Record(store, clock, AuditEvents.SectionCreated, $"stage:{stageId}", "Section created.");
         return await store.SaveAsync(ct => MapSectionAsync(section!, ct), nameof(command.Label), token);
     }
 
@@ -144,7 +144,7 @@ public sealed class StagesSectionsService(IDataStore store, TimeProvider clock)
             return rejected;
         if (StoreSaving.TryDomain<SectionDto>(() => section.Update(command.ShiftId, command.Label, command.StudentCount)) is { } invalid)
             return invalid;
-        AuditTrail.Record(store, clock, "SectionUpdated", $"section:{id}", "Section updated.");
+        AuditTrail.Record(store, clock, AuditEvents.SectionUpdated, $"section:{id}", "Section updated.");
         return await store.SaveAsync(ct => MapSectionAsync(section, ct), nameof(command.Label), token);
     }
 
@@ -164,7 +164,7 @@ public sealed class StagesSectionsService(IDataStore store, TimeProvider clock)
             section.Archive(clock.GetUtcNow());
         else
             section.Restore();
-        AuditTrail.Record(store, clock, archived ? "SectionArchived" : "SectionRestored", $"section:{id}", archived ? "Section archived." : "Section restored.");
+        AuditTrail.Record(store, clock, archived ? AuditEvents.SectionArchived : AuditEvents.SectionRestored, $"section:{id}", archived ? "Section archived." : "Section restored.");
         return await store.SaveAsync(ct => MapSectionAsync(section, ct), "Label", token);
     }
 
@@ -178,7 +178,7 @@ public sealed class StagesSectionsService(IDataStore store, TimeProvider clock)
         if (await references.DeleteBlockedAsync(ReferenceKinds.Section, id, token) is { } inUse)
             return OperationResult.Failure<bool>(inUse);
         store.Remove(section);
-        AuditTrail.Record(store, clock, "SectionDeleted", $"section:{id}", "Section deleted.");
+        AuditTrail.Record(store, clock, AuditEvents.SectionDeleted, $"section:{id}", "Section deleted.");
         return await store.SaveAsync(() => true, "Label", token);
     }
 
@@ -236,7 +236,7 @@ public sealed class StagesSectionsService(IDataStore store, TimeProvider clock)
         var counts = (command.DayLessons ?? []).Select(entry => new DayLessons(entry.Day, entry.Lessons)).ToArray();
         if (StoreSaving.TryDomain<StageDto>(() => stage.SetDayLessons(counts, days, day => shifts.Count == 0 ? 0 : shifts.Max(shift => shift.LessonsOn(day)))) is { } invalid)
             return invalid;
-        AuditTrail.Record(store, clock, "StageDayLessonsUpdated", $"stage:{id}", "Stage lessons per day updated.");
+        AuditTrail.Record(store, clock, AuditEvents.StageDayLessonsUpdated, $"stage:{id}", "Stage lessons per day updated.");
         return await store.SaveAsync(() => ToDto(stage), "DayLessons", token);
     }
 }

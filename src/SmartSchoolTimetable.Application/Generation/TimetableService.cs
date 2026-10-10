@@ -11,8 +11,10 @@ using SessionSystem = SmartSchoolTimetable.Domain.SchoolSetup.SessionSystem;
 namespace SmartSchoolTimetable.Application.Generation;
 
 /// <param name="Stale">The school data changed after this version was made (its input hash differs from today's).</param>
+/// <param name="Status">draft, approved or archived (M1 lifecycle); only a draft can still be approved.</param>
 public sealed record TimetableVersionSummary(long Id, int Version, int Number, string Source, long? GenerationRunId, long? ParentVersionId, string Mode,
-    long? Score, int Lessons, DateTimeOffset CreatedAt, bool IsApproved, DateTimeOffset? ApprovedAt, string? Note, bool Stale);
+    long? Score, int Lessons, DateTimeOffset CreatedAt, bool IsApproved, DateTimeOffset? ApprovedAt, string? Note, bool Stale,
+    string Status = "draft", DateTimeOffset? ArchivedAt = null);
 
 public sealed record GridLessonTime(int Number, int StartMinute, int EndMinute);
 public sealed record GridShift(long Id, string Name, IReadOnlyList<GridLessonTime> Lessons);
@@ -56,6 +58,11 @@ public sealed record TimetableDto(
 
 public sealed record ApproveTimetableCommand(int Version);
 
+public sealed record ArchiveTimetableCommand(int Version);
+
+/// <summary>Restores an older version as a NEW draft. <paramref name="Version"/> is the older version's concurrency token.</summary>
+public sealed record RollbackTimetableCommand(int Version, string? Note);
+
 /// <summary>The whole edited timetable (the editor moves or swaps lessons locally and sends every lesson).</summary>
 public sealed record EditedTimetableCommand(IReadOnlyList<GridLesson>? Lessons, string? Note);
 
@@ -98,21 +105,79 @@ public sealed class TimetableService(IDataStore store, TimeProvider clock)
             return OperationResult.Failure<TimetableVersionSummary>(ErrorCodes.NotFound);
         if (!version.IsVersion(command.Version))
             return OperationResult.Failure<TimetableVersionSummary>(ErrorCodes.Conflict);
-        if (!version.IsApproved)
+        if (!TimetableTransitions.IsValid(version.Status, TimetableStatus.Approved))
+            return OperationResult.Failure<TimetableVersionSummary>(ErrorCodes.TimetableInvalidTransition);
+        await store.ExecuteInTransactionAsync(async () =>
         {
-            await store.ExecuteInTransactionAsync(async () =>
+            // The filtered unique index allows one approved version per year: the old approved version is archived first.
+            foreach (var previous in await store.ListAsync(store.Query<TimetableVersion>()
+                         .Where(item => item.AcademicYearId == version.AcademicYearId && item.IsApproved && item.Id != version.Id), token))
             {
-                // The filtered unique index allows one approved version per year: clear the old one first.
-                foreach (var previous in await store.ListAsync(store.Query<TimetableVersion>()
-                             .Where(item => item.AcademicYearId == version.AcademicYearId && item.IsApproved && item.Id != version.Id), token))
-                    previous.Unapprove();
-                await store.SaveChangesAsync(token);
-                version.Approve(clock.GetUtcNow());
-                AuditTrail.Record(store, clock, "TimetableApproved", $"timetable:{version.Id}", $"Timetable version {version.Number} approved.");
-                await store.SaveChangesAsync(token);
-            }, token);
-        }
+                previous.Archive(clock.GetUtcNow());
+                AuditTrail.Record(store, clock, AuditEvents.TimetableArchived, $"timetable:{previous.Id}", $"Timetable version {previous.Number} archived by a new approval.",
+                    new { number = previous.Number, byApproval = true });
+            }
+            await store.SaveChangesAsync(token);
+            version.Approve(clock.GetUtcNow());
+            AuditTrail.Record(store, clock, AuditEvents.TimetableApproved, $"timetable:{version.Id}", $"Timetable version {version.Number} approved.", new { number = version.Number });
+            await store.SaveChangesAsync(token);
+        }, token);
         return OperationResult.Success(Summary(version, version.InputHash));
+    }
+
+    /// <summary>Draft or Approved → Archived (final). The version itself is never deleted or changed otherwise.</summary>
+    public async Task<OperationResult<TimetableVersionSummary>> ArchiveAsync(long versionId, ArchiveTimetableCommand command, CancellationToken token)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        if (await store.FirstOrDefaultAsync(store.Query<TimetableVersion>().Where(item => item.Id == versionId), token) is not { } version)
+            return OperationResult.Failure<TimetableVersionSummary>(ErrorCodes.NotFound);
+        if (!version.IsVersion(command.Version))
+            return OperationResult.Failure<TimetableVersionSummary>(ErrorCodes.Conflict);
+        if (!version.Archive(clock.GetUtcNow()))
+            return OperationResult.Failure<TimetableVersionSummary>(ErrorCodes.TimetableInvalidTransition);
+        AuditTrail.Record(store, clock, AuditEvents.TimetableArchived, $"timetable:{version.Id}", $"Timetable version {version.Number} archived.", new { number = version.Number, byApproval = false });
+        await store.SaveChangesAsync(token);
+        return OperationResult.Success(Summary(version, version.InputHash));
+    }
+
+    /// <summary>
+    /// Restores an older version as a NEW draft version (source «rolledBack») linked to it. The older version, whatever its
+    /// status, is not changed, and the current approved version stays approved until the owner approves the new one.
+    /// </summary>
+    public async Task<OperationResult<TimetableVersionSummary>> RollbackAsync(long versionId, RollbackTimetableCommand command, CancellationToken token)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        if (await store.FirstOrDefaultAsync(store.Read<TimetableVersion>().Where(item => item.Id == versionId), token) is not { } older)
+            return OperationResult.Failure<TimetableVersionSummary>(ErrorCodes.NotFound);
+        if (!older.IsVersion(command.Version))
+            return OperationResult.Failure<TimetableVersionSummary>(ErrorCodes.Conflict);
+        if (command.Note is { Length: > TimetableVersion.NoteMaxLength })
+            return OperationResult.Invalid<TimetableVersionSummary>(nameof(command.Note), ErrorCodes.ValueTooLong);
+        var number = await GenerationService.NextNumberAsync(store, older.AcademicYearId, token);
+        var restored = TimetableVersion.Create(older.AcademicYearId, number, TimetableSource.RolledBack, older.GenerationRunId, older.Id, older.Mode, older.InputHash,
+            older.InputJson, older.Score, older.ScoreJson, command.Note, older.Lessons, clock.GetUtcNow());
+        store.Add(restored);
+        AuditTrail.Record(store, clock, AuditEvents.TimetableRolledBack, $"timetable:{older.Id}", $"Timetable version {older.Number} restored as version {number}.",
+            new { number, from = older.Number });
+        await store.SaveChangesAsync(token);
+        return OperationResult.Success(Summary(restored, restored.InputHash));
+    }
+
+    /// <summary>Added, removed, moved and teacher-changed lessons going from <paramref name="fromId"/> to <paramref name="toId"/> (same year only).</summary>
+    public async Task<OperationResult<TimetableComparisonDto>> CompareAsync(long fromId, long toId, CancellationToken token)
+    {
+        var from = await store.FirstOrDefaultAsync(store.Read<TimetableVersion>().Where(item => item.Id == fromId), token);
+        var to = await store.FirstOrDefaultAsync(store.Read<TimetableVersion>().Where(item => item.Id == toId), token);
+        if (from is null || to is null)
+            return OperationResult.Failure<TimetableComparisonDto>(ErrorCodes.NotFound);
+        if (from.AcademicYearId != to.AcademicYearId)
+            return OperationResult.Failure<TimetableComparisonDto>(ErrorCodes.TimetableCompareYearMismatch);
+        var subjectOfLine = new Dictionary<long, long>();
+        foreach (var line in SnapshotOf(from).Lines.Concat(SnapshotOf(to).Lines))
+            subjectOfLine[line.Id] = line.SubjectId;
+        var (totals, changes) = TimetableComparer.Compare(from.Lessons, to.Lessons, subjectOfLine);
+        return OperationResult.Success(new TimetableComparisonDto(from.Id, to.Id, from.Number, to.Number, totals,
+            TimetableComparer.BySection(changes), TimetableComparer.ByTeacher(changes), changes));
     }
 
     /// <summary>«تعديل يدوي»: checks an edited timetable against every hard rule of the version's own input.</summary>
@@ -148,7 +213,8 @@ public sealed class TimetableService(IDataStore store, TimeProvider clock)
             command.Lessons.Select(lesson => new TimetableLesson(lesson.SectionId, lesson.LineId, lesson.TeacherId, lesson.Day, lesson.Lesson)), clock.GetUtcNow());
         store.Add(edited);
         var moved = command.Lessons.Count(lesson => !parent.Lessons.Contains(new TimetableLesson(lesson.SectionId, lesson.LineId, lesson.TeacherId, lesson.Day, lesson.Lesson)));
-        AuditTrail.Record(store, clock, "TimetableEdited", $"timetable:{parent.Id}", $"Timetable version {number} saved from version {parent.Number} with {moved} moved lessons.");
+        AuditTrail.Record(store, clock, AuditEvents.TimetableEdited, $"timetable:{parent.Id}", $"Timetable version {number} saved from version {parent.Number} with {moved} moved lessons.",
+            new { number, from = parent.Number, moved });
         await store.SaveChangesAsync(token);
         return OperationResult.Success(Summary(edited, edited.InputHash));
     }
@@ -175,7 +241,8 @@ public sealed class TimetableService(IDataStore store, TimeProvider clock)
         ArgumentNullException.ThrowIfNull(version);
         return new TimetableVersionSummary(version.Id, version.Version, version.Number, JsonNamingPolicy.CamelCase.ConvertName(version.Source.ToString()),
             version.GenerationRunId, version.ParentVersionId, version.Mode, version.Score, version.Lessons.Count, version.CreatedAt, version.IsApproved,
-            version.ApprovedAt, version.Note, !string.Equals(version.InputHash, currentHash, StringComparison.Ordinal));
+            version.ApprovedAt, version.Note, !string.Equals(version.InputHash, currentHash, StringComparison.Ordinal),
+            JsonNamingPolicy.CamelCase.ConvertName(version.Status.ToString()), version.ArchivedAt);
     }
 
     /// <summary>The year's daily sessions for a timetable of that year (null for a single session).</summary>

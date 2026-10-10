@@ -58,7 +58,7 @@ public sealed class AcademicYearService(IDataStore store, TimeProvider clock, IY
         var hasCurrent = await store.AnyAsync(store.Query<AcademicYear>().Where(existing => existing.IsCurrent), cancellationToken);
         year.MarkCurrent(!hasCurrent);
         store.Add(year);
-        AuditTrail.Record(store, clock, "AcademicYearCreated", "academic-year", "Academic year created.");
+        AuditTrail.Record(store, clock, AuditEvents.AcademicYearCreated, "academic-year", "Academic year created.");
         var saved = await SaveAsync(year, cancellationToken);
         if (saved.Succeeded && source is not null)
         {
@@ -83,7 +83,7 @@ public sealed class AcademicYearService(IDataStore store, TimeProvider clock, IY
         if (await LabelTakenAsync(command.Label, id, cancellationToken))
             return OperationResult.Invalid<AcademicYearDto>(nameof(command.Label), ErrorCodes.DuplicateName);
 
-        return await MutateAsync(year, current => current.Update(command.Label, start, end), "AcademicYearUpdated", cancellationToken);
+        return await MutateAsync(year, current => current.Update(command.Label, start, end), AuditEvents.AcademicYearUpdated, cancellationToken);
     }
 
     public async Task<OperationResult<bool>> DeleteAsync(long id, int version, CancellationToken cancellationToken)
@@ -99,7 +99,7 @@ public sealed class AcademicYearService(IDataStore store, TimeProvider clock, IY
             return OperationResult.Failure<bool>(ErrorCodes.CurrentYearRequired);
 
         store.Remove(year);
-        AuditTrail.Record(store, clock, "AcademicYearDeleted", $"academic-year:{id}", "Academic year deleted.");
+        AuditTrail.Record(store, clock, AuditEvents.AcademicYearDeleted, $"academic-year:{id}", "Academic year deleted.");
         try
         {
             await store.SaveChangesAsync(cancellationToken);
@@ -117,14 +117,14 @@ public sealed class AcademicYearService(IDataStore store, TimeProvider clock, IY
             return OperationResult.Failure<AcademicYearDto>(ErrorCodes.NotFound);
         if (!year.IsVersion(version))
             return OperationResult.Failure<AcademicYearDto>(ErrorCodes.Conflict);
-        return await MakeCurrentAsync(year, _ => { }, "AcademicYearMadeCurrent", cancellationToken);
+        return await MakeCurrentAsync(year, _ => { }, AuditEvents.AcademicYearMadeCurrent, cancellationToken);
     }
 
     public async Task<OperationResult<AcademicYearDto>> AddTermAsync(long yearId, SaveTermCommand command, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(command);
         return await TermOperationAsync(yearId, command.Version, command.StartDate, command.EndDate,
-            (year, start, end) => year.AddTerm(command.Name, start, end), "TermCreated", cancellationToken);
+            (year, start, end) => year.AddTerm(command.Name, start, end), AuditEvents.TermCreated, cancellationToken);
     }
 
     public async Task<OperationResult<AcademicYearDto>> UpdateTermAsync(long yearId, long termId, SaveTermCommand command, CancellationToken cancellationToken)
@@ -135,7 +135,7 @@ public sealed class AcademicYearService(IDataStore store, TimeProvider clock, IY
             if (!year.HasTerm(termId))
                 throw new KeyNotFoundException();
             year.UpdateTerm(termId, command.Name, start, end);
-        }, "TermUpdated", cancellationToken);
+        }, AuditEvents.TermUpdated, cancellationToken);
     }
 
     public async Task<OperationResult<AcademicYearDto>> DeleteTermAsync(long yearId, long termId, int version, CancellationToken cancellationToken)
@@ -144,7 +144,7 @@ public sealed class AcademicYearService(IDataStore store, TimeProvider clock, IY
             return OperationResult.Failure<AcademicYearDto>(ErrorCodes.NotFound);
         if (!year.IsVersion(version))
             return OperationResult.Failure<AcademicYearDto>(ErrorCodes.Conflict);
-        return await MutateAsync(year, current => current.RemoveTerm(termId), "TermDeleted", cancellationToken);
+        return await MutateAsync(year, current => current.RemoveTerm(termId), AuditEvents.TermDeleted, cancellationToken);
     }
 
     public async Task<OperationResult<AcademicYearDto>> SetCurrentTermAsync(long yearId, long termId, int version, CancellationToken cancellationToken)
@@ -153,7 +153,7 @@ public sealed class AcademicYearService(IDataStore store, TimeProvider clock, IY
             return OperationResult.Failure<AcademicYearDto>(ErrorCodes.NotFound);
         if (!year.IsVersion(version))
             return OperationResult.Failure<AcademicYearDto>(ErrorCodes.Conflict);
-        return await MakeCurrentAsync(year, current => current.SetCurrentTerm(termId), "TermMadeCurrent", cancellationToken);
+        return await MakeCurrentAsync(year, current => current.SetCurrentTerm(termId), AuditEvents.TermMadeCurrent, cancellationToken);
     }
 
     private async Task<OperationResult<AcademicYearDto>> TermOperationAsync(

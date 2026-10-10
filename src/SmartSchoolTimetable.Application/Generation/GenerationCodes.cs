@@ -38,12 +38,13 @@ public static class DiagnosticCodes
     public const string ResourceCapacity = "CORE_RESOURCE_CAPACITY";
     public const string SubjectDailyCap = "CORE_SUBJECT_DAILY_CAP";
     public const string DoublePeriods = "CORE_DOUBLE_PERIODS";
+    public const string LockedLessons = "CORE_LOCKED_LESSONS";
     public const string Fundamental = "CORE_FUNDAMENTAL";
     public const string TimeoutNoSolution = "TIMEOUT_NO_SOLUTION";
 
     public static readonly IReadOnlyList<string> All =
     [
         TeacherAvailability, TeacherLimits, SectionPacking, StageDays, SubjectBlocked, ResourceCapacity, SubjectDailyCap, DoublePeriods,
-        Fundamental, TimeoutNoSolution,
+        LockedLessons, Fundamental, TimeoutNoSolution,
     ];
 }

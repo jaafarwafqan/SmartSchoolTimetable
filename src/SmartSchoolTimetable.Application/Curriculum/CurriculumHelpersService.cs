@@ -37,7 +37,7 @@ public sealed class CurriculumHelpersService(IDataStore store, TimeProvider cloc
                     store.Add(entry.CopyTo(target!.Id));
             }
         }
-        return await FinishAsync(lines, apply, "CurriculumCopied", $"stage:{source.Id}", token);
+        return await FinishAsync(lines, apply, AuditEvents.CurriculumCopied, $"stage:{source.Id}", token);
     }
 
     public async Task<OperationResult<CurriculumPlanDto>> SetAcrossAsync(long yearId, SetLessonsAcrossCommand command, bool apply, CancellationToken token)
@@ -65,7 +65,7 @@ public sealed class CurriculumHelpersService(IDataStore store, TimeProvider cloc
             else if (action == "update")
                 matches[0].SetWeeklyLessons(command.WeeklyLessons);
         }
-        return await FinishAsync(lines, apply, "CurriculumLessonsSet", $"subject:{subject.Id}", token);
+        return await FinishAsync(lines, apply, AuditEvents.CurriculumLessonsSet, $"subject:{subject.Id}", token);
     }
 
     private async Task<OperationResult<CurriculumPlanDto>> FinishAsync(List<CurriculumPlanLineDto> lines, bool apply, string eventType, string target, CancellationToken token)
@@ -74,7 +74,7 @@ public sealed class CurriculumHelpersService(IDataStore store, TimeProvider cloc
         var plan = new CurriculumPlanDto(lines, changes);
         if (!apply || changes == 0)
             return OperationResult.Success(plan);
-        AuditTrail.Record(store, clock, eventType, target, $"{changes} curriculum lines changed.");
+        AuditTrail.Record(store, clock, eventType, target, $"{changes} curriculum lines changed.", new { changes });
         return await store.SaveAsync(() => plan, "WeeklyLessons", token);
     }
 

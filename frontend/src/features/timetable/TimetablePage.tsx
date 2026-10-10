@@ -1,5 +1,5 @@
 import { SectionTitle } from "../../components/ui/section-title";
-import { BadgeCheck, FileDown, PencilLine, Play, Printer, ShieldCheck, Stamp, History, CalendarRange, CalendarCheck } from "lucide-react";
+import { Archive, ArchiveRestore, BadgeCheck, CalendarCheck, CalendarRange, FileDown, FilePen, GitCompareArrows, History, PencilLine, Play, Printer, ShieldCheck, Stamp } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { userErrorMessage } from "../../api";
@@ -16,11 +16,13 @@ import { messages } from "../../i18n/messages";
 import { PageHeader } from "../../layout/PageHeader";
 import { useFormatter, useSchoolContext } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
-import { useApproveTimetable, useTimetable, useTimetableVersions, type Term, type Timetable, type TimetableVersionSummary } from "./timetableApi";
+import { useApproveTimetable, useArchiveTimetable, useRollbackTimetable, useTimetable, useTimetableVersions, type Term, type Timetable, type TimetableVersionSummary } from "./timetableApi";
+import { VersionComparison } from "./VersionComparison";
 import { lookups, MasterGrid, sessionViewOf, WeekGrid } from "./TimetableGrids";
 import { TimetableEditor } from "./TimetableEditor";
 
 const text = messages.school.timetable;
+const lifecycle = messages.school.lifecycle;
 
 type View = "section" | "teacher" | "master";
 
@@ -118,6 +120,13 @@ function TimetableViews({ timetable, onSaved }: { timetable: Timetable; onSaved:
   );
 }
 
+/** The lifecycle status as a badge: the icon says the same as the colour. */
+function StatusBadge({ status }: { status: TimetableVersionSummary["status"] }) {
+  if (status === "approved") return <Badge tone="success" icon={<BadgeCheck aria-hidden="true" size={16} />}>{lifecycle.statuses.approved}</Badge>;
+  if (status === "archived") return <Badge icon={<Archive aria-hidden="true" size={16} />}>{lifecycle.statuses.archived}</Badge>;
+  return <Badge icon={<FilePen aria-hidden="true" size={16} />}>{lifecycle.statuses.draft}</Badge>;
+}
+
 function VersionsTable({ versions, selectedId, onSelect }: { versions: TimetableVersionSummary[]; selectedId: number | undefined; onSelect: (id: number) => void }) {
   const format = useFormatter();
   const columns: TableColumn<TimetableVersionSummary>[] = [
@@ -125,10 +134,7 @@ function VersionsTable({ versions, selectedId, onSelect }: { versions: Timetable
     { key: "source", header: text.sourceColumn, cell: (row) => text.sources[row.source] },
     { key: "date", header: text.createdAt, cell: (row) => format.date(row.createdAt.slice(0, 10)) },
     { key: "score", header: text.score, numeric: true, cell: (row) => (row.score === null ? messages.school.generation.none : format.number(row.score)) },
-    {
-      key: "approved", header: text.statusColumn,
-      cell: (row) => (row.isApproved ? <Badge tone="success" icon={<BadgeCheck aria-hidden="true" size={16} />}>{text.approved}</Badge> : text.notApproved),
-    },
+    { key: "status", header: text.statusColumn, cell: (row) => <StatusBadge status={row.status} /> },
   ];
   return (
     <DataTable caption={text.versions} columns={columns} rows={versions} rowKey={(row) => String(row.id)} scrollable
@@ -146,9 +152,21 @@ export function TimetablePage() {
   const selectedId = requested ?? list.find((item) => item.isApproved)?.id ?? list[0]?.id;
   const timetable = useTimetable(selectedId);
   const approve = useApproveTimetable();
+  const archive = useArchiveTimetable();
+  const rollback = useRollbackTimetable();
   const feedback = useFormFeedback();
-  const [confirming, setConfirming] = useState(false);
+  const [confirming, setConfirming] = useState<"approve" | "archive" | "rollback" | null>(null);
   const summary = timetable.data?.summary;
+  // Comparison: the version in the URL (?compare=) is the older side; it defaults to the parent, else the previous version.
+  const compareParam = Number(params.get("compare")) || undefined;
+  const defaultBase = (current: TimetableVersionSummary) =>
+    list.find((item) => item.id === current.parentVersionId)?.id ?? list.find((item) => item.number < current.number)?.id ?? list.find((item) => item.id !== current.id)?.id;
+  const compareBase = summary && compareParam !== undefined && list.some((item) => item.id === compareParam && item.id !== summary.id) ? compareParam : undefined;
+  const selectVersion = (id: number) => setParams({ version: String(id) });
+  const startCompare = () => {
+    const base = summary ? defaultBase(summary) : undefined;
+    if (summary && base !== undefined) setParams({ version: String(summary.id), compare: String(base) });
+  };
 
   return (
     <div className="page timetable-print-root">
@@ -163,11 +181,16 @@ export function TimetablePage() {
           <Link className="link-button" to="/timetable/generate"><Play aria-hidden="true" size={18} /><span>{text.goGenerate}</span></Link>
         </Card>
       )}
+      {list.length > 0 && summary && timetable.data && compareBase !== undefined && (
+        <VersionComparison target={timetable.data} versions={list} baseId={compareBase}
+          onBaseChange={(id) => setParams({ version: String(summary.id), compare: String(id) })}
+          onClose={() => setParams({ version: String(summary.id) })} />
+      )}
       {list.length > 0 && (
         <div className="timetable-layout">
           <Card className="page-card timetable-versions" aria-labelledby="timetable-versions-title">
             <SectionTitle level={2} icon={History} id="timetable-versions-title">{text.versions}</SectionTitle>
-            <VersionsTable versions={list} selectedId={selectedId} onSelect={(id) => setParams({ version: String(id) })} />
+            <VersionsTable versions={list} selectedId={selectedId} onSelect={selectVersion} />
           </Card>
           <Card className="page-card timetable-main" aria-labelledby="timetable-main-title">
             {timetable.isError && <Alert tone="error" message={text.loadFailed}>{userErrorMessage(timetable.error)}</Alert>}
@@ -175,11 +198,18 @@ export function TimetablePage() {
               <>
                 <div className="generation-heading">
                   <SectionTitle level={2} icon={CalendarRange} id="timetable-main-title">{text.version(format.number(summary.number))}</SectionTitle>
-                  <div className="page-header-actions">
-                    {summary.isApproved
-                      ? <Badge tone="success" icon={<BadgeCheck aria-hidden="true" size={16} />}>{text.approved}</Badge>
-                      : <Button icon={<Stamp aria-hidden="true" size={18} />} onClick={() => setConfirming(true)}>{text.approve}</Button>}
-                  </div>
+                  <StatusBadge status={summary.status} />
+                </div>
+                <p className="card-note">{lifecycle.statusHints[summary.status]}</p>
+                <div className="timetable-controls version-actions">
+                  {summary.status === "draft" && <Button icon={<Stamp aria-hidden="true" size={18} />} onClick={() => setConfirming("approve")}>{text.approve}</Button>}
+                  {summary.status !== "archived" && (
+                    <Button variant="secondary" icon={<Archive aria-hidden="true" size={18} />} onClick={() => setConfirming("archive")}>{lifecycle.archive}</Button>
+                  )}
+                  <Button variant="secondary" icon={<ArchiveRestore aria-hidden="true" size={18} />} onClick={() => setConfirming("rollback")}>{lifecycle.rollback}</Button>
+                  {defaultBase(summary) !== undefined
+                    ? <Button variant="secondary" icon={<GitCompareArrows aria-hidden="true" size={18} />} onClick={startCompare}>{lifecycle.compare}</Button>
+                    : <span className="card-note">{lifecycle.compareNone}</span>}
                 </div>
                 {timetable.data.violations === 0
                   ? <p className="generation-verified"><ShieldCheck aria-hidden="true" size={18} /><span>{text.verified}</span></p>
@@ -194,13 +224,30 @@ export function TimetablePage() {
         </div>
       )}
       {summary && (
-        <ConfirmDialog open={confirming} title={text.approveConfirmTitle} consequence={text.approveConfirm(format.number(summary.number))}
-          confirmLabel={text.approve} confirmIcon={<Stamp aria-hidden="true" size={18} />} loading={approve.isPending}
-          onCancel={() => setConfirming(false)}
-          onConfirm={() => approve.mutate(summary, {
-            onSuccess: () => { setConfirming(false); feedback.showSuccess(text.approvedDone); },
-            onError: (error) => { setConfirming(false); feedback.showError(error); },
-          })} />
+        <>
+          <ConfirmDialog open={confirming === "approve"} title={text.approveConfirmTitle} consequence={text.approveConfirm(format.number(summary.number))}
+            confirmLabel={text.approve} confirmIcon={<Stamp aria-hidden="true" size={18} />} loading={approve.isPending}
+            onCancel={() => setConfirming(null)}
+            onConfirm={() => approve.mutate(summary, {
+              onSuccess: () => { setConfirming(null); feedback.showSuccess(list.some((item) => item.isApproved) ? lifecycle.approveDoneArchived : text.approvedDone); },
+              onError: (error) => { setConfirming(null); feedback.showError(error); },
+            })} />
+          <ConfirmDialog open={confirming === "archive"} title={lifecycle.archiveConfirmTitle} danger
+            consequence={summary.status === "approved" ? lifecycle.archiveConfirmApproved(format.number(summary.number)) : lifecycle.archiveConfirm(format.number(summary.number))}
+            confirmLabel={lifecycle.archive} confirmIcon={<Archive aria-hidden="true" size={18} />} loading={archive.isPending}
+            onCancel={() => setConfirming(null)}
+            onConfirm={() => archive.mutate(summary, {
+              onSuccess: () => { setConfirming(null); feedback.showSuccess(lifecycle.archivedDone); },
+              onError: (error) => { setConfirming(null); feedback.showError(error); },
+            })} />
+          <ConfirmDialog open={confirming === "rollback"} title={lifecycle.rollbackConfirmTitle} consequence={lifecycle.rollbackConfirm(format.number(summary.number))}
+            confirmLabel={lifecycle.rollback} confirmIcon={<ArchiveRestore aria-hidden="true" size={18} />} loading={rollback.isPending}
+            onCancel={() => setConfirming(null)}
+            onConfirm={() => rollback.mutate(summary, {
+              onSuccess: (created) => { setConfirming(null); setParams({ version: String(created.id) }); feedback.showSuccess(lifecycle.rollbackDone(format.number(created.number))); },
+              onError: (error) => { setConfirming(null); feedback.showError(error); },
+            })} />
+        </>
       )}
       {versions.isPending && yearId && <p>{messages.app.loading}</p>}
     </div>

@@ -22,6 +22,9 @@ public sealed record GenerationSettings(string Mode, int TimeLimitSeconds, int S
     public const int MinTimeLimit = 10;
     public const int MaxTimeLimit = 600;
 
+    /// <summary>Manual lessons that must stay exactly where they are («إبقاء تعديلاتي»); empty for a normal generation. Not part of the stored parameters.</summary>
+    public IReadOnlyList<PlacedLesson> Locked { get; init; } = [];
+
     public bool DoublePeriodsRequired => Mode == GenerationModes.DoublePeriods;
 
     public static int DefaultWorkers => Math.Max(1, Environment.ProcessorCount / 2);
@@ -85,7 +88,8 @@ public sealed record SolverResult(
     double? FirstSolutionSeconds,
     double ElapsedSeconds,
     SolverDiagnostics? Diagnostics,
-    string? ErrorCode = null)
+    string? ErrorCode = null,
+    int LocksDropped = 0)
 {
     public bool HasTimetable => Lessons.Count > 0 && Status is SolverStatus.Optimal or SolverStatus.Feasible or SolverStatus.Cancelled;
 }

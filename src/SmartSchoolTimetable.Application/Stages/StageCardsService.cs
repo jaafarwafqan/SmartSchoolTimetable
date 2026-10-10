@@ -56,7 +56,7 @@ public sealed class StageCardsService(IDataStore store, TimeProvider clock)
                 used.Add(ArabicText.Normalize(label));
                 store.Add(Section.Create(stageId, command.ShiftId, label, null));
             }
-            AuditTrail.Record(store, clock, "SectionsAdded", $"stage:{stageId}", $"Sections increased to {command.Count}.");
+            AuditTrail.Record(store, clock, AuditEvents.SectionsAdded, $"stage:{stageId}", $"Sections increased to {command.Count}.", new { count = command.Count });
         }
         else if (command.Count < active.Count)
         {
@@ -68,7 +68,7 @@ public sealed class StageCardsService(IDataStore store, TimeProvider clock)
                     return OperationResult.Failure<StageCardDto>(inUse);
                 store.Remove(section);
             }
-            AuditTrail.Record(store, clock, "SectionsRemoved", $"stage:{stageId}", $"Sections reduced to {command.Count}.");
+            AuditTrail.Record(store, clock, AuditEvents.SectionsRemoved, $"stage:{stageId}", $"Sections reduced to {command.Count}.", new { count = command.Count });
         }
         var saved = await store.SaveAsync(() => true, "Count", token);
         if (!saved.Succeeded)

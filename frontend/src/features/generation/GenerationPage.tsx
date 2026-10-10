@@ -1,5 +1,5 @@
 import { SectionTitle } from "../../components/ui/section-title";
-import { CalendarRange, ChevronDown, CircleAlert, CircleCheck, ExternalLink, Play, ShieldCheck, Square, LoaderCircle, ClipboardCheck, Stethoscope, SlidersHorizontal, History, TriangleAlert, Info, Cpu } from "lucide-react";
+import { CalendarRange, ChevronDown, CircleAlert, CircleCheck, ExternalLink, Hand, Lock, Play, RefreshCw, ShieldCheck, Square, LoaderCircle, ClipboardCheck, Stethoscope, SlidersHorizontal, History, TriangleAlert, Info, Cpu } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { Link } from "react-router-dom";
 import { userErrorMessage } from "../../api";
@@ -9,6 +9,7 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { Checkbox } from "../../components/ui/checkbox";
 import { ChoiceCards } from "../../components/ui/choice-cards";
+import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { Field } from "../../components/ui/field";
 import { Input } from "../../components/ui/input";
 import { DataTable } from "../../components/ui/table";
@@ -24,13 +25,16 @@ import { useFormFeedback } from "../../lib/useFormFeedback";
 import { errorCount, fixHref, warningCount } from "../readiness/readinessPresentation";
 import { useReadiness } from "../readiness/readinessApi";
 import {
-  isActive, useCancelGeneration, useCurrentRun, useEngine, useRunHistory, useStartGeneration,
+  isActive, useCancelGeneration, useCurrentRun, useEngine, useManualEdits, useRunHistory, useStartGeneration,
   type GenerationMode, type GenerationRun, type RunStatus,
 } from "./generationApi";
 import { diagnosticMessage, elapsedSeconds, phaseIndex, phaseOrder, seconds, statusNote, statusTone, timeLimitChoices } from "./generationPresentation";
 
 const text = messages.school.generation;
 const readinessText = messages.school.readiness;
+const lifecycle = messages.school.lifecycle;
+
+type EditsChoice = "keep" | "discard";
 
 /** Run status as a badge: the icon repeats the colour's meaning. */
 function StatusBadge({ status }: { status: RunStatus }) {
@@ -93,6 +97,10 @@ function ResultPanel({ run, format }: { run: GenerationRun; format: Formatter })
       </div>
       <p>{statusNote(run)}</p>
       {run.errorCode && run.status === "failed" && <Alert tone="error" message={messages.errors[run.errorCode as keyof typeof messages.errors] ?? messages.errors.UNKNOWN_ERROR} />}
+      {run.lockedLessons > 0 && (
+        <p className="generation-verified"><Lock aria-hidden="true" size={18} /><span>{lifecycle.locksKept(format.count(run.lockedLessons - run.locksDropped, "lesson"))}</span></p>
+      )}
+      {run.locksDropped > 0 && <Alert tone="warning" message={lifecycle.locksDropped(format.count(run.locksDropped, "lesson"))} />}
       <dl className="generation-stats">
         <div><dt>{text.lessonsPlaced}</dt><dd>{format.count(run.lessonsPlaced, "lesson")}</dd></div>
         {run.score && <div><dt>{text.totalScore}</dt><dd>{format.number(run.score.total)}</dd></div>}
@@ -167,6 +175,9 @@ export function GenerationPage() {
   const current = useCurrentRun(yearId);
   const history = useRunHistory(yearId);
   const start = useStartGeneration(yearId);
+  const manualEdits = useManualEdits(yearId);
+  const [asking, setAsking] = useState(false);
+  const [editsChoice, setEditsChoice] = useState<EditsChoice>("keep");
   const cancel = useCancelGeneration();
   const feedback = useFormFeedback();
   const advancedId = useId();
@@ -179,16 +190,33 @@ export function GenerationPage() {
 
   // A finished run refreshes the readiness and the saved versions it may have created.
   useEffect(() => {
-    if (run && !active) void history.refetch();
+    if (run && !active) {
+      void history.refetch();
+      void manualEdits.refetch();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run?.status]);
 
-  function onStart() {
+  const edits = manualEdits.data?.edits ?? null;
+
+  /** Starts a generation; `keepFrom` is the version whose manual edits stay locked (null discards them). */
+  function begin(keepFrom: number | null) {
     feedback.reset();
+    setAsking(false);
     start.mutate(
-      { mode, timeLimitSeconds: timeLimit, deterministic, seed: seedValue, workers: workers ?? engine.data?.defaultWorkers ?? 1 },
+      { mode, timeLimitSeconds: timeLimit, deterministic, seed: seedValue, workers: workers ?? engine.data?.defaultWorkers ?? 1, ...(keepFrom === null ? {} : { lockFromVersionId: keepFrom }) },
       { onSuccess: () => feedback.showSuccess(text.started), onError: feedback.showError },
     );
+  }
+
+  // The latest version is a manual edit: ask what to do with the lessons the owner moved by hand before regenerating over them.
+  function onStart() {
+    if (edits) {
+      setEditsChoice("keep");
+      setAsking(true);
+    } else {
+      begin(null);
+    }
   }
 
   return (
@@ -269,6 +297,19 @@ export function GenerationPage() {
           </div>
           {engine.data?.version && <p className="card-note"><LtrText>{text.engineVersion(engine.data.version)}</LtrText></p>}
         </Card>
+      )}
+
+      {edits && (
+        <ConfirmDialog open={asking} title={lifecycle.keepEditsTitle}
+          consequence={lifecycle.keepEditsBody(format.number(edits.number), format.count(edits.lessons, "lesson"))}
+          confirmLabel={lifecycle.keepEditsConfirm} confirmIcon={<Play aria-hidden="true" size={18} />}
+          onCancel={() => setAsking(false)} onConfirm={() => begin(editsChoice === "keep" ? edits.versionId : null)}>
+          <ChoiceCards<EditsChoice> name="manual-edits-choice" legend={lifecycle.keepEditsLegend} value={editsChoice} onChange={setEditsChoice}
+            choices={[
+              { value: "keep", label: lifecycle.keepEditsKeep, description: lifecycle.keepEditsKeepHint, icon: <Hand aria-hidden="true" size={20} /> },
+              { value: "discard", label: lifecycle.keepEditsDiscard, description: lifecycle.keepEditsDiscardHint, icon: <RefreshCw aria-hidden="true" size={20} /> },
+            ]} />
+        </ConfirmDialog>
       )}
 
       {run && active && (

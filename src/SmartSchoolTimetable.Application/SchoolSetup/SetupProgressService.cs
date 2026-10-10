@@ -34,7 +34,7 @@ public sealed class SetupProgressService(IDataStore store, TimeProvider clock)
         if (StoreSaving.TryDomain<SetupProgressDto>(() =>
                 progress.Record(command.CurrentStep, command.CompletedSteps, command.SkippedSteps, command.IsFinished, clock.GetUtcNow())) is { } invalid)
             return invalid;
-        AuditTrail.Record(store, clock, command.IsFinished ? "SetupFinished" : "SetupProgressSaved", "setup", $"Setup step {command.CurrentStep}.");
+        AuditTrail.Record(store, clock, command.IsFinished ? AuditEvents.SetupFinished : AuditEvents.SetupProgressSaved, "setup", $"Setup step {command.CurrentStep}.", new { step = command.CurrentStep });
         return await store.SaveAsync(() => ToDto(progress, profile), "CurrentStep", token);
     }
 

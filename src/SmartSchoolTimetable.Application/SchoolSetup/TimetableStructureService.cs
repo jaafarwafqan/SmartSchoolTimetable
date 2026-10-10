@@ -39,7 +39,7 @@ public sealed class TimetableStructureService(IDataStore store, TimeProvider clo
         if (await SessionPlanService.ActiveAsync(store, yearId, token) is not null)
             return OperationResult.Failure<ShiftDto>(ErrorCodes.SessionsNeedOneShift);
         store.Add(shift!);
-        AuditTrail.Record(store, clock, "ShiftCreated", $"academic-year:{yearId}", "Shift created.");
+        AuditTrail.Record(store, clock, AuditEvents.ShiftCreated, $"academic-year:{yearId}", "Shift created.");
         var createdDays = await WorkingDaysAsync(token);
         return await store.SaveAsync(() => ToDto(shift!, createdDays), nameof(command.Name), token);
     }
@@ -55,7 +55,7 @@ public sealed class TimetableStructureService(IDataStore store, TimeProvider clo
             return OperationResult.Invalid<ShiftDto>(nameof(command.Name), ErrorCodes.DuplicateName);
         if (StoreSaving.TryDomain<ShiftDto>(() => shift.Update(command.Name, command.DisplayOrder)) is { } invalid)
             return invalid;
-        AuditTrail.Record(store, clock, "ShiftUpdated", $"shift:{id}", "Shift updated.");
+        AuditTrail.Record(store, clock, AuditEvents.ShiftUpdated, $"shift:{id}", "Shift updated.");
         var days = await WorkingDaysAsync(token);
         return await store.SaveAsync(() => ToDto(shift, days), nameof(command.Name), token);
     }
@@ -70,7 +70,7 @@ public sealed class TimetableStructureService(IDataStore store, TimeProvider clo
         if (await references.DeleteBlockedAsync(ReferenceKinds.Shift, id, token) is { } inUse)
             return OperationResult.Failure<bool>(inUse);
         store.Remove(shift);
-        AuditTrail.Record(store, clock, "ShiftDeleted", $"shift:{id}", "Shift deleted.");
+        AuditTrail.Record(store, clock, AuditEvents.ShiftDeleted, $"shift:{id}", "Shift deleted.");
         return await store.SaveAsync(() => true, "Name", token);
     }
 
@@ -95,9 +95,9 @@ public sealed class TimetableStructureService(IDataStore store, TimeProvider clo
         {
             foreach (var entry in entries)
                 stage.ClampDayLessons(entry.Day, entry.ShiftLessons);
-            AuditTrail.Record(store, clock, "StageDayLessonsLowered", $"stage:{stage.Id}", "Stage lessons lowered to the shortened shift.");
+            AuditTrail.Record(store, clock, AuditEvents.StageDayLessonsLowered, $"stage:{stage.Id}", "Stage lessons lowered to the shortened shift.");
         }
-        AuditTrail.Record(store, clock, "ShiftDayLessonsUpdated", $"shift:{id}", "Lessons per day updated.");
+        AuditTrail.Record(store, clock, AuditEvents.ShiftDayLessonsUpdated, $"shift:{id}", "Lessons per day updated.");
         return await store.SaveAsync(() => ToDto(shift, days), "DayLessons", token);
     }
 
@@ -159,7 +159,7 @@ public sealed class TimetableStructureService(IDataStore store, TimeProvider clo
             return OperationResult.Invalid<ShiftDto>(nameof(command.Periods), ErrorCodes.SessionLessonCountMismatch);
         if (StoreSaving.TryDomain<ShiftDto>(() => shift.ReplacePeriods(drafts)) is { } invalid)
             return invalid;
-        AuditTrail.Record(store, clock, "ShiftPeriodsUpdated", $"shift:{id}", "Shift periods updated.");
+        AuditTrail.Record(store, clock, AuditEvents.ShiftPeriodsUpdated, $"shift:{id}", "Shift periods updated.");
         var days = await WorkingDaysAsync(token);
         return await store.SaveAsync(() => ToDto(shift, days), nameof(command.Periods), token);
     }
@@ -198,7 +198,7 @@ public sealed class TimetableStructureService(IDataStore store, TimeProvider clo
         if (week.Version != command.Version) return OperationResult.Failure<WorkingWeekDto>(ErrorCodes.Conflict);
         if (StoreSaving.TryDomain<WorkingWeekDto>(() => week.Update(command.Days, command.WeekStartDay)) is { } invalid)
             return invalid;
-        AuditTrail.Record(store, clock, "WorkingWeekUpdated", "working-week", "Working week updated.");
+        AuditTrail.Record(store, clock, AuditEvents.WorkingWeekUpdated, "working-week", "Working week updated.");
         return await store.SaveAsync(() => ToDto(week), "Days", token);
     }
 
@@ -219,7 +219,7 @@ public sealed class TimetableStructureService(IDataStore store, TimeProvider clo
         if (input.Any) return OperationResult.Invalid<BellSettingsDto>(input.Errors);
         if (StoreSaving.TryDomain<BellSettingsDto>(() => settings.Update(tone, command.BreakBell)) is { } invalid)
             return invalid;
-        AuditTrail.Record(store, clock, "BellSettingsUpdated", "bell-settings", "Bell settings updated.");
+        AuditTrail.Record(store, clock, AuditEvents.BellSettingsUpdated, "bell-settings", "Bell settings updated.");
         return await store.SaveAsync(() => ToDto(settings), nameof(command.Tone), token);
     }
 
