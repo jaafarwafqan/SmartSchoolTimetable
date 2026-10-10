@@ -60,7 +60,7 @@ export const navGroups: readonly NavGroup[] = [
     label: nav.settings,
     tabs: [
       { to: "/settings/general", label: nav.settingsGeneral, icon: Settings },
-      { to: "/settings/scheduling", label: nav.schedulingProfile, icon: SlidersHorizontal },
+      { to: "/settings/advanced", label: nav.settingsAdvanced, icon: SlidersHorizontal },
       { to: "/settings/history", label: nav.settingsHistory, icon: ScrollText },
     ],
   },

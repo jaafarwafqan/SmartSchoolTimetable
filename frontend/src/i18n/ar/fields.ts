@@ -58,6 +58,6 @@ export const fields = {
   Capacity: "السعة",
   RequiredResourceId: "المورد المطلوب",
   SpecializationIds: "التخصصات",
-  Rules: "قواعد ملف الجدولة",
+  Rules: "أولويات الجدول",
   Confirm: "التأكيد",
 } as const;
