@@ -37,6 +37,12 @@ public sealed class LocalSessionStore(TimeProvider timeProvider) : ILocalSession
 
     public void RevokeAll() => _sessions.Clear();
 
+    public void RenameAll(string username)
+    {
+        foreach (var session in _sessions.Values)
+            session.Username = username;
+    }
+
     public void MarkRecoveryCodeIssued(string sessionId)
     {
         if (_sessions.TryGetValue(sessionId, out var session))
@@ -48,7 +54,7 @@ public sealed class LocalSessionStore(TimeProvider timeProvider) : ILocalSession
 
     private sealed class Session(string username, DateTimeOffset lastActivity, bool recoveryCodeIssued)
     {
-        public string Username { get; } = username;
+        public string Username { get; set; } = username;
         public DateTimeOffset LastActivity { get; set; } = lastActivity;
         public bool RecoveryCodeIssued { get; set; } = recoveryCodeIssued;
     }

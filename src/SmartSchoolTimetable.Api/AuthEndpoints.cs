@@ -18,6 +18,7 @@ public static class AuthEndpoints
         group.MapPost("/auth/recovery-code/acknowledge", AcknowledgeRecoveryCode);
         group.MapPost("/auth/logout", Logout);
         group.MapPost("/auth/change-password", ChangePassword);
+        group.MapPost("/auth/change-username", ChangeUsername);
         group.MapGet("/private/status", GetPrivateStatus);
         group.MapPut("/settings/inactivity-timeout", SetInactivityTimeout);
         return endpoints;
@@ -160,6 +161,22 @@ public static class AuthEndpoints
 
         SessionCookie.Delete(context);
         return Results.NoContent();
+    }
+
+    private static async Task<IResult> ChangeUsername(
+        ChangeUsernameRequest request,
+        HttpContext context,
+        IValidator<ChangeUsernameRequest> validator,
+        ILocalAuthService authService,
+        CancellationToken cancellationToken)
+    {
+        if (SessionCookie.Read(context) is not { } sessionId)
+            return Failure(context, ErrorCodes.Unauthenticated);
+        if (await ValidateAsync(request, validator, context, cancellationToken) is { } invalid)
+            return invalid;
+
+        var result = await authService.ChangeUsernameAsync(sessionId, request.CurrentPassword!, request.NewUsername!, cancellationToken);
+        return result.Succeeded ? Results.NoContent() : Failure(context, result);
     }
 
     private static async Task<IResult> GetPrivateStatus(

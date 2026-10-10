@@ -281,6 +281,46 @@ public sealed class LocalAuthService(
         }
     }
 
+    public async Task<AuthOperationResult> ChangeUsernameAsync(
+        string sessionId,
+        string currentPassword,
+        string newUsername,
+        CancellationToken cancellationToken)
+    {
+        var normalizedUsername = NormalizeUsername(newUsername);
+        if (!CredentialRules.IsUsernameValid(normalizedUsername))
+            return new AuthOperationResult(false, normalizedUsername.Length < CredentialRules.UsernameMinLength ? ErrorCodes.UsernameTooShort
+                : normalizedUsername.Length > CredentialRules.UsernameMaxLength ? ErrorCodes.UsernameTooLong : ErrorCodes.InvalidUsername);
+        if (!await IsSessionValidAsync(sessionId, cancellationToken))
+            return new AuthOperationResult(false, ErrorCodes.Unauthenticated);
+
+        await operationGate.WaitAsync(cancellationToken);
+        try
+        {
+            var owner = await ownerRepository.GetOwnerAsync(cancellationToken);
+            if (owner is null)
+                return new AuthOperationResult(false, ErrorCodes.SetupRequired);
+            if (!credentialHasher.VerifyPassword(currentPassword, owner.PasswordSalt, owner.PasswordHash, owner.PasswordIterations))
+                return new AuthOperationResult(false, ErrorCodes.CurrentPasswordIncorrect);
+            // The same name again (any letter case) changes nothing and records nothing.
+            if (FixedTimeEquals(normalizedUsername, owner.NormalizedUsername) && string.Equals(owner.Username, newUsername.Trim(), StringComparison.Ordinal))
+                return new AuthOperationResult(true);
+
+            var now = timeProvider.GetUtcNow();
+            owner.ChangeUsername(newUsername.Trim(), normalizedUsername, now);
+            await ownerRepository.SaveOwnerAsync(
+                owner,
+                AuditTrail.Entry(now, AuditEvents.UsernameChanged, "owner-account", "Owner username changed."),
+                cancellationToken);
+            sessionStore.RenameAll(owner.Username);
+            return new AuthOperationResult(true);
+        }
+        finally
+        {
+            operationGate.Release();
+        }
+    }
+
     public async Task<AuthOperationResult> SetInactivityTimeoutAsync(
         string sessionId,
         int? minutes,

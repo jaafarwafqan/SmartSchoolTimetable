@@ -52,6 +52,14 @@ public sealed class OwnerAccount
             UpdatedAt = now
         };
 
+    /// <summary>M2: the owner's new username (the password and recovery code are unchanged).</summary>
+    public void ChangeUsername(string username, string normalizedUsername, DateTimeOffset now)
+    {
+        Username = username;
+        NormalizedUsername = normalizedUsername;
+        UpdatedAt = now;
+    }
+
     public void AcknowledgeRecoveryCode(DateTimeOffset now)
     {
         RecoveryCodeAcknowledged = true;

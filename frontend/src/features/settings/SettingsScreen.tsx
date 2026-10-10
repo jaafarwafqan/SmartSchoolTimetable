@@ -7,6 +7,7 @@ import { InactivitySection } from "./InactivitySection";
 import { PasswordSection } from "./PasswordSection";
 import { PreferencesSection } from "./PreferencesSection";
 import { RecoveryCodeSection } from "./RecoveryCodeSection";
+import { UsernameSection } from "./UsernameSection";
 import { SetupWizardSection } from "./SetupWizardSection";
 
 export function SettingsScreen({ bootstrap }: { bootstrap: Bootstrap }) {
@@ -17,6 +18,7 @@ export function SettingsScreen({ bootstrap }: { bootstrap: Bootstrap }) {
         <PreferencesSection />
         <InactivitySection bootstrap={bootstrap} />
         <RecoveryCodeSection />
+        <UsernameSection username={bootstrap.username} />
         <PasswordSection />
         <SetupWizardSection />
         <BackupSection />

@@ -105,6 +105,10 @@ public static class LocalInfrastructureRegistration
             db.Add(BackupSettings.CreateDefault());
             await db.SaveChangesAsync(cancellationToken);
         }
+        // The version that is running is stored in the database, so a backup says which version made it.
+        var backupSettings = await db.Set<BackupSettings>().FirstAsync(cancellationToken);
+        if (backupSettings.RecordAppVersion(AppInfo.Version))
+            await db.SaveChangesAsync(cancellationToken);
     }
 
     private sealed class NoLoginDelay : ILoginDelay

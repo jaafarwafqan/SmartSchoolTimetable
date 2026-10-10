@@ -98,6 +98,8 @@ builder.Services.AddScoped<SmartSchoolTimetable.Application.Backup.BackupService
 builder.Services.AddScoped<PreferencesService>();
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Audit.AuditService>();
 builder.Services.AddHostedService<GenerationWorker>();
+if (!builder.Environment.IsEnvironment("Testing"))
+    builder.Services.AddHostedService<AutoBackupWorker>();
 builder.Services.AddLocalInfrastructure(
     databasePath,
     builder.Environment.IsEnvironment("Testing"));

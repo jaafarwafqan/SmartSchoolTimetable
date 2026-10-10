@@ -9,6 +9,9 @@ public static class BackupEndpoints
     {
         var backup = endpoints.MapOwnerGroup("/backup");
         backup.MapGet("/defaults", (BackupService service) => Results.Ok(service.Defaults()));
+        backup.MapGet("/settings", async (BackupService service, CancellationToken token) => Results.Ok(await service.GetSettingsAsync(token)));
+        backup.MapPut("/settings", async (SaveBackupSettingsCommand command, HttpContext context, BackupService service, CancellationToken token) =>
+            ApiResults.Ok(context, await service.UpdateSettingsAsync(command, token)));
         backup.MapGet("/folders", (string? path, HttpContext context) => ApiResults.Ok(context, BackupService.BrowseFolders(path)));
         backup.MapGet("/files", async (string? folder, HttpContext context, BackupService service, CancellationToken token) =>
             ApiResults.Ok(context, await service.ListFilesAsync(folder, token)));
