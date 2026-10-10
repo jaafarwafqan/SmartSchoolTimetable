@@ -16,6 +16,7 @@ using SmartSchoolTimetable.Application.Subjects;
 using SmartSchoolTimetable.Application.Teachers;
 using SmartSchoolTimetable.Application.Calendar;
 using SmartSchoolTimetable.Infrastructure;
+using SmartSchoolTimetable.Application.Settings;
 
 const string resetArgument = "--reset-local-database";
 var resetRequested = args.Contains(resetArgument, StringComparer.Ordinal);
@@ -88,7 +89,13 @@ builder.Services.AddSingleton<SmartSchoolTimetable.Application.Generation.Genera
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Generation.GenerationService>();
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Generation.TimetableService>();
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Generation.TimetableExportService>();
+// Backups go to Documents only when the database is in its normal place; an overridden database path (tests, a portable copy) keeps them beside it.
+var usingDefaultDatabase = string.Equals(Path.GetFullPath(databasePath), Path.GetFullPath(defaultDatabasePath), StringComparison.OrdinalIgnoreCase);
+builder.Services.AddSingleton(new SmartSchoolTimetable.Application.Backup.BackupDefaults(usingDefaultDatabase
+    ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "SmartSchoolTimetable", "Backups")
+    : Path.Combine(Path.GetDirectoryName(Path.GetFullPath(databasePath))!, "owner-backups")));
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Backup.BackupService>();
+builder.Services.AddScoped<PreferencesService>();
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Audit.AuditService>();
 builder.Services.AddHostedService<GenerationWorker>();
 builder.Services.AddLocalInfrastructure(
@@ -136,6 +143,7 @@ app.MapGenerationEndpoints();
 app.MapTimetableEndpoints();
 app.MapBackupEndpoints();
 app.MapAuditEndpoints();
+app.MapSettingsEndpoints();
 app.MapFallback(async (HttpContext context) =>
 {
     if (context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))

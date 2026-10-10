@@ -217,6 +217,26 @@
   white-space: nowrap;
 }
 
+/* M2: the default print options, one job per row. */
+.preferences-print {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0;
+  border: 0;
+}
+
+.preferences-print legend {
+  padding: 0;
+  font-weight: 700;
+}
+
+.preferences-print-row {
+  display: grid;
+  gap: 0.375rem;
+  padding-block-end: 0.75rem;
+  border-block-end: 1px solid var(--color-line);
+}
+
 .nowrap {
   white-space: nowrap;
 }

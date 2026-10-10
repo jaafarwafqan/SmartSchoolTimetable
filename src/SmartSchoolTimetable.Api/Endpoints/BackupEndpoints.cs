@@ -8,7 +8,7 @@ public static class BackupEndpoints
     public static IEndpointRouteBuilder MapBackupEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var backup = endpoints.MapOwnerGroup("/backup");
-        backup.MapGet("/defaults", () => Results.Ok(BackupService.Defaults()));
+        backup.MapGet("/defaults", (BackupService service) => Results.Ok(service.Defaults()));
         backup.MapGet("/folders", (string? path, HttpContext context) => ApiResults.Ok(context, BackupService.BrowseFolders(path)));
         backup.MapGet("/files", async (string? folder, HttpContext context, BackupService service, CancellationToken token) =>
             ApiResults.Ok(context, await service.ListFilesAsync(folder, token)));

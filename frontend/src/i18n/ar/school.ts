@@ -14,6 +14,7 @@ import { shiftSystem } from "./shiftSystem";
 import { workloadTable } from "./workloadTable";
 import { printing } from "./printing";
 import { currentCheck } from "./currentCheck";
+import { preferences } from "./preferences";
 import { backup, generation, timetable, violations } from "./phase4";
 
 export const school = {
@@ -275,6 +276,7 @@ export const school = {
   audit,
   lifecycle,
   currentCheck,
+  preferences,
   shiftSystem,
   workloadTable,
   printing,

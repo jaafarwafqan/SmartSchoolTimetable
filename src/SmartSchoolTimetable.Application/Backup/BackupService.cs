@@ -39,6 +39,13 @@ public sealed record RestoreResultDto(string RestoredFrom, string AutomaticBacku
 
 public sealed record BackupDefaultsDto(string SuggestedFolder);
 
+/// <summary>
+/// The folder suggested for backups until the owner chooses one: «Documents\SmartSchoolTimetable\Backups» when the application
+/// uses its normal database location, otherwise a folder next to the database in use (so a test or portable copy never writes
+/// into the user's Documents).
+/// </summary>
+public sealed record BackupDefaults(string SuggestedFolder);
+
 /// <summary>A subfolder in the folder picker (MF10).</summary>
 public sealed record FolderEntryDto(string Name, string Path);
 
@@ -65,13 +72,12 @@ public sealed record BackupListingDto(string Folder, string AutomaticFolder, IRe
 /// the file, takes an automatic backup of the current data first, replaces the data, and signs the owner out. No
 /// backup file is ever deleted or overwritten.
 /// </summary>
-public sealed class BackupService(IDatabaseBackup backup, IDataStore store, ILocalSessionStore sessions, TimeProvider clock)
+public sealed class BackupService(IDatabaseBackup backup, IDataStore store, ILocalSessionStore sessions, TimeProvider clock, BackupDefaults defaults)
 {
     private const string FolderField = "folder";
     private const string FileField = "filePath";
 
-    public static BackupDefaultsDto Defaults() => new(Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "SmartSchoolTimetable", "Backups"));
+    public BackupDefaultsDto Defaults() => new(defaults.SuggestedFolder);
 
     public async Task<OperationResult<BackupResultDto>> CreateAsync(CreateBackupCommand command, CancellationToken token)
     {

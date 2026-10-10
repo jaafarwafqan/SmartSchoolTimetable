@@ -22,7 +22,8 @@ import { useStartRepair } from "../generation/generationApi";
 import { useApproveTimetable, useArchiveTimetable, useCurrentCheck, useReplaceTeachers, useRollbackTimetable, useTimetable, useTimetableVersions, type Term, type Timetable, type TimetableVersionSummary } from "./timetableApi";
 import { VersionComparison } from "./VersionComparison";
 import { PrintDocument } from "./PrintDocument";
-import { defaultOptions, type Orientation, type PaperSize, type PrintOptions, type PrintScope } from "./printing";
+import { defaultOptions, printDefaultsFrom, resolvePrint, type Orientation, type PaperSize, type PrintChoice, type PrintDefaults, type PrintOptions, type PrintScope } from "./printing";
+import { usePreferences, type Preferences } from "../settings/preferencesApi";
 import { CurrentDataCheck } from "./CurrentDataCheck";
 import { flaggedSlots, slotKey, type FindingItem } from "./currentCheck";
 import { cellFor, lookups, MasterGrid, sessionViewOf, WeekGrid } from "./TimetableGrids";
@@ -40,13 +41,15 @@ type ViewsProps = {
   editing: boolean;
   onEditingChange: (editing: boolean) => void;
   onSaved: (versionId: number) => void;
+  /** M2: the stored preferences (default print options, default semester); built-in values until they load. */
+  preferences: Preferences | undefined;
   /** MF11: slots ("section:day:lesson") that conflict with today's school data; marked on the grids outside the editor. */
   flagged: ReadonlySet<string>;
   /** MF11: «عرض في الجدول»: switch to the finding's section (or teacher) and focus its cell. `nonce` makes a repeated request count. */
   focusRequest: { nonce: number; item: FindingItem } | null;
 };
 
-function TimetableViews({ timetable, editing, onEditingChange, onSaved, flagged, focusRequest }: ViewsProps) {
+function TimetableViews({ timetable, editing, onEditingChange, onSaved, flagged, focusRequest, preferences }: ViewsProps) {
   const format = useFormatter();
   const look = useMemo(() => lookups(timetable), [timetable]);
   const [chosenView, setView] = useState<View>("section");
@@ -82,7 +85,7 @@ function TimetableViews({ timetable, editing, onEditingChange, onSaved, flagged,
   }, [focusRequest, timetable.days]);
   // R3: two-session schools choose the semester; the grid is the same, the clock follows the day's session. It opens on
   // the current semester when the year's dates tell it, otherwise on semester 1 (#86).
-  const [term, setTerm] = useState<Term>(timetable.sessions?.currentTerm ?? 1);
+  const [term, setTerm] = useState<Term>(preferences?.defaultSemester ?? timetable.sessions?.currentTerm ?? 1);
   const shifts = new Map(timetable.shifts.map((shift) => [shift.id, shift]));
   const section = timetable.sections.find((item) => item.id === sectionId) ?? timetable.sections[0];
   const teacher = timetable.teachers.find((item) => item.id === teacherId) ?? timetable.teachers[0];
@@ -91,8 +94,12 @@ function TimetableViews({ timetable, editing, onEditingChange, onSaved, flagged,
   const lessonCountOf = (shiftId: number) => Math.max(1, shifts.get(shiftId)?.lessons.length ?? 0,
     ...timetable.sections.filter((item) => item.shiftId === shiftId).flatMap((item) => item.allowedByDay.map((day) => day.lessons)));
   // MF5: the print job follows the owner's defaults for what is printed, and can be changed before printing.
-  const [print, setPrint] = useState<PrintOptions>(() => defaultOptions("current", "section"));
-  const chooseView = (next: View) => { setView(next); setEditing(false); setPrint((options) => defaultOptions(options.scope, next)); };
+  const printDefaults: PrintDefaults = useMemo(() => printDefaultsFrom(preferences), [preferences]);
+  const [printChoice, setPrintChoice] = useState<PrintChoice>({ scope: "current" });
+  const print = resolvePrint(printChoice, view, printDefaults);
+  // Choosing another job restores that job's defaults; a change of paper, orientation or fit is kept for this print only.
+  const changePrint = (next: PrintOptions) => setPrintChoice((current) => (next.scope !== current.scope ? { scope: next.scope } : { scope: next.scope, paper: next.paper, orientation: next.orientation, fit: next.fit }));
+  const chooseView = (next: View) => { setView(next); setEditing(false); setPrintChoice((current) => ({ scope: current.scope })); };
   // The print document is built only while the print options are open or the browser is printing (Ctrl+P included).
   const [printPanelOpen, setPrintPanelOpen] = useState(false);
   const [browserPrinting, setBrowserPrinting] = useState(false);
@@ -119,7 +126,7 @@ function TimetableViews({ timetable, editing, onEditingChange, onSaved, flagged,
           </a>
         </div>
       )}
-      {!editing && <PrintPanel options={print} view={view} onChange={setPrint} onToggle={setPrintPanelOpen} />}
+      {!editing && <PrintPanel options={print} view={view} onChange={changePrint} onToggle={setPrintPanelOpen} />}
       <div className="timetable-controls">
         <Field id="timetable-view" label={text.viewsLabel}>
           <Select id="timetable-view" value={view} onChange={(event) => chooseView(event.target.value as View)}
@@ -247,6 +254,7 @@ export function TimetablePage() {
   const [editing, setEditing] = useState(false);
   const summary = timetable.data?.summary;
   // MF11: the saved version against today's data; read fresh on every visit.
+  const preferences = usePreferences();
   const currentCheck = useCurrentCheck(selectedId);
   const replaceTeachers = useReplaceTeachers();
   const startRepair = useStartRepair(yearId);
@@ -344,7 +352,7 @@ export function TimetablePage() {
                       });
                     }} />
                 )}
-                <TimetableViews key={summary.id} timetable={timetable.data} editing={editing} onEditingChange={setEditing} flagged={flagged} focusRequest={focusRequest}
+                <TimetableViews key={`${summary.id}:${preferences.data?.version ?? 0}`} timetable={timetable.data} editing={editing} onEditingChange={setEditing} flagged={flagged} focusRequest={focusRequest} preferences={preferences.data}
                   onSaved={(id) => { setEditing(false); setParams({ version: String(id) }); feedback.showSuccess(text.savedEdit); }} />
               </>
             )}

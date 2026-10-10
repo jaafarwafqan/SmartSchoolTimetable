@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultOptions, fitScale, pageCss, printableWidth } from "./printing";
+import { defaultOptions, fitScale, pageCss, printableWidth, printDefaultsFrom, resolvePrint } from "./printing";
 
 describe("official printing (MF5)", () => {
   it("uses the owner's defaults: section A4 landscape, teacher A4 portrait, the school A3 landscape", () => {
@@ -9,6 +9,18 @@ describe("official printing (MF5)", () => {
     expect(defaultOptions("sections", "teacher")).toMatchObject({ paper: "A4", orientation: "landscape" });
     expect(defaultOptions("teachers", "section")).toMatchObject({ paper: "A4", orientation: "portrait" });
     expect(defaultOptions("school", "section")).toMatchObject({ paper: "A3", orientation: "landscape" });
+  });
+
+  it("takes the defaults from the stored preferences, and an own change wins only for that print", () => {
+    const stored = {
+      section: { paper: "a3", orientation: "portrait" }, teacher: { paper: "a4", orientation: "landscape" }, school: { paper: "a4", orientation: "landscape" }, printFit: false,
+    };
+    const defaults = printDefaultsFrom(stored);
+    expect(defaultOptions("current", "section", defaults)).toEqual({ scope: "current", paper: "A3", orientation: "portrait", fit: false });
+    expect(defaultOptions("teachers", "master", defaults)).toMatchObject({ paper: "A4", orientation: "landscape" });
+    expect(defaultOptions("school", "section", defaults)).toMatchObject({ paper: "A4", orientation: "landscape" });
+    expect(resolvePrint({ scope: "current", paper: "A4" }, "section", defaults)).toEqual({ scope: "current", paper: "A4", orientation: "portrait", fit: false });
+    expect(printDefaultsFrom(undefined).school).toEqual({ paper: "A3", orientation: "landscape" });
   });
 
   it("shrinks a wide grid to the page width only when «ملاءمة الصفحة» is on", () => {

@@ -6,6 +6,7 @@ using SmartSchoolTimetable.Application.Common;
 using SmartSchoolTimetable.Application.Generation;
 using SmartSchoolTimetable.Domain.Scheduling;
 using SmartSchoolTimetable.Domain.SchoolSetup;
+using SmartSchoolTimetable.Domain.Settings;
 using SmartSchoolTimetable.Infrastructure.Persistence;
 using SmartSchoolTimetable.Infrastructure.Solver;
 
@@ -92,6 +93,16 @@ public static class LocalInfrastructureRegistration
         if (!await db.Set<SetupProgress>().AnyAsync(cancellationToken))
         {
             db.Add(SetupProgress.CreateDefault(DateTimeOffset.UtcNow));
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        if (!await db.Set<AppPreferences>().AnyAsync(cancellationToken))
+        {
+            db.Add(AppPreferences.CreateDefault());
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        if (!await db.Set<BackupSettings>().AnyAsync(cancellationToken))
+        {
+            db.Add(BackupSettings.CreateDefault());
             await db.SaveChangesAsync(cancellationToken);
         }
     }
