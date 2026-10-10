@@ -95,14 +95,17 @@ test("(4) generate a timetable with real progress, read it three ways and approv
     await expect(page.getByText(timetable.approvedDone)).toBeVisible();
     await expect(page.locator(".version-bar .ui-badge", { hasText: timetable.approved })).toBeVisible();
 
-    // Printing (M5): print media hides the shell and controls and shows the school header; the grid stays.
+    // Official printing (MF5): with the print options open, print media shows only the print document.
+    await page.getByText(messages.school.printing.title).click();
     await page.emulateMedia({ media: "print" });
-    await expect(page.locator(".app-sidebar")).toBeHidden();
-    await expect(page.locator(".timetable-controls").first()).toBeHidden();
-    await expect(page.locator(".timetable-print-header")).toBeVisible();
-    await expect(page.locator(".ui-tt-grid").first()).toBeVisible();
+    await expect(page.locator("#root")).toBeHidden();
+    await expect(page.locator(".print-page-header")).toContainText(messages.school.printing.documentTitle);
+    await expect(page.locator(".print-document .ui-tt-grid")).toBeVisible();
+    await expect(page.locator(".print-page-footer")).toContainText(messages.school.printing.stamp);
     await page.emulateMedia({ media: "screen" });
-    await expect(page.locator(".timetable-print-header")).toBeHidden();
+    await expect(page.locator(".print-document")).toBeHidden();
+    await page.getByText(messages.school.printing.title).click();
+    await expect(page.locator(".print-document")).toHaveCount(0);
     // Excel (M5): the workbook downloads from the version.
     const download = page.waitForEvent("download");
     await page.getByRole("link", { name: timetable.exportExcel }).click();

@@ -1,12 +1,14 @@
 import { SectionTitle } from "../../components/ui/section-title";
 import { Archive, ArchiveRestore, BadgeCheck, CalendarCheck, CalendarRange, FileDown, FilePen, GitCompareArrows, History, PencilLine, Play, Printer, ShieldCheck, Stamp } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 import { Link, useSearchParams } from "react-router-dom";
 import { userErrorMessage } from "../../api";
 import { Alert } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
+import { Checkbox } from "../../components/ui/checkbox";
 import { ChipGroup } from "../../components/ui/chip-group";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { Field } from "../../components/ui/field";
@@ -18,6 +20,8 @@ import { useFormatter, useSchoolContext } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
 import { useApproveTimetable, useArchiveTimetable, useRollbackTimetable, useTimetable, useTimetableVersions, type Term, type Timetable, type TimetableVersionSummary } from "./timetableApi";
 import { VersionComparison } from "./VersionComparison";
+import { PrintDocument } from "./PrintDocument";
+import { defaultOptions, type Orientation, type PaperSize, type PrintOptions, type PrintScope } from "./printing";
 import { lookups, MasterGrid, sessionViewOf, WeekGrid } from "./TimetableGrids";
 import { TimetableEditor } from "./TimetableEditor";
 
@@ -53,16 +57,21 @@ function TimetableViews({ timetable, editing, onEditingChange, onSaved }: ViewsP
   const teacherShifts = [...new Set(teacherLessons.map((lesson) => look.section(lesson.sectionId)?.shiftId ?? 0))];
   const lessonCountOf = (shiftId: number) => Math.max(1, shifts.get(shiftId)?.lessons.length ?? 0,
     ...timetable.sections.filter((item) => item.shiftId === shiftId).flatMap((item) => item.allowedByDay.map((day) => day.lessons)));
-  const school = useSchoolContext();
-  const viewTitle = view === "master" ? text.views.master : view === "teacher" ? teacher?.name ?? "" : section ? look.sectionName(section.id) : "";
+  // MF5: the print job follows the owner's defaults for what is printed, and can be changed before printing.
+  const [print, setPrint] = useState<PrintOptions>(() => defaultOptions("current", "section"));
+  const chooseView = (next: View) => { setView(next); setEditing(false); setPrint((options) => defaultOptions(options.scope, next)); };
+  // The print document is built only while the print options are open or the browser is printing (Ctrl+P included).
+  const [printPanelOpen, setPrintPanelOpen] = useState(false);
+  const [browserPrinting, setBrowserPrinting] = useState(false);
+  useEffect(() => {
+    const before = () => flushSync(() => setBrowserPrinting(true));
+    const after = () => setBrowserPrinting(false);
+    window.addEventListener("beforeprint", before);
+    window.addEventListener("afterprint", after);
+    return () => { window.removeEventListener("beforeprint", before); window.removeEventListener("afterprint", after); };
+  }, []);
   return (
-    <div className={`timetable-views${view === "master" ? " is-landscape" : ""}`}>
-      <div className="timetable-print-header">
-        <strong>{school.data?.schoolName ?? ""}</strong>
-        <span>{text.printYear(school.data?.currentYear?.name ?? "", school.data?.currentTerm?.name ?? "")}</span>
-        <span>{text.printVersion(format.number(timetable.summary.number), viewTitle)}</span>
-        {timetable.sessions && <span>{text.printSemester(text.terms[term])}</span>}
-      </div>
+    <div className="timetable-views">
       {timetable.sessions && (
         <div className="timetable-controls timetable-term">
           <ChipGroup label={text.termLabel} caption={text.termLabel} value={term} onChange={(value) => setTerm(value === 2 ? 2 : 1)}
@@ -72,16 +81,15 @@ function TimetableViews({ timetable, editing, onEditingChange, onSaved }: ViewsP
       )}
       {!editing && (
         <div className="timetable-controls">
-          <Button variant="secondary" icon={<Printer aria-hidden="true" size={18} />} onClick={() => window.print()}>{text.print}</Button>
           <a className="link-button" href={`/api/v1/timetables/${timetable.summary.id}/export.xlsx${timetable.sessions ? `?term=${term}` : ""}`} download>
             <FileDown aria-hidden="true" size={18} /><span>{text.exportExcel}</span>
           </a>
-          <span className="card-note">{text.printHint}</span>
         </div>
       )}
+      {!editing && <PrintPanel options={print} view={view} onChange={setPrint} onToggle={setPrintPanelOpen} />}
       <div className="timetable-controls">
         <Field id="timetable-view" label={text.viewsLabel}>
-          <Select id="timetable-view" value={view} onChange={(event) => { setView(event.target.value as View); setEditing(false); }}
+          <Select id="timetable-view" value={view} onChange={(event) => chooseView(event.target.value as View)}
             options={(["section", "teacher", "master"] as const).map((value) => ({ value, label: text.views[value] }))} />
         </Field>
         {view === "section" && (
@@ -121,7 +129,41 @@ function TimetableViews({ timetable, editing, onEditingChange, onSaved }: ViewsP
         </>
       )}
       {view === "master" && <MasterGrid timetable={timetable} format={format} look={look} term={term} />}
+      {!editing && (printPanelOpen || browserPrinting) && <PrintDocument timetable={timetable} options={print} term={term} format={format} look={look}
+        current={{ view, sectionId: section?.id, teacherId: teacher?.id }} />}
     </div>
+  );
+}
+
+const printText = messages.school.printing;
+
+/** MF5: what to print, on which paper and orientation, and «ملاءمة الصفحة»; choosing what to print restores its defaults. */
+type PrintPanelProps = { options: PrintOptions; view: View; onChange: (options: PrintOptions) => void; onToggle: (open: boolean) => void };
+
+function PrintPanel({ options, view, onChange, onToggle }: PrintPanelProps) {
+  return (
+    <details className="advanced-options tool-panel print-options" onToggle={(event) => onToggle(event.currentTarget.open)}>
+      <summary><Printer aria-hidden="true" size={18} /><span>{printText.title}</span></summary>
+      <div className="print-options-fields">
+        <Field id="print-scope" label={printText.scope}>
+          <Select id="print-scope" value={options.scope} onChange={(event) => onChange(defaultOptions(event.target.value as PrintScope, view))}
+            options={(["current", "sections", "teachers", "school"] as const).map((value) => ({ value, label: printText.scopes[value] }))} />
+        </Field>
+        <Field id="print-paper" label={printText.paper}>
+          <Select id="print-paper" value={options.paper} onChange={(event) => onChange({ ...options, paper: event.target.value as PaperSize })}
+            options={(["A4", "A3"] as const).map((value) => ({ value, label: value }))} />
+        </Field>
+        <Field id="print-orientation" label={printText.orientation}>
+          <Select id="print-orientation" value={options.orientation} onChange={(event) => onChange({ ...options, orientation: event.target.value as Orientation })}
+            options={(["portrait", "landscape"] as const).map((value) => ({ value, label: printText.orientations[value] }))} />
+        </Field>
+      </div>
+      <Checkbox checked={options.fit} onChange={(event) => onChange({ ...options, fit: event.target.checked })}>{printText.fit}</Checkbox>
+      <div>
+        <Button icon={<Printer aria-hidden="true" size={18} />} onClick={() => window.print()}>{printText.print}</Button>
+      </div>
+      <p className="card-note">{printText.hint}</p>
+    </details>
   );
 }
 
@@ -177,7 +219,7 @@ export function TimetablePage() {
   };
 
   return (
-    <div className="page timetable-print-root">
+    <div className="page">
       <PageHeader icon={CalendarCheck} title={text.title} description={text.description} />
       {!yearId && school.isSuccess && <Alert tone="warning" message={messages.school.readiness.noYear} />}
       {versions.isError && <Alert tone="error" message={text.loadFailed}>{userErrorMessage(versions.error)}</Alert>}

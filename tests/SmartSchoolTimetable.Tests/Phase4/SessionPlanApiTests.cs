@@ -132,22 +132,22 @@ public sealed partial class SessionPlanApiTests
         {
             foreach (var book in new[] { first, second })
                 Assert.DoesNotContain(book.Worksheets.SelectMany(sheet => sheet.CellsUsed()), cell => TwentyFourHour().IsMatch(cell.GetString()));
-            Assert.Contains("الفصل الدراسي الأول", first.Worksheets.First().Cell(2, 1).GetString(), StringComparison.Ordinal);
-            Assert.Contains("الفصل الدراسي الثاني", second.Worksheets.First().Cell(2, 1).GetString(), StringComparison.Ordinal);
+            Assert.Contains("الفصل الدراسي الأول", first.Worksheets.First().Cell(3, 1).GetString(), StringComparison.Ordinal);
+            Assert.Contains("الفصل الدراسي الثاني", second.Worksheets.First().Cell(3, 1).GetString(), StringComparison.Ordinal);
 
             var section1 = first.Worksheets.Skip(1).First();
             var section2 = second.Worksheets.Skip(1).First();
-            Assert.Equal("الحصة ١", section1.Cell(5, 2).GetString());
-            Assert.Equal("الدوام الصباحي", section1.Cell(6, 1).GetString());
-            Assert.Equal("٨:٠٠ ص – ٨:٤٠ ص", section1.Cell(6, 2).GetString());
-            Assert.Equal("الدوام المسائي", section1.Cell(7, 1).GetString());
-            Assert.Equal("١:٠٠ م – ١:٤٠ م", section1.Cell(7, 2).GetString());
-            Assert.Equal("الأحد\nصباحي", section1.Cell(8, 1).GetString());
-            Assert.Equal("الأحد\nمسائي", section2.Cell(8, 1).GetString());
-            Assert.Equal("الخميس\nمسائي", section1.Cell(12, 1).GetString());
-            Assert.Equal("الخميس\nصباحي", section2.Cell(12, 1).GetString());
+            Assert.Equal("الحصة ١", section1.Cell(6, 2).GetString());
+            Assert.Equal("الدوام الصباحي", section1.Cell(7, 1).GetString());
+            Assert.Equal("٨:٠٠ ص – ٨:٤٠ ص", section1.Cell(7, 2).GetString());
+            Assert.Equal("الدوام المسائي", section1.Cell(8, 1).GetString());
+            Assert.Equal("١:٠٠ م – ١:٤٠ م", section1.Cell(8, 2).GetString());
+            Assert.Equal("الأحد\nصباحي", section1.Cell(9, 1).GetString());
+            Assert.Equal("الأحد\nمسائي", section2.Cell(9, 1).GetString());
+            Assert.Equal("الخميس\nمسائي", section1.Cell(13, 1).GetString());
+            Assert.Equal("الخميس\nصباحي", section2.Cell(13, 1).GetString());
             // The grid itself does not change with the semester.
-            for (var row = 8; row <= 12; row++)
+            for (var row = 9; row <= 13; row++)
             {
                 for (var column = 2; column <= 7; column++)
                     Assert.Equal(section1.Cell(row, column).GetString(), section2.Cell(row, column).GetString());
@@ -155,10 +155,10 @@ public sealed partial class SessionPlanApiTests
 
             var master1 = first.Worksheets.First();
             var master2 = second.Worksheets.First();
-            Assert.Equal("الأحد — صباحي", master1.Cell(5, 2).GetString());
-            Assert.Equal("١\n٨:٠٠ ص – ٨:٤٠ ص", master1.Cell(6, 2).GetString());
-            Assert.Equal("الأحد — مسائي", master2.Cell(5, 2).GetString());
-            Assert.Equal("١\n١:٠٠ م – ١:٤٠ م", master2.Cell(6, 2).GetString());
+            Assert.Equal("الأحد — صباحي", master1.Cell(6, 2).GetString());
+            Assert.Equal("١\n٨:٠٠ ص – ٨:٤٠ ص", master1.Cell(7, 2).GetString());
+            Assert.Equal("الأحد — مسائي", master2.Cell(6, 2).GetString());
+            Assert.Equal("١\n١:٠٠ م – ١:٤٠ م", master2.Cell(7, 2).GetString());
         }
         await AssertApiErrorAsync(await host.Client.GetAsync($"/api/v1/timetables/{versionId}/export.xlsx?term=3"), ErrorCodes.ValidationFailed);
 
@@ -177,7 +177,7 @@ public sealed partial class SessionPlanApiTests
         Assert.False(plain.GetProperty("summary").GetProperty("stale").GetBoolean());
         using var singleBook = await ExcelAsync(host, versionId, 1);
         Assert.DoesNotContain("الفصل", singleBook.Worksheets.First().Cell(2, 1).GetString(), StringComparison.Ordinal);
-        Assert.Equal("الحصة ١\n٨:٠٠ ص – ٨:٤٠ ص", singleBook.Worksheets.Skip(1).First().Cell(5, 2).GetString());
+        Assert.Equal("الحصة ١\n٨:٠٠ ص – ٨:٤٠ ص", singleBook.Worksheets.Skip(1).First().Cell(6, 2).GetString());
     }
 
     [Fact]

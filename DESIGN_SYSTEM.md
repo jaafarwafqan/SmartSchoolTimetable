@@ -38,6 +38,7 @@ Use semantic tokens only. Never write a hex value outside `tokens.css`.
 | Warning | `warning` / `warning-soft` | #93370D / #FFFAEB | Shortages, cautions |
 | Info | `info` / `info-soft` | #1758A6 / #E8F0FF | Neutral notices |
 | Subjects | `subject-1` to `subject-10` + `on-subject` | pastel set | Timetable cells |
+| Print (MF5) | `print-ink` / `print-header` / `print-paper` | #000000 / #e6e6e6 / #ffffff | Official printed timetable only: black text and rules, grey column headers, clear with background graphics off |
 
 Rules:
 - Text on any surface must reach **4.5:1**; large text and control borders **3:1**. A unit test enforces the token pairs.

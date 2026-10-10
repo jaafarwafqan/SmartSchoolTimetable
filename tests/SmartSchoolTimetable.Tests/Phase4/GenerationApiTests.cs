@@ -169,9 +169,14 @@ public sealed class GenerationApiTests
             Assert.All(workbook.Worksheets, sheet => Assert.True(sheet.RightToLeft));
             Assert.Equal(context.GetProperty("schoolName").GetString(), workbook.Worksheets.First().Cell(1, 1).GetString());
             var sectionSheet = workbook.Worksheets.Skip(1).First();
-            Assert.Equal("اليوم", sectionSheet.Cell(5, 1).GetString());
+            // MF5: school, «جدول الدروس الأسبوعي», year (and semester), the section; the footer signs and numbers the pages.
+            Assert.Equal("جدول الدروس الأسبوعي", sectionSheet.Cell(2, 1).GetString());
+            Assert.StartsWith("السنة الدراسية 2026-2027", sectionSheet.Cell(3, 1).GetString(), StringComparison.Ordinal);
+            Assert.Contains("التوقيع", sectionSheet.PageSetup.Footer.Center.GetText(ClosedXML.Excel.XLHFOccurrence.OddPages), StringComparison.Ordinal);
+            Assert.Contains("الختم", sectionSheet.PageSetup.Footer.Center.GetText(ClosedXML.Excel.XLHFOccurrence.OddPages), StringComparison.Ordinal);
+            Assert.Equal("اليوم", sectionSheet.Cell(6, 1).GetString());
             // R1: lesson headers carry the 12-hour clock (the seeded shift starts at 08:00 with 40-minute lessons).
-            Assert.Equal("الحصة ١\n٨:٠٠ ص – ٨:٤٠ ص", sectionSheet.Cell(5, 2).GetString());
+            Assert.Equal("الحصة ١\n٨:٠٠ ص – ٨:٤٠ ص", sectionSheet.Cell(6, 2).GetString());
             Assert.DoesNotContain(workbook.Worksheets.SelectMany(sheet => sheet.CellsUsed()), cell => System.Text.RegularExpressions.Regex.IsMatch(cell.GetString(), @"\b(1[3-9]|2[0-3]):\d\d\b"));
             Assert.Equal(5, sectionSheet.CellsUsed(cell => cell.GetString().StartsWith("الرياضيات", StringComparison.Ordinal)).Count());
         }

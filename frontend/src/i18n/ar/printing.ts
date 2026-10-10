@@ -1,0 +1,37 @@
+// MF5 strings: official printing (paper, orientation, fit to page, batch printing, header and signature footer).
+import { isolate } from "../isolate";
+
+export const printing = {
+  open: "طباعة",
+  title: "خيارات الطباعة",
+  hint: "لحفظ PDF اختر «حفظ بتنسيق PDF» في نافذة الطباعة. تبقى الحدود والنصوص واضحة حتى مع إيقاف «رسومات الخلفية».",
+  scope: "ما يُطبع",
+  scopes: {
+    current: "العرض الحالي",
+    sections: "كل الشعب، شعبة في كل صفحة",
+    teachers: "كل المعلمين، معلم في كل صفحة",
+    school: "جدول المدرسة كاملاً",
+  },
+  paper: "حجم الورق",
+  orientation: "اتجاه الصفحة",
+  orientations: { portrait: "عمودي", landscape: "أفقي" },
+  fit: "ملاءمة الصفحة (تصغير تلقائي حتى لا يُقص شيء)",
+  print: "طباعة الآن",
+  close: "إغلاق خيارات الطباعة",
+  pages: (pages: string) => `عدد الصفحات المتوقع: ${pages}`,
+  documentTitle: "جدول الدروس الأسبوعي",
+  year: (year: string) => `السنة الدراسية ${isolate(year)}`,
+  semester: (term: string) => isolate(term),
+  version: (number: string) => `الإصدار ${number}`,
+  section: (name: string) => `الشعبة: ${name}`,
+  teacher: (name: string) => `المعلم: ${isolate(name)}`,
+  school: "جدول المدرسة",
+  principal: (name: string) => `مدير المدرسة: ${isolate(name)}`,
+  principalBlank: "مدير المدرسة:",
+  signature: "التوقيع:",
+  stamp: "الختم:",
+  printedOn: (date: string) => `تاريخ الطباعة: ${date}`,
+  pageBefore: "صفحة ",
+  pageMiddle: " من ",
+  logoAlt: "شعار المدرسة",
+} as const;

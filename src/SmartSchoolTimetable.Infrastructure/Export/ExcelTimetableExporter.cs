@@ -22,6 +22,7 @@ public sealed class ExcelTimetableExporter : ITimetableExporter
     };
 
     private const string MasterSheet = "الجدول العام";
+    private const string DocumentTitle = "جدول الدروس الأسبوعي";
     private const int MaxSheetName = 31;
 
     public byte[] ToExcel(TimetableDocumentHeader header, TimetableDto timetable)
@@ -193,17 +194,38 @@ public sealed class ExcelTimetableExporter : ITimetableExporter
     }
 
     /// <summary>School name, year and the sheet title on top; returns the first row of the table.</summary>
+    /// <summary>
+    /// MF5: the same header as the printed timetable — school, «جدول الدروس الأسبوعي», year and semester (and version), and
+    /// the section or teacher — with the logo when there is one; the footer carries the principal's name, signature and
+    /// stamp lines, the print date and page numbers.
+    /// </summary>
     private static int WriteHeader(IXLWorksheet sheet, TimetableDocumentHeader header, string title, Func<int, string> number, string? term)
     {
         sheet.Cell(1, 1).Value = header.SchoolName;
         sheet.Cell(1, 1).Style.Font.Bold = true;
         sheet.Cell(1, 1).Style.Font.FontSize = 14;
-        sheet.Cell(2, 1).Value = term is null
+        sheet.Cell(2, 1).Value = DocumentTitle;
+        sheet.Cell(2, 1).Style.Font.Bold = true;
+        var semester = term ?? header.TermName;
+        sheet.Cell(3, 1).Value = semester is null
             ? $"السنة الدراسية {header.YearLabel} — الإصدار {number(header.VersionNumber)}"
-            : $"السنة الدراسية {header.YearLabel} — {term} — الإصدار {number(header.VersionNumber)}";
-        sheet.Cell(3, 1).Value = title;
-        sheet.Cell(3, 1).Style.Font.Bold = true;
-        return 5;
+            : $"السنة الدراسية {header.YearLabel} — {semester} — الإصدار {number(header.VersionNumber)}";
+        sheet.Cell(4, 1).Value = title;
+        sheet.Cell(4, 1).Style.Font.Bold = true;
+        if (header.Logo is { Length: > 0 } logo)
+        {
+            using var image = new MemoryStream(logo);
+            sheet.AddPicture(image).MoveTo(sheet.Cell(1, 4)).WithSize(64, 64);
+        }
+        var footer = sheet.PageSetup.Footer;
+        var principal = string.IsNullOrWhiteSpace(header.PrincipalName) ? "مدير المدرسة: ____________" : $"مدير المدرسة: {header.PrincipalName}";
+        footer.Center.AddText($"{principal}    التوقيع: ____________    الختم: ____________", XLHFOccurrence.AllPages);
+        footer.Right.AddText("صفحة ", XLHFOccurrence.AllPages);
+        footer.Right.AddText(XLHFPredefinedText.PageNumber, XLHFOccurrence.AllPages);
+        footer.Right.AddText(" من ", XLHFOccurrence.AllPages);
+        footer.Right.AddText(XLHFPredefinedText.NumberOfPages, XLHFOccurrence.AllPages);
+        footer.Left.AddText(XLHFPredefinedText.Date, XLHFOccurrence.AllPages);
+        return 6;
     }
 
     private static void StyleHeader(IXLRange range)

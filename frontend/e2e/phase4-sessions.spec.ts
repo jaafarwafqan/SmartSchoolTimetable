@@ -100,9 +100,11 @@ test("(R3, MF7) double shift: one card, map the days, generate once, read semest
     await expect(master.locator("thead")).toContainText("١:٠٠ م");
     await expectNo24HourTimes(page, "master timetable, semester 2");
 
-    // Print names the semester; Excel exports the chosen semester.
+    // The official print (MF5) names the semester and shows its evening clock; Excel exports the chosen semester.
+    await page.getByText(messages.school.printing.title).click();
     await page.emulateMedia({ media: "print" });
-    await expect(page.locator(".timetable-print-header")).toContainText(timetable.printSemester(timetable.terms[2]));
+    await expect(page.locator(".print-page-header")).toContainText(timetable.terms[2]);
+    await expect(page.locator(".print-document thead")).toContainText("١:٠٠ م");
     await page.emulateMedia({ media: "screen" });
     const download = page.waitForEvent("download");
     await page.getByRole("link", { name: timetable.exportExcel }).click();
