@@ -30,8 +30,9 @@ function TimetableViews({ timetable, onSaved }: { timetable: Timetable; onSaved:
   const [sectionId, setSectionId] = useState<number>(timetable.sections[0]?.id ?? 0);
   const [teacherId, setTeacherId] = useState<number>(timetable.teachers[0]?.id ?? 0);
   const [editing, setEditing] = useState(false);
-  // R3: two-session schools choose the semester; the grid is the same, the clock follows the day's session.
-  const [term, setTerm] = useState<Term>(1);
+  // R3: two-session schools choose the semester; the grid is the same, the clock follows the day's session. It opens on
+  // the current semester when the year's dates tell it, otherwise on semester 1 (#86).
+  const [term, setTerm] = useState<Term>(timetable.sessions?.currentTerm ?? 1);
   const shifts = new Map(timetable.shifts.map((shift) => [shift.id, shift]));
   const section = timetable.sections.find((item) => item.id === sectionId) ?? timetable.sections[0];
   const teacher = timetable.teachers.find((item) => item.id === teacherId) ?? timetable.teachers[0];

@@ -31,4 +31,5 @@ Before R3, «مزدوج» (`StudyType.Dual`) meant something else: two shifts, e
 
 ## Consequences
 - The old two-shift mode is kept and relabelled «ورديتان بشعب مختلفة», so the two meanings of «مزدوج» are not confused (DECISIONS_PENDING #82).
-- Copying a year's structure to a new year does not copy the session plan yet; the new year starts as one session (#84).
+- Copying a year's structure to a new year copies the session plan onto the copied shift (#84, owner decision).
+- The viewer opens on the semester whose term dates contain today, otherwise semester 1 (#86, owner decision).

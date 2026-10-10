@@ -1,6 +1,10 @@
 # Changelog
 
 ## [Unreleased]
+### Phase 4 follow-up: owner decisions on R3 (tag `phase-4i`)
+- #82 approved: the old two-shift mode stays.
+- #84: copying a year's structure copies the session plan (double shift, evening timing and breaks, both semesters' mapping) onto the copied shift.
+- #86: the timetable viewer opens on the semester whose term dates contain today, otherwise semester 1 (`GridSessions.CurrentTerm`).
 ### Phase 4 follow-up R3 (branch `phase-4-followup`)
 - **R3 double shift (دوام مزدوج) with daily sessions (ADR 0043):**
   - `SessionPlan` per year: one, two, or three sessions (three in the model only, «قريباً» in the UI); the timing of the sessions other than morning; and the day→session mapping per semester.

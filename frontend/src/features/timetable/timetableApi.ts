@@ -31,6 +31,8 @@ export type GridSessions = {
   shiftId: number;
   timings: { session: SessionName; lessons: GridLessonTime[] }[];
   days: { term: 1 | 2; day: number; session: SessionName }[];
+  /** The semester whose dates contain today; null when the year's dates do not tell (then semester 1). */
+  currentTerm: 1 | 2 | null;
 };
 export type Term = 1 | 2;
 

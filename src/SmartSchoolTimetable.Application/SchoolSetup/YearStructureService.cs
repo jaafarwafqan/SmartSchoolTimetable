@@ -5,7 +5,7 @@ using SmartSchoolTimetable.Domain.SchoolSetup;
 namespace SmartSchoolTimetable.Application.SchoolSetup;
 
 /// <summary>
-/// Year-scoped structure: shifts with their periods, stages and sections. Calendar days are never copied.
+/// Year-scoped structure: shifts with their periods and daily sessions, stages and sections. Calendar days are never copied.
 /// </summary>
 public sealed class YearStructureService(IDataStore store) : IYearStructure
 {
@@ -28,6 +28,11 @@ public sealed class YearStructureService(IDataStore store) : IYearStructure
         foreach (var copy in stageCopies.Values)
             store.Add(copy);
         await store.SaveChangesAsync(cancellationToken);
+
+        // R3 daily sessions follow their shift: double shift, the evening timing and breaks, and the mapping of both semesters.
+        if (await store.FirstOrDefaultAsync(store.Query<SessionPlan>().Where(plan => plan.AcademicYearId == sourceYearId), cancellationToken) is { } sessions
+            && shiftCopies.TryGetValue(sessions.ShiftId, out var sessionShift))
+            store.Add(sessions.CopyTo(targetYearId, sessionShift.Id));
 
         var stageIds = stageCopies.Keys.ToArray();
         var sourceSections = await store.ListAsync(store.Query<Section>().Where(section => stageIds.Contains(section.StageId)), cancellationToken);

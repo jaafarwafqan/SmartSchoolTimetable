@@ -60,6 +60,21 @@ public sealed class SessionPlanTests
     }
 
     [Fact]
+    public void TheCurrentSemesterComesFromTheTermDatesWhenTheyTellIt()
+    {
+        var first = (new DateOnly(2026, 9, 1), new DateOnly(2027, 1, 15));
+        var second = (new DateOnly(2027, 2, 1), new DateOnly(2027, 6, 30));
+        Assert.Equal(1, SessionPlan.SemesterOn([second, first], new DateOnly(2026, 10, 3)));
+        Assert.Equal(1, SessionPlan.SemesterOn([first, second], new DateOnly(2027, 1, 15)));
+        Assert.Equal(2, SessionPlan.SemesterOn([first, second], new DateOnly(2027, 2, 1)));
+        Assert.Null(SessionPlan.SemesterOn([first, second], new DateOnly(2027, 1, 20)));
+        Assert.Null(SessionPlan.SemesterOn([first, second], new DateOnly(2027, 8, 1)));
+        Assert.Null(SessionPlan.SemesterOn([], new DateOnly(2026, 10, 3)));
+        var third = (new DateOnly(2027, 7, 1), new DateOnly(2027, 8, 30));
+        Assert.Null(SessionPlan.SemesterOn([first, second, third], new DateOnly(2027, 8, 1)));
+    }
+
+    [Fact]
     public void SessionsWithADifferentLessonCountAreRefused()
     {
         var error = Assert.Throws<DomainValidationException>(() => Plan(Timing(5, 13 * 60), OwnerExample()));

@@ -66,10 +66,14 @@ test("(R3) double shift: map the days, generate once, read semester 1 and 2", as
     await page.getByRole("link", { name: generation.openTimetable }).click();
     await expect(page.getByText(timetable.verified)).toBeVisible();
 
-    // Semester 1: Sunday is morning (8:00 am), the clock rows name both sessions.
+    // Semester 1: Sunday is morning (8:00 am), the clock rows name both sessions. The page opens on the semester whose
+    // dates contain today (#86), so the test chooses semester 1 itself rather than depend on the real date.
     const grid = page.locator(".ui-tt-grid").first();
     const sunday = grid.locator("tbody tr").first().locator("th");
-    await expect(page.getByRole("group", { name: timetable.termLabel })).toBeVisible();
+    const terms = page.getByRole("group", { name: timetable.termLabel });
+    await expect(terms.getByRole("button", { pressed: true })).toHaveCount(1);
+    await terms.getByRole("button", { name: timetable.terms[1] }).click();
+    await expect(terms.getByRole("button", { name: timetable.terms[1] })).toHaveAttribute("aria-pressed", "true");
     await expect(sunday).toContainText(timetable.sessionShort.morning);
     await expect(grid.locator("thead")).toContainText(timetable.sessionNames.morning);
     await expect(grid.locator("thead")).toContainText(timetable.sessionNames.evening);

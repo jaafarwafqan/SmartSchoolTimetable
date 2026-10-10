@@ -117,6 +117,31 @@ public sealed class SessionPlan : VersionedEntity
         Touch();
     }
 
+    /// <summary>
+    /// The semester (1 or 2) whose dates contain <paramref name="date"/>: the year's terms in start-date order. Null when
+    /// the dates do not tell (no terms, a date between or outside them, or a third term); the viewer then shows semester 1.
+    /// </summary>
+    public static int? SemesterOn(IEnumerable<(DateOnly Start, DateOnly End)> terms, DateOnly date)
+    {
+        ArgumentNullException.ThrowIfNull(terms);
+        var ordered = terms.OrderBy(term => term.Start).ToArray();
+        var index = Array.FindIndex(ordered, term => term.Start <= date && date <= term.End);
+        return index is >= 0 and < MaxTerms ? index + 1 : null;
+    }
+
+    /// <summary>
+    /// A copy for another academic year (new-year structure copy, DECISIONS_PENDING #84): the system, the timing of the
+    /// other sessions with their breaks, and the day→session mapping of both semesters, on the copy of the shift.
+    /// </summary>
+    public SessionPlan CopyTo(long academicYearId, long shiftId)
+    {
+        var copy = Create(academicYearId, shiftId);
+        copy.System = System;
+        copy._periods.AddRange(_periods);
+        copy._days.AddRange(_days);
+        return copy;
+    }
+
     /// <summary>The session of a working day in a semester (morning when unmapped, or for a single-session year).</summary>
     public SessionKind SessionOn(int term, int day) =>
         System == SessionSystem.OneSession ? SessionKind.Morning : _days.FirstOrDefault(item => item.Term == term && item.Day == day)?.Session ?? SessionKind.Morning;

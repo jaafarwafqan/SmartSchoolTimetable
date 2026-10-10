@@ -5,6 +5,7 @@ using SmartSchoolTimetable.Domain.Generation;
 using PeriodKind = SmartSchoolTimetable.Domain.SchoolSetup.PeriodKind;
 using SessionKind = SmartSchoolTimetable.Domain.SchoolSetup.SessionKind;
 using SessionPlan = SmartSchoolTimetable.Domain.SchoolSetup.SessionPlan;
+using AcademicYear = SmartSchoolTimetable.Domain.SchoolSetup.AcademicYear;
 using SessionSystem = SmartSchoolTimetable.Domain.SchoolSetup.SessionSystem;
 
 namespace SmartSchoolTimetable.Application.Generation;
@@ -28,7 +29,8 @@ public sealed record GridSessionDay(int Term, int Day, string Session);
 /// shift's own timing from the snapshot; the other sessions and the mapping are the current settings (not hashed:
 /// they change no lesson, DECISIONS_PENDING #81).
 /// </summary>
-public sealed record GridSessions(string System, long ShiftId, IReadOnlyList<GridSessionTiming> Timings, IReadOnlyList<GridSessionDay> Days)
+/// <param name="CurrentTerm">The semester whose dates contain today (the viewer opens on it), or null when the year's dates do not tell.</param>
+public sealed record GridSessions(string System, long ShiftId, IReadOnlyList<GridSessionTiming> Timings, IReadOnlyList<GridSessionDay> Days, int? CurrentTerm = null)
 {
     /// <summary>The session of a working day in a semester (morning when unmapped).</summary>
     public string SessionOn(int term, int day) =>
@@ -80,6 +82,12 @@ public sealed class TimetableService(IDataStore store, TimeProvider clock)
         var current = await SchedulingInputBuilder.BuildAsync(store, version.AcademicYearId, token);
         var input = SnapshotOf(version);
         var sessions = await SessionsAsync(store, version.AcademicYearId, input, token);
+        if (sessions is not null && await store.FirstOrDefaultAsync(store.Read<AcademicYear>().Where(year => year.Id == version.AcademicYearId), token) is { } year)
+        {
+            // #86: open on the semester whose dates contain today (the school computer's local date).
+            var today = DateOnly.FromDateTime(clock.GetLocalNow().DateTime);
+            sessions = sessions with { CurrentTerm = SessionPlan.SemesterOn(year.Terms.Select(term => (term.StartDate, term.EndDate)), today) };
+        }
         return OperationResult.Success(ToDto(version, input, current is null ? version.InputHash : SchedulingInputHash.Compute(current), sessions));
     }
 

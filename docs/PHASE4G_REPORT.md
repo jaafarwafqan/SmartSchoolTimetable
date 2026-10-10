@@ -206,3 +206,44 @@ There was no database constraint on the row count, so there is no migration.
 | Playwright with axe | 24 passed (full suite, including `phase4-sessions`) |
 | Published executable (`SmartSchoolTimetable-20261010-004627`) | `phase4-sessions` on a temporary database (set double shift, map the days, generate once, view S1 and S2, master, print header, Excel term 2) and `phase4-generation` (single-shift regression): 2 passed |
 | Owner's real database | not used; `%LOCALAPPDATA%\SmartSchoolTimetable\timetable.db` last written 2026-10-09 14:40, before R3 |
+
+## Owner decisions on R3 (tag `phase-4i`)
+
+**What changed:**
+- **#82 approved:** the old two-shift mode («ورديتان بشعب مختلفة») stays as it is.
+- **#84, year copy:** creating a year that copies the structure now also copies the session plan onto the copy of the shift:
+  - the double system;
+  - the evening timing with its breaks;
+  - the day→session mapping of both semesters.
+
+  Files: `SessionPlan.CopyTo`, `YearStructureService.CopyAsync`.
+- **#86, opening semester:** the viewer opens on the semester whose term dates contain today. The year's terms are taken in start-date order; the first two are semesters 1 and 2. Otherwise it opens on semester 1: no terms, a date between or outside the terms, or a third term.
+  - Files: `SessionPlan.SemesterOn`, `GridSessions.CurrentTerm`, `TimetablePage`.
+  - The Playwright scenario now selects semester 1 itself, so it does not depend on the real date.
+
+**Tests added:**
+- `SessionPlanApiTests.CopyingAYearsStructureCopiesItsDailySessions`: copy a double-shift year, make the copy current, and get the same timings, breaks and mapping on a new shift id.
+- `SessionPlanTests.TheCurrentSemesterComesFromTheTermDatesWhenTheyTellIt`: inside each term, on the boundaries, between terms, after the year, no terms, and a third term.
+- An API check in the main scenario: `currentTerm` is null without terms, and 2 once semester 2's dates contain the test clock's date (2026-10-03).
+
+**#81 and #85: no decision needed.** Both follow what the owner asked; the text is below for review.
+- **#81** (the owner asked me to decide and document this):
+  - Only `ShiftInput.SessionBreaksAfter` is hashed: the lesson numbers after which another session has a break and the shift does not. It changes which double lessons are valid, so a version made before a new evening break becomes "out of date".
+  - Evening clock times and the day→session mapping are not hashed: they change no lesson, only the times shown.
+  - A null value is left out of the JSON, so every single-session school keeps its exact hash.
+- **#85** (the owner's default rule, with the investigation result):
+  - The solver already supports different lesson counts per day: `SectionInput.AllowedByDay`, `ShiftInput.LessonsByDay`, and the H3 test with [4,4,4,4,2].
+  - Sessions must still have the same lessons per day. A session decides a day's clock, not how many lessons it has, so per-day counts (ADR 0020) apply to every session alike.
+  - No per-session-per-day counts were added. They would need lesson counts per (semester, day), which is two grids or a model that changes with the semester. I would ask before doing that.
+
+## Gates at `phase-4i`
+
+| Gate | Result |
+|---|---|
+| `dotnet build -c Release` | 0 warnings, 0 errors |
+| `dotnet test -c Release` | 312 passed, 4 skipped (the performance category) |
+| ESLint and Stylelint (`npm run lint`) | clean |
+| Vitest | 112 passed (29 files) |
+| Playwright with axe | 24 passed (full suite) |
+| Published executable (`SmartSchoolTimetable-20261010-090308`), temporary database | `phase4-sessions` and `phase4-generation`: 2 passed |
+| Owner's real database | not used; last written 2026-10-09 14:40 |

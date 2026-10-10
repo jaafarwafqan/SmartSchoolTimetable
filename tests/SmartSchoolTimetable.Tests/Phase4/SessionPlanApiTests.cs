@@ -68,7 +68,7 @@ public sealed partial class SessionPlanApiTests
     public async Task ADoubleShiftSchoolHasOneTimetableWhoseTimesFollowTheSemester()
     {
         await using var host = new TestHost();
-        var (school, _) = await ReadySchoolAsync(host);
+        var (school, yearId) = await ReadySchoolAsync(host);
         var token = school.Token;
 
         // A single-session school: no plan, no extra step.
@@ -114,6 +114,17 @@ public sealed partial class SessionPlanApiTests
         Assert.Equal("evening", SessionOf(2, 7));
         Assert.Equal("evening", SessionOf(1, 4));
         Assert.Equal("morning", SessionOf(2, 4));
+
+        // #86: without term dates the viewer opens on semester 1 (currentTerm null). With terms, today (2026-10-03 on
+        // the test clock) inside semester 2's dates opens semester 2.
+        Assert.Equal(JsonValueKind.Null, sessions.GetProperty("currentTerm").ValueKind);
+        var yearPath = $"/api/v1/academic-years/{yearId}";
+        var withFirst = await JsonAsync(await host.PostAsync($"{yearPath}/terms", new { name = "الفصل الأول", startDate = "2026-09-01", endDate = "2026-09-30",
+            version = (await JsonAsync(await host.Client.GetAsync(yearPath))).GetProperty("version").GetInt32() }, token));
+        var withSecond = await host.PostAsync($"{yearPath}/terms", new { name = "الفصل الثاني", startDate = "2026-10-01", endDate = "2027-06-30",
+            version = withFirst.GetProperty("version").GetInt32() }, token);
+        Assert.Equal(HttpStatusCode.OK, withSecond.StatusCode);
+        Assert.Equal(2, (await JsonAsync(await host.Client.GetAsync($"/api/v1/timetables/{versionId}"))).GetProperty("sessions").GetProperty("currentTerm").GetInt32());
 
         // Excel: the same lessons, the semester in the header, the clock of each day's session in 12-hour form.
         using (var first = await ExcelAsync(host, versionId, 1))
@@ -192,6 +203,36 @@ public sealed partial class SessionPlanApiTests
         // A break in a new gap (after lesson 2) can split a double lesson: the hash changes.
         await JsonAsync(await SaveAsync(host, token, "twoSessions", Rows(6, 13 * 60, breakAfter: 2), OwnerExample(), otherTimes.GetProperty("version").GetInt32()));
         Assert.NotEqual(single, await HashAsync());
+    }
+
+    /// <summary>#84: copying a year's structure copies its daily sessions onto the copied shift.</summary>
+    [Fact]
+    public async Task CopyingAYearsStructureCopiesItsDailySessions()
+    {
+        await using var host = new TestHost();
+        var (school, yearId) = await ReadySchoolAsync(host);
+        var token = school.Token;
+        var source = await JsonAsync(await SaveAsync(host, token, "twoSessions", Rows(6, 13 * 60, breakAfter: 2), OwnerExample(), 0));
+
+        var created = await host.PostAsync("/api/v1/academic-years/", new
+        {
+            label = "2027-2028", startDate = "2027-09-01", endDate = "2028-06-30", version = 0, copyStructureFromYearId = yearId,
+        }, token);
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var year = await JsonAsync(created);
+        var current = await host.PostAsync($"/api/v1/academic-years/{year.GetProperty("id").GetInt64()}/make-current", new { version = year.GetProperty("version").GetInt32() }, token);
+        Assert.Equal(HttpStatusCode.OK, current.StatusCode);
+
+        var copy = await JsonAsync(await host.Client.GetAsync("/api/v1/session-plan/"));
+        Assert.Equal("twoSessions", copy.GetProperty("system").GetString());
+        Assert.NotEqual(source.GetProperty("shiftId").GetInt64(), copy.GetProperty("shiftId").GetInt64());
+        Assert.Equal(source.GetProperty("timings").GetRawText(), copy.GetProperty("timings").GetRawText());
+        Assert.Equal(source.GetProperty("days").GetRawText(), copy.GetProperty("days").GetRawText());
+        var evening = copy.GetProperty("timings").EnumerateArray().Single(item => item.GetProperty("session").GetString() == "evening").GetProperty("periods");
+        Assert.Equal(7, evening.GetArrayLength());
+        Assert.Equal("break", evening[2].GetProperty("kind").GetString());
+        Assert.Equal("evening", copy.GetProperty("days").EnumerateArray()
+            .Single(item => item.GetProperty("term").GetInt32() == 2 && item.GetProperty("day").GetInt32() == 7).GetProperty("session").GetString());
     }
 
     [Fact]
