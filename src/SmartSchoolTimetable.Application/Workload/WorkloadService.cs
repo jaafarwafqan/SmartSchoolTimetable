@@ -39,6 +39,21 @@ public sealed class WorkloadService(IDataStore store, TimeProvider clock)
         return OperationResult.Success(new WorkloadMatrixDto(summaries, chosen is null ? null : StageMatrix(data, chosen)));
     }
 
+    /// <summary>Every section × line of the year in stage, section and subject order, with its teacher (MF2).</summary>
+    public async Task<OperationResult<IReadOnlyList<WorkloadRowDto>>> GetRowsAsync(long yearId, CancellationToken token)
+    {
+        if (await WorkloadData.LoadAsync(store, yearId, forUpdate: false, token) is not { } data)
+            return OperationResult.Failure<IReadOnlyList<WorkloadRowDto>>(ErrorCodes.NotFound);
+        var rows = data.Stages.SelectMany(stage => data.SectionsOf(stage.Id).SelectMany(section => data.EntriesOf(stage.Id).Select(entry =>
+        {
+            var assignment = data.Assignment(section.Id, entry.Id);
+            var subject = data.Subjects[entry.SubjectId];
+            return new WorkloadRowDto(section.Id, stage.Id, stage.Name, section.Label, entry.Id, subject.Id, subject.Name, entry.Label, entry.WeeklyLessons,
+                assignment?.Id, assignment?.TeacherId, assignment?.Version, assignment is not null && data.OutsideSpecialization(assignment.TeacherId, entry));
+        }))).ToArray();
+        return OperationResult.Success<IReadOnlyList<WorkloadRowDto>>(rows);
+    }
+
     public async Task<OperationResult<IReadOnlyList<TeacherLoadDto>>> GetTeacherLoadsAsync(long yearId, CancellationToken token)
     {
         if (await WorkloadData.LoadAsync(store, yearId, forUpdate: false, token) is not { } data)

@@ -76,3 +76,31 @@ export function diagnosticMessage(finding: SolverFinding, format: Formatter): st
 
 /** Time-limit choices in seconds (10–600), labelled as durations. */
 export const timeLimitChoices = [10, 20, 30, 45, 60, 90, 120, 180, 300, 600] as const;
+
+const plain = text.plain;
+type NoTimetableStatus = keyof typeof plain.noTimetable;
+
+/** MF3: the result in plain Arabic — a headline and one friendly sentence; `ok` when a valid timetable was saved. */
+export function resultHeadline(run: GenerationRun): { ok: boolean; title: string; sentence: string } {
+  if (run.timetableVersionId !== null) {
+    const sentence = run.status === "cancelled" ? plain.readyStopped : run.optimal ? plain.readyBest : plain.readyGood;
+    return { ok: true, title: plain.ready, sentence };
+  }
+  const status: NoTimetableStatus = run.status in plain.noTimetable ? (run.status as NoTimetableStatus) : "failed";
+  return { ok: false, title: plain.noTimetable[status], sentence: plain.noTimetableHint[status] };
+}
+
+/** MF3: one sentence per enabled soft rule that still has penalties («٤ فراغات في جداول المعلمين»), most weighted first. */
+export function improvementNotes(run: GenerationRun, format: Formatter): { key: string; sentence: string }[] {
+  const rules = [...(run.score?.rules ?? [])].filter((rule) => rule.enabled && rule.penalty > 0).sort((a, b) => b.weighted - a.weighted);
+  return rules.flatMap((rule): { key: string; sentence: string }[] => {
+    switch (rule.key) {
+      case "avoidTeacherGaps": return [{ key: rule.key, sentence: plain.notes.avoidTeacherGaps(format.count(rule.penalty, "gap")) }];
+      case "avoidSameSubjectRepeated": return [{ key: rule.key, sentence: plain.notes.avoidSameSubjectRepeated(format.count(rule.penalty, "time", "oblique")) }];
+      case "spreadSubjectsAcrossDays": return [{ key: rule.key, sentence: plain.notes.spreadSubjectsAcrossDays(format.count(rule.penalty, "time", "oblique")) }];
+      case "heavySubjectsEarly": return [{ key: rule.key, sentence: plain.notes.heavySubjectsEarly(format.count(rule.penalty, "lesson", "oblique")) }];
+      case "keepDoubleLessonsTogether": return [{ key: rule.key, sentence: plain.notes.keepDoubleLessonsTogether(format.count(rule.penalty, "pair")) }];
+      default: return [];
+    }
+  });
+}

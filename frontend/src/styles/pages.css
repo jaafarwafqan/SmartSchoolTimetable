@@ -312,3 +312,32 @@ form.form-stack.form-wide {
   flex-shrink: 0;
   color: var(--color-primary);
 }
+
+/* ---------- MF2: the flat «الأنصبة» table ---------- */
+.workload-summary {
+  margin: 0;
+  font-weight: 600;
+}
+
+.workload-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem 1rem;
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+}
+
+.workload-filters legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding-inline: 0.25rem;
+  font-weight: 600;
+}
+
+.workload-table .ui-select {
+  min-inline-size: 12rem;
+}

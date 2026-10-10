@@ -25,9 +25,15 @@ test("(4) generate a timetable with real progress, read it three ways and approv
     // Real progress: the stepper, then the result with the verifier badge (no fake percentage anywhere).
     await expect(page.getByRole("heading", { name: generation.resultTitle })).toBeVisible({ timeout: 90_000 });
     await expect(page.getByText(generation.statuses.completed)).toBeVisible();
+    // MF3: plain Arabic first (headline, sentence, what could be better); the solver's numbers under «تفاصيل تقنية».
+    await expect(page.getByText(generation.plain.ready, { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: generation.plain.notesTitle })).toBeVisible();
+    await expect(page.getByText(generation.verified)).toBeHidden();
+    await page.getByText(generation.plain.technical).click();
     await expect(page.getByText(generation.verified)).toBeVisible();
     await expect(page.getByRole("table", { name: generation.scoreTitle })).toBeVisible();
     await expect(page.locator("main")).not.toContainText("%");
+    await page.screenshot({ path: test.info().outputPath("mf3-generation-result.png"), fullPage: true });
     await expectNoSeriousA11yViolations(page, "generation result");
     for (const width of breakpoints) {
       await page.setViewportSize({ width, height: 900 });

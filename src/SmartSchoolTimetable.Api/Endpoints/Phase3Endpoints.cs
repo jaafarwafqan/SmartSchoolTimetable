@@ -32,6 +32,8 @@ public static class Phase3Endpoints
         var workload = endpoints.MapOwnerGroup("/academic-years/{yearId:long}/workload");
         workload.MapGet("/matrix", async (long yearId, long? stageId, HttpContext context, WorkloadService service, CancellationToken token) =>
             ApiResults.Ok(context, await service.GetMatrixAsync(yearId, stageId, token)));
+        workload.MapGet("/rows", async (long yearId, HttpContext context, WorkloadService service, CancellationToken token) =>
+            ApiResults.Ok(context, await service.GetRowsAsync(yearId, token)));
         workload.MapGet("/teachers", async (long yearId, HttpContext context, WorkloadService service, CancellationToken token) =>
             ApiResults.Ok(context, await service.GetTeacherLoadsAsync(yearId, token)));
         workload.MapPut("/cell", async (long yearId, SetWorkloadCellCommand command, HttpContext context, WorkloadService service, CancellationToken token) =>

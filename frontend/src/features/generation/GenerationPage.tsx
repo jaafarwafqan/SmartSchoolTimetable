@@ -1,5 +1,5 @@
 import { SectionTitle } from "../../components/ui/section-title";
-import { CalendarRange, ChevronDown, CircleAlert, CircleCheck, ExternalLink, Hand, Lock, Play, RefreshCw, ShieldCheck, Square, LoaderCircle, ClipboardCheck, Stethoscope, SlidersHorizontal, History, TriangleAlert, Info, Cpu } from "lucide-react";
+import { CalendarRange, ChevronDown, Lightbulb, Wrench, CircleAlert, CircleCheck, ExternalLink, Hand, Lock, Play, RefreshCw, ShieldCheck, Square, LoaderCircle, ClipboardCheck, Stethoscope, SlidersHorizontal, History, TriangleAlert, Info, Cpu } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { Link } from "react-router-dom";
 import { userErrorMessage } from "../../api";
@@ -28,7 +28,7 @@ import {
   isActive, useCancelGeneration, useCurrentRun, useEngine, useManualEdits, useRunHistory, useStartGeneration,
   type GenerationMode, type GenerationRun, type RunStatus,
 } from "./generationApi";
-import { diagnosticMessage, elapsedSeconds, phaseIndex, phaseOrder, seconds, statusNote, statusTone, timeLimitChoices } from "./generationPresentation";
+import { diagnosticMessage, elapsedSeconds, improvementNotes, phaseIndex, phaseOrder, resultHeadline, seconds, statusNote, statusTone, timeLimitChoices } from "./generationPresentation";
 
 const text = messages.school.generation;
 const readinessText = messages.school.readiness;
@@ -85,48 +85,73 @@ function ProgressPanel({ run, format, onStop, stopping }: { run: GenerationRun; 
   );
 }
 
+/** MF3: the result in plain Arabic first (headline, one sentence, what could be better); the solver's numbers stay under «تفاصيل تقنية». */
 function ResultPanel({ run, format }: { run: GenerationRun; format: Formatter }) {
-  const tone = statusTone(run.status);
+  const headline = resultHeadline(run);
+  const notes = improvementNotes(run, format);
+  const versionLink = run.timetableVersionId ? `/timetable/view?version=${run.timetableVersionId}` : null;
   return (
     <Card className="page-card generation-result" aria-labelledby="generation-result-title">
       <div className="generation-heading">
         <SectionTitle level={2} icon={ClipboardCheck} id="generation-result-title">{text.resultTitle}</SectionTitle>
-        <Badge tone={tone} icon={tone === "success" ? <CircleCheck aria-hidden="true" size={16} /> : <CircleAlert aria-hidden="true" size={16} />}>
-          {text.statuses[run.status]}
-        </Badge>
+        <StatusBadge status={run.status} />
       </div>
-      <p>{statusNote(run)}</p>
+      <p className={`generation-headline${headline.ok ? " is-ok" : " is-failed"}`}>
+        {headline.ok ? <CircleCheck aria-hidden="true" size={26} /> : <CircleAlert aria-hidden="true" size={26} />}
+        <strong>{headline.title}</strong>
+      </p>
+      <p>{headline.sentence}</p>
       {run.errorCode && run.status === "failed" && <Alert tone="error" message={messages.errors[run.errorCode as keyof typeof messages.errors] ?? messages.errors.UNKNOWN_ERROR} />}
       {run.lockedLessons > 0 && (
         <p className="generation-verified"><Lock aria-hidden="true" size={18} /><span>{lifecycle.locksKept(format.count(run.lockedLessons - run.locksDropped, "lesson"))}</span></p>
       )}
       {run.locksDropped > 0 && <Alert tone="warning" message={lifecycle.locksDropped(format.count(run.locksDropped, "lesson"))} />}
-      <dl className="generation-stats">
-        <div><dt>{text.lessonsPlaced}</dt><dd>{format.count(run.lessonsPlaced, "lesson")}</dd></div>
-        {run.score && <div><dt>{text.totalScore}</dt><dd>{format.number(run.score.total)}</dd></div>}
-        {run.elapsedSeconds !== null && <div><dt>{text.elapsed}</dt><dd>{seconds(run.elapsedSeconds, format)}</dd></div>}
-        {run.firstSolutionSeconds !== null && <div><dt>{text.firstSolution}</dt><dd>{seconds(run.firstSolutionSeconds, format)}</dd></div>}
-      </dl>
-      {run.timetableVersionId && (
-        <p className="generation-verified"><ShieldCheck aria-hidden="true" size={18} /><span>{text.verified}</span></p>
+      {headline.ok && (
+        <section className="generation-notes" aria-labelledby="generation-notes-title">
+          <SectionTitle level={3} icon={Lightbulb} id="generation-notes-title">{text.plain.notesTitle}</SectionTitle>
+          {notes.length === 0 ? <p className="card-note">{text.plain.notesNone}</p> : (
+            <ul>
+              {notes.map((note) => (
+                <li key={note.key}>
+                  <span>{note.sentence}</span>
+                  {versionLink && <Link className="link-button" to={versionLink}><ExternalLink aria-hidden="true" size={16} /><span>{text.plain.seeInTimetable}</span></Link>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       )}
-      {run.score && (
-        <DataTable caption={text.scoreTitle} rows={run.score.rules} rowKey={(rule) => rule.key} columns={[
-          { key: "rule", header: text.rule, cell: (rule) => text.rules[rule.key as keyof typeof text.rules] ?? text.unknownDiagnostic },
-          { key: "penalty", header: text.penalty, numeric: true, cell: (rule) => format.number(rule.penalty) },
-          { key: "weight", header: text.weight, numeric: true, cell: (rule) => (rule.enabled ? format.number(rule.weight) : text.ruleDisabled) },
-          { key: "weighted", header: text.weighted, numeric: true, cell: (rule) => format.number(rule.weighted) },
-        ]} />
-      )}
-      <p className="readiness-meta">
-        <span>{text.seedUsed(format.number(run.seed))}</span>
-        <span>{text.hashUsed} <LtrText>{readinessText.shortHash(run.inputHash.slice(0, 12))}</LtrText></span>
-      </p>
-      {run.timetableVersionId && (
-        <Link className="link-button" to={`/timetable/view?version=${run.timetableVersionId}`}>
+      {versionLink && (
+        <Link className="ui-button ui-button-primary ui-button-md generation-open" to={versionLink}>
           <CalendarRange aria-hidden="true" size={18} /><span>{text.openTimetable}</span>
         </Link>
       )}
+      <details className="advanced-options tool-panel generation-technical">
+        <summary><Wrench aria-hidden="true" size={18} /><span>{text.plain.technical}</span></summary>
+        <p className="card-note">{statusNote(run)}</p>
+        <dl className="generation-stats">
+          <div><dt>{text.lessonsPlaced}</dt><dd>{format.count(run.lessonsPlaced, "lesson")}</dd></div>
+          {run.score && <div><dt>{text.totalScore}</dt><dd>{format.number(run.score.total)}</dd></div>}
+          {run.elapsedSeconds !== null && <div><dt>{text.elapsed}</dt><dd>{seconds(run.elapsedSeconds, format)}</dd></div>}
+          {run.firstSolutionSeconds !== null && <div><dt>{text.firstSolution}</dt><dd>{seconds(run.firstSolutionSeconds, format)}</dd></div>}
+        </dl>
+        {run.timetableVersionId && (
+          <p className="generation-verified"><ShieldCheck aria-hidden="true" size={18} /><span>{text.verified}</span></p>
+        )}
+        {run.score && (
+          <DataTable caption={text.scoreTitle} rows={run.score.rules} rowKey={(rule) => rule.key} columns={[
+            { key: "rule", header: text.rule, cell: (rule) => text.rules[rule.key as keyof typeof text.rules] ?? text.unknownDiagnostic },
+            { key: "penalty", header: text.penalty, numeric: true, cell: (rule) => format.number(rule.penalty) },
+            { key: "weight", header: text.weight, numeric: true, cell: (rule) => (rule.enabled ? format.number(rule.weight) : text.ruleDisabled) },
+            { key: "weighted", header: text.weighted, numeric: true, cell: (rule) => format.number(rule.weighted) },
+          ]} />
+        )}
+        <p className="readiness-meta">
+          <span>{text.seedUsed(format.number(run.seed))}</span>
+          <span>{text.hashUsed} <LtrText>{readinessText.shortHash(run.inputHash.slice(0, 12))}</LtrText></span>
+          <LtrText>{text.engineVersion(run.solverVersion)}</LtrText>
+        </p>
+      </details>
     </Card>
   );
 }
