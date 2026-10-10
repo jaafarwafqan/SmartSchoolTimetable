@@ -50,7 +50,7 @@ test("curriculum table, wizard layout, subject chips, counts and month names", a
     await expect(page.getByRole("heading", { level: 2, exact: true, name: wizard.steps[step] })).toBeVisible();
     await expect(page.locator("[aria-current=step]")).toContainText(wizard.steps[step]);
     await atEveryWidth(page, `wizard step ${step}`);
-    if (step === 3) await expectNoTextOverlap(page.locator(".wizard-shift").first(), "periods preview");
+    if (step === 3) await expectNoTextOverlap(page.locator(".shift-system-block").first(), "periods preview");
     if (step === 2) await expect(page.getByText(/أيلول/).first()).toBeVisible(); // B8: Iraqi month name in the date hint
   }
   for (const step of [2, 3, 4] as const) {
