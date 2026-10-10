@@ -317,6 +317,8 @@
 .ui-alert-body {
   display: grid;
   gap: 0.25rem;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
 }
 
 .ui-alert-error {
