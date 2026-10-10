@@ -97,7 +97,7 @@ export function BackupSection() {
       <Alert tone="success" message={backupFeedback.success} />
       <div className="form-stack">
         <Field id="backup-folder" label={text.folder} hint={text.folderHint}>
-          <output id="backup-folder" className="folder-path" dir="ltr" aria-describedby="backup-folder-hint">{folder || text.noFolder}</output>
+          <output id="backup-folder" className="folder-path is-single-line" dir="ltr" title={folder || undefined} aria-describedby="backup-folder-hint">{folder || text.noFolder}</output>
         </Field>
         <div className="form-actions">
           <Button variant="secondary" icon={<FolderOpen aria-hidden="true" size={18} />} onClick={() => setPicking((current) => ({ open: true, key: current.key + 1 }))}>{text.chooseFolder}</Button>

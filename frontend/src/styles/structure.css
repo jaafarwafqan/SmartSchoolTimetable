@@ -209,6 +209,14 @@
   font-size: var(--text-sm);
 }
 
+/* One line, cut with an ellipsis: the height never depends on how long this computer's folder path is (the full path is the tooltip). */
+.folder-path.is-single-line {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .nowrap {
   white-space: nowrap;
 }
