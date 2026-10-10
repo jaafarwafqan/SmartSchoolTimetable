@@ -5,7 +5,7 @@
     var saved = window.localStorage.getItem("sst-theme");
     var dark = saved === "dark" || ((saved === null || saved === "system") && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
-  } catch (error) {
+  } catch {
     document.documentElement.setAttribute("data-theme", "light");
   }
 })();
