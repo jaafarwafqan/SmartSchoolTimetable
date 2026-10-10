@@ -33,7 +33,6 @@ export function SectionsPanel({ yearId, stage, includeArchived }: SectionsPanelP
   const rows = sections.data?.items ?? [];
   const shiftList = shifts.data?.items ?? [];
   const shiftOptions = shiftList.map((shift) => ({ value: String(shift.id), label: shift.name }));
-  const shiftName = (id: number) => shiftList.find((shift) => shift.id === id)?.name ?? "";
   const canAdd = !stage.isArchived && shiftOptions.length > 0;
   const reload = () => { feedback.reset(); void sections.refetch(); };
   const openDialog = (section: Section | null) => setDialog({ open: true, section });
@@ -49,7 +48,6 @@ export function SectionsPanel({ yearId, stage, includeArchived }: SectionsPanelP
 
   const columns: readonly TableColumn<Section>[] = [
     { key: "label", header: text.label, cell: (section) => section.label },
-    { key: "shift", header: text.shift, cell: (section) => shiftName(section.shiftId) },
     { key: "students", header: text.studentsColumn, cell: (section) => (section.studentCount === null ? "" : format.number(section.studentCount)), numeric: true },
     { key: "capacity", header: text.capacity, cell: (section) => format.number(section.weeklyCapacity), numeric: true },
     { key: "status", header: text.status, cell: (section) => <ArchiveBadge archived={section.isArchived} /> },

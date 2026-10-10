@@ -75,6 +75,7 @@ public static class AuditEvents
     public const string ShiftDeleted = "ShiftDeleted";
     public const string ShiftModeChanged = "ShiftModeChanged";
     public const string ShiftPeriodsUpdated = "ShiftPeriodsUpdated";
+    public const string ShiftSystemConverted = "ShiftSystemConverted";
     public const string ShiftUpdated = "ShiftUpdated";
     public const string StageArchived = "StageArchived";
     public const string StageCreated = "StageCreated";
@@ -172,6 +173,7 @@ public static class AuditEvents
         [ShiftDeleted] = AuditCategories.School,
         [ShiftModeChanged] = AuditCategories.School,
         [ShiftPeriodsUpdated] = AuditCategories.School,
+        [ShiftSystemConverted] = AuditCategories.School,
         [ShiftUpdated] = AuditCategories.School,
         [StageArchived] = AuditCategories.School,
         [StageCreated] = AuditCategories.School,

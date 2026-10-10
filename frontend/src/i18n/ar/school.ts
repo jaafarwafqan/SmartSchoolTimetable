@@ -10,6 +10,7 @@ import { wizard } from "./wizard";
 import { orphanOnSave, readiness, requiredResource, resources, schedulingProfile, specializations, workload } from "./phase3";
 import { audit } from "./audit";
 import { lifecycle } from "./lifecycle";
+import { shiftSystem } from "./shiftSystem";
 import { backup, generation, timetable, violations } from "./phase4";
 
 export const school = {
@@ -261,6 +262,7 @@ export const school = {
   timetable,
   audit,
   lifecycle,
+  shiftSystem,
   violations,
   backup,
 } as const;

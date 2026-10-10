@@ -43,7 +43,6 @@ test("a fresh school is set up through the wizard, resumed and finished", async 
   await expect(page.getByText(messages.errors.REQUIRED).first()).toBeVisible(); // name is required
   await ux.type(page.getByLabel(wizard.school.name), "متوسطة الفرات");
   await ux.check(page.getByRole("radio", { name: new RegExp(`^${school.profile.schoolTypes.intermediate}`) }));
-  await expect(page.getByRole("radio", { name: new RegExp(wizard.school.modes.morning) })).toBeChecked();
   await expectNoSeriousA11yViolations(page, "wizard step 1");
   await expectNoLatinText(page, "wizard step 1", ["owner"]);
   await next();
@@ -54,13 +53,19 @@ test("a fresh school is set up through the wizard, resumed and finished", async 
   await expectNoSeriousA11yViolations(page, "wizard step 2");
   await next();
 
-  // Step 3: Sunday–Thursday and the first period preset: 7 lessons a day = 35 a week, with a live preview.
+  // Step 3 (MF1, MF7): «صباحي» and «بدون قالب» by default (6 lessons, no break); the first morning template gives
+  // 7 lessons a day = 35 a week, with a live preview.
   await expect(stepTitle(3)).toBeVisible();
-  await expect(page.getByText(wizard.timing.weekly(number(35)))).toBeVisible();
-  await expect(page.getByRole("table", { name: wizard.timing.previewTitle(wizard.timing.shifts.morning) }).getByRole("row")).toHaveCount(9); // header + 7 lessons + 1 break
-  await ux.choose(page.getByText(wizard.timing.perDay));
+  const system = school.shiftSystem;
+  await expect(page.getByRole("radio", { name: new RegExp(`^${system.systems.morning}`) })).toBeChecked();
+  await expect(page.locator("#wizard-morning-template")).toHaveValue("");
+  await expect(page.getByText(system.weekly(number(30)))).toBeVisible();
+  await ux.select(page.locator("#wizard-morning-template"), "single-break-after-3");
+  await expect(page.getByText(system.weekly(number(35)))).toBeVisible();
+  await expect(page.getByRole("list", { name: system.preview(system.sessions.morning) }).getByRole("listitem")).toHaveCount(8); // 7 lessons + 1 break
+  await ux.choose(page.getByText(system.perDay));
   await ux.choose(page.getByRole("button", { name: school.scheduleStructure.decreaseFor(school.scheduleStructure.days.thursday) }));
-  await expect(page.getByText(wizard.timing.weekly(number(34)))).toBeVisible();
+  await expect(page.getByText(system.weekly(number(34)))).toBeVisible();
   await expectNoSeriousA11yViolations(page, "wizard step 3");
   await expectNoLatinText(page, "wizard step 3", ["owner"]);
   await next();

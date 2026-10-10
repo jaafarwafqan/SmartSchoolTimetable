@@ -21,23 +21,14 @@ const text = messages.school.stageCards;
 const maxSections = 30;
 export const labelStyles: readonly LabelStyle[] = ["arabic", "numbers", "latin"];
 
-/** Shift and label-style choices for sections added by the stepper or a template. */
-export function NewSectionOptions({ idPrefix, shifts, shiftId, style, onShift, onStyle }: {
+/** The label style of sections added by the stepper or a template (every section uses the year's one shift, MF7). */
+export function NewSectionOptions({ idPrefix, style, onStyle }: {
   idPrefix: string;
-  shifts: Shift[];
-  shiftId: number | null;
   style: LabelStyle;
-  onShift: (id: number) => void;
   onStyle: (style: LabelStyle) => void;
 }) {
   return (
     <div className="form-grid">
-      {shifts.length > 1 && (
-        <Field id={`${idPrefix}-shift`} label={text.newSectionsShift}>
-          <Select id={`${idPrefix}-shift`} value={String(shiftId ?? "")} onChange={(event) => onShift(Number(event.target.value))}
-            options={shifts.map((shift) => ({ value: String(shift.id), label: shift.name }))} />
-        </Field>
-      )}
       <Field id={`${idPrefix}-style`} label={text.labelStyle}>
         <Select id={`${idPrefix}-style`} value={style} onChange={(event) => onStyle(event.target.value as LabelStyle)}
           options={labelStyles.map((value) => ({ value, label: text.labelStyles[value] }))} />
@@ -122,11 +113,10 @@ export function StageCardsPanel({ yearId }: { yearId: number }) {
   const changed = new Set((daily.data?.stages ?? []).filter((stage) => stage.changedSinceSuggestion).map((stage) => stage.stageId));
   const days = weekdaysFrom(week.data?.weekStartDay ?? 7).filter((day) => (week.data?.days ?? []).includes(day));
   const setCount = useSetSectionCount(yearId);
-  const [shiftChoice, setShiftChoice] = useState<number | null>(null);
   const [style, setStyle] = useState<LabelStyle>("arabic");
   const [removing, setRemoving] = useState<StageCard | null>(null);
   const shiftList = shifts.data?.items ?? [];
-  const shiftId = shiftList.find((shift) => shift.id === shiftChoice)?.id ?? shiftList[0]?.id ?? null;
+  const shiftId = shiftList[0]?.id ?? null;
   const shiftName = (id: number) => shiftList.find((shift) => shift.id === id)?.name ?? "";
   const items = cards.data ?? [];
 
@@ -149,7 +139,7 @@ export function StageCardsPanel({ yearId }: { yearId: number }) {
       <Alert tone="success" message={feedback.success} />
       <Alert tone="error" message={feedback.error} />
       {feedback.conflict && <Alert tone="error" message={messages.errors.CONFLICT} />}
-      <NewSectionOptions idPrefix="cards" shifts={shiftList} shiftId={shiftId} style={style} onShift={setShiftChoice} onStyle={setStyle} />
+      <NewSectionOptions idPrefix="cards" style={style} onStyle={setStyle} />
       <ul className="stage-cards">
         {items.map((card) => {
           const capacities = [...new Map(card.sections.map((section) => [section.shiftId, section.weeklyCapacity])).entries()];

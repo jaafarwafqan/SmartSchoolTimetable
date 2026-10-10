@@ -105,14 +105,13 @@ test("the whole setup checklist completes end to end; stale edits are caught", a
   await expectNoSeriousA11yViolations(page, "academic years");
   await expectNoLatinText(page, "academic years", ["owner"]);
 
-  // Timetable structure (2B): a shift, generator validation, a row-level overlap error, then a valid save.
+  // Timetable structure (2B, MF7): «نظام الدوام والأوقات» creates the year's one shift; then the manual list: generator
+  // validation, a row-level overlap error, then a valid save.
   await goToSection(page, school.nav.scheduleStructure);
-  await page.getByRole("button", { name: structure.addShift }).first().click();
-  const shiftDialog = page.getByRole("dialog", { name: structure.addShift });
-  await expectCenteredDialog(page, shiftDialog, "shift dialog");
-  await shiftDialog.getByLabel(structure.shiftName).fill("صباحي");
-  await shiftDialog.getByRole("button", { name: structure.saveShift }).click();
-  await expect(page.getByRole("status").filter({ hasText: structure.shiftSaved })).toBeVisible();
+  const systemCard = page.locator(".page-card", { has: page.getByRole("heading", { name: school.shiftSystem.title }) });
+  await expect(systemCard.getByRole("radio", { name: new RegExp(`^${school.shiftSystem.systems.morning}`) })).toBeChecked();
+  await systemCard.getByRole("button", { name: school.shiftSystem.save }).click();
+  await expect(systemCard.getByRole("status").filter({ hasText: school.shiftSystem.saved })).toBeVisible();
   await page.getByRole("button", { name: structure.generate }).click();
   const generator = page.getByRole("dialog", { name: structure.generate });
   await expectCenteredDialog(page, generator, "generate periods dialog");
@@ -284,8 +283,17 @@ test("the whole setup checklist completes end to end; stale edits are caught", a
   const templates = school.templates;
   const cards = school.stageCards;
   const curriculum = school.curriculum;
+  // MF6: the school type is chosen once, in the profile; the template shows it read-only with a link there.
   await page.getByText(templates.stagesTitle).click();
-  await page.getByLabel(templates.schoolType).selectOption("preparatory");
+  await expect(page.getByLabel(templates.schoolType)).toHaveCount(0);
+  await page.getByRole("link", { name: templates.changeSchoolType }).click();
+  await page.getByLabel(school.profile.schoolType).selectOption("preparatory");
+  await page.getByRole("button", { name: school.profile.save }).click();
+  await expect(page.getByRole("status").filter({ hasText: school.profile.saved })).toBeVisible();
+  await goToSection(page, school.nav.stagesSections);
+  await page.getByLabel(stages.year).selectOption({ index: 0 });
+  await page.getByText(templates.stagesTitle).click();
+  await expect(page.getByText(templates.schoolTypeIs(school.profile.schoolTypes.preparatory))).toBeVisible();
   await page.getByRole("checkbox", { name: "الخامس الإعدادي" }).uncheck();
   await page.getByRole("checkbox", { name: "السادس الإعدادي" }).uncheck();
   await page.getByRole("button", { name: templates.preview }).click();

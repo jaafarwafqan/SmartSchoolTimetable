@@ -29,7 +29,7 @@ export type SectionCountInput = { stageId: number; count: number; shiftId: numbe
 export type BranchTemplate = { key: string; name: string };
 export type GradeTemplate = { key: string; name: string; branchStem: string | null; schoolTypes: string[] };
 export type BreakSlot = { afterLesson: number; minutes: number };
-export type PeriodPreset = { key: string; name: string; firstStart: string; lessonMinutes: number; lessonCount: number; breaks: BreakSlot[] };
+export type PeriodPreset = { key: string; name: string; firstStart: string; lessonMinutes: number; lessonCount: number; breaks: BreakSlot[]; session?: "morning" | "evening" };
 export type WorkingDayPreset = { key: string; name: string; days: number[]; weekStart: number; isDefault: boolean };
 /** Suggested break length per school type (minutes); a suggestion only (ADR 0026). */
 export type BreakDefaults = { minutes: Record<string, number> };

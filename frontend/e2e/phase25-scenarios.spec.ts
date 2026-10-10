@@ -31,7 +31,7 @@ test.afterAll(async () => { await server.stop(); });
 
 const stepTitle = (page: Page, step: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8) => page.getByRole("heading", { level: 2, exact: true, name: wizard.steps[step] });
 
-test("scenario (b): a dual-shift ثانوية with branches through the wizard", async ({ page }) => {
+test("scenario (b): a double-shift (مزدوج) ثانوية with branches through the wizard", async ({ page }) => {
   // A fixed date keeps the proposed year (and the screenshots) stable.
   await page.clock.setFixedTime(new Date("2026-10-05T09:00:00+03:00"));
   await page.goto(server.baseUrl);
@@ -44,11 +44,11 @@ test("scenario (b): a dual-shift ثانوية with branches through the wizard",
   const ux = new UxMeter("(b) dual-shift secondary with branches"); // counts the wizard only, not the account
   const next = () => ux.act(page.getByRole("button", { name: wizard.next }));
 
-  // 1. School: name typed; type and shift mode chosen on cards.
+  // 1. School: name typed; the type chosen on cards (once: the system of work is chosen in step 3, MF7).
   await expect(stepTitle(page, 1)).toBeVisible();
   await ux.type(page.getByLabel(wizard.school.name), "ثانوية دجلة للبنين");
   await ux.check(page.getByRole("radio", { name: new RegExp(`^${school.profile.schoolTypes.secondary}`) }));
-  await ux.check(page.getByRole("radio", { name: new RegExp(`^${wizard.school.modes.dual}`) }));
+  await expect(page.getByRole("radio", { name: school.shiftSystem.systems.dual })).toHaveCount(0);
   await expectBreakpointScreenshots(page, "wizard-step-1");
   await next();
 
@@ -57,26 +57,41 @@ test("scenario (b): a dual-shift ثانوية with branches through the wizard",
   await expectBreakpointScreenshots(page, "wizard-step-2");
   await next();
 
-  // 3. Timing: two shift blocks; the evening takes the evening preset and teaches one lesson less on Thursday.
+  // 3. Timing (MF7): «مزدوج» shows the morning and evening timings side by side with one lesson count; templates start at
+  // «بدون قالب» and each list shows only its own session's templates (MF1).
   await expect(stepTitle(page, 3)).toBeVisible();
-  const blocks = page.locator(".wizard-shift");
-  await expect(blocks).toHaveCount(2);
-  await ux.select(page.locator("#wizard-evening-preset"), "evening-single-break");
-  const evening = blocks.nth(1);
-  await ux.choose(evening.getByText(wizard.timing.perDay));
-  await ux.choose(evening.getByRole("button", { name: school.scheduleStructure.decreaseFor(school.scheduleStructure.days.thursday) }));
-  await expect(evening.getByText(wizard.timing.weekly(arab(29)))).toBeVisible();
-  await expect(blocks.nth(0).getByText(wizard.timing.weekly(arab(35)))).toBeVisible();
+  const system = school.shiftSystem;
+  await expect(page.locator("#wizard-morning-template")).toHaveValue("");
+  await expect(page.locator("#wizard-morning-template option").first()).toHaveText(system.noTemplate);
+  await expect(page.locator("#wizard-morning-template option[value='evening-single-break']")).toHaveCount(0);
+  await ux.check(page.getByRole("radio", { name: new RegExp(`^${system.systems.dual.replace(/[()]/g, "\\$&")}`) }));
+  const blocks = page.locator(".shift-system-block");
+  await expect(blocks).toHaveCount(3); // morning, evening, day mapping
+  await expect(page.locator("#wizard-evening-template option[value='single-break-after-3']")).toHaveCount(0);
+  await ux.select(page.locator("#wizard-morning-template"), "single-break-after-3");
+  await ux.select(page.locator("#wizard-evening-template"), "evening-single-break");
+  await expect(blocks.nth(1).getByText(system.sharedLessons(arabicCount(7, "lesson", arab)))).toBeVisible();
+  await expect(blocks.nth(0).getByText(system.weekly(arab(35)))).toBeVisible();
+  await expect(blocks.nth(1).getByRole("list", { name: system.preview(system.sessions.evening) })).toContainText("١:٠٠ م");
+  // The day mapping: Sunday and Monday morning in semester 1, then «اعكس للفصل الثاني».
+  const term1 = page.getByRole("group", { name: `${system.term1}: ${system.chooseMorning}` });
+  const term2 = page.getByRole("group", { name: `${system.term2}: ${system.chooseMorning}` });
+  await ux.choose(term1.getByRole("button", { name: school.scheduleStructure.days.tuesday }));
+  await ux.act(page.getByRole("button", { name: system.reverse }));
+  await expect(term2.getByRole("button", { name: school.scheduleStructure.days.tuesday })).toHaveAttribute("aria-pressed", "true");
+  await expect(term2.getByRole("button", { name: school.scheduleStructure.days.sunday })).toHaveAttribute("aria-pressed", "false");
   // A notice, never a block: with every optional subject, السادس العلمي (37) and الخامس الأدبي (36) exceed 35.
-  await expect(blocks.nth(0).getByRole("status").filter({ hasText: wizard.timing.optionalAboveCount("مرحلتان") })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: wizard.timing.optionalAboveCount("مرحلتان") })).toBeVisible();
+  await expect(page.getByText(messages.school.sessions.unavailable)).toHaveCount(0);
   await expectNoSeriousA11yViolations(page, "scenario b step 3");
   await expectBreakpointScreenshots(page, "wizard-step-3");
   await next();
 
-  // 4. Stages: all six grades, both branches; the preparatory grades study in the evening; one section each.
+  // 4. Stages: all six grades, both branches, one section each, all in the one shift; the school type is read-only here (MF6).
   await expect(stepTitle(page, 4)).toBeVisible();
-  for (const grade of ["الرابع الإعدادي", "الخامس الإعدادي", "السادس الإعدادي"])
-    await ux.select(page.getByLabel(templates.gradeShift(grade)), { label: "الدوام المسائي" });
+  await expect(page.getByText(templates.schoolTypeIs(school.profile.schoolTypes.secondary))).toBeVisible();
+  await expect(page.getByLabel(templates.schoolType)).toHaveCount(0);
+  await expect(page.getByLabel(templates.gradeShift("الرابع الإعدادي"))).toHaveCount(0);
   await ux.choose(page.getByRole("button", { name: templates.sectionsDecrease }));
   await ux.act(page.getByRole("button", { name: templates.preview }));
   await expect(page.locator(".plan-line")).toHaveCount(9);
@@ -87,7 +102,7 @@ test("scenario (b): a dual-shift ثانوية with branches through the wizard",
   await expect(page.getByText(templates.noChanges)).toBeVisible();
   await expect(page.locator(".stage-card")).toHaveCount(9);
   await expect(page.locator(".stage-card", { hasText: "الأول المتوسط" }).locator(".stage-card-capacity")).toContainText(arabicCount(35, "lesson", arab));
-  await expect(page.locator(".stage-card", { hasText: "الرابع العلمي" }).locator(".stage-card-capacity")).toContainText(arabicCount(29, "lesson", arab));
+  await expect(page.locator(".stage-card", { hasText: "الرابع العلمي" }).locator(".stage-card-capacity")).toContainText(arabicCount(35, "lesson", arab));
   await expectBreakpointScreenshots(page, "wizard-step-4");
   await next();
 
@@ -101,7 +116,7 @@ test("scenario (b): a dual-shift ثانوية with branches through the wizard",
   await firstCell.press("Enter");
   await expect(page.getByRole("status").filter({ hasText: curriculum.saved })).toBeVisible();
   await expect(page.locator(".curriculum-table tfoot td").first()).toContainText(curriculum.status.under(arab(31)));
-  await expect(page.locator(".curriculum-table thead th.curriculum-stage-head").nth(3)).toContainText(curriculum.headerCapacity(arab(29)));
+  await expect(page.locator(".curriculum-table thead th.curriculum-stage-head").nth(3)).toContainText(curriculum.headerCapacity(arab(35)));
   await expectNoSeriousA11yViolations(page, "scenario b step 5");
   for (const width of breakpoints) {
     await page.setViewportSize({ width, height: 900 });
@@ -122,7 +137,7 @@ test("scenario (b): a dual-shift ثانوية with branches through the wizard",
   await expectBreakpointScreenshots(page, "wizard-step-7");
   await ux.act(page.getByRole("button", { name: wizard.skip }));
   await expect(stepTitle(page, 8)).toBeVisible();
-  await expect(page.locator(".count-item", { hasText: wizard.review.shifts })).toContainText(arab(2));
+  await expect(page.locator(".count-item", { hasText: wizard.review.shifts })).toContainText(arab(1));
   await expect(page.locator(".count-item", { hasText: wizard.review.sections })).toContainText(arab(9));
   await expectNoLatinText(page, "scenario b review", ["owner"]);
   await expectBreakpointScreenshots(page, "wizard-step-8");

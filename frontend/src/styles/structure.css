@@ -164,3 +164,51 @@
     font-size: var(--text-xs);
   }
 }
+
+/* ---------- MF7: «نظام الدوام» (one component in the wizard and the timing page) ---------- */
+.shift-system {
+  display: grid;
+  gap: 1.25rem;
+  container-type: inline-size;
+}
+
+.shift-system-sessions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.25rem;
+}
+
+/* Side by side only when the component itself is wide enough (the timing page); stacked inside the wizard card. */
+@container (min-width: 60rem) {
+  .shift-system-sessions.is-dual,
+  .shift-system-terms {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.shift-system-block {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  min-inline-size: 0;
+}
+
+.shift-system-terms {
+  display: grid;
+  gap: 1rem;
+}
+
+.school-type-readonly {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-weight: 600;
+}
+
+.legacy-conversion .reference-list {
+  margin-block: 0;
+}

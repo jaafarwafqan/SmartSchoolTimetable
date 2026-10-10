@@ -100,6 +100,7 @@ export const audit = {
     ShiftDeleted: () => "حُذف دوام.",
     ShiftModeChanged: () => "غُيّر نمط الدوام.",
     ShiftPeriodsUpdated: () => "عُدّلت حصص الدوام وأوقاتها.",
+    ShiftSystemConverted: () => "حُوّل نظام الورديتين القديم إلى نظام الدوام الجديد.",
     ShiftUpdated: () => "عُدّل دوام.",
     StageArchived: () => "أُرشفت مرحلة.",
     StageCreated: () => "أُضيفت مرحلة.",

@@ -99,4 +99,7 @@ public static class ErrorCodes
     // Phase 4 follow-up R3: daily sessions (دوام مزدوج).
     public const string SessionLessonCountMismatch = "SESSION_LESSON_COUNT_MISMATCH";
     public const string SessionsNeedOneShift = "SESSIONS_NEED_ONE_SHIFT";
+
+    // MF7: one shift per year.
+    public const string ShiftSystemLegacy = "SHIFT_SYSTEM_LEGACY";
 }

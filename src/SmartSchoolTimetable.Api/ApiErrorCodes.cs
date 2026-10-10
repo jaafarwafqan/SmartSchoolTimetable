@@ -81,6 +81,7 @@ public static class ApiErrorCodes
             [ErrorCodes.SolverFailed] = StatusCodes.Status500InternalServerError,
             [ErrorCodes.TimetableVerificationFailed] = StatusCodes.Status500InternalServerError,
             [ErrorCodes.TimetableHasViolations] = StatusCodes.Status422UnprocessableEntity,
+            [ErrorCodes.ShiftSystemLegacy] = StatusCodes.Status409Conflict,
             [ErrorCodes.TimetableInvalidTransition] = StatusCodes.Status409Conflict,
             [ErrorCodes.TimetableCompareYearMismatch] = StatusCodes.Status422UnprocessableEntity,
             [ErrorCodes.AuditFilterInvalid] = StatusCodes.Status422UnprocessableEntity,

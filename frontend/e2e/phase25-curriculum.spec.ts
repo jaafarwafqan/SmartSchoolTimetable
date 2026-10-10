@@ -187,15 +187,15 @@ test("(h) a stage without a template is matched from a list; optional subjects s
   }
 });
 
-test("(d) a dual-shift ثانوية; (g) no overflow or overlapping text at four widths", async ({ browser, page }) => {
+test("(d) a double-shift ثانوية with six lessons a day; (g) no overflow or overlapping text at four widths", async ({ browser, page }) => {
   const server = await school_(browser, page, "curriculum-d", {
-    schoolType: "secondary", shiftMode: "dual", grades: [...intermediate, ...preparatory("evening")],
+    schoolType: "secondary", shiftMode: "dual", lessons: 6, grades: [...intermediate, ...preparatory("evening")],
   });
   try {
     await openPanel(page);
     await applySuggested(page);
     await expect(totals(page)).toHaveCount(9);
-    // Evening stages: 6 lessons × 5 days = 30; السادس العلمي (33) and السادس الأدبي (31) do not fit and say why.
+    // One shift (MF7), 6 lessons × 5 days = 30 for every stage; السادس العلمي (33) and السادس الأدبي (31) do not fit and say why.
     const dailyCard = page.locator(".page-card", { hasText: daily.title });
     const sixthScientific = dailyCard.getByRole("row", { name: /السادس العلمي/ });
     await expect(sixthScientific).toContainText(daily.statuses.aboveCapacity);

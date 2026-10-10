@@ -3,16 +3,17 @@ using SmartSchoolTimetable.Application.Setup;
 
 namespace SmartSchoolTimetable.Api.Endpoints;
 
-/// <summary>Shift mode (with an impact preview), resumable setup progress and the wizard steps (spec 2.5 §3.2, §3.5, §5).</summary>
+/// <summary>The shift system (MF7), the session plan, resumable setup progress and the wizard steps (spec 2.5 §3.2, §3.5, §5).</summary>
 public static class SetupEndpoints
 {
     public static IEndpointRouteBuilder MapSetupEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        var mode = endpoints.MapOwnerGroup("/shift-mode");
-        mode.MapGet("/impact", async (string? mode, HttpContext context, ShiftModeService service, CancellationToken token) =>
-            ApiResults.Ok(context, await service.GetImpactAsync(mode, token)));
-        mode.MapPut("/", async (SetShiftModeCommand command, HttpContext context, ShiftModeService service, CancellationToken token) =>
-            ApiResults.Ok(context, await service.SetAsync(command, token)));
+        var system = endpoints.MapOwnerGroup("/shift-system");
+        system.MapGet("/", async (ShiftSystemService service, CancellationToken token) => Results.Ok(await service.GetAsync(token)));
+        system.MapPut("/", async (SaveShiftSystemCommand command, HttpContext context, ShiftSystemService service, CancellationToken token) =>
+            ApiResults.Ok(context, await service.SaveAsync(command, token)));
+        system.MapPost("/convert", async (ConvertLegacyCommand command, HttpContext context, ShiftSystemService service, CancellationToken token) =>
+            ApiResults.Ok(context, await service.ConvertLegacyAsync(command, token)));
 
         var sessions = endpoints.MapOwnerGroup("/session-plan");
         sessions.MapGet("/", async (HttpContext context, SessionPlanService service, CancellationToken token) =>

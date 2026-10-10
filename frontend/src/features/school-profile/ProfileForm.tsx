@@ -31,7 +31,7 @@ export function ProfileForm({ profile, onReload, reloading }: ProfileFormProps) 
     update.mutate({
       name: value("schoolName"),
       schoolType: value("schoolType"),
-      studyType: value("studyType"),
+      studyType: profile.studyType,
       principalName: value("principalName") || null,
       scheduleOfficerName: value("scheduleOfficerName") || null,
       timeZone: value("timeZone"),
@@ -53,7 +53,6 @@ export function ProfileForm({ profile, onReload, reloading }: ProfileFormProps) 
       <TextField id="schoolName" label={text.name} defaultValue={profile.name} maxLength={200} required field="Name" errors={feedback.fieldErrors} />
       <div className="form-grid">
         <SelectField id="schoolType" label={text.schoolType} options={options(profile.options.schoolTypes, text.schoolTypes)} defaultValue={profile.schoolType} required field="SchoolType" errors={feedback.fieldErrors} />
-        <SelectField id="studyType" label={text.studyType} options={options(profile.options.studyTypes, text.studyTypes)} defaultValue={profile.studyType} required field="StudyType" errors={feedback.fieldErrors} />
         <TextField id="principalName" label={text.principalName} defaultValue={profile.principalName ?? ""} maxLength={150} field="PrincipalName" errors={feedback.fieldErrors} />
         <TextField id="scheduleOfficerName" label={text.scheduleOfficerName} defaultValue={profile.scheduleOfficerName ?? ""} maxLength={150} field="ScheduleOfficerName" errors={feedback.fieldErrors} />
       </div>

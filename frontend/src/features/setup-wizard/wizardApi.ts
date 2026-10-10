@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../../api";
+import type { ShiftSystemCommand } from "../timetable-structure/shiftSystem";
 import type { BreakSlot } from "../curriculum/curriculumApi";
 import type { DayLessons } from "../timetable-structure/scheduleApi";
 
@@ -13,7 +14,7 @@ export type SetupProgress = {
   version: number;
 };
 
-export type WizardSchoolInput = { name: string; schoolType: string; shiftMode: string; principalName: string | null };
+export type WizardSchoolInput = { name: string; schoolType: string; principalName: string | null };
 export type WizardYearInput = { label: string; startDate: string; endDate: string; terms: { name: string; startDate: string; endDate: string }[] };
 export type WizardShiftInput = {
   kind: "morning" | "evening";
@@ -24,7 +25,8 @@ export type WizardShiftInput = {
   gapMinutes: number;
   dayLessons: DayLessons[];
 };
-export type WizardTimingInput = { days: number[]; weekStartDay: number; shifts: WizardShiftInput[] };
+/** MF7: the timing step saves the whole system of work (one shift; «مزدوج» adds the evening session and the day mapping). */
+export type WizardTimingInput = { days: number[]; weekStartDay: number } & ShiftSystemCommand;
 export type SetupWarning = { code: "noSections" | "emptyCurriculum" | "under" | "over"; stageName: string; shiftName: string | null; value: number };
 export type SetupReview = {
   schoolName: string;

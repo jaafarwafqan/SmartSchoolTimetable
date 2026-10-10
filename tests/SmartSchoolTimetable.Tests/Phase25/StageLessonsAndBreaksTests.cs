@@ -81,7 +81,7 @@ public sealed class StageLessonsAndBreaksTests
         var (token, _) = await SetupOwnerAsync(host);
         await host.PutAsync("/api/v1/setup-wizard/school", new { name = "ابتدائية الفرات", schoolType = "primary", shiftMode = "morning" }, token);
         await host.PutAsync("/api/v1/setup-wizard/year", new { label = "2026-2027", startDate = "2026-09-01", endDate = "2027-06-30", terms = Array.Empty<object>() }, token);
-        var timing = new { days = SundayToThursday, weekStartDay = 7, shifts = new[] { new { kind = "morning", firstStartTime = "08:00", lessonMinutes = 40, lessonCount = 6, breaks = new[] { new { afterLesson = 3, minutes = 20 } }, dayLessons = Array.Empty<object>(), gapMinutes = 5 } } };
+        var timing = new { days = SundayToThursday, weekStartDay = 7, system = "morning", main = new { kind = "morning", firstStartTime = "08:00", lessonMinutes = 40, lessonCount = 6, breaks = new[] { new { afterLesson = 3, minutes = 20 } }, dayLessons = Array.Empty<object>(), gapMinutes = 5 } };
         await ReadAsync<SetupProgressDto>(await host.PutAsync("/api/v1/setup-wizard/timing", timing, token));
         var year = (await ReadAsync<PagedResult<AcademicYearDto>>(await host.Client.GetAsync("/api/v1/academic-years/"))).Items.Single();
         var root = $"/api/v1/academic-years/{year.Id}";
