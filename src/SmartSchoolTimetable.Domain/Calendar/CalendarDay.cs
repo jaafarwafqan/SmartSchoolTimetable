@@ -35,16 +35,20 @@ public sealed class CalendarDay : VersionedEntity
     /// <summary>MF8: the date follows the Hijri calendar by calculation (Umm al-Qura), so the official announcement may differ by a day or two.</summary>
     public bool IsApproximate { get; private set; }
 
+    /// <summary>#87: the date is fixed, but whether the day is a holiday may be announced yearly by a decision («قد تُعلن سنوياً بقرار»).</summary>
+    public bool ByDecision { get; private set; }
+
     /// <summary>MF8: a disabled entry stays in the calendar but is ignored (not shown as a holiday, no effect on the schedule).</summary>
     public bool IsEnabled { get; private set; } = true;
 
-    public static CalendarDay FromTemplate(string key, string title, DateOnly startDate, DateOnly endDate, bool approximate)
+    public static CalendarDay FromTemplate(string key, string title, DateOnly startDate, DateOnly endDate, bool approximate, bool byDecision = false)
     {
         var day = new CalendarDay();
         day.Apply(title, startDate, endDate, CalendarDayKind.OfficialHoliday, true);
         day.Source = CalendarDaySource.IraqTemplate;
         day.TemplateKey = key;
         day.IsApproximate = approximate;
+        day.ByDecision = byDecision;
         return day;
     }
 

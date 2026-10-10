@@ -1,4 +1,4 @@
-import { CalendarCheck, CalendarClock, CalendarDays, CalendarPlus, CalendarRange, CalendarX, Eye, EyeOff, List, Pencil, Trash2, TriangleAlert } from "lucide-react";
+import { CalendarCheck, CalendarClock, CalendarDays, Megaphone, CalendarPlus, CalendarRange, CalendarX, Eye, EyeOff, List, Pencil, Trash2, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { SearchField } from "../../components/SearchField";
 import { Alert } from "../../components/ui/alert";
@@ -49,6 +49,7 @@ export function CalendarPage() {
         <span className="calendar-title">
           <span className={`calendar-title${day.isEnabled ? "" : " is-disabled"}`}>{day.title}</span>
           {day.isApproximate && <Badge tone="warning" icon={<CalendarClock aria-hidden="true" size={16} />}>{text.approximate}</Badge>}
+          {day.byDecision && <Badge tone="warning" icon={<Megaphone aria-hidden="true" size={16} />}>{text.byDecision}</Badge>}
         </span>
       ),
     },

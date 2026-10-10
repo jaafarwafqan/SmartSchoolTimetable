@@ -3,13 +3,13 @@ import { messages } from "../src/i18n/messages";
 import { createFormatter } from "../src/lib/format";
 import { ApiServer } from "./support/apiServer";
 import { api } from "./support/api";
-import { expectNoPageScrollX, expectNoSeriousA11yViolations, goToSection, setupOwner } from "./support/flows";
+import { expectNoPageScrollX, expectNoSeriousA11yViolations, fillDate, goToSection, setupOwner } from "./support/flows";
 
 const server = new ApiServer();
 const text = messages.school.calendar;
 const iraq = text.iraq;
 
-test("(MF8) Iraqi holidays: suggested per year, approximate marks, disable/enable, date picker, one add entry, month icons, dashboard", async ({ browser, page }, testInfo) => {
+test("(MF8, #87) Iraqi holidays: added with the year, approximate and by-decision marks, disable/enable, re-suggest, date picker, one add entry, month icons, dashboard", async ({ browser, page }, testInfo) => {
   test.setTimeout(180_000);
   await server.start(browser, "mf-holidays");
   try {
@@ -19,17 +19,34 @@ test("(MF8) Iraqi holidays: suggested per year, approximate marks, disable/enabl
 
     // One entry point for adding a day; the suggestion card is separate.
     await expect(page.getByRole("button", { name: text.add })).toHaveCount(1);
+
+    // #87: the year was created above, so the Iraqi holidays are ALREADY in the calendar: each Hijri one marked approximate, and the
+    // owner-confirmed ones («عيد النصر») marked «قد تُعلن سنوياً بقرار».
+    await expect(page.getByRole("row", { name: /عيد النصر/ }).getByText(text.byDecision)).toBeVisible();
+    await expect(page.getByRole("row", { name: /عيد الأضحى/ }).getByText(text.approximate)).toBeVisible();
     await page.getByRole("button", { name: iraq.preview }).click();
     const preview = page.getByRole("dialog", { name: iraq.dialogTitle });
     await expect(preview.getByText(iraq.hint)).toBeVisible();
-    await expect(preview.getByText(text.approximate).first()).toBeVisible();
+    await expect(preview.getByText(iraq.nothingNew)).toBeVisible();
     await expect(preview.getByText("عيد الأضحى المبارك")).toBeVisible();
-    await expect(preview.getByText("عيد نوروز")).toBeVisible();
-    // Disputed holidays are not suggested (documented in docs/IRAQ_HOLIDAYS.md).
+    await expect(preview.getByText("اليوم الوطني العراقي")).toBeVisible();
+    await expect(preview.getByText(text.byDecision).first()).toBeVisible();
+    // Days that stay manual are not suggested.
     await expect(preview.getByText("عيد الجمهورية")).toHaveCount(0);
     await page.screenshot({ path: testInfo.outputPath("mf8-preview.png"), fullPage: true });
+    await preview.getByRole("button", { name: messages.app.cancel }).click();
+
+    // Deleting one (confirmed) and suggesting again offers exactly that one, and adding it back leaves no duplicate.
+    const labour = page.getByRole("row", { name: /عيد العمال/ });
+    await labour.getByRole("button", { name: new RegExp(`^${messages.school.common.delete}`) }).click();
+    await page.getByRole("dialog", { name: text.deleteTitle }).getByRole("button", { name: messages.school.common.delete }).click();
+    await expect(page.getByRole("status").filter({ hasText: text.deleted })).toBeVisible();
+    await expect(page.getByRole("row", { name: /عيد العمال/ })).toHaveCount(0);
+    await page.getByRole("button", { name: iraq.preview }).click();
+    await expect(preview.getByText(iraq.nothingNew)).toHaveCount(0);
     await preview.getByRole("button", { name: /^إضافة/ }).click();
     await expect(page.getByRole("status").filter({ hasText: /أُضيفت/ })).toBeVisible();
+    await expect(page.getByRole("row", { name: /عيد العمال/ })).toHaveCount(1);
 
     // The list: kind icon + name, approximate holidays marked, the entries editable/deletable/disable-able.
     const row = page.getByRole("row", { name: /عيد نوروز/ });
@@ -76,6 +93,17 @@ test("(MF8) Iraqi holidays: suggested per year, approximate marks, disable/enabl
       await page.setViewportSize({ width, height: 900 });
       await expectNoPageScrollX(page, `calendar at ${width}px`);
     }
+
+    // Creating another year from the years page adds its holidays and says so.
+    await page.setViewportSize({ width: 1366, height: 900 });
+    await goToSection(page, messages.school.nav.academicYears);
+    await page.getByRole("button", { name: messages.school.years.add }).first().click();
+    const yearDialog = page.getByRole("dialog", { name: messages.school.years.add });
+    await yearDialog.getByLabel(messages.school.years.label).fill("2027-2028");
+    await fillDate(yearDialog, messages.school.years.startDate, "2027-09-01");
+    await fillDate(yearDialog, messages.school.years.endDate, "2028-06-30");
+    await yearDialog.getByRole("button", { name: messages.school.years.save }).click();
+    await expect(page.getByRole("status").filter({ hasText: messages.school.years.holidaysAdded })).toBeVisible();
 
     // Dashboard: the next holiday and how far away it is.
     await page.setViewportSize({ width: 1366, height: 900 });

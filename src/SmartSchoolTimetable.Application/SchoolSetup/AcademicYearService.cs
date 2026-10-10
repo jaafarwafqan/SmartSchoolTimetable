@@ -1,3 +1,4 @@
+using SmartSchoolTimetable.Application.Calendar;
 using SmartSchoolTimetable.Application.Common;
 using SmartSchoolTimetable.Domain.Common;
 using SmartSchoolTimetable.Domain.SchoolSetup;
@@ -59,13 +60,15 @@ public sealed class AcademicYearService(IDataStore store, TimeProvider clock, IY
         year.MarkCurrent(!hasCurrent);
         store.Add(year);
         AuditTrail.Record(store, clock, AuditEvents.AcademicYearCreated, "academic-year", "Academic year created.");
+        // #87: a new or copied year gets the Iraqi official holidays at once (no waiting for the owner); they stay editable, deletable and disable-able.
+        var holidays = await CalendarService.AddMissingIraqHolidaysAsync(store, clock, year, cancellationToken);
         var saved = await SaveAsync(year, cancellationToken);
         if (saved.Succeeded && source is not null)
         {
             await structure.CopyAsync(source.Id, year.Id, cancellationToken);
             await store.SaveChangesAsync(cancellationToken);
         }
-        return saved;
+        return saved.Succeeded ? OperationResult.Success(saved.Value! with { HolidaysAdded = holidays }) : saved;
     }
 
     public async Task<OperationResult<AcademicYearDto>> UpdateAsync(long id, SaveAcademicYearCommand command, CancellationToken cancellationToken)

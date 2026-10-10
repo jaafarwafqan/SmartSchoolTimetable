@@ -15,11 +15,13 @@ export type CalendarDay = {
   source: "manual" | "iraqTemplate";
   /** MF8: a Hijri date calculated with Umm al-Qura; the official announcement may differ. */
   isApproximate: boolean;
+  /** #87: a fixed date that may be announced yearly by a decision («قد تُعلن سنوياً بقرار — تحقق من الإعلان الرسمي»). */
+  byDecision: boolean;
   /** MF8: a disabled entry stays in the list but is not counted as a holiday. */
   isEnabled: boolean;
   version: number;
 };
-export type IraqHolidayPreview = { key: string; title: string; startDate: string; endDate: string; approximate: boolean; alreadyAdded: boolean };
+export type IraqHolidayPreview = { key: string; title: string; startDate: string; endDate: string; approximate: boolean; alreadyAdded: boolean; byDecision: boolean };
 export type IraqHolidayPreviewResponse = { yearLabel: string; holidays: IraqHolidayPreview[] };
 export type ImportIraqHolidaysResult = { added: number; skipped: number };
 export type CalendarDayInput = { title: string; startDate: string; endDate: string | null; kind: CalendarKind; affectsSchedule: boolean; version: number };

@@ -1,4 +1,4 @@
-import { CalendarClock, CalendarPlus, Landmark, ListChecks, X } from "lucide-react";
+import { CalendarClock, CalendarPlus, Landmark, ListChecks, Megaphone, X } from "lucide-react";
 import { useState } from "react";
 import { Alert } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
@@ -75,6 +75,7 @@ export function IraqHolidaysCard({ onImported }: { onImported: () => void }) {
                 </span>
                 <span className="row-actions">
                   {holiday.approximate && <Badge tone="warning" icon={<CalendarClock aria-hidden="true" size={16} />}>{text.approximate}</Badge>}
+                  {holiday.byDecision && <Badge tone="warning" icon={<Megaphone aria-hidden="true" size={16} />}>{text.byDecision}</Badge>}
                   {holiday.alreadyAdded && <Badge>{iraq.added}</Badge>}
                 </span>
               </li>
