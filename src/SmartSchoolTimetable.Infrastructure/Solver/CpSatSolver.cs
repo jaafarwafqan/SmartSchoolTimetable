@@ -68,7 +68,8 @@ public sealed class CpSatSolver : ISolver
         var limit = settings.Deterministic && !diagnostic
             ? $"max_deterministic_time:{time} max_time_in_seconds:{(Math.Max(0.1, seconds) * DeterministicSafetyFactor).ToString("0.###", invariant)}"
             : $"max_time_in_seconds:{time}";
-        return $"{limit} num_workers:{workers} random_seed:{settings.Seed.ToString(invariant)} log_search_progress:false";
+        var memory = GenerationSettings.SolverMemoryLimitMb(GC.GetGCMemoryInfo().TotalAvailableMemoryBytes).ToString(invariant);
+        return $"{limit} num_workers:{workers} max_memory_in_mb:{memory} random_seed:{settings.Seed.ToString(invariant)} log_search_progress:false";
     }
 
     private static SolverResult Solve(SchedulingInput input, GenerationSettings settings, IProgress<SolverProgress>? progress, CancellationToken token)

@@ -96,6 +96,35 @@ public sealed class SolverExecutionTests
         Assert.Contains("num_workers:4", fast, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(1, 16L * 1024 * 1024 * 1024, 1)] // one core: still one worker
+    [InlineData(2, 16L * 1024 * 1024 * 1024, 1)] // all cores but one
+    [InlineData(4, 16L * 1024 * 1024 * 1024, 3)]
+    [InlineData(8, 16L * 1024 * 1024 * 1024, 4)] // capped
+    [InlineData(32, 64L * 1024 * 1024 * 1024, 4)]
+    [InlineData(8, 4L * 1024 * 1024 * 1024, 2)] // a 4 GB computer: at most two workers
+    [InlineData(4, 4L * 1024 * 1024 * 1024, 2)]
+    [InlineData(2, 4L * 1024 * 1024 * 1024, 1)]
+    [InlineData(8, 0, 4)] // memory unknown: no memory cap
+    public void TheDefaultWorkersFollowTheCoresAndTheMemory(int cores, long memoryBytes, int expected) =>
+        Assert.Equal(expected, GenerationSettings.WorkersFor(cores, memoryBytes));
+
+    [Theory]
+    [InlineData(4L * 1024 * 1024 * 1024, 1024)]
+    [InlineData(1L * 1024 * 1024 * 1024, 512)]
+    [InlineData(64L * 1024 * 1024 * 1024, 2048)]
+    [InlineData(0, 2048)]
+    public void TheSolverMemorySafetyNetIsAQuarterOfTheMemoryBetween512MbAnd2Gb(long memoryBytes, int expectedMb) =>
+        Assert.Equal(expectedMb, GenerationSettings.SolverMemoryLimitMb(memoryBytes));
+
+    [Fact]
+    public void TheSolverParametersCarryTheMemorySafetyNet()
+    {
+        var parameters = CpSatSolver.ParametersFor(TestSchool.Settings(seconds: 60, seed: 1, deterministic: false, workers: 2));
+        Assert.Matches(@"max_memory_in_mb:\d+", parameters);
+        Assert.InRange(GenerationSettings.DefaultWorkers, 1, GenerationSettings.WorkerCap);
+    }
+
     private sealed class SynchronousProgress(Action<SolverProgress> report) : IProgress<SolverProgress>
     {
         public void Report(SolverProgress value) => report(value);

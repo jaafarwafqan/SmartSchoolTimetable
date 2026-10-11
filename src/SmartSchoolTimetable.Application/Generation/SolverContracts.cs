@@ -27,7 +27,28 @@ public sealed record GenerationSettings(string Mode, int TimeLimitSeconds, int S
 
     public bool DoublePeriodsRequired => Mode == GenerationModes.DoublePeriods;
 
-    public static int DefaultWorkers => Math.Max(1, Environment.ProcessorCount / 2);
+    /// <summary>The most search workers the default ever uses: each worker holds its own copy of the search state (memory).</summary>
+    public const int WorkerCap = 4;
+
+    /// <summary>Below this much physical memory (a 4 GB school PC) the default is at most <see cref="SmallMachineWorkers"/> workers.</summary>
+    public const long SmallMachineBytes = 6L * 1024 * 1024 * 1024;
+
+    public const int SmallMachineWorkers = 2;
+
+    /// <summary>
+    /// The default number of workers for this computer: all cores but one (the screen keeps one), at most <see cref="WorkerCap"/>, and at most
+    /// <see cref="SmallMachineWorkers"/> when the computer has under 6 GB of memory. The owner can still change it («متقدم»).
+    /// </summary>
+    public static int DefaultWorkers => WorkersFor(Environment.ProcessorCount, GC.GetGCMemoryInfo().TotalAvailableMemoryBytes);
+
+    public static int WorkersFor(int cores, long memoryBytes)
+    {
+        var workers = Math.Min(Math.Max(1, cores - 1), WorkerCap);
+        return memoryBytes > 0 && memoryBytes < SmallMachineBytes ? Math.Min(workers, SmallMachineWorkers) : workers;
+    }
+
+    /// <summary>A safety net for the solver's own memory (CP-SAT stops with its best result instead of growing without bound): a quarter of the memory, 512 MB to 2 GB.</summary>
+    public static int SolverMemoryLimitMb(long memoryBytes) => memoryBytes <= 0 ? 2048 : (int)Math.Clamp(memoryBytes / 4 / 1048576, 512, 2048);
 
     public int EffectiveWorkers => Deterministic ? 1 : Math.Max(1, Workers);
 }

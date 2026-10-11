@@ -86,3 +86,16 @@ dotnet test tests/SmartSchoolTimetable.Tests -c Release --filter "Category=Perfo
 ```
 
 Each measurement is printed as one table row in the test output. Without `SST_PERFORMANCE=1` these tests are skipped, so the default `dotnet test` run stays fast.
+
+## M3 (2026-10-11): the published program on school-PC limits
+The solver's default worker count now follows the computer: all cores but one, at most 4, and at most 2 when the computer has under 6 GB of memory; CP-SAT also gets a memory safety net (a quarter of the memory, 512 MB to 2 GB). Measured with the published executable through the API (`e2e/m3-performance.spec.ts`, on demand), a fictional intermediate school, 60 s limit, machine: i7-7500U 2.7 GHz (2 cores / 4 threads), 15.9 GB, Windows 10 22H2.
+
+| Profile | Sections | Workers | First (s) | Total (s) | Status | Server peak | Whole test (runner + server + browser) peak |
+|---|---:|---:|---:|---:|---|---:|---:|
+| normal | 24 | 3 | 7.1 | 27.6 | optimal (penalty 0) | 400 MB | 722 MB |
+| normal | 40 | 3 | 12.4 | 62.4 | feasible (penalty 25) | 513 MB | 849 MB |
+| 2 processors + 512 MB heap limit | 24 | 2 | 7.7 | 29.7 | optimal | 363 MB | 676 MB |
+| 2 processors + 512 MB heap limit | 40 | 2 | 11.2 | 62.2 | feasible (penalty 415) | 447 MB | 786 MB |
+
+Cold start (server start to first answer on a new database): 5.0 s; 12.9 s on the first start after a publish. Details, limits and how to repeat: `docs/M3_RELEASE_VALIDATION_AR.md`.
+

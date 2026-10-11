@@ -165,6 +165,8 @@ app.MapGenerationEndpoints();
 app.MapTimetableEndpoints();
 app.MapBackupEndpoints();
 app.MapAboutEndpoints();
+// Only when the launcher started this process with a control token (never from a browser; docs: ADR 0052).
+app.MapControlEndpoints(builder.Configuration["Control:Token"]);
 app.MapAuditEndpoints();
 app.MapSettingsEndpoints();
 app.MapFallback(async (HttpContext context) =>

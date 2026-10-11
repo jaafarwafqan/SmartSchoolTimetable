@@ -70,10 +70,11 @@ internal sealed class TestHost : IAsyncDisposable
 
     /// <param name="failures">Optional failure injection: the n-th database save of a request scope throws.</param>
     /// <param name="configureServices">Optional: replace or decorate services of the application under test (for example to make a restore fail).</param>
-    public TestHost(SaveFailureInjection? failures = null, Action<IServiceCollection>? configureServices = null)
+    /// <param name="controlToken">Optional: starts the application as the launcher does (the control channel exists only with a token).</param>
+    public TestHost(SaveFailureInjection? failures = null, Action<IServiceCollection>? configureServices = null, string? controlToken = null)
     {
         Directory.CreateDirectory(_directory);
-        _factory = new TestApplicationFactory(DatabasePath, failures, configureServices);
+        _factory = new TestApplicationFactory(DatabasePath, failures, configureServices, controlToken);
         Client = _factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             BaseAddress = LocalOrigin,
@@ -152,7 +153,7 @@ internal sealed class TestHost : IAsyncDisposable
     }
 }
 
-internal sealed class TestApplicationFactory(string databasePath, SaveFailureInjection? failures = null, Action<IServiceCollection>? configureServices = null) : WebApplicationFactory<Program>
+internal sealed class TestApplicationFactory(string databasePath, SaveFailureInjection? failures = null, Action<IServiceCollection>? configureServices = null, string? controlToken = null) : WebApplicationFactory<Program>
 {
     public CapturingLoggerProvider LogProvider { get; } = new();
     public QueryCounter Queries { get; } = new();
@@ -163,6 +164,8 @@ internal sealed class TestApplicationFactory(string databasePath, SaveFailureInj
         builder.UseSetting("LocalHost:Port", "5080");
         builder.UseSetting("Authentication:InactivityTimeoutMinutes", "5");
         builder.UseSetting("Database:Path", databasePath);
+        if (controlToken is not null)
+            builder.UseSetting("Control:Token", controlToken);
         builder.ConfigureLogging(logging =>
         {
             logging.AddProvider(LogProvider);
