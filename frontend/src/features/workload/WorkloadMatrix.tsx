@@ -57,7 +57,7 @@ function AssignmentCell({ rowIndex, colIndex, line, row, cell, loads, showAll, s
   ];
   const label = text.cellLabel(line.label ? `${line.subjectName} - ${line.label}` : line.subjectName, row.label);
   return (
-    <td className={`workload-cell${cell.teacherId === null ? " is-unassigned" : ""}`}>
+    <td className={`workload-cell${cell.teacherId === null ? " is-unassigned" : ""}`} data-label={text.lineHeader(line.subjectName, line.label, format.number(line.weeklyLessons))}>
       <Select aria-label={label} title={label} value={draft ?? saved} options={options} disabled={saving} data-row={rowIndex} data-col={colIndex}
         onKeyDown={onKeyDown}
         onBlur={() => { if (draft !== null) commit(draft); }}
@@ -122,7 +122,7 @@ export function WorkloadMatrix({ yearId, loads }: { yearId: number; loads: reado
       <Alert tone="error" message={feedback.error} />
       {stage && stage.lines.length === 0 && <Alert tone="info" message={text.noLines} />}
       {stage && stage.lines.length > 0 && (
-        <EditGrid caption={stage.stageName} className="curriculum-table workload-table">
+        <EditGrid caption={stage.stageName} className="curriculum-table workload-table ui-table-stack">
             <thead>
               <tr>
                 <th scope="col">{text.section}</th>

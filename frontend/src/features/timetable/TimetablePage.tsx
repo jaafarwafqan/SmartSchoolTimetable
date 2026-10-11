@@ -98,8 +98,11 @@ function TimetableViews({ timetable, editing, onEditingChange, onSaved, flagged,
   const [printChoice, setPrintChoice] = useState<PrintChoice>({ scope: "current" });
   const print = resolvePrint(printChoice, view, printDefaults);
   // Choosing another job restores that job's defaults; a change of paper, orientation or fit is kept for this print only.
-  const changePrint = (next: PrintOptions) => setPrintChoice((current) => (next.scope !== current.scope ? { scope: next.scope } : { scope: next.scope, paper: next.paper, orientation: next.orientation, fit: next.fit }));
-  const chooseView = (next: View) => { setView(next); setEditing(false); setPrintChoice((current) => ({ scope: current.scope })); };
+  // Colour or black and white is a choice for this print job and survives a change of job or view.
+  const changePrint = (next: PrintOptions) => setPrintChoice((current) => (next.scope !== current.scope
+    ? { scope: next.scope, color: next.color }
+    : { scope: next.scope, paper: next.paper, orientation: next.orientation, fit: next.fit, color: next.color }));
+  const chooseView = (next: View) => { setView(next); setEditing(false); setPrintChoice((current) => ({ scope: current.scope, color: current.color })); };
   // The print document is built only while the print options are open or the browser is printing (Ctrl+P included).
   const [printPanelOpen, setPrintPanelOpen] = useState(false);
   const [browserPrinting, setBrowserPrinting] = useState(false);
@@ -194,8 +197,8 @@ function PrintPanel({ options, view, onChange, onToggle }: PrintPanelProps) {
       <summary><Printer aria-hidden="true" size={18} /><span>{printText.title}</span></summary>
       <div className="print-options-fields">
         <Field id="print-scope" label={printText.scope}>
-          <Select id="print-scope" value={options.scope} onChange={(event) => onChange(defaultOptions(event.target.value as PrintScope, view))}
-            options={(["current", "sections", "teachers", "school"] as const).map((value) => ({ value, label: printText.scopes[value] }))} />
+          <Select id="print-scope" value={options.scope} onChange={(event) => onChange({ ...defaultOptions(event.target.value as PrintScope, view), color: options.color })}
+            options={(["current", "sections", "teachers", "school", "stages"] as const).map((value) => ({ value, label: printText.scopes[value] }))} />
         </Field>
         <Field id="print-paper" label={printText.paper}>
           <Select id="print-paper" value={options.paper} onChange={(event) => onChange({ ...options, paper: event.target.value as PaperSize })}
@@ -204,6 +207,12 @@ function PrintPanel({ options, view, onChange, onToggle }: PrintPanelProps) {
         <Field id="print-orientation" label={printText.orientation}>
           <Select id="print-orientation" value={options.orientation} onChange={(event) => onChange({ ...options, orientation: event.target.value as Orientation })}
             options={(["portrait", "landscape"] as const).map((value) => ({ value, label: printText.orientations[value] }))} />
+        </Field>
+      </div>
+      <div className="print-options-fields">
+        <Field id="print-color" label={printText.color}>
+          <Select id="print-color" value={options.color ? "color" : "bw"} onChange={(event) => onChange({ ...options, color: event.target.value === "color" })}
+            options={(["color", "bw"] as const).map((value) => ({ value, label: printText.colorModes[value] }))} />
         </Field>
       </div>
       <Checkbox checked={options.fit} onChange={(event) => onChange({ ...options, fit: event.target.checked })}>{printText.fit}</Checkbox>

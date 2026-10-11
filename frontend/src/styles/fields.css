@@ -84,6 +84,11 @@
   }
 }
 
+.ui-tabs {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
 .ui-tabs ul {
   display: flex;
   flex-wrap: wrap;
@@ -92,6 +97,25 @@
   padding: 0;
   border-block-end: 1px solid var(--color-line);
   list-style: none;
+}
+
+/* A phone shows the tabs in one row that scrolls sideways (never a stack of wrapped rows). */
+@media (max-width: 47.99rem) {
+  .ui-tabs ul {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+  }
+
+  .ui-tabs li {
+    flex: none;
+    scroll-snap-align: start;
+  }
+
+  .ui-tab {
+    white-space: nowrap;
+  }
 }
 
 .ui-tab {
@@ -114,10 +138,6 @@
 .ui-tab.is-active {
   border-block-end-color: var(--color-primary);
   color: var(--color-primary-ink);
-}
-
-.user-menu-role {
-  font-weight: 600;
 }
 
 .user-menu-name {

@@ -42,14 +42,22 @@ test("account screens pass axe and keep their layout at 375, 768, 1024 and 1440 
   await acknowledgeCode(page);
 
   await goToSection(page, messages.school.nav.settings);
+  await expectNoSeriousA11yViolations(page, "settings");
+  await expectBreakpointScreenshots(page, "settings");
+
+  await goToSection(page, messages.school.nav.settingsAccount);
+  await expectNoSeriousA11yViolations(page, "settings account");
+  await expectBreakpointScreenshots(page, "settings-account");
+
+  await goToSection(page, messages.school.nav.settingsBackup);
   // The suggested backup folder is under the machine's user profile and may already hold backups, so the list (and the layout) would
   // depend on the computer: point it at an empty folder of this test instead, and mask the path text.
   await page.getByText(messages.school.backup.typed).click();
   await page.getByLabel(messages.school.backup.typedLabel).fill(testInfo.outputPath("empty-backups"));
   await expect(page.getByText(messages.school.backup.list.empty)).toBeVisible();
   await page.getByText(messages.school.backup.typed).click(); // collapse the fallback again: its input shows a slice of this computer's path
-  await expectNoSeriousA11yViolations(page, "settings");
-  await expectBreakpointScreenshots(page, "settings", [page.locator("#backup-folder")]);
+  await expectNoSeriousA11yViolations(page, "settings backup");
+  await expectBreakpointScreenshots(page, "settings-backup", [page.locator("#backup-folder")]);
 
   await logout(page);
   await expectNoSeriousA11yViolations(page, "login");

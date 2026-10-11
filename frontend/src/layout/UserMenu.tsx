@@ -1,4 +1,4 @@
-import { ChevronDown, Info, Lock, LogOut, Settings, UserRound } from "lucide-react";
+import { ChevronDown, CircleUser, Info, Lock, LogOut, Settings, UserRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { LtrText } from "../components/ui/ltr-text";
 import { Menu } from "../components/ui/menu";
@@ -16,12 +16,12 @@ export function UserMenu({ username, onError }: { username: string | null; onErr
       trigger={(
         <>
           <UserRound aria-hidden="true" size={18} strokeWidth={2} />
-          <span className="user-menu-role">{messages.school.shell.ownerRole}</span>
           {username && <LtrText className="user-menu-name">{username}</LtrText>}
           <ChevronDown aria-hidden="true" size={16} strokeWidth={2} />
         </>
       )}
       items={[
+        { key: "account", label: messages.school.shell.account, icon: <CircleUser aria-hidden="true" size={20} />, onSelect: () => navigate("/settings/account") },
         { key: "settings", label: messages.school.nav.settings, icon: <Settings aria-hidden="true" size={20} />, onSelect: () => navigate("/settings") },
         { key: "about", label: messages.school.about.menu, icon: <Info aria-hidden="true" size={20} />, onSelect: () => navigate("/settings/about") },
         { key: "lock", label: messages.school.shell.lock, icon: <Lock aria-hidden="true" size={20} />, onSelect: () => lock.mutate() },

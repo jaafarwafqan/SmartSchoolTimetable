@@ -152,7 +152,7 @@ export function BackupSection() {
   ];
 
   return (
-    <SettingsSection id="backup-section" icon={DatabaseBackup} title={text.title} description={text.description}>
+    <SettingsSection id="backup-section" icon={DatabaseBackup} title={text.title} description={text.description} wide>
       <Alert tone="error" message={backupFeedback.error} />
       <Alert tone="success" message={backupFeedback.success} />
       {settings.isError && <Alert tone="error" message={text.settings.loadFailed} />}
@@ -171,7 +171,7 @@ export function BackupSection() {
       <SectionTitle level={3} icon={ArchiveRestore} className="settings-subtitle">{text.restoreTitle}</SectionTitle>
       <p className="card-note">{text.list.hint}</p>
       <Alert tone="error" message={restoreFeedback.error} />
-      <DataTable caption={text.list.title} columns={columns} rows={rows} rowKey={(file) => file.path} selectedKey={chosenFile} loading={files.isPending && folder.trim() !== ""} scrollable
+      <DataTable caption={text.list.title} columns={columns} rows={rows} rowKey={(file) => file.path} selectedKey={chosenFile} loading={files.isPending && folder.trim() !== ""} scrollable stacked
         empty={<EmptyState icon={<ArchiveRestore aria-hidden="true" size={24} />} message={text.list.empty} />} />
       <div className="form-stack">
         {chosen && <p className="card-note">{text.list.chosenNote(format.date(localDateTime(chosen.modifiedAt, format.preferences.timeZone).date))}</p>}

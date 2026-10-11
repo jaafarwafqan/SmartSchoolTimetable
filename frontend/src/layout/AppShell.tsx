@@ -6,6 +6,8 @@ import { CalendarPage } from "../features/calendar/CalendarPage";
 import { CurriculumPage } from "../features/curriculum/CurriculumPage";
 import { DashboardPage } from "../features/dashboard/DashboardPage";
 import { SchoolProfilePage } from "../features/school-profile/SchoolProfilePage";
+import { AccountSettingsPage } from "../features/settings/AccountSettingsPage";
+import { BackupSettingsPage } from "../features/settings/BackupSettingsPage";
 import { SettingsScreen } from "../features/settings/SettingsScreen";
 import { SetupWizardPage } from "../features/setup-wizard/SetupWizardPage";
 import { StagesSectionsPage } from "../features/stages-sections/StagesSectionsPage";
@@ -80,7 +82,9 @@ export function AppShell({ bootstrap }: { bootstrap: Bootstrap }) {
             <Route path="/timetable/generate" element={<GenerationPage />} />
             <Route path="/timetable/view" element={<TimetablePage />} />
             <Route path="/setup" element={<SetupWizardPage />} />
-            <Route path="/settings/general" element={<SettingsScreen bootstrap={bootstrap} />} />
+            <Route path="/settings/general" element={<SettingsScreen />} />
+            <Route path="/settings/account" element={<AccountSettingsPage bootstrap={bootstrap} />} />
+            <Route path="/settings/backup" element={<BackupSettingsPage />} />
             <Route path="/settings/advanced" element={<SchedulingProfilePage />} />
             <Route path="/settings/scheduling" element={<Navigate to="/settings/advanced" replace />} />
             <Route path="/settings/history" element={<HistoryPage />} />

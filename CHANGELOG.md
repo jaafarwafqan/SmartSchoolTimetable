@@ -25,13 +25,25 @@
 - **MF11 stale timetable vs current data (ADR 0047):** «الفحص على البيانات الحالية» with each conflict as a sentence that opens its cell, «ما الذي تغيّر منذ التوليد», «إصلاح بأقل تغيير», «استبدال المعلم في الجدول», and approval blocked on conflicts. Migration `Phase5RepairedVersions`.
 - Removed (owner-approved paths): `ShiftModeService`, `ShiftModeCard`, `shiftModeApi`, `SessionsCard`, `ShiftDialog`.
 ### M2 preferences, backups, upgrade, About, import (branch `work/phase-5`, ADRs 0050–0051)
-- Stored preferences: theme (dark), digits, default semester, print defaults; auto-lock stays in Settings › عام.
+- Stored preferences: theme (dark), digits, default semester, print defaults.
 - Backups: online backup with integrity check and program/database versions; a settings form (folder picker, automatic daily backup, keep the last N = 3, 7, 14 or 30) and a list with date, size, versions and integrity; safe restore with automatic rollback. **The single approved exception to «never delete backups»:** old `auto-backup-*.db` files beyond the newest N valid ones (only those, never manual / pre-restore / pre-upgrade / pre-conversion files; nothing is deleted while fewer than N valid copies exist; every deletion audited) — recorded in ADR 0050 and `CLAUDE.md`.
 - Safe upgrade: a verified `pre-upgrade-*.db` copy before any migration, the data put back if a migration fails, an Arabic startup message (`startup-error.txt`), a database from a newer program refused untouched; `docs/UPGRADE_AR.md`.
 - «حول البرنامج» (Settings › حول and the user menu): version, build date, database version, licence, developer, data folder with «فتح مجلد البيانات» (guarded: only the app's own folder), «تصدير سجل الدعم» (user names and paths redacted), third-party licences; the version in every footer.
 - Excel import of teachers with a dry run: template download, per-row Arabic notes, valid rows only, Arabic name normalisation (أ إ آ ا، ى ي، ة ه، spaces), idempotent re-import that never overwrites.
 - CI: Playwright with one worker and a longer timeout on CI only; the audit step always runs; `LICENSE` (proprietary, Arabic and English).
 - ADR 0051: PDF output (the browser prints timetables; Chromium builds the user guide).
+### Printing fixes after the owner's test (branch `work/phase-5`, ADR 0051)
+- Subject colours print even with «Background graphics» off (`print-color-adjust: exact`); new option «ملوّن / أبيض وأسود» (default colour).
+- Whole-school print: rows grouped by stage with a header row per stage, a thick rule between stages and a light stage tint on the first column (black and white keeps the header rows and rules); a new scope «صفحة لكل مرحلة».
+- Readable sizes: subjects never below 8 pt, teacher names never below 7 pt; a grid that does not fit is split over pages by days (headers and footer repeated, «صفحة X من Y») instead of being shrunk.
+- Tests: `m2-printing.spec.ts` (print styles, page counts, font floors) and rendered PDF pages; the panel hint tells the owner to turn the browser's «Headers and footers» off.
+### M4b dashboard, settings, 375 px (branch `work/phase-5`)
+- Dashboard: calm one-time entrance animation (none for reduced motion); the checklist collapses to one line «اكتمل الإعداد» when everything is set up; the «السنوات الدراسية» and «شعب بلا سعة أسبوعية» numbers are gone; an alert when the approved timetable conflicts with today's school data (MF11 check) with a link to open it; the next-holiday card stays.
+- Settings split into tabs «عام» (preferences, setup wizard), «الحساب والأمان» (username, password, recovery code, auto-lock), «النسخ الاحتياطي», «متقدم», «سجل التغييرات», «حول»; the pages use the whole width. User menu: «حسابي» (opens الحساب والأمان), the username only (no «المالك»), الإعدادات, حول البرنامج, قفل, خروج.
+- The teacher Excel import is also in the wizard's Teachers step (the same panel as the teachers screen).
+- 375 px: settings tabs in one scrolling row (no wrapped stack); a table can opt into «cards on a phone» (`DataTable stacked`): the backup list and the workload tables; the workload matrix shows each section as a card with its subjects one under the other; the top bar badges are short («السنة: ٢٠٢٦-٢٠٢٧», «الفصل الأول»).
+- Dark theme: delivered in M2 (1/6), checked again with axe on the new pages.
+- DECISIONS_PENDING #91: Excel import of subjects and sections is a future item (not in v1.0).
 ### M4a icons everywhere (merged into `work/phase-5`)
 - `SectionTitle` (required icon) replaces every raw h2/h3 in `features/` (lint rule `no-raw-headings` plus a test); `PageHeader` and tabs have required icons; non-neutral `Badge` requires an icon (types). Details: `docs/M4A_ICON_CHANGES.md`.
 ### Phase 4 follow-up: owner decisions on R3 (tag `phase-4i`)

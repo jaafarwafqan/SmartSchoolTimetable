@@ -9,6 +9,7 @@ import { userErrorMessage } from "../../api";
 import { messages } from "../../i18n/messages";
 import { PageHeader } from "../../layout/PageHeader";
 import { useFormatter } from "../../lib/schoolContext";
+import { ApprovedVersionAlert } from "./ApprovedVersionAlert";
 import { CurriculumStatusCard } from "./CurriculumStatusCard";
 import { ReadinessCard } from "../readiness/ReadinessCard";
 import { countItems } from "./dashboardItems";
@@ -35,6 +36,7 @@ export function DashboardPage() {
       )}
       {summary.data && (
         <div className="dashboard-grid">
+          <ApprovedVersionAlert />
           {!summary.data.setupFinished && (
             <Card className="dashboard-card setup-resume" aria-labelledby="setup-resume-title">
               <SectionTitle level={2} icon={Rocket} id="setup-resume-title">{messages.school.wizard.title}</SectionTitle>

@@ -108,7 +108,7 @@ test("(MF5) official printing: header, signature footer, A4/A3, portrait/landsca
     await page.emulateMedia({ media: null });
 
     const jobs: Array<{ name: string; scope: keyof typeof printing.scopes; view?: string; pages: number }> = [
-      { name: "a3-landscape-school", scope: "school", pages: 1 },
+      { name: "a3-landscape-school", scope: "school", pages: 2 }, // 36 columns do not fit A3 at a readable 8 pt: split by days
       { name: "a4-landscape-sections", scope: "sections", pages: 2 },
       { name: "a4-portrait-teachers", scope: "teachers", pages: 5 },
     ];

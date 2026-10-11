@@ -323,6 +323,13 @@
     color: var(--color-print-ink);
   }
 
+  /* Subject colours and the stage tints print even when the browser's «Background graphics» option is off. */
+  .print-document,
+  .print-document * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
   .print-page {
     font-size: calc(10pt * var(--print-scale, 1));
     break-after: page;
@@ -407,6 +414,12 @@
     overflow-wrap: anywhere;
   }
 
+  /* The cell fills its table cell, so the subject colour covers the whole box. */
+  .print-grid .ui-tt-grid td:has(.ui-tt-cell) {
+    padding: 0;
+    block-size: 1px;
+  }
+
   .print-grid .ui-tt-grid thead th {
     background: var(--color-print-header);
     print-color-adjust: exact;
@@ -417,19 +430,116 @@
     font-size: 1em;
   }
 
+  /* Never below 7 pt for a teacher name (subjects stay at 8 pt or more through the fit scale floor). */
   .print-grid .ui-tt-grid :is(.ui-tt-teacher, .timetable-time, .timetable-session) {
     color: var(--color-print-ink);
-    font-size: 0.85em;
+    font-size: max(7pt, 0.85em);
   }
 
   .print-grid .ui-tt-grid td .ui-tt-cell {
     min-inline-size: 0;
     min-block-size: 0;
+    block-size: 100%;
     border: 0;
-    padding: 0;
-    background: none;
+    border-radius: 0;
+    padding: 0.4em;
     color: var(--color-print-ink);
     box-shadow: none;
+  }
+
+  /* A free period stays white; the subject colour comes from the cell's own utility class. */
+  .print-grid .ui-tt-grid td .ui-tt-cell.is-empty {
+    background: none;
+  }
+
+  /* The whole-school grid: sections down, days across; the first column and the stage rows carry the stage. */
+  .print-master {
+    inline-size: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    border-spacing: 0;
+  }
+
+  .print-master caption {
+    display: none;
+  }
+
+  .print-master thead {
+    display: table-header-group;
+  }
+
+  .print-master tr {
+    break-inside: avoid;
+  }
+
+  .print-master th,
+  .print-master td {
+    min-inline-size: 0;
+    padding: 0.3em;
+    border: 0.3mm solid var(--color-print-ink);
+    color: var(--color-print-ink);
+    font-size: 1em;
+    overflow-wrap: anywhere;
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  .print-master th {
+    background: var(--color-print-header);
+  }
+
+  .print-master .print-corner,
+  .print-master .print-section {
+    inline-size: calc(26mm * var(--print-scale, 1));
+    font-weight: 700;
+  }
+
+  .print-master .ui-tt-subject {
+    display: block;
+    font-size: 1em;
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  .print-master .ui-tt-teacher {
+    display: block;
+    font-size: max(7pt, 0.85em);
+    line-height: 1.25;
+  }
+
+  .print-master .timetable-time {
+    display: block;
+    font-size: max(7pt, 0.75em);
+    font-weight: 400;
+  }
+
+  /* A header row per stage (readable without colour) and a thick rule where one stage ends and the next begins. */
+  .print-master .print-stage-row th {
+    border-block: 0.8mm solid var(--color-print-ink);
+    font-size: 1.1em;
+    text-align: start;
+  }
+
+  .print-master .print-stage + .print-stage tr:first-child > * {
+    border-block-start: 0.8mm solid var(--color-print-ink);
+  }
+
+  .print-master .print-stage[data-band="1"] .print-section { background: var(--color-print-stage-1); }
+  .print-master .print-stage[data-band="2"] .print-section { background: var(--color-print-stage-2); }
+  .print-master .print-stage[data-band="3"] .print-section { background: var(--color-print-stage-3); }
+  .print-master .print-stage[data-band="4"] .print-section { background: var(--color-print-stage-4); }
+  .print-master .print-stage[data-band="5"] .print-section { background: var(--color-print-stage-5); }
+  .print-master .print-stage[data-band="6"] .print-section { background: var(--color-print-stage-6); }
+
+  /* «أبيض وأسود»: no fills at all; borders, the stage header rows and bold subject names carry the structure. */
+  .print-document.is-bw .print-grid .ui-tt-grid td .ui-tt-cell,
+  .print-document.is-bw .print-master td,
+  .print-document.is-bw .print-master .print-stage .print-section {
+    background: none;
+  }
+
+  .print-document.is-bw .ui-tt-subject {
+    font-weight: 800;
   }
 
   .print-grid .ui-tt-grid-container + .ui-tt-grid-container {

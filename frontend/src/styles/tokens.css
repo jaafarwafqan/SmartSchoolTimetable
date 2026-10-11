@@ -74,6 +74,13 @@
   --color-print-ink: #000000;
   --color-print-header: #e6e6e6;
   --color-print-paper: #ffffff;
+  /* Light bands for the stage column of the printed whole-school grid (colour mode only; black and white relies on the stage header row). */
+  --color-print-stage-1: #e4ecfa;
+  --color-print-stage-2: #e0f3e7;
+  --color-print-stage-3: #fcefd6;
+  --color-print-stage-4: #f5e3f2;
+  --color-print-stage-5: #dff1f4;
+  --color-print-stage-6: #efeadb;
 
   /* ---------- Shape ---------- */
   --radius-sm: 0.375rem;

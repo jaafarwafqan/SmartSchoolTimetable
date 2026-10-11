@@ -130,6 +130,12 @@ test("scenario (b): a double-shift (مزدوج) ثانوية with branches throu
 
   // 6. Teachers and 7. workload are optional (the workload step came with Phase 3E); 8. review, then finish.
   await expect(stepTitle(page, 6)).toBeVisible();
+  // The teachers step offers the same Excel import panel as the teachers screen (opened and closed again before the screenshots).
+  await page.getByRole("button", { name: messages.school.teachers.import.button }).click();
+  const importPanel = page.locator(".bulk-panel").filter({ has: page.getByRole("heading", { name: messages.school.teachers.import.title }) });
+  await expect(importPanel.getByRole("link", { name: messages.school.teachers.import.downloadTemplate })).toBeVisible();
+  await importPanel.getByRole("button", { name: messages.app.cancel }).click();
+  await expect(importPanel).toHaveCount(0);
   await expectBreakpointScreenshots(page, "wizard-step-6");
   await ux.act(page.getByRole("button", { name: wizard.skip }));
   await expect(stepTitle(page, 7)).toBeVisible();

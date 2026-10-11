@@ -257,7 +257,7 @@ test("the whole setup checklist completes end to end; stale edits are caught", a
   // Dashboard reflects the completed steps and real counts.
   await goToSection(page, school.nav.dashboard);
   await expect(page.getByText(school.dashboard.checklistDone)).toBeVisible();
-  await expect(page.locator(".count-item")).toHaveText([/3/, /1/, /1/, /1/, /1/, /0/]); // teachers, years, stages, sections, subjects, capacity gaps
+  await expect(page.locator(".count-item")).toHaveText([/3/, /1/, /1/, /1/]); // teachers, stages, sections, subjects (years and capacity gaps are no longer shown)
   await expectNoSeriousA11yViolations(page, "dashboard (complete)");
   await expectBreakpointScreenshots(page, "dashboard");
 

@@ -478,6 +478,56 @@
   outline-offset: calc(var(--focus-offset) * -1);
 }
 
+/* A stacked table (opt in): each row is a card, each cell shows its column header as a label. */
+@media (max-width: 39.99rem) {
+  .ui-table-stack thead {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .ui-table-stack,
+  .ui-table-stack tbody {
+    display: block;
+  }
+
+  .ui-table-stack tbody tr {
+    display: grid;
+    gap: 0.25rem;
+    padding: 0.625rem 0.875rem;
+    border-block-end: 1px solid var(--color-line);
+  }
+
+  .ui-table-stack td {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.25rem 1rem;
+    block-size: auto;
+    padding: 0.125rem 0;
+    border: 0;
+  }
+
+  .ui-table-stack td[data-label]::before {
+    content: attr(data-label);
+    color: var(--color-ink-muted);
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+
+  .ui-table-stack td.ui-table-empty {
+    display: block;
+    text-align: center;
+  }
+
+  .ui-table-container:has(.ui-table-stack) {
+    overflow-x: visible;
+  }
+}
+
 .ui-skeleton {
   display: block;
   inline-size: 70%;

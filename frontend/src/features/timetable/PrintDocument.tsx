@@ -4,14 +4,17 @@ import { messages } from "../../i18n/messages";
 import type { Formatter } from "../../lib/format";
 import { useSchoolContext } from "../../lib/schoolContext";
 import { useSchoolProfile } from "../school-profile/profileApi";
-import { fitScale, pageCss, type PrintOptions } from "./printing";
+import { fitScale, pageCss, planDays, type PrintOptions } from "./printing";
+import { PrintMasterGrid, stageGroups } from "./PrintMasterGrid";
+import { weekdayLabel } from "../timetable-structure/weekdays";
 import type { Term, Timetable } from "./timetableApi";
-import { MasterGrid, sessionViewOf, WeekGrid, type Lookups } from "./TimetableGrids";
+import { sessionViewOf, WeekGrid, type Lookups } from "./TimetableGrids";
 
 const text = messages.school.printing;
 const timetableText = messages.school.timetable;
 
-type PageSpec = { key: string; heading: string; columns: number; grid: ReactNode };
+/** `scale` overrides the fit scale (the whole-school pages share one scale chosen by the planner). */
+type PageSpec = { key: string; heading: string; columns: number; grid: ReactNode; scale?: number };
 
 type Props = {
   timetable: Timetable;
@@ -38,6 +41,13 @@ function usePageRule(options: PrintOptions, arabicIndic: boolean) {
   }, [css]);
 }
 
+/** «الأيام: الأحد – الثلاثاء» for a page that carries some of the week's days. */
+function daysHeading(days: number[]): string {
+  const first = weekdayLabel(days[0] ?? 1);
+  const last = weekdayLabel(days[days.length - 1] ?? 1);
+  return days.length > 1 ? text.daysRange(first, last) : text.dayOnly(first);
+}
+
 /**
  * MF5: the official printed timetable. Rendered beside the app root (never cut by the page layout) and visible only in
  * print: every page carries the school logo and name, «جدول الدروس الأسبوعي», the year and semester, the section or
@@ -51,7 +61,6 @@ export function PrintDocument({ timetable, options, current, term, format, look 
   const shifts = new Map(timetable.shifts.map((shift) => [shift.id, shift]));
   const lessonCountOf = (shiftId: number) => Math.max(1, shifts.get(shiftId)?.lessons.length ?? 0,
     ...timetable.sections.filter((item) => item.shiftId === shiftId).flatMap((item) => item.allowedByDay.map((day) => day.lessons)));
-  const masterColumns = 1 + timetable.days.length * Math.max(1, ...timetable.sections.flatMap((section) => section.allowedByDay.map((day) => day.lessons)));
 
   const sectionPage = (sectionId: number): PageSpec | null => {
     const section = timetable.sections.find((item) => item.id === sectionId);
@@ -78,23 +87,34 @@ export function PrintDocument({ timetable, options, current, term, format, look 
       )),
     };
   };
-  const schoolPage = (): PageSpec => ({
-    key: "school", heading: text.school, columns: masterColumns, grid: <MasterGrid timetable={timetable} format={format} look={look} term={term} />,
-  });
+  // The whole school (or one stage per page): sections down, days across, split over pages by days when a readable size does not fit.
+  const lessonCount = Math.max(1, ...timetable.sections.flatMap((section) => section.allowedByDay.map((day) => day.lessons)));
+  const schoolPages = (perStage: boolean): PageSpec[] => {
+    const groups = stageGroups(timetable.sections);
+    const { scale, chunks } = planDays(options, timetable.days, lessonCount);
+    return (perStage ? groups.map((group) => [group]) : [groups]).flatMap((set) => chunks.map((days, index) => ({
+      key: `school-${set[0]?.stageName ?? ""}-${index}`,
+      heading: [text.school, perStage ? text.stage(set[0]?.stageName ?? "") : null, chunks.length > 1 ? daysHeading(days) : null].filter(Boolean).join(" — "),
+      columns: 1 + days.length * lessonCount,
+      scale,
+      grid: <PrintMasterGrid timetable={timetable} groups={set} days={days} lessonCount={lessonCount} look={look} format={format} term={term} stageRows={set.length > 1} />,
+    })));
+  };
 
   const kind = options.scope === "current" ? current.view : options.scope;
   const pages: PageSpec[] = (kind === "sections" ? timetable.sections.map((section) => sectionPage(section.id))
     : kind === "teachers" ? timetable.teachers.map((teacher) => teacherPage(teacher.id))
     : kind === "section" ? [sectionPage(current.sectionId ?? timetable.sections[0]?.id ?? 0)]
     : kind === "teacher" ? [teacherPage(current.teacherId ?? timetable.teachers[0]?.id ?? 0)]
-    : [schoolPage()]).filter((page): page is PageSpec => page !== null);
+    : kind === "stages" ? schoolPages(true)
+    : schoolPages(false)).flat().filter((page): page is PageSpec => page !== null);
 
   const semester = timetable.sessions ? timetableText.terms[term] : school?.currentTerm?.name;
   const today = format.date(format.today());
   return createPortal(
-    <div className={`print-document${options.fit ? " is-fit" : ""}`} data-pages={pages.length}>
+    <div className={`print-document${options.fit ? " is-fit" : ""}${options.color ? "" : " is-bw"}`} data-pages={pages.length}>
       {pages.map((page) => (
-        <section key={page.key} className="print-page" style={{ "--print-scale": fitScale(options, page.columns) } as CSSProperties}>
+        <section key={page.key} className="print-page" style={{ "--print-scale": page.scale ?? fitScale(options, page.columns) } as CSSProperties}>
           <header className="print-page-header">
             {profile?.hasLogo && <img className="print-logo" src="/api/v1/school-profile/logo" alt={text.logoAlt} />}
             <div className="print-titles">

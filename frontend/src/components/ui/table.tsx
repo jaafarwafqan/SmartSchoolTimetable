@@ -23,6 +23,8 @@ type DataTableProps<Row> = {
   demoHoverKey?: string;
   /** For tables that may scroll sideways: the container becomes a named, keyboard-focusable region (WCAG 2.1.1). */
   scrollable?: boolean;
+  /** Under 40rem each row becomes a card with its column headers as labels (no sideways scrolling on a phone). */
+  stacked?: boolean;
 };
 
 const skeletonRows = 3;
@@ -39,11 +41,12 @@ export function DataTable<Row>({
   empty,
   demoHoverKey,
   scrollable = false,
+  stacked = false,
 }: DataTableProps<Row>) {
   const showEmpty = !loading && rows.length === 0;
   return (
     <div className="ui-table-container" {...(scrollable ? { role: "region", "aria-label": caption, tabIndex: 0 } : {})}>
-      <table className="ui-table" aria-busy={loading || undefined}>
+      <table className={`ui-table${stacked ? " ui-table-stack" : ""}`} aria-busy={loading || undefined}>
         <caption className="sr-only">{caption}</caption>
         <thead>
           <tr>
@@ -78,7 +81,7 @@ export function DataTable<Row>({
                 } : undefined}
               >
                 {columns.map((column) => (
-                  <td key={column.key} className={column.numeric ? "is-numeric" : undefined}>{column.cell(row)}</td>
+                  <td key={column.key} className={column.numeric ? "is-numeric" : undefined} data-label={stacked ? column.header : undefined}>{column.cell(row)}</td>
                 ))}
               </tr>
             );
