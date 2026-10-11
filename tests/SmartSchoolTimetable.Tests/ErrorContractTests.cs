@@ -49,6 +49,9 @@ public sealed partial class ErrorContractTests
         {
             if (Path.GetFileName(file) == "ErrorCodes.cs")
                 continue;
+            // The desktop launcher is a client of the API: it emits no API error codes, and its SST_* environment variable names look like codes.
+            if (file.Replace('\\', '/').Contains("/SmartSchoolTimetable.Launcher/", StringComparison.Ordinal))
+                continue;
             // The pre-solve finding codes have their own single definition site (FindingCodeContractTests checks it).
             if (FindingCodeContractTests.IsDefinitionFile(file))
                 continue;
