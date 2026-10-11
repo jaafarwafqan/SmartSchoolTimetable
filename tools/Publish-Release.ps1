@@ -52,7 +52,10 @@ Write-Host "Publishing to $target (log: $log)"
 New-Item -ItemType Directory -Path (Split-Path -Parent $target) -Force | Out-Null
 # The whole output goes to the log; cmd keeps stderr lines (npm, NuGet) as plain text instead of PowerShell errors.
 $networkFailure = 'NU1301|NU1101|NU1102|Unable to load the service index|Failed to download|ENOTFOUND|ETIMEDOUT|EAI_AGAIN'
-cmd /c "dotnet publish `"$project`" -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -p:PublishReadyToRun=true -p:DebugType=None -p:DebugSymbols=false -o `"$target`" > `"$log`" 2>&1"
+# A full rebuild with no debug information, so no assembly keeps a path of this computer (a reused incremental output could).
+cmd /c "dotnet build `"$project`" -c Release -r win-x64 --self-contained true --no-incremental -p:DebugType=None -p:DebugSymbols=false > `"$log`" 2>&1"
+$buildExit = $LASTEXITCODE
+if ($buildExit -eq 0) { cmd /c "dotnet publish `"$project`" -c Release -r win-x64 --no-build --self-contained true -p:PublishSingleFile=false -p:PublishReadyToRun=true -p:DebugType=None -p:DebugSymbols=false -o `"$target`" >> `"$log`" 2>&1" } else { $global:LASTEXITCODE = $buildExit }
 $exitCode = $LASTEXITCODE
 # The first publish on a computer downloads the win-x64 runtime packs; a transient download failure is retried once.
 if ($exitCode -ne 0 -and (Get-Content -LiteralPath $log -Raw) -match $networkFailure) {
@@ -76,7 +79,10 @@ if ($exitCode -ne 0) {
 }
 
 $launcherProject = Join-Path $repository "src\SmartSchoolTimetable.Launcher\SmartSchoolTimetable.Launcher.csproj"
-cmd /c "dotnet publish `"$launcherProject`" -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -p:PublishReadyToRun=true -p:DebugType=None -p:DebugSymbols=false -o `"$target`" >> `"$log`" 2>&1"
+cmd /c "dotnet build `"$launcherProject`" -c Release -r win-x64 --self-contained true --no-incremental -p:DebugType=None -p:DebugSymbols=false >> `"$log`" 2>&1"
+if ($LASTEXITCODE -eq 0) {
+    cmd /c "dotnet publish `"$launcherProject`" -c Release -r win-x64 --no-build --self-contained true -p:PublishSingleFile=false -p:PublishReadyToRun=true -p:DebugType=None -p:DebugSymbols=false -o `"$target`" >> `"$log`" 2>&1"
+}
 if ($LASTEXITCODE -ne 0) {
     Stop-WithArabicError "فشل نشر مشغّل البرنامج (SmartSchoolTimetable.exe). ملف السجل: $log" @()
 }
@@ -93,14 +99,19 @@ $guide = Join-Path $repository "docs\USER_GUIDE_AR.pdf"
 if (Test-Path -LiteralPath $guide) { Copy-Item -LiteralPath $guide -Destination (Join-Path $target "USER_GUIDE_AR.pdf") }
 
 # Clean build: nothing of a computer or of a school may end up in the program (no database, log, symbol file, test data or user path).
-$forbiddenNames = '*.db', '*.db-wal', '*.db-shm', '*.sqlite*', '*.log', '*.pdb', 'startup-error.txt', '*.xlsx', 'timetable-backup-*', 'auto-backup-*', 'pre-upgrade-*', 'pre-restore-*'
-$found = @(Get-ChildItem -LiteralPath $target -Recurse -File -Include $forbiddenNames -ErrorAction SilentlyContinue)
+$forbiddenNames = '*.db', '*.db-wal', '*.db-shm', '*.sqlite', '*.sqlite3', '*.sqlite-*', '*.log', '*.pdb', 'startup-error.txt', '*.xlsx', 'timetable-backup-*', 'auto-backup-*', 'pre-upgrade-*', 'pre-restore-*'
+# (-Include is ignored together with -LiteralPath in Windows PowerShell, so the names are matched explicitly.)
+$allFiles = @(Get-ChildItem -LiteralPath $target -Recurse -File)
+$found = @($allFiles | Where-Object { $name = $_.Name; $forbiddenNames | Where-Object { $name -like $_ } | Select-Object -First 1 })
 $found += @(Get-ChildItem -LiteralPath $target -Recurse -Directory | Where-Object { $_.Name -in 'backups', 'test-results', 'e2e', 'fixtures', 'node_modules' })
+# A user path in OUR files (configuration, scripts, styles and our own assemblies); third-party binaries are not scanned.
 $userPath = [regex]'(?i)[A-Z]:\\Users\\[^\\\s"]+'
-$textFiles = Get-ChildItem -LiteralPath $target -Recurse -File -Include '*.json', '*.config', '*.txt', '*.xml', '*.js', '*.html', '*.css' | Where-Object { $_.Length -lt 6MB }
-foreach ($file in $textFiles) {
-    if ($file.Name -like 'LICENSE*') { continue }
-    if ((Get-Content -LiteralPath $file.FullName -Raw -ErrorAction SilentlyContinue) -match $userPath) { $found += $file }
+$ours = $allFiles | Where-Object { $_.Extension -in '.json', '.config', '.txt', '.xml', '.js', '.html', '.css' -or $_.Name -like 'SmartSchoolTimetable*.dll' -or $_.Name -like 'SmartSchoolTimetable*.exe' }
+foreach ($file in $ours) {
+    if ($file.Name -like 'LICENSE*' -or $file.Length -gt 40MB) { continue }
+    $bytes = [IO.File]::ReadAllBytes($file.FullName)
+    $text = [Text.Encoding]::UTF8.GetString($bytes) + [Text.Encoding]::Unicode.GetString($bytes)
+    if ($userPath.IsMatch($text)) { $found += $file }
 }
 if ($found.Count -gt 0) {
     Stop-WithArabicError "المجلد الناتج يحتوي ملفات لا يجوز أن تُشحن (قاعدة بيانات أو سجل أو رموز تصحيح أو بيانات اختبار أو مسار مستخدم):" @($found | ForEach-Object { $_.FullName.Substring($target.Length) })

@@ -26,7 +26,12 @@ internal sealed class ServerHost : IDisposable
     public string Origin => $"http://127.0.0.1:{Port}";
 
     /// <summary>The data folder of the program (the database, backups, the startup status file); the installer never touches it.</summary>
-    public static string DataFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SmartSchoolTimetable");
+    /// <remarks>The environment variable SST_DATA_DIR replaces it (for tests and portable use): the server then uses the database in that folder.</remarks>
+    public static string DataFolder => Environment.GetEnvironmentVariable("SST_DATA_DIR") is { Length: > 0 } custom
+        ? custom
+        : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SmartSchoolTimetable");
+
+    private static bool CustomDataFolder => Environment.GetEnvironmentVariable("SST_DATA_DIR") is { Length: > 0 };
 
     public static string ServerExecutable => Path.Combine(AppContext.BaseDirectory, "SmartSchoolTimetable.Api.exe");
 
@@ -68,6 +73,12 @@ internal sealed class ServerHost : IDisposable
         info.Environment["ASPNETCORE_ENVIRONMENT"] = "Production";
         info.Environment["LocalHost__Port"] = Port.ToString(System.Globalization.CultureInfo.InvariantCulture);
         info.Environment["Control__Token"] = controlToken;
+        info.Environment["Launcher__ParentPid"] = Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (CustomDataFolder)
+        {
+            Directory.CreateDirectory(DataFolder);
+            info.Environment["Database__Path"] = Path.Combine(DataFolder, "timetable.db");
+        }
         process = Process.Start(info);
         if (process is null)
             return Texts.StartFailed;

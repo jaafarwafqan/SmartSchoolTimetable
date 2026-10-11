@@ -9,11 +9,17 @@ namespace SmartSchoolTimetable.Launcher;
 internal sealed class LauncherContext : ApplicationContext
 {
     public const string ShowEventName = @"Local\SmartSchoolTimetable.Show";
+    public const string BackupEventName = @"Local\SmartSchoolTimetable.BackupNow";
+    public const string StopEventName = @"Local\SmartSchoolTimetable.Stop";
 
     private readonly ServerHost server = new();
     private readonly NotifyIcon tray;
     private readonly Icon icon;
+    /// <summary>A control with a window handle, so work can be handed to the UI thread from the thread that waits for a second copy.</summary>
+    private readonly Control ui = new();
     private readonly EventWaitHandle showRequest = new(false, EventResetMode.AutoReset, ShowEventName);
+    private readonly EventWaitHandle backupRequest = new(false, EventResetMode.AutoReset, BackupEventName);
+    private readonly EventWaitHandle stopRequest = new(false, EventResetMode.AutoReset, StopEventName);
     private readonly bool startHidden;
     private AppWindow? window;
     private bool useWindow;
@@ -22,6 +28,8 @@ internal sealed class LauncherContext : ApplicationContext
     public LauncherContext(bool startHidden)
     {
         this.startHidden = startHidden;
+        ui.CreateControl();
+        _ = ui.Handle;
         icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Application;
         tray = new NotifyIcon { Icon = icon, Text = Texts.AppName, Visible = true, ContextMenuStrip = BuildMenu() };
         tray.DoubleClick += (_, _) => Open();
@@ -115,8 +123,25 @@ internal sealed class LauncherContext : ApplicationContext
     {
         while (!stopping)
         {
-            if (showRequest.WaitOne(1000))
-                tray.ContextMenuStrip?.BeginInvoke(Open);
+            // A second copy of the program (or a scheduled task) asks this one: «--backup-now», «--stop», or nothing (show the program).
+            switch (WaitHandle.WaitAny([showRequest, backupRequest, stopRequest], 1000))
+            {
+                case 0:
+                    ui.BeginInvoke(Open);
+                    break;
+                case 1:
+                    ui.BeginInvoke(async () => await BackupNowAsync());
+                    break;
+                case 2:
+                    ui.BeginInvoke(async () =>
+                    {
+                        await server.StopAsync();
+                        Quit();
+                    });
+                    break;
+                default:
+                    break;
+            }
         }
     }
 
@@ -125,7 +150,10 @@ internal sealed class LauncherContext : ApplicationContext
         if (disposing)
         {
             tray.Dispose();
+            ui.Dispose();
             showRequest.Dispose();
+            backupRequest.Dispose();
+            stopRequest.Dispose();
             icon.Dispose();
             server.Dispose();
         }

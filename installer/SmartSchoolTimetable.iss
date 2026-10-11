@@ -9,6 +9,9 @@
 #ifndef SourceDir
   #error SourceDir (the published folder) is required.
 #endif
+#ifndef OutputBase
+  #define OutputBase "SmartSchoolTimetable-Setup-" + AppVersion
+#endif
 #ifndef OutputDir
   #define OutputDir "..\artifacts\installer"
 #endif
@@ -30,7 +33,7 @@ DefaultDirName={autopf}\SmartSchoolTimetable
 DefaultGroupName=الجدول الذكي
 DisableProgramGroupPage=yes
 OutputDir={#OutputDir}
-OutputBaseFilename=SmartSchoolTimetable-Setup-{#AppVersion}
+OutputBaseFilename={#OutputBase}
 SetupIconFile=..\src\SmartSchoolTimetable.Launcher\app.ico
 UninstallDisplayIcon={app}\SmartSchoolTimetable.exe
 WizardImageFile=wizard-large.bmp
@@ -41,8 +44,10 @@ Compression=lzma2/max
 SolidCompression=yes
 ; 64-bit Windows 10 only (1809 = 10.0.17763); a 32-bit Windows is refused with an Arabic message in InitializeSetup.
 MinVersion=10.0.17763
-ArchitecturesInstallIn64BitMode=x64
+ArchitecturesInstallIn64BitMode=x64os
 PrivilegesRequired=admin
+; Normal installs are for all users (admin). /CURRENTUSER on the command line installs for the current user only (used by tests and PCs without an administrator).
+PrivilegesRequiredOverridesAllowed=commandline
 ; A running copy must be closed first (the launcher holds this mutex); an upgrade then replaces the files in place.
 AppMutex=SmartSchoolTimetable.Launcher
 CloseApplications=yes
@@ -77,7 +82,7 @@ Name: "{autodesktop}\الجدول الذكي"; Filename: "{app}\SmartSchoolTimet
 
 [Registry]
 ; Off by default. The program starts in the tray (--tray) and opens its window only when the user asks.
-Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "SmartSchoolTimetable"; \
+Root: HKA; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "SmartSchoolTimetable"; \
   ValueData: """{app}\SmartSchoolTimetable.exe"" --tray"; Flags: uninsdeletevalue; Tasks: startup
 
 [Run]

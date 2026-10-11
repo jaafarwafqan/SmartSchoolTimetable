@@ -17,7 +17,11 @@ internal static class Program
         using var instance = new Mutex(true, InstanceName, out var first);
         if (!first)
         {
-            using var request = new EventWaitHandle(false, EventResetMode.AutoReset, LauncherContext.ShowEventName);
+            // «--backup-now» and «--stop» are carried out by the copy that is already running; anything else just shows it.
+            var name = args.Contains("--backup-now", StringComparer.OrdinalIgnoreCase) ? LauncherContext.BackupEventName
+                : args.Contains("--stop", StringComparer.OrdinalIgnoreCase) ? LauncherContext.StopEventName
+                : LauncherContext.ShowEventName;
+            using var request = new EventWaitHandle(false, EventResetMode.AutoReset, name);
             request.Set();
             return;
         }

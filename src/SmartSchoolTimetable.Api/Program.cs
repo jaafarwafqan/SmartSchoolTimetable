@@ -103,6 +103,7 @@ var supportLog = new SupportLogBuffer();
 builder.Services.AddSingleton(supportLog);
 builder.Logging.AddProvider(new SupportLogProvider(supportLog, TimeProvider.System));
 builder.Services.AddScoped<SupportLogBuilder>();
+builder.Services.AddHostedService<ParentProcessWatcher>();
 builder.Services.AddHostedService<GenerationWorker>();
 if (!builder.Environment.IsEnvironment("Testing"))
     builder.Services.AddHostedService<AutoBackupWorker>();

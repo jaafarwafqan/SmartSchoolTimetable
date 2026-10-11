@@ -16,7 +16,9 @@
 [CmdletBinding()]
 param(
     [string]$Version = "1.0.0",
-    [string]$SourceDir = ""
+    [string]$SourceDir = "",
+    # Adds a timestamp to the file name, so repeated test builds never need an old file removed.
+    [switch]$Stamp
 )
 
 $ErrorActionPreference = "Stop"
@@ -64,11 +66,12 @@ $license = Join-Path $staging "LICENSE.setup.txt"
 
 $outputDir = Join-Path $repository "artifacts\installer"
 New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
-$setup = Join-Path $outputDir "SmartSchoolTimetable-Setup-$Version.exe"
+$suffix = if ($Stamp) { "-" + (Get-Date -Format "yyyyMMdd-HHmmss") } else { "" }
+$setup = Join-Path $outputDir "SmartSchoolTimetable-Setup-$Version$suffix.exe"
 if (Test-Path -LiteralPath $setup) { Stop-WithArabicError "الملف $setup موجود من قبل؛ لم أستبدله. غيّر الإصدار أو انقل الملف القديم بنفسك." }
 
 Write-Host "Compiling $setup ..."
-& $compiler "/DSourceDir=$SourceDir" "/DAppVersion=$Version" "/DLicenseFile=$license" "/DOutputDir=$outputDir" (Join-Path $repository "installer\SmartSchoolTimetable.iss")
+& $compiler "/DSourceDir=$SourceDir" "/DAppVersion=$Version" "/DOutputBase=SmartSchoolTimetable-Setup-$Version$suffix" "/DLicenseFile=$license" "/DOutputDir=$outputDir" (Join-Path $repository "installer\SmartSchoolTimetable.iss")
 if ($LASTEXITCODE -ne 0) { Stop-WithArabicError "فشل ترجمة سكربت المثبّت (انظر الرسالة أعلاه)." }
 
 $hash = (Get-FileHash -LiteralPath $setup -Algorithm SHA256).Hash.ToLowerInvariant()
