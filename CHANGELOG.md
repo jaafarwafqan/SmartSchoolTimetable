@@ -13,6 +13,7 @@ First release for the school. Windows 10 (1809+) 64-bit and Windows 11; installe
 ### User guide
 - `docs/USER_GUIDE_AR.pdf` (A4 RTL, cover, contents with page numbers, 14 chapters, numbered steps, tips and warnings, figures) built reproducibly by `tools/Build-UserGuide.ps1`: it starts the published program on a temporary database, drives a scripted scenario for a fictional school (`frontend/guide`, `tools/guide`), saves the figures and prints the guide. Source: `docs/guide/USER_GUIDE_AR.html`, `docs/guide/img`. No real school data.
 - Version number 1.0.0 (`Directory.Build.props`).
+- «حول البرنامج» › «للتواصل والدعم»: WhatsApp 07806421980 and Telegram @jaafar_Wafqan as text and links; the desktop window opens only these two addresses in the default browser.
 ### M0 truth and hygiene (branch `work/phase-5`)
 - `DELIVERY_PLAN.md` rewritten to match what Phase 4 delivered and what remains; Phase 7 (attendance, monitoring) cancelled by the owner and replaced by M4; the Phase 1 acceptance table moved to `docs/PHASE1_ACCEPTANCE.md`.
 - `docs/DECISIONS_PENDING.md` now lists open decisions only; approved, decided, superseded and informational rows moved unchanged to `docs/DECISIONS_LOG.md` (numbering shared, never reused).

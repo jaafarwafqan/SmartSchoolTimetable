@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { userInfo } from "node:os";
 import { expect, test } from "@playwright/test";
+import { contactLinks } from "../src/features/about/contactLinks";
 import { messages } from "../src/i18n/messages";
 import { ApiServer } from "./support/apiServer";
 import { expectNoPageScrollX, expectNoSeriousA11yViolations, setupOwner } from "./support/flows";
@@ -27,6 +28,10 @@ test("(M2) «حول البرنامج»: reached from the user menu, shows versio
     await expect(page.getByText(text.facts.developerName, { exact: true })).toBeVisible();
     await expect(page.getByText("جميع الحقوق محفوظة")).toBeVisible();
     await expect(page.getByRole("button", { name: text.dataFolder.open })).toBeVisible();
+    // The contact section shows the number and the user name as text and as links (outside the program).
+    await expect(page.getByRole("heading", { name: text.contact.title })).toBeVisible();
+    await expect(page.getByRole("link", { name: contactLinks.whatsappValue })).toHaveAttribute("href", contactLinks.whatsappLink);
+    await expect(page.getByRole("link", { name: contactLinks.telegramValue })).toHaveAttribute("href", contactLinks.telegramLink);
     const table = page.getByRole("table", { name: text.thirdParty.title });
     await expect(table.getByText("Google OR-Tools")).toBeVisible();
     await expectNoSeriousA11yViolations(page, "about");

@@ -4,6 +4,8 @@
 
 **English:** a local, offline school timetable generator for one school and one owner. It runs on Windows 10 (64-bit, version 1809+) and Windows 11 and keeps all data on the school computer. Install with `SmartSchoolTimetable-Setup-1.0.0-<stamp>.exe` (checksum file next to it) and read the Arabic [user guide](./docs/USER_GUIDE_AR.pdf). Current version: **1.0.0**. Release notes: [CHANGELOG.md](./CHANGELOG.md).
 
+**للتواصل والدعم / Contact and support:** واتساب (WhatsApp) [07806421980](https://wa.me/9647806421980) · تلغرام (Telegram) [@jaafar_Wafqan](https://t.me/jaafar_Wafqan). The same details are in the program: Settings › About.
+
 Single-user, offline-first school timetable application for one local school and one owner account. The UI is served by the ASP.NET Core app, which binds only to `127.0.0.1`; the installed program shows it in a WebView2 window (or the default browser when WebView2 is missing).
 
 **Status:** version 1.0.0 (tags `v1.0.0`, `phase-5-final`) on branch `work/phase-5`; the owner merges to `master`. Earlier: Phases 0–4 (`phase-4i`).

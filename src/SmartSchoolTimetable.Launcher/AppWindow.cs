@@ -54,15 +54,41 @@ internal sealed class AppWindow : Form
         core.Settings.IsStatusBarEnabled = false;
         core.Settings.IsPasswordAutosaveEnabled = false;
         core.Settings.IsGeneralAutofillEnabled = false;
-        core.NavigationStarting += (_, e) => e.Cancel = !SameOrigin(e.Uri);
+        core.NavigationStarting += (_, e) =>
+        {
+            if (SameOrigin(e.Uri))
+                return;
+            e.Cancel = true;
+            OpenSupportLink(e.Uri);
+        };
         core.NewWindowRequested += (_, e) =>
         {
             e.Handled = true; // never a second window; a link inside the program opens in this one
             if (SameOrigin(e.Uri))
                 core.Navigate(e.Uri);
+            else
+                OpenSupportLink(e.Uri);
         };
         core.PermissionRequested += (_, e) => e.State = CoreWebView2PermissionState.Deny;
         core.Navigate(origin + "/");
+    }
+
+    /// <summary>The two contact links of «حول البرنامج» (WhatsApp and Telegram) open in the default browser; every other outside address is ignored.</summary>
+    private static readonly string[] SupportLinks = ["https://wa.me/9647806421980", "https://t.me/jaafar_Wafqan"];
+
+    private static void OpenSupportLink(string uri)
+    {
+        var trimmed = uri.TrimEnd('/');
+        if (!SupportLinks.Any(link => string.Equals(link, trimmed, StringComparison.OrdinalIgnoreCase)))
+            return;
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(trimmed) { UseShellExecute = true });
+        }
+        catch (Exception exception) when (exception is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            // No default browser: the number and the user name are also shown as text on the page.
+        }
     }
 
     private bool SameOrigin(string uri) =>
