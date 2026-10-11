@@ -93,9 +93,12 @@ test("(M2) preferences: dark theme with AA contrast, persistence, digits, print 
     await page.getByRole("button", { name: text.save }).click();
     await expect(page.getByRole("status").filter({ hasText: text.saved })).toBeVisible();
     await page.goto(`${server.baseUrl}/timetable/view`);
-    await page.getByText(printing.title).click();
+    // The view is rebuilt when the stored preferences arrive (its key holds their version), which would close a panel opened
+    // before that: wait for the defaults to apply, then open the panel.
     await expect(page.locator("#print-paper")).toHaveValue("A3");
     await expect(page.locator("#print-orientation")).toHaveValue("portrait");
+    await page.getByText(printing.title).click();
+    await expect(page.locator("#print-scope")).toBeVisible();
     await page.locator("#print-scope").selectOption("teachers");
     await expect(page.locator("#print-paper")).toHaveValue("A4");
     await expect(page.locator("#print-orientation")).toHaveValue("landscape");
