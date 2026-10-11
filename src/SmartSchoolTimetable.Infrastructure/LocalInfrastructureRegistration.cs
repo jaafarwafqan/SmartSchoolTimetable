@@ -55,7 +55,8 @@ public static class LocalInfrastructureRegistration
     {
         await using var scope = services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<LocalDbContext>();
-        await db.Database.MigrateAsync(cancellationToken);
+        // A database that already holds data is copied first (backups\pre-upgrade-*.db) and put back if a migration fails.
+        await DatabaseUpgrader.MigrateSafelyAsync(db, scope.ServiceProvider.GetRequiredService<LocalDatabaseLocation>(), DateTimeOffset.UtcNow, token: cancellationToken);
 
         // journal_mode=WAL is persistent in the database file; synchronous=FULL is per connection and is
         // applied by SqlitePragmaInterceptor whenever EF Core opens a connection.

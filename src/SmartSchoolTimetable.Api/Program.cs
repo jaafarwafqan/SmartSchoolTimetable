@@ -105,7 +105,21 @@ builder.Services.AddLocalInfrastructure(
     builder.Environment.IsEnvironment("Testing"));
 
 var app = builder.Build();
-await LocalInfrastructureRegistration.InitializeLocalDatabaseAsync(app.Services);
+try
+{
+    await LocalInfrastructureRegistration.InitializeLocalDatabaseAsync(app.Services);
+}
+catch (SmartSchoolTimetable.Infrastructure.Persistence.DatabaseUpgradeException upgrade)
+{
+    // The data and the program disagree, so the screens cannot be served: say so in Arabic and stop without changing anything more.
+    Console.OutputEncoding = Encoding.UTF8;
+    var message = StartupFailureMessages.For(upgrade);
+    Console.Error.WriteLine(message);
+    StartupFailureMessages.Write(databasePath, message);
+    LocalLog.UpgradeFailed(app.Logger, upgrade.Failure.ToString());
+    Environment.ExitCode = 2;
+    return;
+}
 await using (var startupScope = app.Services.CreateAsyncScope())
 {
     // Runs left active by a closed or crashed app are marked Interrupted (Phase 4 §6).

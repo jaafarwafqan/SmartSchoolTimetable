@@ -12,3 +12,9 @@ The owner's rule «never delete backups» stays in force with exactly one except
 5. **Audited.** One `AutoBackupPruned` history entry per deleted file (its file name, never a path), plus a developer-log line with the count.
 6. The pruning runs only inside the automatic backup, after the new copy was written and verified; it never runs on a manual backup, a restore or an upgrade.
 CLAUDE.md records this as the single approved exception.
+
+## Safe upgrade (step 3b)
+1. `DatabaseUpgrader.MigrateSafelyAsync` replaces the plain `MigrateAsync` at start-up. A database that already holds data and has pending migrations first gets a safety copy `backups\pre-upgrade-yyyyMMdd-HHmmss.db` (SQLite online backup, then `PRAGMA integrity_check` on the copy; a name that exists is never reused). A new or current database needs no copy.
+2. If the copy cannot be made or fails the check, nothing is migrated (`BackupFailed`). If a migration fails, the copy is put back with the online backup API and the program stops (`MigrationFailedRestored`; if even that fails, `MigrationFailedNotRestored` names the kept copy). A database written by a newer program is refused untouched (`DatabaseNewerThanProgram`).
+3. The data and the program disagree after a failure, so no screen can be served: the Arabic message goes to the console and to `startup-error.txt` in the data folder (for the M5 launcher), and the process exits with code 2. The API-codes rule applies to HTTP responses; this is the pre-HTTP channel.
+4. `pre-upgrade-*` copies are never pruned and are listed as «تلقائية قبل ترقية البرنامج». Guide: `docs/UPGRADE_AR.md`. Tests: `SafeUpgradeTests`.
