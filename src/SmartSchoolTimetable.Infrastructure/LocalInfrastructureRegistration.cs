@@ -44,6 +44,7 @@ public static class LocalInfrastructureRegistration
         services.AddSingleton<ISolver, CpSatSolver>();
         services.AddSingleton<ISolverInfo, OrToolsInfo>();
         services.AddSingleton<ITimetableExporter, Export.ExcelTimetableExporter>();
+        services.AddSingleton<Application.Teachers.ITeacherSheet, Export.ExcelTeacherSheet>();
         services.AddSingleton(new LocalDatabaseLocation(fullDatabasePath, connectionString));
         services.AddScoped<Application.Backup.IDatabaseBackup, SqliteDatabaseBackup>();
         return services;

@@ -96,6 +96,7 @@ builder.Services.AddSingleton(new SmartSchoolTimetable.Application.Backup.Backup
     : Path.Combine(Path.GetDirectoryName(Path.GetFullPath(databasePath))!, "owner-backups")));
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Backup.BackupService>();
 builder.Services.AddScoped<PreferencesService>();
+builder.Services.AddScoped<TeacherImportService>();
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Audit.AuditService>();
 builder.Services.AddSingleton<IFolderOpener, ExplorerFolderOpener>();
 var supportLog = new SupportLogBuffer();

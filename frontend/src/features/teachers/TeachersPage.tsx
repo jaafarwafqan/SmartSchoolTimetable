@@ -1,4 +1,4 @@
-import { ListPlus, UsersRound, GraduationCap } from "lucide-react";
+import { FileUp, ListPlus, UsersRound, GraduationCap } from "lucide-react";
 import { LoadStatusBadge } from "../../components/LoadBar";
 import { useSubjects } from "../subjects/subjectsApi";
 import { useTeacherLoads } from "../workload/workloadApi";
@@ -24,6 +24,7 @@ import { useFormatter, useSchoolContext } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
 import { weekdayLabel } from "../timetable-structure/weekdays";
 import { BulkAddPanel } from "./BulkAddPanel";
+import { ImportPanel } from "./ImportPanel";
 import { TeacherEditor } from "./TeacherEditor";
 import { useSaveTeacher, useTeacherAction, useTeachers, type Teacher } from "./teachersApi";
 
@@ -39,6 +40,7 @@ export function TeachersPage() {
   const [filters, setFilters] = useState({ search: "", page: 1, includeArchived: false, releasedOnly: false });
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [bulk, setBulk] = useState({ open: false, key: 0 });
+  const [importing, setImporting] = useState({ open: false, key: 0 });
   const [deleting, setDeleting] = useState<Teacher | null>(null);
   const [archiveBlocked, setArchiveBlocked] = useState<Teacher | null>(null);
   const teachers = useTeachers({ ...filters, pageSize });
@@ -85,12 +87,22 @@ export function TeachersPage() {
   return (
     <div className="page">
       <PageHeader icon={UsersRound} title={text.title} description={text.description}
-        actions={<Button variant="secondary" icon={<ListPlus aria-hidden="true" size={20} />} aria-expanded={bulk.open}
-          onClick={() => setBulk((current) => ({ open: !current.open, key: current.key + 1 }))}>{text.bulkAdd}</Button>} />
+        actions={(
+          <>
+            <Button variant="secondary" icon={<ListPlus aria-hidden="true" size={20} />} aria-expanded={bulk.open}
+              onClick={() => setBulk((current) => ({ open: !current.open, key: current.key + 1 }))}>{text.bulkAdd}</Button>
+            <Button variant="secondary" icon={<FileUp aria-hidden="true" size={20} />} aria-expanded={importing.open}
+              onClick={() => setImporting((current) => ({ open: !current.open, key: current.key + 1 }))}>{text.import.button}</Button>
+          </>
+        )} />
       <OrphanBlockedNotice />
       {bulk.open && (
         <BulkAddPanel key={`bulk-${bulk.key}`} onClose={() => setBulk((current) => ({ ...current, open: false }))}
           onSaved={(count) => { setBulk((current) => ({ ...current, open: false })); feedback.showSuccess(text.bulkSaved(format.count(count, "teacher", "oblique"))); }} />
+      )}
+      {importing.open && (
+        <ImportPanel key={`import-${importing.key}`} onClose={() => setImporting((current) => ({ ...current, open: false }))}
+          onDone={(summary) => { setImporting((current) => ({ ...current, open: false })); feedback.showSuccess(summary); }} />
       )}
       <Card className="page-card">
         <Alert tone="success" message={addFeedback.success} />

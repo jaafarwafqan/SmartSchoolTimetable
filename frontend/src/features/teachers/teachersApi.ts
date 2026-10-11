@@ -77,3 +77,26 @@ export function usePreviewBulk() {
 export function useCreateBulk() {
   return useTeachersMutation((names: string[]) => apiRequest<{ created: number }>(`${teachersPath}/bulk`, "POST", { names }));
 }
+
+export type ImportIssue = { code: string; severity: "error" | "warning" | "info"; value: string | null };
+export type ImportRow = { row: number; fullName: string; shortName: string | null; status: "ready" | "exists" | "error"; issues: ImportIssue[] };
+export type ImportPreview = { rows: ImportRow[]; ready: number; existing: number; errors: number; warnings: number };
+export type ImportResult = { created: number; existing: number; rejected: number };
+
+export const teachersImportTemplateUrl = `${teachersPath}/import/template`;
+
+function importForm(file: File): FormData {
+  const form = new FormData();
+  form.append("file", file);
+  return form;
+}
+
+/** Dry run: the outcome of every row, nothing saved. */
+export function usePreviewImport() {
+  return useMutation({ mutationFn: (file: File) => apiRequest<ImportPreview>(`${teachersPath}/import/preview`, "POST", importForm(file)) });
+}
+
+/** Adds the valid rows of the same file (the server re-reads it, so the preview and the result cannot differ). */
+export function useApplyImport() {
+  return useTeachersMutation((file: File) => apiRequest<ImportResult>(`${teachersPath}/import`, "POST", importForm(file)));
+}
