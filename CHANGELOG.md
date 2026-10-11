@@ -123,7 +123,7 @@ First release for the school. Windows 10 (1809+) 64-bit and Windows 11; installe
   - `tools/Publish-Release.ps1` builds a self-contained win-x64 folder (196 MB) under `artifacts/release/`, which git ignores, with `تشغيل البرنامج.bat` and `اقرأني.txt`.
   - The published executable passed the auth and Phase 4 Playwright scenarios on temporary databases (`SST_RELEASE_EXE`).
   - The settings screenshot was re-baselined after viewing it; the suggested backup folder is masked because it contains the machine's user path.
-  - New documents: `docs/USER_GUIDE_AR.md` and `docs/OWNER_TEST_SCRIPT_PHASE4.md` (25 steps).
+  - New documents: `docs/USER_GUIDE_AR.md` (since replaced by the PDF `docs/USER_GUIDE_AR.pdf`) and `docs/OWNER_TEST_SCRIPT_PHASE4.md` (25 steps).
 - **Before final (owner review, 2026-10-09):**
   - Decisions #69–#77 approved.
   - The two files the owner named were deleted.

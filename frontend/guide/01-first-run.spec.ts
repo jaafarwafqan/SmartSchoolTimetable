@@ -105,7 +105,6 @@ test("ch5 — the setup wizard of a double-shift primary school", async ({ page 
   await shot(page, "17-wizard-5-subjects-preview", { part: "top" });
   await page.getByRole("button", { name: templates.apply }).click();
   await expect(page.locator(".subject-chips .subject-chip").first()).toBeVisible();
-  await shot(page, "18-wizard-5-curriculum", { part: "top" });
   // The official study plan of the Ministry fills the weekly lessons of every subject.
   const plan = page.locator(".suggested-panel");
   await plan.getByText(school.suggested.open, { exact: true }).first().click();
