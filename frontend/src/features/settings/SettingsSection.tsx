@@ -9,11 +9,13 @@ type SettingsSectionProps = {
   title: string;
   description: string;
   children: ReactNode;
+  /** Takes the whole row of the settings grid (tables, many options). */
+  wide?: boolean;
 };
 
-export function SettingsSection({ id, icon, title, description, children }: SettingsSectionProps) {
+export function SettingsSection({ id, icon, title, description, children, wide = false }: SettingsSectionProps) {
   return (
-    <Card className="settings-section" aria-labelledby={`${id}-title`}>
+    <Card className={`settings-section${wide ? " is-wide" : ""}`} aria-labelledby={`${id}-title`}>
       <header className="settings-section-header">
         <div>
           <SectionTitle level={2} icon={icon} id={`${id}-title`}>{title}</SectionTitle>

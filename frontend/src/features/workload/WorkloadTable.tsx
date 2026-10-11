@@ -99,7 +99,7 @@ export function WorkloadTable({ yearId }: { yearId: number }) {
             </Field>
             <Checkbox checked={showAll} onChange={(event) => setShowAll(event.target.checked)}>{text.showAll}</Checkbox>
           </fieldset>
-          <DataTable caption={text.table} columns={columns} rows={shown} rowKey={(row) => `${row.sectionId}-${row.entryId}`} loading={rows.isPending} scrollable />
+          <DataTable caption={text.table} columns={columns} rows={shown} rowKey={(row) => `${row.sectionId}-${row.entryId}`} loading={rows.isPending} scrollable stacked />
         </>
       )}
       <details className="advanced-options tool-panel">
@@ -110,7 +110,7 @@ export function WorkloadTable({ yearId }: { yearId: number }) {
       <section aria-labelledby="workload-loads-title">
         <SectionTitle level={3} icon={UsersRound} id="workload-loads-title">{text.loadsTitle}</SectionTitle>
         {loads.data && teacherLoads.length === 0 ? <p className="card-note">{text.noTeachers}</p> : (
-          <DataTable caption={text.loadsTitle} rows={teacherLoads} rowKey={(item) => String(item.teacherId)} loading={loads.isPending} scrollable columns={[
+          <DataTable caption={text.loadsTitle} rows={teacherLoads} rowKey={(item) => String(item.teacherId)} loading={loads.isPending} scrollable stacked columns={[
             { key: "name", header: text.teacher, cell: (item) => item.fullName },
             { key: "load", header: text.loadColumn, numeric: true, cell: (item) => text.loadValue(format.number(item.assignedLessons), format.number(item.limit)) },
             { key: "status", header: text.status, cell: (item) => <LoadStatusBadge status={item.status} /> },

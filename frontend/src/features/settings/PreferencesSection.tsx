@@ -119,7 +119,7 @@ export function PreferencesSection() {
   const preferences = usePreferences();
   const profile = useSchoolProfile();
   return (
-    <SettingsSection id="preferences-section" icon={SlidersHorizontal} title={text.title} description={text.description}>
+    <SettingsSection id="preferences-section" icon={SlidersHorizontal} title={text.title} description={text.description} wide>
       {(preferences.isError || profile.isError) && <Alert tone="error" message={text.loadFailed} />}
       {(preferences.isPending || profile.isPending) && <Spinner label={messages.app.loadingContent} />}
       {preferences.data && profile.data && <PreferencesForm preferences={preferences.data} profile={profile.data} />}

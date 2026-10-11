@@ -13,7 +13,7 @@ test("(MF10) backup folder chosen with the in-app picker, restore chosen from th
   await server.start(browser, "mf-backup");
   try {
     await setupOwner(page, server.baseUrl, "owner", "Backup-Owner-1");
-    await goToSection(page, messages.school.nav.settings);
+    await goToSection(page, messages.school.nav.settingsBackup);
 
     // A folder under the test's own output folder (never the owner's Documents), reached through the picker.
     const root = testInfo.outputPath("backup-root");

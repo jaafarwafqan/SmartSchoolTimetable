@@ -44,6 +44,8 @@ const tabGroups: Readonly<Record<string, string>> = {
   [nav.resources]: nav.classes,
   [nav.workload]: nav.teachers,
   [nav.settingsAdvanced]: nav.settings,
+  [nav.settingsAccount]: nav.settings,
+  [nav.settingsBackup]: nav.settings,
 };
 
 /** Opens a screen through the sidebar, and through its group's tab when the screen is a tab. */
@@ -134,9 +136,12 @@ export async function expectYearInOrder(scope: Locator, first: string, second: s
 }
 
 export async function expectNoSeriousA11yViolations(page: Page, screen: string): Promise<void> {
+  // Entrance animations are off for users who ask for reduced motion; axe must not measure contrast on a card that is still fading in.
+  await page.emulateMedia({ reducedMotion: "reduce" });
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
     .analyze();
+  await page.emulateMedia({ reducedMotion: null });
   const blocking = results.violations
     .filter((violation) => violation.impact === "serious" || violation.impact === "critical")
     .map((violation) => `${violation.id} (${violation.impact}): ${violation.nodes.map((node) => node.target.join(" ")).join(" | ")}`);

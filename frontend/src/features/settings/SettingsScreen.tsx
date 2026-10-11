@@ -1,27 +1,17 @@
 import { Settings } from "lucide-react";
 import { messages } from "../../i18n/messages";
 import { PageHeader } from "../../layout/PageHeader";
-import type { Bootstrap } from "../../lib/bootstrapQuery";
-import { BackupSection } from "./BackupSection";
-import { InactivitySection } from "./InactivitySection";
-import { PasswordSection } from "./PasswordSection";
 import { PreferencesSection } from "./PreferencesSection";
-import { RecoveryCodeSection } from "./RecoveryCodeSection";
-import { UsernameSection } from "./UsernameSection";
 import { SetupWizardSection } from "./SetupWizardSection";
 
-export function SettingsScreen({ bootstrap }: { bootstrap: Bootstrap }) {
+/** «الإعدادات › عام»: display and print preferences and the setup wizard. Nothing about security or backups lives here. */
+export function SettingsScreen() {
   return (
-    <div className="page">
+    <div className="page page-full">
       <PageHeader icon={Settings} title={messages.app.settings} description={messages.app.settingsDescription} />
       <div className="settings-grid">
         <PreferencesSection />
-        <InactivitySection bootstrap={bootstrap} />
-        <RecoveryCodeSection />
-        <UsernameSection username={bootstrap.username} />
-        <PasswordSection />
         <SetupWizardSection />
-        <BackupSection />
       </div>
     </div>
   );

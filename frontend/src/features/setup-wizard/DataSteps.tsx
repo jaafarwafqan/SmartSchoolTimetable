@@ -1,7 +1,8 @@
 import { SectionTitle } from "../../components/ui/section-title";
-import { CircleAlert, CircleCheck, Flag, ListChecks, TriangleAlert } from "lucide-react";
+import { CircleAlert, CircleCheck, FileUp, Flag, ListChecks, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { Alert } from "../../components/ui/alert";
+import { Button } from "../../components/ui/button";
 import { Spinner } from "../../components/ui/spinner";
 import { messages } from "../../i18n/messages";
 import type { Formatter } from "../../lib/format";
@@ -12,6 +13,7 @@ import { SubjectTemplatePanel } from "../curriculum/SubjectTemplatePanel";
 import { StageCardsPanel } from "../stages-sections/StageCardsPanel";
 import { StageTemplatePanel } from "../stages-sections/StageTemplatePanel";
 import { BulkAddPanel } from "../teachers/BulkAddPanel";
+import { ImportPanel } from "../teachers/ImportPanel";
 import { WorkloadTable } from "../workload/WorkloadTable";
 import { WizardFooter } from "./WizardFrame";
 import { useRecordStep, useSetupReview, type SetupProgress, type SetupWarning } from "./wizardApi";
@@ -72,15 +74,22 @@ export function CurriculumStep({ progress, onBack, onDone }: DataStepProps) {
   );
 }
 
-/** Step 6 (optional): paste teacher names with a preview; may be skipped. */
+/** Step 6 (optional): paste teacher names with a preview, or import them from the Excel template (the same panel as the teachers screen); may be skipped. */
 export function TeachersStep({ progress, onBack, onDone }: DataStepProps) {
   const format = useFormatter();
   const step = useStepRecorder(progress, 6, onDone);
   const [saved, setSaved] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
   return (
     <div className="form-stack">
       <p className="card-note">{text.teachers.note}</p>
       <Alert tone="success" message={saved} />
+      <div className="form-actions">
+        <Button variant="secondary" icon={<FileUp aria-hidden="true" size={20} />} aria-expanded={importing} onClick={() => setImporting((open) => !open)}>
+          {messages.school.teachers.import.button}
+        </Button>
+      </div>
+      {importing && <ImportPanel onClose={() => setImporting(false)} onDone={(summary) => { setImporting(false); setSaved(summary); }} />}
       <BulkAddPanel closable={false} onClose={() => undefined} onSaved={(count) => setSaved(text.teachers.saved(format.count(count, "teacher", "oblique")))} />
       <WizardFooter step={6} pending={step.pending} error={step.feedback.error} onBack={onBack} onNext={() => step.next()} onSkip={() => step.next(true)} />
     </div>

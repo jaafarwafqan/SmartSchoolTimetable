@@ -69,7 +69,8 @@ test("setup, blocked reload until a new code is confirmed, logout, login, and pa
   expect(recoveryCode).not.toBe(originalRecoveryCode);
   await expect(page.getByRole("heading", { name: messages.app.settings })).toBeVisible();
 
-  // Inactivity auto-lock is chosen in Settings, saved to the database and applied immediately.
+  // Inactivity auto-lock is chosen in Settings › الحساب والأمان, saved to the database and applied immediately.
+  await page.goto(`${baseUrl}/settings/account`);
   await page.getByLabel(messages.app.inactivityLabel).selectOption("15");
   await page.getByRole("button", { name: messages.app.saveInactivity }).click();
   await expect(page.getByRole("status").filter({ hasText: messages.app.inactivitySaved })).toBeVisible();
