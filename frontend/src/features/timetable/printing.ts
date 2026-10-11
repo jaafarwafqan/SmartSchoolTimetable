@@ -7,15 +7,46 @@ export type Orientation = "portrait" | "landscape";
 export type PrintOptions = { scope: PrintScope; paper: PaperSize; orientation: Orientation; fit: boolean };
 export type GridView = "section" | "teacher" | "master";
 
+type Sizing = { paper: PaperSize; orientation: Orientation };
+
+/** Default paper and orientation per kind of print job (stored in the owner's preferences, M2). */
+export type PrintDefaults = { section: Sizing; teacher: Sizing; school: Sizing; fit: boolean };
+
 /**
- * The owner's defaults: a section on A4 landscape, a teacher on A4 portrait, the whole school on A3 landscape
+ * The built-in defaults: a section on A4 landscape, a teacher on A4 portrait, the whole school on A3 landscape
  * (split over pages with the column headers repeated when it is longer than one page).
  */
-export function defaultOptions(scope: PrintScope, view: GridView): PrintOptions {
+export const builtInPrintDefaults: PrintDefaults = {
+  section: { paper: "A4", orientation: "landscape" },
+  teacher: { paper: "A4", orientation: "portrait" },
+  school: { paper: "A3", orientation: "landscape" },
+  fit: true,
+};
+
+type StoredSizing = { paper: string; orientation: string };
+
+/** The stored preferences (lower-case values from the API) as print defaults; the built-in ones until they load. */
+export function printDefaultsFrom(stored: { section: StoredSizing; teacher: StoredSizing; school: StoredSizing; printFit: boolean } | undefined): PrintDefaults {
+  if (!stored) return builtInPrintDefaults;
+  const sizing = (value: StoredSizing): Sizing => ({
+    paper: value.paper === "a3" ? "A3" : "A4",
+    orientation: value.orientation === "portrait" ? "portrait" : "landscape",
+  });
+  return { section: sizing(stored.section), teacher: sizing(stored.teacher), school: sizing(stored.school), fit: stored.printFit };
+}
+
+export function defaultOptions(scope: PrintScope, view: GridView, defaults: PrintDefaults = builtInPrintDefaults): PrintOptions {
   const kind: GridView = scope === "sections" ? "section" : scope === "teachers" ? "teacher" : scope === "school" ? "master" : view;
-  if (kind === "master") return { scope, paper: "A3", orientation: "landscape", fit: true };
-  if (kind === "teacher") return { scope, paper: "A4", orientation: "portrait", fit: true };
-  return { scope, paper: "A4", orientation: "landscape", fit: true };
+  const sizing = kind === "master" ? defaults.school : kind === "teacher" ? defaults.teacher : defaults.section;
+  return { scope, paper: sizing.paper, orientation: sizing.orientation, fit: defaults.fit };
+}
+
+/** What the owner changed for THIS print; everything left out follows the defaults of the chosen job. */
+export type PrintChoice = { scope: PrintScope; paper?: PaperSize; orientation?: Orientation; fit?: boolean };
+
+export function resolvePrint(choice: PrintChoice, view: GridView, defaults: PrintDefaults): PrintOptions {
+  const base = defaultOptions(choice.scope, view, defaults);
+  return { scope: choice.scope, paper: choice.paper ?? base.paper, orientation: choice.orientation ?? base.orientation, fit: choice.fit ?? base.fit };
 }
 
 /** Printable width in millimetres (10 mm side margins). */

@@ -9,15 +9,16 @@ namespace SmartSchoolTimetable.Application.Calendar;
 /// <param name="Source">"manual" or "iraqTemplate" (MF8).</param>
 /// <param name="IsApproximate">MF8: the date is a Hijri calculation; the official announcement may differ.</param>
 /// <param name="IsEnabled">MF8: a disabled entry is ignored (not shown as a holiday, no effect on the schedule).</param>
+/// <param name="ByDecision">#87: «قد تُعلن سنوياً بقرار — تحقق من الإعلان الرسمي».</param>
 public sealed record CalendarDayDto(long Id, string Title, string StartDate, string EndDate, string Kind, bool AffectsSchedule, bool OutsideCurrentYear,
-    string Source, bool IsApproximate, bool IsEnabled, int Version);
+    string Source, bool IsApproximate, bool IsEnabled, int Version, bool ByDecision = false);
 
 public sealed record SetCalendarDayEnabledCommand(bool Enabled, int Version);
 
 public sealed record ImportIraqHolidaysCommand(long YearId);
 
 /// <summary>A holiday the template would add to a year (MF8). <paramref name="AlreadyAdded"/>: an entry with the same holiday and date exists.</summary>
-public sealed record IraqHolidayPreviewDto(string Key, string Title, string StartDate, string EndDate, bool Approximate, bool AlreadyAdded);
+public sealed record IraqHolidayPreviewDto(string Key, string Title, string StartDate, string EndDate, bool Approximate, bool AlreadyAdded, bool ByDecision = false);
 
 public sealed record IraqHolidayPreviewResponse(string YearLabel, IReadOnlyList<IraqHolidayPreviewDto> Holidays);
 
@@ -120,9 +121,9 @@ public sealed class CalendarService(IDataStore store, TimeProvider clock)
     {
         if (await store.FirstOrDefaultAsync(store.Query<AcademicYear>().Where(row => row.Id == yearId), token) is not { } year)
             return OperationResult.Failure<IraqHolidayPreviewResponse>(ErrorCodes.NotFound);
-        var placed = await PlaceAsync(year, token);
+        var placed = await PlaceAsync(store, year, token);
         return OperationResult.Success(new IraqHolidayPreviewResponse(year.Label, placed.Select(item => new IraqHolidayPreviewDto(
-            item.Holiday.Key, item.Holiday.Title, InputParsing.Format(item.Start), InputParsing.Format(item.End), item.Approximate, item.Existing)).ToList()));
+            item.Holiday.Key, item.Holiday.Title, InputParsing.Format(item.Start), InputParsing.Format(item.End), item.Approximate, item.Existing, item.Holiday.ByDecision)).ToList()));
     }
 
     /// <summary>MF8: adds the holidays that are not in the calendar yet; entries already there (even edited or disabled) are kept as they are.</summary>
@@ -131,13 +132,9 @@ public sealed class CalendarService(IDataStore store, TimeProvider clock)
         ArgumentNullException.ThrowIfNull(command);
         if (await store.FirstOrDefaultAsync(store.Query<AcademicYear>().Where(row => row.Id == command.YearId), token) is not { } year)
             return OperationResult.Failure<ImportIraqHolidaysResult>(ErrorCodes.NotFound);
-        var placed = await PlaceAsync(year, token);
-        var fresh = placed.Where(item => !item.Existing).ToList();
-        foreach (var item in fresh)
-            store.Add(CalendarDay.FromTemplate(item.Holiday.Key, item.Holiday.Title, item.Start, item.End, item.Approximate));
-        if (fresh.Count > 0)
-            AuditTrail.Record(store, clock, AuditEvents.CalendarHolidaysImported, $"academic-year:{year.Id}", $"{fresh.Count} template holidays added.", new { count = fresh.Count });
-        var result = new ImportIraqHolidaysResult(fresh.Count, placed.Count - fresh.Count);
+        var placed = await PlaceAsync(store, year, token);
+        var added = AddMissing(store, clock, year, placed);
+        var result = new ImportIraqHolidaysResult(added, placed.Count - added);
         return await store.SaveAsync(() => result, "YearId", token);
     }
 
@@ -145,7 +142,30 @@ public sealed class CalendarService(IDataStore store, TimeProvider clock)
 
     private sealed record Placement(IraqHoliday Holiday, DateOnly Start, DateOnly End, bool Approximate, bool Existing);
 
-    private async Task<List<Placement>> PlaceAsync(AcademicYear year, CancellationToken token)
+    /// <summary>
+    /// #87: adds the Iraqi template's holidays that a year does not have yet to the unit of work (not saved here). Used when a year is
+    /// created or copied, and by the manual suggestion; a holiday already present (moved by up to 30 days, or disabled) is never duplicated.
+    /// Returns how many were added.
+    /// </summary>
+    public static async Task<int> AddMissingIraqHolidaysAsync(IDataStore store, TimeProvider clock, AcademicYear year, CancellationToken token)
+    {
+        ArgumentNullException.ThrowIfNull(store);
+        ArgumentNullException.ThrowIfNull(clock);
+        ArgumentNullException.ThrowIfNull(year);
+        return AddMissing(store, clock, year, await PlaceAsync(store, year, token));
+    }
+
+    private static int AddMissing(IDataStore store, TimeProvider clock, AcademicYear year, List<Placement> placed)
+    {
+        var fresh = placed.Where(item => !item.Existing).ToList();
+        foreach (var item in fresh)
+            store.Add(CalendarDay.FromTemplate(item.Holiday.Key, item.Holiday.Title, item.Start, item.End, item.Approximate, item.Holiday.ByDecision));
+        if (fresh.Count > 0)
+            AuditTrail.Record(store, clock, AuditEvents.CalendarHolidaysImported, year.Id > 0 ? $"academic-year:{year.Id}" : "academic-year", $"{fresh.Count} template holidays added.", new { count = fresh.Count });
+        return fresh.Count;
+    }
+
+    private static async Task<List<Placement>> PlaceAsync(IDataStore store, AcademicYear year, CancellationToken token)
     {
         var placed = IraqHolidayTemplate.PlaceIn(year.StartDate, year.EndDate);
         var existing = await store.ListAsync(store.Query<CalendarDay>().Where(row => row.TemplateKey != null && row.EndDate >= year.StartDate.AddDays(-MovedDaysTolerance) && row.StartDate <= year.EndDate.AddDays(MovedDaysTolerance))
@@ -178,6 +198,7 @@ public sealed class CalendarService(IDataStore store, TimeProvider clock)
             row.Source == CalendarDaySource.IraqTemplate ? "iraqTemplate" : "manual",
             row.IsApproximate,
             row.IsEnabled,
-            row.Version);
+            row.Version,
+            row.ByDecision);
     }
 }

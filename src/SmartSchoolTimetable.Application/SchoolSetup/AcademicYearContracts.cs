@@ -9,7 +9,8 @@ public sealed record AcademicYearDto(
     string EndDate,
     bool IsCurrent,
     IReadOnlyList<TermDto> Terms,
-    int Version);
+    int Version,
+    int HolidaysAdded = 0);
 
 /// <param name="CopyStructureFromYearId">Optional: copy shifts, periods, stages and sections (never calendar days).</param>
 public sealed record SaveAcademicYearCommand(

@@ -56,6 +56,7 @@ export function YearStep({ onBack, onDone }: { onBack: () => void; onDone: () =>
           </div>
         ))}
       </fieldset>
+      <p className="card-note">{text.holidaysNote}</p>
       <WizardFooter step={2} pending={save.isPending} error={feedback.error} onBack={onBack}
         onNext={() => { feedback.reset(); save.mutate(value, { onSuccess: onDone, onError: feedback.showError }); }} />
     </form>

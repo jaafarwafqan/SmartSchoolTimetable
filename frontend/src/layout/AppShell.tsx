@@ -13,7 +13,9 @@ import { SubjectsPage } from "../features/subjects/SubjectsPage";
 import { TeachersPage } from "../features/teachers/TeachersPage";
 import { ScheduleStructurePage } from "../features/timetable-structure/ScheduleStructurePage";
 import type { Bootstrap } from "../lib/bootstrapQuery";
+import { useApplyTheme } from "../lib/theme";
 import { useFormFeedback } from "../lib/useFormFeedback";
+import { usePreferences } from "../features/settings/preferencesApi";
 import { useUiStore } from "../state/session";
 import { MobileMenu } from "./MobileMenu";
 import { legacyRedirects, navGroups } from "./navigation";
@@ -39,6 +41,7 @@ export function AppShell({ bootstrap }: { bootstrap: Bootstrap }) {
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   const menuButtonElement = useCallback(() => menuButton.current, []);
   useInactivityLock(bootstrap.inactivityTimeoutMinutes);
+  useApplyTheme(usePreferences().data?.theme);
   const navigate = useNavigate();
   const startSetupWizard = useUiStore((state) => state.startSetupWizard);
   const setStartSetupWizard = useUiStore((state) => state.setStartSetupWizard);

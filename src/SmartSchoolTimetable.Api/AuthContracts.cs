@@ -16,6 +16,7 @@ public sealed record RecoveryRequest(string? RecoveryCode, string? NewPassword);
 public sealed record RecoveryCodeRequest(string? CurrentPassword);
 public sealed record RecoveryResponse(string RecoveryCode);
 public sealed record ChangePasswordRequest(string? CurrentPassword, string? NewPassword);
+public sealed record ChangeUsernameRequest(string? CurrentPassword, string? NewUsername);
 public sealed record PrivateStatusResponse(string Status);
 public sealed record InactivityTimeoutRequest(string? InactivityTimeout);
 public sealed record InactivityTimeoutResponse(int? InactivityTimeoutMinutes);

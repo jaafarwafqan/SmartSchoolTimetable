@@ -26,6 +26,11 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                     b.Property<bool>("AffectsSchedule")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("ByDecision")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
                     b.Property<DateOnly>("EndDate")
                         .HasColumnType("TEXT");
 
@@ -847,6 +852,98 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("WorkingWeek", (string)null);
+                });
+
+            modelBuilder.Entity("SmartSchoolTimetable.Domain.Settings.AppPreferences", b =>
+                {
+                    b.Property<long>("Id")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("DefaultSemester")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("PrintFit")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SchoolOrientation")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SchoolPaper")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SectionOrientation")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SectionPaper")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TeacherOrientation")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TeacherPaper")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Theme")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AppPreferences", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_AppPreferences_Semester", "\"DefaultSemester\" IS NULL OR \"DefaultSemester\" IN (1, 2)");
+                        });
+                });
+
+            modelBuilder.Entity("SmartSchoolTimetable.Domain.Settings.BackupSettings", b =>
+                {
+                    b.Property<long>("Id")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("AutoBackupEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Folder")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("KeepLast")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("LastAppVersion")
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("LastAutoBackupAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("BackupSettings", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_BackupSettings_KeepLast", "\"KeepLast\" IN (0, 3, 7, 14, 30)");
+                        });
                 });
 
             modelBuilder.Entity("SmartSchoolTimetable.Domain.Subjects.Subject", b =>

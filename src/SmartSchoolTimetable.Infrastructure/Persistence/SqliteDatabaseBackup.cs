@@ -24,12 +24,34 @@ public sealed class SqliteDatabaseBackup(LocalDatabaseLocation location, LocalDb
     {
         if (File.Exists(targetFile))
             throw new IOException("The backup target already exists.");
-        await using var connection = new SqliteConnection(location.ConnectionString);
-        await connection.OpenAsync(token);
-        await using var command = connection.CreateCommand();
-        command.CommandText = "VACUUM INTO $path;";
-        command.Parameters.AddWithValue("$path", targetFile);
-        await command.ExecuteNonQueryAsync(token);
+        try
+        {
+            // SQLite's online backup API: a consistent copy of the live database, never a raw file copy.
+            await using var source = new SqliteConnection(location.ConnectionString);
+            await source.OpenAsync(token);
+            var destinationConnection = new SqliteConnectionStringBuilder { DataSource = targetFile, Mode = SqliteOpenMode.ReadWriteCreate, Pooling = false }.ToString();
+            await using var destination = new SqliteConnection(destinationConnection);
+            await destination.OpenAsync(token);
+            await Task.Run(() => source.BackupDatabase(destination), token);
+        }
+        catch (Exception exception) when (exception is SqliteException or IOException or UnauthorizedAccessException)
+        {
+            // The file was created by this attempt (it did not exist before): leave no half-written "backup" behind.
+            TryDeletePartial(targetFile);
+            throw exception is SqliteException ? new IOException("The database backup could not be written.", exception) : exception;
+        }
+    }
+
+    private static void TryDeletePartial(string file)
+    {
+        try
+        {
+            File.Delete(file);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            // Nothing more can be done; the next listing shows it as not restorable.
+        }
     }
 
     public async Task<BackupInspection> InspectAsync(string file, CancellationToken token)
@@ -56,7 +78,16 @@ public sealed class SqliteDatabaseBackup(LocalDatabaseLocation location, LocalDb
             await using var owners = connection.CreateCommand();
             owners.CommandText = "SELECT COUNT(*) FROM \"Users\";";
             var hasOwner = Convert.ToInt64(await owners.ExecuteScalarAsync(token), System.Globalization.CultureInfo.InvariantCulture) > 0;
-            return new BackupInspection(true, migrations, hasOwner);
+            // PRAGMA integrity_check on this copy: one row "ok", or a list of problems.
+            await using var integrity = connection.CreateCommand();
+            integrity.CommandText = "PRAGMA integrity_check;";
+            var rows = new List<string>();
+            await using (var reader = await integrity.ExecuteReaderAsync(token))
+            {
+                while (await reader.ReadAsync(token))
+                    rows.Add(reader.GetString(0));
+            }
+            return new BackupInspection(true, migrations, hasOwner, rows is ["ok"], await ReadAppVersionAsync(connection, token));
         }
         catch (SqliteException)
         {
@@ -64,21 +95,44 @@ public sealed class SqliteDatabaseBackup(LocalDatabaseLocation location, LocalDb
         }
     }
 
+    /// <summary>The application version that last ran on the database the copy was made from (older copies have none).</summary>
+    private static async Task<string?> ReadAppVersionAsync(SqliteConnection connection, CancellationToken token)
+    {
+        try
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText = "SELECT \"LastAppVersion\" FROM \"BackupSettings\" LIMIT 1;";
+            return await command.ExecuteScalarAsync(token) as string;
+        }
+        catch (SqliteException)
+        {
+            return null; // a copy made before the setting existed
+        }
+    }
+
     public async Task RestoreAsync(string file, CancellationToken token)
     {
-        var readOnly = new SqliteConnectionStringBuilder { DataSource = file, Mode = SqliteOpenMode.ReadOnly, Pooling = false }.ToString();
-        await using (var source = new SqliteConnection(readOnly))
-        await using (var target = new SqliteConnection(location.ConnectionString))
+        try
         {
-            await source.OpenAsync(token);
-            await target.OpenAsync(token);
-            source.BackupDatabase(target);
+            var readOnly = new SqliteConnectionStringBuilder { DataSource = file, Mode = SqliteOpenMode.ReadOnly, Pooling = false }.ToString();
+            await using (var source = new SqliteConnection(readOnly))
+            await using (var target = new SqliteConnection(location.ConnectionString))
+            {
+                await source.OpenAsync(token);
+                await target.OpenAsync(token);
+                source.BackupDatabase(target);
+            }
+            await db.Database.MigrateAsync(token);
+            await using var connection = new SqliteConnection(location.ConnectionString);
+            await connection.OpenAsync(token);
+            await using var command = connection.CreateCommand();
+            command.CommandText = "PRAGMA journal_mode=WAL;";
+            await command.ExecuteNonQueryAsync(token);
         }
-        await db.Database.MigrateAsync(token);
-        await using var connection = new SqliteConnection(location.ConnectionString);
-        await connection.OpenAsync(token);
-        await using var command = connection.CreateCommand();
-        command.CommandText = "PRAGMA journal_mode=WAL;";
-        await command.ExecuteNonQueryAsync(token);
+        catch (SqliteException exception)
+        {
+            // The Application layer knows only IOException (it has no SQLite types).
+            throw new IOException("The database could not be restored from the chosen file.", exception);
+        }
     }
 }

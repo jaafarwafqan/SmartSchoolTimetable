@@ -16,6 +16,7 @@ internal sealed class CalendarDayConfiguration : IEntityTypeConfiguration<Calend
         builder.Property(day => day.Source).HasConversion<string>().HasMaxLength(32).HasDefaultValue(CalendarDaySource.Manual);
         builder.Property(day => day.TemplateKey).HasMaxLength(64);
         builder.Property(day => day.IsApproximate).HasDefaultValue(false);
+        builder.Property(day => day.ByDecision).HasDefaultValue(false);
         builder.Property(day => day.IsEnabled).HasDefaultValue(true);
         builder.HasIndex(day => new { day.StartDate, day.EndDate });
         builder.ToTable(table => table.HasCheckConstraint("CK_CalendarDays_Range", "\"EndDate\" >= \"StartDate\""));

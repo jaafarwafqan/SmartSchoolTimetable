@@ -51,7 +51,8 @@ export function YearDialog({ open, year, onClose, onSaved, onReload }: YearDialo
     }, {
       onSuccess: (saved) => {
         feedback.reset();
-        onSaved(saved as AcademicYear, text.saved);
+        const created = saved as AcademicYear;
+        onSaved(created, created.holidaysAdded ? `${text.saved} ${text.holidaysAdded}` : text.saved);
       },
       onError: feedback.showError,
     });

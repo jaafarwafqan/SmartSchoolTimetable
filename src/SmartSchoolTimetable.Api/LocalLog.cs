@@ -18,6 +18,12 @@ internal static partial class LocalLog
     [LoggerMessage(EventId = 1102, Level = LogLevel.Warning, Message = "{Count} generation runs left active by the previous start were marked interrupted.")]
     public static partial void GenerationsInterrupted(ILogger logger, int count);
 
+    [LoggerMessage(EventId = 1201, Level = LogLevel.Information, Message = "An automatic backup was created; {Pruned} old automatic backups were removed.")]
+    public static partial void AutoBackupCreated(ILogger logger, int pruned);
+
+    [LoggerMessage(EventId = 1202, Level = LogLevel.Warning, Message = "The automatic backup could not be written; the next check tries again.")]
+    public static partial void AutoBackupFailed(ILogger logger, Exception exception);
+
     [LoggerMessage(EventId = 1103, Level = LogLevel.Warning, Message = "The solver engine did not load; generation is unavailable.")]
     public static partial void SolverUnavailable(ILogger logger);
 }

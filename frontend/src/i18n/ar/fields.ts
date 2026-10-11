@@ -5,6 +5,7 @@ export const fields = {
   ConfirmPassword: "تأكيد كلمة المرور",
   RecoveryCode: "رمز الاسترداد",
   NewPassword: "كلمة المرور الجديدة",
+  NewUsername: "اسم المستخدم الجديد",
   CurrentPassword: "كلمة المرور الحالية",
   InactivityTimeout: "القفل التلقائي بعد عدم النشاط",
   Name: "الاسم",

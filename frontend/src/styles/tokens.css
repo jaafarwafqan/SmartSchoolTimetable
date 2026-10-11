@@ -122,5 +122,42 @@ html {
   }
 }
 
-/* Dark theme is intentionally NOT defined yet. When added, override the same semantic tokens under
-   :root[data-theme="dark"] and re-run the contrast test; components must not change. */
+/* ---------- Dark theme (M2): the same semantic tokens, overridden. Components do not change; the contrast test checks
+   every pair of this block as well. The theme is chosen in Settings (light, dark or follow the system) and applied as
+   data-theme by theme-init.js and src/lib/theme.ts. Subject colours and their dark text stay as they are (pastel cells
+   with 11:1 text read well on a dark page); printing always uses the print tokens. ---------- */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-canvas: #0e1520;
+  --color-surface: #162131;
+  --color-surface-muted: #1e2b3f;
+  --color-line: #2b3a52;
+  --color-line-strong: #8a9bb4;
+  --color-ink: #e8eef7;
+  --color-ink-muted: #b9c6d9;
+  --color-ink-subtle: #a3b2c8;
+  --color-primary: #7db3f5;
+  --color-primary-hover: #9cc6f8;
+  --color-primary-soft: #1c3556;
+  --color-primary-ink: #c3dcfb;
+  --color-on-primary: #0b1d36;
+  --color-danger: #ff9d94;
+  --color-danger-soft: #3b1f22;
+  --color-success: #6fd3a3;
+  --color-success-soft: #12301f;
+  --color-warning: #f3b36a;
+  --color-warning-soft: #35270f;
+  --color-info: #7db3f5;
+  --color-info-soft: #1c3556;
+  --shadow-card: 0 1.25rem 3.5rem rgb(0 0 0 / 35%);
+  --shadow-popover: 0 0.5rem 1.5rem rgb(0 0 0 / 50%);
+}
+
+/* A printed page is always light, whatever the screen theme is. */
+@media print {
+  :root,
+  :root[data-theme="dark"] {
+    color-scheme: light;
+    --color-canvas: #ffffff;
+  }
+}

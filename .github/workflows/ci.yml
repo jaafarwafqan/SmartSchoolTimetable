@@ -67,5 +67,6 @@ jobs:
       # Policy (docs/DECISIONS_LOG / DECISIONS_PENDING #44): production dependencies must have no high findings;
       # the dev-only stylelint chain is a documented accepted risk.
       - name: npm audit (production dependencies)
+        if: always()
         working-directory: frontend
         run: npm run audit:prod
