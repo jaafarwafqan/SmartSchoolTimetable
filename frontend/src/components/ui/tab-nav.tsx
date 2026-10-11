@@ -9,8 +9,13 @@ export function TabNav({ label, tabs }: TabNavProps) {
   const { pathname } = useLocation();
   const list = useRef<HTMLUListElement>(null);
   // On a phone the tabs sit in one scrolling row: keep the current tab in view.
+  // Again once the font has loaded: the tabs change width then, and the first position would be off.
   useEffect(() => {
-    list.current?.querySelector<HTMLElement>(".is-active")?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+    const show = () => list.current?.querySelector<HTMLElement>(".is-active")?.scrollIntoView?.({ block: "nearest", inline: "center" });
+    show();
+    void document.fonts?.ready.then(show);
+    window.addEventListener("resize", show);
+    return () => window.removeEventListener("resize", show);
   }, [pathname]);
   return (
     <nav className="ui-tabs" aria-label={label}>
