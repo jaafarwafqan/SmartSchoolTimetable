@@ -33,13 +33,13 @@ test("(M2) preferences: dark theme with AA contrast, persistence, digits, print 
     // Light by default; the section sits in Settings › عام.
     await goToSection(page, messages.school.nav.settings);
     await expect(page.getByRole("heading", { name: text.title, level: 2 })).toBeVisible();
-    await expect.poll(() => themeOf(page)).toBe("light");
+    expect(await themeOf(page)).toBe("light");
 
     // Dark: chosen, saved, applied at once, remembered across a reload before the app paints.
     await chooseTheme(page, text.theme.dark);
-    await expect.poll(() => themeOf(page)).toBe("dark");
+    expect(await themeOf(page)).toBe("dark");
     await page.reload();
-    await expect.poll(() => themeOf(page)).toBe("dark");
+    expect(await themeOf(page)).toBe("dark");
     await expect(page.getByRole("heading", { name: text.title, level: 2 })).toBeVisible();
     await expectNoSeriousA11yViolations(page, "settings in the dark theme");
     await page.screenshot({ path: testInfo.outputPath("m2-settings-dark.png"), fullPage: true });
@@ -66,13 +66,14 @@ test("(M2) preferences: dark theme with AA contrast, persistence, digits, print 
     // «حسب نظام التشغيل» follows the system, and a fixed light theme ignores it.
     await goToSection(page, messages.school.nav.settings);
     await chooseTheme(page, text.theme.system);
+    // The system's change reaches the page as an event the browser dispatches asynchronously: wait until the theme is applied.
     await page.emulateMedia({ colorScheme: "dark" });
-    await expect.poll(() => themeOf(page)).toBe("dark");
+    await page.waitForFunction(() => document.documentElement.getAttribute("data-theme") === "dark");
     await page.emulateMedia({ colorScheme: "light" });
-    await expect.poll(() => themeOf(page)).toBe("light");
+    await page.waitForFunction(() => document.documentElement.getAttribute("data-theme") === "light");
     await chooseTheme(page, text.theme.light);
     await page.emulateMedia({ colorScheme: "dark" });
-    await expect.poll(() => themeOf(page)).toBe("light");
+    expect(await themeOf(page)).toBe("light");
     await page.emulateMedia({ colorScheme: "light" });
 
     // Digits: Latin on every screen, then back.
