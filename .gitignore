@@ -22,3 +22,6 @@ frontend/tsconfig.tsbuildinfo
 
 # Ready-to-run folders built by tools/Publish-Release.ps1 (never committed).
 artifacts/
+
+# Scratch files of the user-guide capture (print PDFs).
+docs/guide/tmp/

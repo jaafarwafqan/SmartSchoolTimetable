@@ -1,0 +1,15 @@
+{
+  "_note": "FICTIONAL data for the user-guide screenshots only. Never shipped, never imported into the product database. Every name below is invented.",
+  "schoolName": "مدرسة الفجر الابتدائية",
+  "principal": "أ. هدى كاظم",
+  "owner": { "username": "مدير", "password": "Guide-Owner-2026!" },
+  "classTeachers": [
+    "أمل حسين علي", "بشرى كاظم جواد", "رنا عادل مهدي", "سلوى فاضل حسن", "شيماء جاسم محمد", "ضحى رعد كريم",
+    "علياء ستار جبار", "غدير ناصر علوان", "فرح صادق حسون", "لمى عباس حميد", "منى وليد سعيد", "نادية ماجد عزيز"
+  ],
+  "extraTeachers": [
+    { "name": "حيدر عبد الأمير", "note": "مدرّس اللغة الإنكليزية" },
+    { "name": "كرار فلاح مهدي", "note": "مدرّس التربية الرياضية" }
+  ],
+  "sectionsPerGrade": 2
+}
