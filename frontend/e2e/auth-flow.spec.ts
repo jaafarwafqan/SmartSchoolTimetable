@@ -73,7 +73,7 @@ test("setup, blocked reload until a new code is confirmed, logout, login, and pa
   await page.getByLabel(messages.app.inactivityLabel).selectOption("15");
   await page.getByRole("button", { name: messages.app.saveInactivity }).click();
   await expect(page.getByRole("status").filter({ hasText: messages.app.inactivitySaved })).toBeVisible();
-  await expect(page.locator(".info-row")).toContainText(formatInactivityTimeout(15));
+  await expect(page.locator(".info-row").filter({ hasText: messages.app.inactivityCurrent })).toContainText(formatInactivityTimeout(15));
   await page.reload();
   await expect(page.getByLabel(messages.app.inactivityLabel)).toHaveValue("15");
 
