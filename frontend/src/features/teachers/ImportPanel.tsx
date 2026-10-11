@@ -18,7 +18,7 @@ type ImportPanelProps = { onClose: () => void; onDone: (summary: string) => void
 
 /**
  * Excel import of teachers with a dry run (M2): the template, the file, a preview of every row (Arabic notes), then only the valid rows are
- * added. A teacher who already exists is shown and left alone. A panel inside the page, never a drawer.
+ * added. A teacher who already exists is shown and left alone. A panel inside the page.
  */
 export function ImportPanel({ onClose, onDone }: ImportPanelProps) {
   const format = useFormatter();
@@ -95,7 +95,7 @@ export function ImportPanel({ onClose, onDone }: ImportPanelProps) {
           <FileDown aria-hidden="true" size={18} /><span>{text.downloadTemplate}</span>
         </a>
         <FileUpload id="teachers-import-file" label={text.chooseFile} loading={previewImport.isPending}
-          accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onSelect={choose} />
+          accept=".xlsx" onSelect={choose} />
       </div>
       {file && <p className="card-note">{text.chosenFile(file.name)}</p>}
       {preview && <p role="status" className="card-note">{text.summary(format.number(preview.ready), format.number(preview.existing), format.number(preview.errors), format.number(preview.warnings))}</p>}
