@@ -6,13 +6,13 @@
 
 | الملف | الوصف |
 |---|---|
-| `SmartSchoolTimetable-Setup-1.0.0.exe` | مثبّت البرنامج (74 ميغابايت) |
-| `SmartSchoolTimetable-Setup-1.0.0.exe.sha256` | بصمة الملف للتحقق منه |
+| `SmartSchoolTimetable-Setup-1.0.0-20261011-165040.exe` | مثبّت البرنامج (74 ميغابايت) |
+| `SmartSchoolTimetable-Setup-1.0.0-20261011-165040.exe.sha256` | بصمة الملف للتحقق منه |
 | `USER_GUIDE_AR.pdf` | دليل المستخدم بالعربية (81 صفحة، 14 فصلاً بصور حقيقية) |
 
-**SHA-256 للمثبّت:** `fe96f75918e75d42152bdb0b3b9f5deee9afb5048ddd865b236933a9c2dcf98a`
+**SHA-256 للمثبّت:** `1bd7e84cfd400d73298aa2054e77b0dd445cf9509bde42636080b51ccbfc7d65`
 
-للتحقق: في PowerShell اكتب `Get-FileHash .\SmartSchoolTimetable-Setup-1.0.0.exe -Algorithm SHA256` وقارن الناتج بالقيمة أعلاه.
+للتحقق: في PowerShell اكتب `Get-FileHash .\SmartSchoolTimetable-Setup-1.0.0-20261011-165040.exe -Algorithm SHA256` وقارن الناتج بالقيمة أعلاه.
 
 ## المتطلبات
 
