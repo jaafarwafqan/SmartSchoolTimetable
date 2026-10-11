@@ -155,6 +155,8 @@ export async function expectBreakpointScreenshots(page: Page, name: string, mask
     await page.setViewportSize({ width, height: 900 });
     await page.evaluate(async () => {
       await document.fonts.ready;
+      // Two frames: the resize handlers (for example the tab strip centring its active tab) have run before the picture is taken.
+      await new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done())));
       window.scrollTo(0, 0);
     });
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

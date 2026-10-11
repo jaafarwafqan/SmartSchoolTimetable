@@ -29,7 +29,10 @@ export function useSavePreferences() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (input: PreferencesInput) => apiRequest<Preferences>(`${preferencesPath}/`, "PUT", input),
-    onSuccess: (saved) => {
+    // A refetch that started before this save must not bring the old value back over the saved one (it would also undo the theme).
+    onMutate: () => client.cancelQueries({ queryKey: preferencesKey }),
+    onSuccess: async (saved) => {
+      await client.cancelQueries({ queryKey: preferencesKey });
       client.setQueryData(preferencesKey, saved);
       // The page changes theme here, before any "saved" message is shown (not later in a render effect), and the choice is remembered for the next load.
       applyTheme(saved.theme);
