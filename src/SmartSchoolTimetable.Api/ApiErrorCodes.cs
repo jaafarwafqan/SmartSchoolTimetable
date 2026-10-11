@@ -92,6 +92,7 @@ public static class ApiErrorCodes
             [ErrorCodes.BackupPathInvalid] = StatusCodes.Status422UnprocessableEntity,
             [ErrorCodes.BackupFileExists] = StatusCodes.Status409Conflict,
             [ErrorCodes.BackupFailed] = StatusCodes.Status500InternalServerError,
+            [ErrorCodes.OpenFolderFailed] = StatusCodes.Status500InternalServerError,
             [ErrorCodes.RestoreFileInvalid] = StatusCodes.Status422UnprocessableEntity,
             [ErrorCodes.RestoreFailed] = StatusCodes.Status500InternalServerError,
             [ErrorCodes.RestoreIncompatible] = StatusCodes.Status422UnprocessableEntity,

@@ -22,12 +22,14 @@ import { legacyRedirects, navGroups } from "./navigation";
 import { ResourcesPage } from "../features/resources/ResourcesPage";
 import { WorkloadPage } from "../features/workload/WorkloadPage";
 import { SchedulingProfilePage } from "../features/scheduling-profile/SchedulingProfilePage";
+import { AboutPage } from "../features/about/AboutPage";
 import { HistoryPage } from "../features/history/HistoryPage";
 import { ReadinessPage } from "../features/readiness/ReadinessPage";
 import { GenerationPage } from "../features/generation/GenerationPage";
 import { TimetablePage } from "../features/timetable/TimetablePage";
 import { NotFoundPage } from "./NotFoundPage";
 import { Sidebar } from "./Sidebar";
+import { AppFooter } from "./AppFooter";
 import { TopBar } from "./TopBar";
 import { useInactivityLock } from "./useInactivityLock";
 
@@ -82,11 +84,13 @@ export function AppShell({ bootstrap }: { bootstrap: Bootstrap }) {
             <Route path="/settings/advanced" element={<SchedulingProfilePage />} />
             <Route path="/settings/scheduling" element={<Navigate to="/settings/advanced" replace />} />
             <Route path="/settings/history" element={<HistoryPage />} />
+            <Route path="/settings/about" element={<AboutPage />} />
             {Object.entries(legacyRedirects).map(([from, to]) => <Route key={from} path={from} element={<Navigate to={to} replace />} />)}
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </main>
       </div>
+      <AppFooter />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import {
-  BookOpen, CalendarCheck, CalendarDays, CalendarRange, Clock, Cpu, DoorOpen, Gauge, LayoutDashboard, Layers, Library, School,
+  BookOpen, CalendarCheck, CalendarDays, CalendarRange, Clock, Cpu, DoorOpen, Gauge, Info, LayoutDashboard, Layers, Library, School,
   ScrollText, Settings, SlidersHorizontal, UsersRound, type LucideIcon,
 } from "lucide-react";
 import { messages } from "../i18n/messages";
@@ -62,6 +62,7 @@ export const navGroups: readonly NavGroup[] = [
       { to: "/settings/general", label: nav.settingsGeneral, icon: Settings },
       { to: "/settings/advanced", label: nav.settingsAdvanced, icon: SlidersHorizontal },
       { to: "/settings/history", label: nav.settingsHistory, icon: ScrollText },
+      { to: "/settings/about", label: nav.settingsAbout, icon: Info },
     ],
   },
 ];

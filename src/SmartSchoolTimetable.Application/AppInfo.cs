@@ -8,4 +8,18 @@ public static class AppInfo
     /// <summary>For example "5.0.0": the informational version without any source-control suffix.</summary>
     public static string Version { get; } = (typeof(AppInfo).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
         ?? typeof(AppInfo).Assembly.GetName().Version?.ToString(3) ?? "0.0.0").Split('+')[0];
+
+    /// <summary>The day this build was made (UTC, yyyy-MM-dd), stamped into the assembly at build time.</summary>
+    public static string BuildDate { get; } = typeof(AppInfo).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+        .FirstOrDefault(attribute => attribute.Key == "BuildDate")?.Value ?? "0001-01-01";
+
+    /// <summary>The licence notice (the repository's LICENSE file), Arabic part first.</summary>
+    public static string LicenseText()
+    {
+        using var stream = typeof(AppInfo).Assembly.GetManifestResourceStream("LICENSE.txt");
+        if (stream is null)
+            return string.Empty;
+        using var reader = new StreamReader(stream, System.Text.Encoding.UTF8);
+        return reader.ReadToEnd().Replace("\r\n", "\n", StringComparison.Ordinal);
+    }
 }

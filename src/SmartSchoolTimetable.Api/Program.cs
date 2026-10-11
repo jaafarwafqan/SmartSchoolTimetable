@@ -97,6 +97,11 @@ builder.Services.AddSingleton(new SmartSchoolTimetable.Application.Backup.Backup
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Backup.BackupService>();
 builder.Services.AddScoped<PreferencesService>();
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Audit.AuditService>();
+builder.Services.AddSingleton<IFolderOpener, ExplorerFolderOpener>();
+var supportLog = new SupportLogBuffer();
+builder.Services.AddSingleton(supportLog);
+builder.Logging.AddProvider(new SupportLogProvider(supportLog, TimeProvider.System));
+builder.Services.AddScoped<SupportLogBuilder>();
 builder.Services.AddHostedService<GenerationWorker>();
 if (!builder.Environment.IsEnvironment("Testing"))
     builder.Services.AddHostedService<AutoBackupWorker>();
@@ -158,6 +163,7 @@ app.MapReadinessEndpoints();
 app.MapGenerationEndpoints();
 app.MapTimetableEndpoints();
 app.MapBackupEndpoints();
+app.MapAboutEndpoints();
 app.MapAuditEndpoints();
 app.MapSettingsEndpoints();
 app.MapFallback(async (HttpContext context) =>
