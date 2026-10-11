@@ -65,7 +65,7 @@ The app displays the resolved database path and the prompts in Arabic, and asks 
 - In the app: «الإعدادات ← عام ← النسخ الاحتياطي والاستعادة».
 - **Backup** writes a new, consistent file (`timetable-backup-<date-time>.db`) to a folder you choose. It never overwrites a file.
 - **Restore** needs two confirmations. It first saves an automatic copy of the current data (`backups\pre-restore-<date-time>.db` next to the database). It upgrades an older backup to the current schema, then signs you out.
-- No backup is ever deleted by the app. Details: [adr/0042-backup-restore-and-release-folder.md](./adr/0042-backup-restore-and-release-folder.md).
+- No backup is ever deleted by the app, with one approved exception: old automatic `auto-backup-*.db` copies beyond the last N valid ones (default 14, minimum 3; [ADR 0050](./adr/0050-m2-backups-and-keep-last-n.md)). Details: [adr/0042-backup-restore-and-release-folder.md](./adr/0042-backup-restore-and-release-folder.md).
 - The school logo and stamp are in the `assets` folder next to the database. Copy that folder too when moving data to another computer.
 
 ### A separate test database

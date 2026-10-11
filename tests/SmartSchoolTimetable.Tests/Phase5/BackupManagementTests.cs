@@ -170,12 +170,11 @@ public sealed class BackupManagementTests
         var raw = await host.Client.GetAsync($"/api/v1/backup/files?folder={Uri.EscapeDataString(folder)}"); Assert.True(raw.IsSuccessStatusCode, await raw.Content.ReadAsStringAsync());
         Assert.All(await FilesAsync(host, folder), file => Assert.True(file.GetProperty("restorable").GetBoolean() || file.GetProperty("name").GetString() == "auto-notes.txt"));
 
-        // Keep-all (0) removes nothing; switched off does nothing.
-        Assert.Equal(HttpStatusCode.OK, (await host.PutAsync("/api/v1/backup/settings", new { folder, autoBackupEnabled = true, keepLast = 0, version = await VersionAsync(host) }, token)).StatusCode);
-        host.Clock.Advance(TimeSpan.FromHours(21));
-        Assert.Equal(0, (await RunAutoAsync(host)).Pruned);
-        Assert.Equal(4, Directory.GetFiles(folder, "auto-backup-*.db").Length);
-        Assert.Equal(HttpStatusCode.OK, (await host.PutAsync("/api/v1/backup/settings", new { folder, autoBackupEnabled = false, keepLast = 0, version = await VersionAsync(host) }, token)).StatusCode);
+        // Below the minimum (0 = "keep all" used to exist, 1, 2) is refused: nothing lower than 3 can be saved.
+        foreach (var tooLow in new[] { 0, 1, 2 })
+            await AssertApiErrorAsync(await host.PutAsync("/api/v1/backup/settings", new { folder, autoBackupEnabled = true, keepLast = tooLow, version = await VersionAsync(host) }, token), ErrorCodes.ValidationFailed);
+
+        Assert.Equal(HttpStatusCode.OK, (await host.PutAsync("/api/v1/backup/settings", new { folder, autoBackupEnabled = false, keepLast = 3, version = await VersionAsync(host) }, token)).StatusCode);
         host.Clock.Advance(TimeSpan.FromHours(21));
         Assert.False((await RunAutoAsync(host)).Created);
 
@@ -184,6 +183,50 @@ public sealed class BackupManagementTests
         var events = history.GetProperty("items").EnumerateArray().Select(entry => entry.GetProperty("eventType").GetString()).ToArray();
         Assert.Contains("AutoBackupCreated", events);
         Assert.Contains("AutoBackupPruned", events);
+        Assert.Equal(3, events.Count(item => item == "AutoBackupPruned")); // one audit entry per deleted file
+    }
+
+    [Fact]
+    public async Task PruningNeverTouchesAnythingButValidAutoBackupsAndKeepsAtLeastNValidOnes()
+    {
+        await using var host = new TestHost();
+        var (token, _) = await SetupOwnerAsync(host);
+        var folder = FolderOf(host, "m2-prune-safe");
+        var v = (await JsonAsync(await host.Client.GetAsync("/api/v1/backup/settings"))).GetProperty("version").GetInt32();
+        Assert.Equal(HttpStatusCode.OK, (await host.PutAsync("/api/v1/backup/settings", new { folder, autoBackupEnabled = true, keepLast = 3, version = v }, token)).StatusCode);
+
+        // Other kinds of file whose names look like backups: none of them may ever be deleted.
+        Directory.CreateDirectory(folder);
+        var bystanders = new[] { "timetable-backup-20200101-000000.db", "pre-restore-20200101-000000.db", "pre-migration-20200101-000000.db",
+            "pre-conversion-20200101-000000.db", "pre-upgrade-20200101-000000.db", "auto-backup-old.db", "auto-backup-20200101-000000.db.bak", "notes.db" };
+        foreach (var name in bystanders)
+        {
+            await File.WriteAllTextAsync(Path.Combine(folder, name), "not a database");
+            File.SetLastWriteTimeUtc(Path.Combine(folder, name), new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+        }
+
+        // Fewer valid copies than N, plus a damaged auto-backup: nothing is deleted at all.
+        Assert.True((await RunAutoAsync(host)).Created);
+        var damaged = Path.Combine(folder, "auto-backup-20200102-000000.db");
+        await File.WriteAllTextAsync(damaged, "damaged");
+        File.SetLastWriteTimeUtc(damaged, new DateTime(2020, 1, 2, 0, 0, 0, DateTimeKind.Utc));
+        for (var run = 0; run < 2; run++)
+        {
+            host.Clock.Advance(TimeSpan.FromHours(21));
+            var outcome = await RunAutoAsync(host);
+            Assert.True(outcome.Created);
+            Assert.Equal(0, outcome.Pruned); // 2 then 3 valid copies: not more than N
+        }
+        Assert.Equal(5, Directory.GetFiles(folder, "auto-backup-*.db").Length); // 3 valid + the damaged one + the look-alike "auto-backup-old.db"
+
+        // A fourth valid copy: exactly the oldest valid one goes; the damaged file, every bystander and the newest copies stay.
+        host.Clock.Advance(TimeSpan.FromHours(21));
+        var fourth = await RunAutoAsync(host);
+        Assert.Equal(1, fourth.Pruned);
+        Assert.True(File.Exists(fourth.File!));
+        Assert.True(File.Exists(damaged));
+        Assert.All(bystanders, name => Assert.True(File.Exists(Path.Combine(folder, name)), name));
+        Assert.Equal(5, Directory.GetFiles(folder, "auto-backup-*.db").Length); // still 3 valid + the damaged one + the look-alike
     }
 
     private static async Task<int> VersionAsync(TestHost host)
