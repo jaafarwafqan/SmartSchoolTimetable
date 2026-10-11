@@ -19,7 +19,7 @@ Phases 0–4 and the follow-up R1–R3 are delivered and merged to `master` (lat
 
 ## File deletion and destructive commands (owner rule, mandatory)
 - Never delete anything outside the repository or the temporary folders created by the test suites themselves.
-- Never delete backups.
+- Never delete backups. **Single approved exception (ADR 0050):** the app may delete old `auto-backup-yyyyMMdd-HHmmss.db` files it made itself in the configured backup folder, only beyond the newest N integrity-checked ones (default 14, minimum 3, nothing deleted if fewer than N valid exist, every deletion audited). Never manual, `pre-restore-*`, `pre-migration-*`, `pre-upgrade-*`, `pre-conversion-*` or any other file.
 - Any destructive command (delete, move, overwrite, reset, `Remove-Item`, `rm`, `git clean`, `git reset --hard`, database resets) requires the owner's explicit instruction naming the exact path. First list every path it would affect, then wait for the owner's confirmation. A path may be passed to `Remove-Item` (or any delete command) only after that confirmation.
 - No default accounts, passwords or credentials in the source or configuration. An empty database must show the first-run setup screen (create owner, recovery code, then the wizard). Enforced by `FirstRunTests`.
 

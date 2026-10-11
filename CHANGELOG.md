@@ -24,6 +24,14 @@
 - **MF10 backups (ADR 0049):** an in-app folder picker (typed path as fallback) and a restore chosen from the list of backups (restorable or not), including the automatic ones.
 - **MF11 stale timetable vs current data (ADR 0047):** «الفحص على البيانات الحالية» with each conflict as a sentence that opens its cell, «ما الذي تغيّر منذ التوليد», «إصلاح بأقل تغيير», «استبدال المعلم في الجدول», and approval blocked on conflicts. Migration `Phase5RepairedVersions`.
 - Removed (owner-approved paths): `ShiftModeService`, `ShiftModeCard`, `shiftModeApi`, `SessionsCard`, `ShiftDialog`.
+### M2 preferences, backups, upgrade, About, import (branch `work/phase-5`, ADRs 0050–0051)
+- Stored preferences: theme (dark), digits, default semester, print defaults; auto-lock stays in Settings › عام.
+- Backups: online backup with integrity check and program/database versions; a settings form (folder picker, automatic daily backup, keep the last N = 3, 7, 14 or 30) and a list with date, size, versions and integrity; safe restore with automatic rollback. **The single approved exception to «never delete backups»:** old `auto-backup-*.db` files beyond the newest N valid ones (only those, never manual / pre-restore / pre-upgrade / pre-conversion files; nothing is deleted while fewer than N valid copies exist; every deletion audited) — recorded in ADR 0050 and `CLAUDE.md`.
+- Safe upgrade: a verified `pre-upgrade-*.db` copy before any migration, the data put back if a migration fails, an Arabic startup message (`startup-error.txt`), a database from a newer program refused untouched; `docs/UPGRADE_AR.md`.
+- «حول البرنامج» (Settings › حول and the user menu): version, build date, database version, licence, developer, data folder with «فتح مجلد البيانات» (guarded: only the app's own folder), «تصدير سجل الدعم» (user names and paths redacted), third-party licences; the version in every footer.
+- Excel import of teachers with a dry run: template download, per-row Arabic notes, valid rows only, Arabic name normalisation (أ إ آ ا، ى ي، ة ه، spaces), idempotent re-import that never overwrites.
+- CI: Playwright with one worker and a longer timeout on CI only; the audit step always runs; `LICENSE` (proprietary, Arabic and English).
+- ADR 0051: PDF output (the browser prints timetables; Chromium builds the user guide).
 ### M4a icons everywhere (merged into `work/phase-5`)
 - `SectionTitle` (required icon) replaces every raw h2/h3 in `features/` (lint rule `no-raw-headings` plus a test); `PageHeader` and tabs have required icons; non-neutral `Badge` requires an icon (types). Details: `docs/M4A_ICON_CHANGES.md`.
 ### Phase 4 follow-up: owner decisions on R3 (tag `phase-4i`)

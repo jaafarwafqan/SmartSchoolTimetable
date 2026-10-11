@@ -96,7 +96,13 @@ builder.Services.AddSingleton(new SmartSchoolTimetable.Application.Backup.Backup
     : Path.Combine(Path.GetDirectoryName(Path.GetFullPath(databasePath))!, "owner-backups")));
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Backup.BackupService>();
 builder.Services.AddScoped<PreferencesService>();
+builder.Services.AddScoped<TeacherImportService>();
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Audit.AuditService>();
+builder.Services.AddSingleton<IFolderOpener, ExplorerFolderOpener>();
+var supportLog = new SupportLogBuffer();
+builder.Services.AddSingleton(supportLog);
+builder.Logging.AddProvider(new SupportLogProvider(supportLog, TimeProvider.System));
+builder.Services.AddScoped<SupportLogBuilder>();
 builder.Services.AddHostedService<GenerationWorker>();
 if (!builder.Environment.IsEnvironment("Testing"))
     builder.Services.AddHostedService<AutoBackupWorker>();
@@ -105,7 +111,21 @@ builder.Services.AddLocalInfrastructure(
     builder.Environment.IsEnvironment("Testing"));
 
 var app = builder.Build();
-await LocalInfrastructureRegistration.InitializeLocalDatabaseAsync(app.Services);
+try
+{
+    await LocalInfrastructureRegistration.InitializeLocalDatabaseAsync(app.Services);
+}
+catch (SmartSchoolTimetable.Infrastructure.Persistence.DatabaseUpgradeException upgrade)
+{
+    // The data and the program disagree, so the screens cannot be served: say so in Arabic and stop without changing anything more.
+    Console.OutputEncoding = Encoding.UTF8;
+    var message = StartupFailureMessages.For(upgrade);
+    Console.Error.WriteLine(message);
+    StartupFailureMessages.Write(databasePath, message);
+    LocalLog.UpgradeFailed(app.Logger, upgrade.Failure.ToString());
+    Environment.ExitCode = 2;
+    return;
+}
 await using (var startupScope = app.Services.CreateAsyncScope())
 {
     // Runs left active by a closed or crashed app are marked Interrupted (Phase 4 §6).
@@ -144,6 +164,7 @@ app.MapReadinessEndpoints();
 app.MapGenerationEndpoints();
 app.MapTimetableEndpoints();
 app.MapBackupEndpoints();
+app.MapAboutEndpoints();
 app.MapAuditEndpoints();
 app.MapSettingsEndpoints();
 app.MapFallback(async (HttpContext context) =>

@@ -15,6 +15,7 @@ import { workloadTable } from "./workloadTable";
 import { printing } from "./printing";
 import { currentCheck } from "./currentCheck";
 import { preferences } from "./preferences";
+import { about } from "./about";
 import { backup, generation, timetable, violations } from "./phase4";
 
 export const school = {
@@ -35,6 +36,7 @@ export const school = {
     workload: "الأنصبة",
     settingsGeneral: "عام",
     settingsHistory: "سجل التغييرات",
+    settingsAbout: "حول",
     settingsAdvanced: "متقدم",
     settingsAdvancedDescription: "إعدادات لا تحتاج إلى تغييرها عادةً.",
     timetable: "الجدول",
@@ -282,4 +284,5 @@ export const school = {
   printing,
   violations,
   backup,
+  about,
 } as const;

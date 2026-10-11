@@ -241,6 +241,10 @@
   white-space: nowrap;
 }
 
+.nowrap.block {
+  display: block;
+}
+
 .folder-current {
   display: flex;
   align-items: center;
@@ -338,4 +342,26 @@
 
 .legacy-conversion .reference-list {
   margin-block: 0;
+}
+
+.about-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.75rem 1.5rem;
+  margin: 0;
+}
+
+.about-facts dt {
+  color: var(--color-ink-subtle);
+  font-size: 0.875rem;
+}
+
+.about-facts dd {
+  margin: 0.125rem 0 0;
+  font-weight: 700;
+}
+
+.about-license {
+  margin: 0;
+  white-space: pre-line;
 }

@@ -98,6 +98,9 @@ public static class ErrorCodes
     public const string BackupPathInvalid = "BACKUP_PATH_INVALID";
     public const string BackupFileExists = "BACKUP_FILE_EXISTS";
     public const string BackupFailed = "BACKUP_FAILED";
+    public const string OpenFolderFailed = "OPEN_FOLDER_FAILED";
+    public const string ImportFileInvalid = "IMPORT_FILE_INVALID";
+    public const string ImportTooManyRows = "IMPORT_TOO_MANY_ROWS";
     public const string RestoreFileInvalid = "RESTORE_FILE_INVALID";
     public const string RestoreFailed = "RESTORE_FAILED";
     public const string RestoreIncompatible = "RESTORE_INCOMPATIBLE";

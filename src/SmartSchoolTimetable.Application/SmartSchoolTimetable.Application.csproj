@@ -4,6 +4,16 @@
     <!-- Setup templates (spec 2.5 §4.1) are data, not code: embedded JSON validated by tests. -->
     <EmbeddedResource Include="Setup\Templates\*.json" />
     <EmbeddedResource Include="Templates\*.json" />
+    <!-- The licence notice shown on «حول البرنامج» is the repository's LICENSE file itself. -->
+    <EmbeddedResource Include="..\..\LICENSE" LogicalName="LICENSE.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The build date shown on «حول البرنامج» (UTC, day precision). -->
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>BuildDate</_Parameter1>
+      <_Parameter2>$([System.DateTime]::UtcNow.ToString("yyyy-MM-dd"))</_Parameter2>
+    </AssemblyAttribute>
   </ItemGroup>
 
   <ItemGroup>

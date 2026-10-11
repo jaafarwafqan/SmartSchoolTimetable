@@ -24,6 +24,9 @@ internal static partial class LocalLog
     [LoggerMessage(EventId = 1202, Level = LogLevel.Warning, Message = "The automatic backup could not be written; the next check tries again.")]
     public static partial void AutoBackupFailed(ILogger logger, Exception exception);
 
+    [LoggerMessage(EventId = 1203, Level = LogLevel.Error, Message = "The database upgrade stopped ({Failure}); the program did not start.")]
+    public static partial void UpgradeFailed(ILogger logger, string failure);
+
     [LoggerMessage(EventId = 1103, Level = LogLevel.Warning, Message = "The solver engine did not load; generation is unavailable.")]
     public static partial void SolverUnavailable(ILogger logger);
 }

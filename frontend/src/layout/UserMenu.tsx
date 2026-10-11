@@ -1,4 +1,4 @@
-import { ChevronDown, Lock, LogOut, Settings, UserRound } from "lucide-react";
+import { ChevronDown, Info, Lock, LogOut, Settings, UserRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { LtrText } from "../components/ui/ltr-text";
 import { Menu } from "../components/ui/menu";
@@ -23,6 +23,7 @@ export function UserMenu({ username, onError }: { username: string | null; onErr
       )}
       items={[
         { key: "settings", label: messages.school.nav.settings, icon: <Settings aria-hidden="true" size={20} />, onSelect: () => navigate("/settings") },
+        { key: "about", label: messages.school.about.menu, icon: <Info aria-hidden="true" size={20} />, onSelect: () => navigate("/settings/about") },
         { key: "lock", label: messages.school.shell.lock, icon: <Lock aria-hidden="true" size={20} />, onSelect: () => lock.mutate() },
         { key: "logout", label: messages.app.logout, icon: <LogOut aria-hidden="true" size={20} />, onSelect: () => logout.mutate() },
       ]}

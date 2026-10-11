@@ -77,7 +77,7 @@ public sealed record BackupFileDto(string Name, string Path, long SizeBytes, Dat
 public sealed record BackupListingDto(string Folder, string AutomaticFolder, IReadOnlyList<BackupFileDto> Files, int CurrentSchemaVersion = 0);
 
 /// <param name="Folder">The folder the owner chose, or null while the suggested one is used.</param>
-/// <param name="KeepLast">How many automatic backups to keep (0 keeps them all).</param>
+/// <param name="KeepLast">How many automatic backups to keep (never below 3).</param>
 public sealed record BackupSettingsDto(string? Folder, string EffectiveFolder, string SuggestedFolder, bool AutoBackupEnabled, int KeepLast,
     IReadOnlyList<int> KeepLastChoices, DateTimeOffset? LastAutoBackupAt, int Version);
 
@@ -285,29 +285,56 @@ public sealed class BackupService(IDatabaseBackup backup, IDataStore store, ILoc
         await backup.CreateAsync(file, token);
         settings.RecordAutoBackup(now);
         AuditTrail.Record(store, clock, AuditEvents.AutoBackupCreated, "database", "An automatic database backup was created.");
-        var pruned = settings.KeepLast > 0 ? PruneAutomatic(folder, settings.KeepLast) : 0;
-        if (pruned > 0)
-            AuditTrail.Record(store, clock, AuditEvents.AutoBackupPruned, "database", $"{pruned} old automatic backups removed.", new { count = pruned });
+        var removed = await PruneAutomaticAsync(folder, settings.EffectiveKeepLast, token);
+        foreach (var name in removed)
+            AuditTrail.Record(store, clock, AuditEvents.AutoBackupPruned, "database", "An old automatic backup was removed.", new { file = name });
         await store.SaveChangesAsync(token);
-        return new AutoBackupOutcome(true, file, pruned);
+        return new AutoBackupOutcome(true, file, removed.Count);
     }
 
-    /// <summary>Removes the oldest <c>auto-backup-*.db</c> files of the folder beyond <paramref name="keep"/>; nothing else is touched.</summary>
-    private static int PruneAutomatic(string folder, int keep)
+    /// <summary>The exact name the application gives a scheduled backup; nothing else is ever a candidate for pruning.</summary>
+    private static readonly System.Text.RegularExpressions.Regex AutoFileName =
+        new(@"^auto-backup-\d{8}-\d{6}\.db$", System.Text.RegularExpressions.RegexOptions.CultureInvariant | System.Text.RegularExpressions.RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
+
+    /// <summary>
+    /// The single approved exception to "never delete backups" (ADR 0050). Only <c>auto-backup-yyyyMMdd-HHmmss.db</c> files directly in the
+    /// configured folder are considered (no manual, pre-restore, pre-upgrade, pre-conversion or other file, no links, no subfolders). Only copies
+    /// that pass the integrity check count; when no more than <paramref name="keep"/> of them exist nothing is deleted, otherwise the oldest valid
+    /// ones beyond the newest <paramref name="keep"/> go, so the newest valid backup is always kept. Returns the names actually deleted.
+    /// </summary>
+    private async Task<IReadOnlyList<string>> PruneAutomaticAsync(string folder, int keep, CancellationToken token)
     {
-        var removed = 0;
+        var removed = new List<string>();
         try
         {
-            var automatic = new DirectoryInfo(folder).EnumerateFiles(AutoPrefix + "*.db").OrderByDescending(file => file.LastWriteTimeUtc).ThenByDescending(file => file.Name, StringComparer.Ordinal).ToList();
-            foreach (var old in automatic.Skip(keep))
+            var candidates = new DirectoryInfo(folder).EnumerateFiles(AutoPrefix + "*.db")
+                .Where(file => AutoFileName.IsMatch(file.Name) && !file.Attributes.HasFlag(FileAttributes.ReparsePoint))
+                .OrderByDescending(file => file.LastWriteTimeUtc).ThenByDescending(file => file.Name, StringComparer.Ordinal).ToList();
+            var valid = new List<FileInfo>();
+            foreach (var file in candidates)
             {
-                old.Delete();
-                removed++;
+                var inspection = await backup.InspectAsync(file.FullName, token);
+                if (inspection.IsDatabase && inspection.IntegrityOk)
+                    valid.Add(file);
+            }
+            if (valid.Count <= keep)
+                return removed;
+            foreach (var old in valid.Skip(keep))
+            {
+                try
+                {
+                    old.Delete();
+                    removed.Add(old.Name);
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                {
+                    // A locked or protected file stays; the next run tries again.
+                }
             }
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            // A locked or protected file stays; the next run tries again.
+            // An unreadable folder: nothing is removed.
         }
         return removed;
     }
@@ -323,7 +350,7 @@ public sealed class BackupService(IDatabaseBackup backup, IDataStore store, ILoc
     }
 
     private BackupSettingsDto ToDto(BackupSettings settings) => new(settings.Folder, settings.Folder ?? defaults.SuggestedFolder, defaults.SuggestedFolder,
-        settings.AutoBackupEnabled, settings.KeepLast, BackupSettings.KeepLastChoices, settings.LastAutoBackupAt, settings.Version);
+        settings.AutoBackupEnabled, settings.EffectiveKeepLast, BackupSettings.KeepLastChoices, settings.LastAutoBackupAt, settings.Version);
 
     private const int MaxFolders = 500;
     private const int MaxBackupFiles = 200;

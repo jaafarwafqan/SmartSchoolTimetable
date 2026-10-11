@@ -5,7 +5,8 @@ namespace SmartSchoolTimetable.Domain.Settings;
 /// <summary>
 /// Backup configuration (exactly one row, Id = 1, versioned): the folder the owner chose, whether a backup is taken
 /// automatically (on start and then daily), and how many automatic backups to keep. Only files the application made
-/// itself as automatic backups are ever pruned, and never manual ones.
+/// itself as automatic backups (<c>auto-backup-*.db</c>) are ever pruned, never manual ones (the single approved exception to
+/// "never delete backups", ADR 0050).
 /// </summary>
 public sealed class BackupSettings : VersionedEntity
 {
@@ -13,8 +14,10 @@ public sealed class BackupSettings : VersionedEntity
     public const int FolderMaxLength = 500;
     public const int DefaultKeepLast = 14;
 
-    /// <summary>How many automatic backups may be kept; 0 means keep them all.</summary>
-    public static readonly IReadOnlyList<int> KeepLastChoices = [0, 3, 7, 14, 30];
+    /// <summary>The fewest automatic backups that are ever kept; the screen offers nothing lower.</summary>
+    public const int MinKeepLast = 3;
+
+    public static readonly IReadOnlyList<int> KeepLastChoices = [3, 7, 14, 30];
 
     private BackupSettings()
     {
@@ -25,6 +28,9 @@ public sealed class BackupSettings : VersionedEntity
 
     public bool AutoBackupEnabled { get; private set; } = true;
     public int KeepLast { get; private set; } = DefaultKeepLast;
+
+    /// <summary>What is applied: a stored value below the minimum (an older "keep all" 0) never means fewer than <see cref="MinKeepLast"/>.</summary>
+    public int EffectiveKeepLast => Math.Max(MinKeepLast, KeepLast);
     public DateTimeOffset? LastAutoBackupAt { get; private set; }
 
     /// <summary>The application version that last ran on this database (stored so a backup says which version made it).</summary>
