@@ -1,6 +1,18 @@
 # Changelog
 
-## [Unreleased]
+## [1.0.0] - 2026-10-11 (branch `work/phase-5`, tags `v1.0.0`, `phase-5-final`)
+First release for the school. Windows 10 (1809+) 64-bit and Windows 11; installer `SmartSchoolTimetable-Setup-1.0.0-<stamp>.exe` with a SHA-256 file; Arabic user guide `docs/USER_GUIDE_AR.pdf`. Everything below was delivered on `work/phase-5` since `phase-4i`; the last four items (M3, M5, user guide, version) are the final stage.
+### M3 release validation (ADR 0010 SQLCipher NO-GO)
+- Solver workers adapt to the machine: `GenerationSettings.WorkersFor` (cap 4; 2 on a machine with at most 2 logical processors or little memory), CP-SAT `max_memory_in_mb`; measured on the published program with a 512 MB heap cap and 2 logical processors: 24 sections first timetable in 7.7 s, 40 sections in 11.2 s, server peak 447 MB (`docs/PERFORMANCE.md`, `docs/M3_RELEASE_VALIDATION_AR.md`).
+- `LocalAttackSuiteTests`: every state-changing route refuses a request without the per-launch token; CORS and preflight, Host spellings, CSP and the control channel are tested. `m3-offline.spec.ts` proves nothing leaves 127.0.0.1.
+- SQLCipher: NO-GO (ADR 0010): the database stays an ordinary SQLite file; the risk is accepted in `RISKS.md` (R9).
+### M5 launcher and installer (ADR 0052)
+- `SmartSchoolTimetable.exe` (WinForms, 64-bit only): tray icon (open / backup now / stop), one instance, free port when 5080 is busy, the page inside WebView2 restricted to the local origin (devtools and permissions off), automatic fall-back to the default browser when WebView2 is missing, the server stops when the launcher ends. Control channel `/api/v1/control/*` exists only when a per-launch token is configured.
+- Inno Setup installer (Arabic, x64 only, Windows 10 1809+, a 32-bit Windows is refused with «هذا البرنامج يحتاج ويندوز 64-بت»), per-machine by default and `/CURRENTUSER` per user, optional start with Windows, shortcuts incl. «دليل المستخدم», upgrade in place, uninstall that never removes data or backups. A clean-output check makes `Publish-Release.ps1` fail when a database, log, symbol file, test data or a user path is in the folder.
+- `m5-installer.spec.ts` (install, first run, single instance, port fallback, browser fallback, upgrade, refuse while running, uninstall keeps data).
+### User guide
+- `docs/USER_GUIDE_AR.pdf` (A4 RTL, cover, contents with page numbers, 14 chapters, numbered steps, tips and warnings, figures) built reproducibly by `tools/Build-UserGuide.ps1`: it starts the published program on a temporary database, drives a scripted scenario for a fictional school (`frontend/guide`, `tools/guide`), saves the figures and prints the guide. Source: `docs/guide/USER_GUIDE_AR.html`, `docs/guide/img`. No real school data.
+- Version number 1.0.0 (`Directory.Build.props`).
 ### M0 truth and hygiene (branch `work/phase-5`)
 - `DELIVERY_PLAN.md` rewritten to match what Phase 4 delivered and what remains; Phase 7 (attendance, monitoring) cancelled by the owner and replaced by M4; the Phase 1 acceptance table moved to `docs/PHASE1_ACCEPTANCE.md`.
 - `docs/DECISIONS_PENDING.md` now lists open decisions only; approved, decided, superseded and informational rows moved unchanged to `docs/DECISIONS_LOG.md` (numbering shared, never reused).
