@@ -99,6 +99,7 @@ public static class ErrorCodes
     public const string BackupFileExists = "BACKUP_FILE_EXISTS";
     public const string BackupFailed = "BACKUP_FAILED";
     public const string RestoreFileInvalid = "RESTORE_FILE_INVALID";
+    public const string RestoreFailed = "RESTORE_FAILED";
     public const string RestoreIncompatible = "RESTORE_INCOMPATIBLE";
     public const string RestoreConfirmationRequired = "RESTORE_CONFIRMATION_REQUIRED";
 

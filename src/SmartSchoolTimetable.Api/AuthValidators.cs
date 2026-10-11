@@ -72,6 +72,15 @@ public sealed class InactivityTimeoutRequestValidator : AbstractValidator<Inacti
     }
 }
 
+public sealed class ChangeUsernameRequestValidator : AbstractValidator<ChangeUsernameRequest>
+{
+    public ChangeUsernameRequestValidator()
+    {
+        RuleFor(request => request.CurrentPassword).RequiredCode();
+        RuleFor(request => request.NewUsername).ValidUsername();
+    }
+}
+
 public sealed class ChangePasswordRequestValidator : AbstractValidator<ChangePasswordRequest>
 {
     public ChangePasswordRequestValidator()

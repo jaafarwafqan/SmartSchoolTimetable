@@ -1,4 +1,4 @@
-import { CalendarClock, CalendarRange, Landmark } from "lucide-react";
+import { CalendarClock, CalendarRange, Landmark, Megaphone } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Badge } from "../../components/ui/badge";
 import { Card } from "../../components/ui/card";
@@ -35,6 +35,7 @@ export function UpcomingHolidayCard() {
               {running ? text.now : distance === 0 ? text.today : text.inDays(format.count(distance, "day"))}
             </Badge>
             {next.isApproximate && <Badge tone="warning" icon={<CalendarClock aria-hidden="true" size={16} />}>{messages.school.calendar.approximate}</Badge>}
+            {next.byDecision && <Badge tone="warning" icon={<Megaphone aria-hidden="true" size={16} />}>{messages.school.calendar.byDecision}</Badge>}
           </span>
         </div>
       )}

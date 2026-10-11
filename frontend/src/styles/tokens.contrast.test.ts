@@ -7,12 +7,22 @@ import { describe, expect, it } from "vitest";
 // Vitest runs from the frontend folder; CSS imports are stubbed in tests, so the file is read from disk.
 const tokensCss = readFileSync(resolve(process.cwd(), "src/styles/tokens.css"), "utf8");
 
-function tokenColors(): Map<string, string> {
+function colorsIn(css: string): Map<string, string> {
   const colors = new Map<string, string>();
-  for (const match of tokensCss.matchAll(/--color-([a-z0-9-]+):\s*(#[0-9a-f]{6})\b/gi)) {
+  for (const match of css.matchAll(/--color-([a-z0-9-]+):\s*(#[0-9a-f]{6})\b/gi)) {
     colors.set(match[1], match[2].toLowerCase());
   }
   return colors;
+}
+
+// The light tokens are everything before the dark block; the dark block overrides some of them (M2).
+const darkStart = tokensCss.indexOf(':root[data-theme="dark"]');
+const darkBlock = tokensCss.slice(darkStart, tokensCss.indexOf("}", darkStart));
+const lightColors = colorsIn(tokensCss.slice(0, darkStart));
+const darkColors = new Map([...lightColors, ...colorsIn(darkBlock)]);
+
+function tokenColors(): Map<string, string> {
+  return lightColors;
 }
 
 function channel(value: number): number {
@@ -52,7 +62,39 @@ const textPairs: Array<[string, string]> = [
   ...subjectTokens.map((subject): [string, string] => ["on-subject", subject]),
 ];
 
+// Colours the interface really puts on its surfaces: links and status text on the page and card backgrounds, and the muted table header.
+const surfacePairs: Array<[string, string]> = [
+  ...["primary", "danger", "success", "warning"].flatMap((text) =>
+    ["surface", "canvas", "surface-muted"].map((background): [string, string] => [text, background])),
+  ["ink", "surface-muted"],
+  ["ink-muted", "surface-muted"],
+  ["ink-subtle", "surface-muted"],
+];
+
+describe.each([["light", lightColors], ["dark", darkColors]] as const)("%s theme: design tokens contrast (WCAG 2.1 AA)", (_theme, palette) => {
+  const pick = (name: string) => {
+    const value = palette.get(name);
+    if (!value) throw new Error(`Token --color-${name} is missing`);
+    return value;
+  };
+
+  it.each([...textPairs, ...surfacePairs])("text %s on %s reaches 4.5:1", (text, background) => {
+    expect(contrastRatio(pick(text), pick(background))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it.each([["surface"], ["canvas"], ["surface-muted"]])("control border line-strong on %s reaches 3:1", (background) => {
+    expect(contrastRatio(pick("line-strong"), pick(background))).toBeGreaterThanOrEqual(3);
+  });
+});
+
 describe("design tokens contrast (WCAG 2.1 AA)", () => {
+  it("the dark theme overrides the surface, text and status tokens it needs", () => {
+    expect(darkStart).toBeGreaterThan(0);
+    for (const name of ["canvas", "surface", "ink", "primary", "on-primary", "danger", "success", "warning"]) {
+      expect(darkColors.get(name), name).not.toBe(lightColors.get(name));
+    }
+  });
+
   it("parses every colour token from tokens.css", () => {
     expect(colors.size).toBeGreaterThanOrEqual(32);
   });

@@ -6,6 +6,7 @@ using SmartSchoolTimetable.Application.Common;
 using SmartSchoolTimetable.Application.Generation;
 using SmartSchoolTimetable.Domain.Scheduling;
 using SmartSchoolTimetable.Domain.SchoolSetup;
+using SmartSchoolTimetable.Domain.Settings;
 using SmartSchoolTimetable.Infrastructure.Persistence;
 using SmartSchoolTimetable.Infrastructure.Solver;
 
@@ -94,6 +95,20 @@ public static class LocalInfrastructureRegistration
             db.Add(SetupProgress.CreateDefault(DateTimeOffset.UtcNow));
             await db.SaveChangesAsync(cancellationToken);
         }
+        if (!await db.Set<AppPreferences>().AnyAsync(cancellationToken))
+        {
+            db.Add(AppPreferences.CreateDefault());
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        if (!await db.Set<BackupSettings>().AnyAsync(cancellationToken))
+        {
+            db.Add(BackupSettings.CreateDefault());
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        // The version that is running is stored in the database, so a backup says which version made it.
+        var backupSettings = await db.Set<BackupSettings>().FirstAsync(cancellationToken);
+        if (backupSettings.RecordAppVersion(AppInfo.Version))
+            await db.SaveChangesAsync(cancellationToken);
     }
 
     private sealed class NoLoginDelay : ILoginDelay

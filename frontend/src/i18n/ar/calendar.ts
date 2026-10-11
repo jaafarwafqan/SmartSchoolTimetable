@@ -29,6 +29,7 @@ export const calendar = {
   previousMonth: "الشهر السابق",
   nextMonth: "الشهر التالي",
   approximate: "تاريخ تقريبي — تحقق من الإعلان الرسمي",
+  byDecision: "قد تُعلن سنوياً بقرار — تحقق من الإعلان الرسمي",
   disabled: "معطّل",
   enable: "تفعيل",
   disable: "تعطيل",

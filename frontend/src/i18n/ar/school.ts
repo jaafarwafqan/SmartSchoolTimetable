@@ -14,6 +14,7 @@ import { shiftSystem } from "./shiftSystem";
 import { workloadTable } from "./workloadTable";
 import { printing } from "./printing";
 import { currentCheck } from "./currentCheck";
+import { preferences } from "./preferences";
 import { backup, generation, timetable, violations } from "./phase4";
 
 export const school = {
@@ -159,7 +160,7 @@ export const school = {
   years: {
     copyFrom: "نسخ الهيكل من سنة (اختياري)",
     noCopy: "بدون نسخ",
-    copyHint: "تُنسخ الورديات وحصصها والمراحل والشعب، ولا تُنسخ أيام التقويم.",
+    copyHint: "تُنسخ الورديات وحصصها والمراحل والشعب، ولا تُنسخ أيام التقويم؛ وتُضاف العطل الرسمية العراقية للسنة الجديدة تلقائياً.",
     description: "السنوات الدراسية وفصولها. تحدد السنة الحالية والفصل الحالي ما يظهر في بقية الشاشات.",
     add: "إضافة سنة دراسية",
     edit: "تعديل السنة الدراسية",
@@ -179,6 +180,7 @@ export const school = {
     saved: "تم حفظ السنة الدراسية.",
     deleted: "تم حذف السنة الدراسية.",
     madeCurrent: "أصبحت هذه السنة هي السنة الحالية.",
+    holidaysAdded: "أُضيفت العطل الرسمية — راجع التواريخ التقريبية.",
     empty: "لا توجد سنوات دراسية بعد.",
     searchLabel: "بحث في السنوات",
     terms: "الفصول",
@@ -274,6 +276,7 @@ export const school = {
   audit,
   lifecycle,
   currentCheck,
+  preferences,
   shiftSystem,
   workloadTable,
   printing,

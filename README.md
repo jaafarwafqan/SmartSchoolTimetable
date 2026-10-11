@@ -102,3 +102,7 @@ Passwords must be 8–1024 characters and use PBKDF2-HMAC-SHA-256 with 600,000 i
   - The product uses OR-Tools CP-SAT 9.15 ([ADR 0037](./adr/0037-or-tools-dependency-and-in-process-generation.md)).
   - It does not use QuestPDF: printing and PDF go through the browser's print dialog, and Excel uses ClosedXML ([ADR 0041](./adr/0041-excel-export-closedxml.md)).
 - The Phase 0 risk was that a 40-section/54-teacher input found no timetable in 30 s. It did not show in Phase 4: [docs/PERFORMANCE.md](./docs/PERFORMANCE.md) records a first timetable after about 3.4 s on synthetic 40/54 and 40/60 schools. That is one seed per size, and real data with tight availability can be harder.
+
+## License
+Proprietary — «جميع الحقوق محفوظة © 2026 جعفر وفقان» / All rights reserved © 2026 Jaafar Wafqan. See [LICENSE](LICENSE).
+The repository is public: it must never contain real school data, real names, databases, or screenshots with real data.

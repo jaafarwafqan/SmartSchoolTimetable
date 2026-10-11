@@ -32,6 +32,12 @@ public interface ILocalAuthService
         string currentPassword,
         string newPassword,
         CancellationToken cancellationToken);
+    /// <summary>M2: changes the username after checking the current password; the session stays signed in.</summary>
+    Task<AuthOperationResult> ChangeUsernameAsync(
+        string sessionId,
+        string currentPassword,
+        string newUsername,
+        CancellationToken cancellationToken);
     /// <param name="minutes">One of the allowed choices, or null for "never".</param>
     Task<AuthOperationResult> SetInactivityTimeoutAsync(
         string sessionId,

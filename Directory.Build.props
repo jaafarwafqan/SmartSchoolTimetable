@@ -7,5 +7,7 @@
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <!-- The application version shown in the app and recorded with every backup (docs/UPGRADE_AR.md): the major number follows the delivery phase. -->
+    <Version>5.0.0</Version>
   </PropertyGroup>
 </Project>

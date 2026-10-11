@@ -42,7 +42,7 @@ export function MonthView({ month, onMonth, onOpen }: MonthViewProps) {
                 const Icon = entry.isApproximate ? CalendarClock : kindIcons[entry.kind];
                 return (
                   <Button key={entry.id} size="sm" variant="ghost" className={`month-entry kind-${entry.kind}${entry.isEnabled ? "" : " is-disabled"}`}
-                    title={entry.isApproximate ? text.approximate : undefined} icon={<Icon aria-hidden="true" size={16} />} onClick={() => onOpen(entry)}>
+                    title={entry.isApproximate ? text.approximate : entry.byDecision ? text.byDecision : undefined} icon={<Icon aria-hidden="true" size={16} />} onClick={() => onOpen(entry)}>
                     {entry.title}
                   </Button>
                 );

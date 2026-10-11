@@ -69,10 +69,11 @@ internal sealed class TestHost : IAsyncDisposable
     private readonly TestApplicationFactory _factory;
 
     /// <param name="failures">Optional failure injection: the n-th database save of a request scope throws.</param>
-    public TestHost(SaveFailureInjection? failures = null)
+    /// <param name="configureServices">Optional: replace or decorate services of the application under test (for example to make a restore fail).</param>
+    public TestHost(SaveFailureInjection? failures = null, Action<IServiceCollection>? configureServices = null)
     {
         Directory.CreateDirectory(_directory);
-        _factory = new TestApplicationFactory(DatabasePath, failures);
+        _factory = new TestApplicationFactory(DatabasePath, failures, configureServices);
         Client = _factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             BaseAddress = LocalOrigin,
@@ -151,7 +152,7 @@ internal sealed class TestHost : IAsyncDisposable
     }
 }
 
-internal sealed class TestApplicationFactory(string databasePath, SaveFailureInjection? failures = null) : WebApplicationFactory<Program>
+internal sealed class TestApplicationFactory(string databasePath, SaveFailureInjection? failures = null, Action<IServiceCollection>? configureServices = null) : WebApplicationFactory<Program>
 {
     public CapturingLoggerProvider LogProvider { get; } = new();
     public QueryCounter Queries { get; } = new();
@@ -197,6 +198,8 @@ internal sealed class TestApplicationFactory(string databasePath, SaveFailureInj
             services.AddSingleton<RecordingLoginDelay>();
             services.AddSingleton<ILoginDelay>(provider =>
                 provider.GetRequiredService<RecordingLoginDelay>());
+
+            configureServices?.Invoke(services);
         });
     }
 }

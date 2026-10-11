@@ -12,6 +12,8 @@ export type AcademicYear = {
   isCurrent: boolean;
   terms: Term[];
   version: number;
+  /** #87: how many Iraqi official holidays were added to the calendar when the year was created (create only). */
+  holidaysAdded?: number;
 };
 
 export type Paged<T> = { items: T[]; total: number; page: number; pageSize: number };
