@@ -50,6 +50,20 @@ test("(MF10) backup folder chosen with the in-app picker, restore chosen from th
     await expect(table.locator("tbody tr")).toHaveCount(1);
     await expect(table.getByText(text.list.kinds.manual)).toBeVisible();
     await expect(table.getByText(text.list.restorable)).toBeVisible();
+    await expect(table.getByRole("columnheader", { name: text.list.version })).toBeVisible();
+
+    // The settings are stored: automatic backups off, keep the last 7. The choices start at 3 (no "keep all", nothing lower).
+    const keep = page.getByLabel(text.settings.keepLast);
+    await expect(keep.locator("option")).toHaveCount(4);
+    await expect(keep.locator("option").first()).toHaveText(text.settings.keepLastOption("٣"));
+    await keep.selectOption("7");
+    await page.getByLabel(text.settings.auto).uncheck();
+    await page.getByRole("button", { name: text.settings.save }).click();
+    await expect(page.getByRole("status").filter({ hasText: text.settings.saved })).toBeVisible();
+    await page.reload();
+    await expect(page.getByLabel(text.settings.auto)).not.toBeChecked();
+    await expect(page.getByLabel(text.settings.keepLast)).toHaveValue("7");
+    await expect(page.locator("#backup-folder")).toHaveText(join(root, "نسخ المدرسة"));
     await expectNoSeriousA11yViolations(page, "settings with backup list");
     for (const width of [375, 1024, 1920]) {
       await page.setViewportSize({ width, height: 900 });

@@ -241,6 +241,10 @@
   white-space: nowrap;
 }
 
+.nowrap.block {
+  display: block;
+}
+
 .folder-current {
   display: flex;
   align-items: center;
