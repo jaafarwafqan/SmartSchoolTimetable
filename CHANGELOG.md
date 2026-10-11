@@ -32,6 +32,11 @@
 - Excel import of teachers with a dry run: template download, per-row Arabic notes, valid rows only, Arabic name normalisation (أ إ آ ا، ى ي، ة ه، spaces), idempotent re-import that never overwrites.
 - CI: Playwright with one worker and a longer timeout on CI only; the audit step always runs; `LICENSE` (proprietary, Arabic and English).
 - ADR 0051: PDF output (the browser prints timetables; Chromium builds the user guide).
+### Printing fixes after the owner's test (branch `work/phase-5`, ADR 0051)
+- Subject colours print even with «Background graphics» off (`print-color-adjust: exact`); new option «ملوّن / أبيض وأسود» (default colour).
+- Whole-school print: rows grouped by stage with a header row per stage, a thick rule between stages and a light stage tint on the first column (black and white keeps the header rows and rules); a new scope «صفحة لكل مرحلة».
+- Readable sizes: subjects never below 8 pt, teacher names never below 7 pt; a grid that does not fit is split over pages by days (headers and footer repeated, «صفحة X من Y») instead of being shrunk.
+- Tests: `m2-printing.spec.ts` (print styles, page counts, font floors) and rendered PDF pages; the panel hint tells the owner to turn the browser's «Headers and footers» off.
 ### M4a icons everywhere (merged into `work/phase-5`)
 - `SectionTitle` (required icon) replaces every raw h2/h3 in `features/` (lint rule `no-raw-headings` plus a test); `PageHeader` and tabs have required icons; non-neutral `Badge` requires an icon (types). Details: `docs/M4A_ICON_CHANGES.md`.
 ### Phase 4 follow-up: owner decisions on R3 (tag `phase-4i`)
