@@ -60,7 +60,8 @@ internal sealed class LauncherContext : ApplicationContext
             Quit();
             return;
         }
-        useWindow = AppWindow.RuntimeAvailable();
+        // SST_BROWSER_ONLY=1 behaves as a computer without the WebView2 runtime (for tests); SST_NO_BROWSER=1 then opens nothing.
+        useWindow = Environment.GetEnvironmentVariable("SST_BROWSER_ONLY") != "1" && AppWindow.RuntimeAvailable();
         if (!useWindow)
             tray.ShowBalloonTip(5000, Texts.AppName, Texts.WebViewMissing, ToolTipIcon.Info);
         if (!startHidden)
@@ -74,7 +75,8 @@ internal sealed class LauncherContext : ApplicationContext
             return;
         if (!useWindow)
         {
-            Process.Start(new ProcessStartInfo(server.Origin + "/") { UseShellExecute = true });
+            if (Environment.GetEnvironmentVariable("SST_NO_BROWSER") != "1")
+                Process.Start(new ProcessStartInfo(server.Origin + "/") { UseShellExecute = true });
             return;
         }
         if (window is null)

@@ -115,6 +115,25 @@ test("(M5) port 5080 busy: the program uses another free port and its protection
   }
 });
 
+test("(M5) without the WebView2 runtime the program falls back to the default browser and still serves", async () => {
+  test.setTimeout(240_000);
+  launch({ SST_BROWSER_ONLY: "1", SST_NO_BROWSER: "1", WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: "" });
+  await waitFor(() => processes("SmartSchoolTimetable.Api") === 1, 90, "the server");
+  // The server's port (5080 or a free one) is read from the operating system, then the server is asked for its first-run state.
+  let origin = "";
+  await waitFor(async () => {
+    const port = execFileSync("powershell", ["-NoProfile", "-Command", "(Get-NetTCPConnection -State Listen -OwningProcess (Get-Process -Name 'SmartSchoolTimetable.Api' | Select-Object -First 1).Id -ErrorAction SilentlyContinue | Select-Object -First 1).LocalPort"]).toString().trim();
+    origin = port ? `http://127.0.0.1:${port}` : "";
+    try { return origin !== "" && (await fetch(`${origin}/api/v1/bootstrap`)).ok; } catch { return false; }
+  }, 90, "the server to answer");
+  expect(await (await fetch(`${origin}/api/v1/bootstrap`)).text()).toContain("launchToken");
+  // No window engine was started by the launcher: it has no msedgewebview2 child process.
+  const children = execFileSync("powershell", ["-NoProfile", "-Command", "$launcher = (Get-Process -Name 'SmartSchoolTimetable' | Select-Object -First 1).Id; @(Get-CimInstance Win32_Process | Where-Object { $_.ParentProcessId -eq $launcher -and $_.Name -like 'msedgewebview2*' }).Count"]).toString().trim();
+  expect(Number(children)).toBe(0);
+  stopProgram();
+  await waitFor(() => processes("SmartSchoolTimetable") === 0 && processes("SmartSchoolTimetable.Api") === 0, 60, "the program to stop");
+});
+
 test("(M5) upgrade in place keeps the data; a running program stops the installer; uninstall removes the program and never the data", async () => {
   test.setTimeout(480_000);
   const before = readdirSync(dataDir, { recursive: true }).map(String).sort();
