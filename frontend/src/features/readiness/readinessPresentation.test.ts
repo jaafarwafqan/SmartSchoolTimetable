@@ -19,6 +19,23 @@ describe("readiness findings", () => {
     expect(findingMessage(finding(), format)).toBe(`المعلم ${isolate("أحمد")}: المطلوب ٢٨ حصة، المتاح ٢٥، ينقص ٣ حصص.`);
   });
 
+  it("says which section, subject, teacher and day the fill checks mean (the owner's real-school case)", () => {
+    const section = { kind: "section", id: 1, name: "الأول / أ" };
+    expect(findingMessage(finding({
+      code: "SUBJECT_DAYS_SHORT", entity: section, related: [{ kind: "subject", id: 2, name: "العربي" }, { kind: "teacher", id: 3, name: "رغد" }],
+      required: 5, available: 4, shortage: 1, details: ["10", "2", "7"],
+    }), format)).toBe(`${isolate("العربي")} للشعبة ${isolate("الأول / أ")} يحتاج ٥ أيام (١٠ حصص، والحد اليومي حصتان) والمعلم ${isolate("رغد")} متاح ٤ أيام فقط (غير متاح: الأحد).`);
+    expect(findingMessage(finding({
+      code: "SECTION_DAY_UNDERFILLED", entity: section, related: [{ kind: "teacher", id: 3, name: "سلمى" }], required: 3, available: 2, shortage: 1, details: ["7", "3"],
+    }), format)).toContain(`يوم الأحد`);
+    expect(findingMessage(finding({ code: "SECTION_SLOT_UNCOVERED", entity: section, required: 1, available: 0, shortage: 1, details: ["1", "2"] }), format))
+      .toContain("لا يوجد أي معلم متاح يوم الاثنين في الحصة ٢");
+    expect(findingMessage(finding({
+      code: "TEACHERS_SAME_DAY_OFF", severity: "warning", entity: section, related: [{ kind: "teacher", id: 3, name: "رغد" }, { kind: "teacher", id: 4, name: "سلمى" }],
+      required: 12, available: 11, shortage: 1, details: ["7", "13"],
+    }), format)).toContain("إجازتهما يوم الأحد ويحملان ١٢ حصة من ١٣ حصة");
+  });
+
   it("groups findings by entity and avoids double-counting teacher overload details", () => {
     const groups = groupFindings([
       finding(),

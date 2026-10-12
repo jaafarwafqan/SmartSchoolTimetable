@@ -49,6 +49,14 @@ export const specializations = {
 export const orphanOnSave = (count: string) => `عدد الحصص المحجوبة الواقعة خارج الجدول الحالي: ${count}. ستُزال عند الحفظ.`;
 
 export const schedulingProfile = {
+  dailyCap: {
+    title: "الحد اليومي لحصص المادة",
+    description: "أكثر عدد من حصص المادة الواحدة تأتي في يوم واحد للشعبة الواحدة. الافتراضي «تلقائي»: يحسبه البرنامج من حصص المادة الأسبوعية وأيام الدوام (حصتان على الأقل). ارفعه لمادة كثيرة الحصص، مثل العربية حتى ٣ حصص يومياً، حين لا يكفي المعلمون المتاحون الأيام. لا يمكن النزول عن حصتين، ولا يغيّر هذا الحد إلا ما تختاره هنا.",
+    auto: "تلقائي",
+    chooseFor: (subject: string) => `الحد اليومي للمادة ${subject}`,
+    saved: "تم حفظ الحد اليومي للمادة.",
+    empty: "لا توجد مواد بعد.",
+  },
   title: "أولويات الجدول",
   description: "اختر أهمية كل أمر يراعيه النظام عند توليد الجدول. القيود الإلزامية، مثل عدم تعارض المعلم، تُحترم دائماً مهما اخترت هنا؛ هذه الأولويات تحسّن الجدول فقط.",
   rules: {
@@ -192,6 +200,8 @@ export const readiness = {
   loadFailed: "تعذر فحص جاهزية الجدولة. أعد المحاولة.",
   groupCount: (count: string) => `${count} في هذا السجل`,
   unknownFinding: "تحتاج هذه البيانات إلى المراجعة.",
+  daysOff: (days: string) => ` (غير متاح: ${days})`,
+  teachersOff: (names: string) => `. المعلمون في إجازة ذلك اليوم: ${names}`,
   messages: {
     NOTHING_TO_SCHEDULE: "أضف شعباً وبنوداً للمنهج قبل فحص الجاهزية.",
     UNASSIGNED_LINES: (count: string, lines: string) => `لا يوجد معلم معيّن لـ ${count} من المنهج: ${lines}`,
@@ -212,6 +222,10 @@ export const readiness = {
     DISTRIBUTION_DISABLED_IN_CURRICULUM: (name: string) => `${name}: التوزيع معطل، لكنها موجودة في المنهج.`,
     STAGE_WITHOUT_CURRICULUM: (name: string) => `${name}: لا توجد بنود منهج للشعب التابعة لها.`,
     TEACHER_SHIFT_OVERLAP: (name: string) => `المعلم ${name} مسند إلى دوامَين تتداخل أوقاتهما.`,
+    SUBJECT_DAYS_SHORT: (subject: string, section: string, needed: string, weekly: string, cap: string, teacher: string, available: string, lost: string) => `${subject} للشعبة ${section} يحتاج ${needed} (${weekly}، والحد اليومي ${cap}) والمعلم ${teacher} متاح ${available} فقط${lost}.`,
+    SECTION_DAY_UNDERFILLED: (section: string, day: string, lessons: string, needed: string, available: string, off: string) => `الشعبة ${section}: في يوم ${day} فيه ${lessons} ويلزم وضع ${needed} على الأقل، ولا تتسع المواد وأوقات معلميها إلا لـ ${available}${off}.`,
+    SECTION_SLOT_UNCOVERED: (section: string, day: string, lesson: string, count: string, slack: string) => `الشعبة ${section}: لا يوجد أي معلم متاح يوم ${day} في الحصة ${lesson} (وعدد الحصص التي لا معلم لها ${count}، بينما الفراغات الممكنة ${slack}).`,
+    TEACHERS_SAME_DAY_OFF: (section: string, first: string, second: string, day: string, held: string, total: string) => `الشعبة ${section}: المعلمان ${first} و${second} إجازتهما يوم ${day} ويحملان ${held} من ${total}، فيصعب ملء ذلك اليوم من حصص بقية المعلمين.`,
   },
   fixes: {
     addSectionsAndCurriculum: "المراحل والمنهج",
@@ -223,6 +237,7 @@ export const readiness = {
     moveWorkload: "تعديل الأنصبة",
     checkRelease: "مراجعة المعلم",
     removeSubjectBlocks: "أوقات حجب المواد",
+    raiseDailyCap: "الحد اليومي للمادة (الإعدادات › متقدم)",
     reduceLessons: "مراجعة المنهج",
     changeTeacher: "تعديل الأنصبة",
     removeTeacherBlocks: "أوقات حجب المعلمين",

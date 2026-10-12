@@ -70,6 +70,7 @@ public static class PreSolveValidator
         CheckResources(context, findings);
         CheckDoublePeriods(context, options, findings);
         CheckConsistency(context, findings);
+        CheckSectionFill(context, findings);
         var errors = findings.Count(finding => finding.Severity == Error);
         return new ValidationReport(errors == 0, errors, findings.Count - errors, findings);
     }
@@ -347,6 +348,132 @@ public static class PreSolveValidator
             }
         }
         return pairs;
+    }
+
+    /// <summary>One subject of one section: its lessons a week, its daily limit (H9) and the teachers who teach it there.</summary>
+    private sealed record SubjectPlan(SubjectInput Subject, int Weekly, int Cap, IReadOnlyList<TeacherInput> Teachers);
+
+    private static string Text(int value) => value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// The subjects of a section with their teachers, or null when the plan is not complete (a line without a teacher, an unknown or
+    /// archived or fully released teacher: other findings already report those, so the checks below stay silent about them).
+    /// </summary>
+    private static List<SubjectPlan>? PlansOf(Context context, SectionInput section)
+    {
+        var days = section.AllowedByDay.Count(day => day.Lessons > 0 && context.Input.WorkingDays.Contains(day.Day));
+        var plans = new List<SubjectPlan>();
+        foreach (var bySubject in context.LinesByStage[section.StageId].GroupBy(line => line.SubjectId))
+        {
+            if (!context.Subjects.TryGetValue(bySubject.Key, out var subject))
+                return null;
+            var teachers = new List<TeacherInput>();
+            foreach (var line in bySubject)
+            {
+                if (!context.Assignments.TryGetValue((section.Id, line.Id), out var row) || !context.Teachers.TryGetValue(row.TeacherId, out var teacher)
+                    || teacher.IsArchived || teacher.Released)
+                    return null;
+                if (!teachers.Contains(teacher))
+                    teachers.Add(teacher);
+            }
+            var weekly = bySubject.Sum(line => line.WeeklyLessons);
+            if (weekly > 0)
+                plans.Add(new SubjectPlan(subject, weekly, DailyCaps.For(subject, weekly, days), teachers));
+        }
+        return plans;
+    }
+
+    /// <summary>The lesson numbers (1..lessons of that day) where this subject could be taught on one day: not blocked for the subject and some teacher of it is free.</summary>
+    private static List<int> FreeLessons(SubjectPlan plan, int day, int lessons)
+    {
+        var free = Enumerable.Range(1, Math.Max(0, lessons))
+            .Where(lesson => !plan.Subject.Blocked.Contains(new SlotRef(day, lesson))
+                && plan.Teachers.Any(teacher => !teacher.OffDays.Contains(day) && !teacher.Blocked.Contains(new SlotRef(day, lesson)))).ToList();
+        // One teacher with a daily maximum cannot teach more of the subject than that in a day.
+        if (plan.Teachers is [{ MaxPerDay: { } maximum }] && free.Count > maximum)
+            free = free.Take(maximum).ToList();
+        return free;
+    }
+
+    /// <summary>
+    /// The four «ملء الشعبة» checks (the owner's real-school test: every section is full every day, so a day off or a daily limit makes the
+    /// timetable impossible and the solver could only say so late). Each error is a proof: the numbers are upper bounds of what any timetable
+    /// can place, and a section may keep (slots - lessons) slots empty, so a day or a slot is reported only when even that slack cannot absorb it.
+    /// </summary>
+    private static void CheckSectionFill(Context context, List<ValidationFinding> findings)
+    {
+        foreach (var section in context.Input.Sections)
+        {
+            if (PlansOf(context, section) is not { Count: > 0 } plans)
+                continue;
+            var days = section.AllowedByDay.Where(day => day.Lessons > 0 && context.Input.WorkingDays.Contains(day.Day)).ToArray();
+            var totalSlots = days.Sum(day => day.Lessons);
+            var totalRequired = plans.Sum(plan => plan.Weekly);
+            var slack = totalSlots - totalRequired;
+            if (slack < 0)
+                continue; // SECTION_OVER_CAPACITY already says so.
+
+            // 1. Days: a subject needs ceil(weekly / limit) different days, and its teacher must be free on that many.
+            foreach (var plan in plans)
+            {
+                var needed = (plan.Weekly + plan.Cap - 1) / plan.Cap;
+                var freeDays = days.Where(day => FreeLessons(plan, day.Day, day.Lessons).Count > 0).Select(day => day.Day).ToArray();
+                if (needed <= freeDays.Length)
+                    continue;
+                var lost = days.Select(day => day.Day).Except(freeDays).ToArray();
+                findings.Add(Finding(FindingCodes.SubjectDaysShort, Error, SectionEntity(section), needed, freeDays.Length,
+                    related: [SubjectEntity(plan.Subject), .. plan.Teachers.Select(TeacherEntity)],
+                    details: [Text(plan.Weekly), Text(plan.Cap), .. lost.Select(Text)],
+                    fixes: ["raiseDailyCap", "removeTeacherBlocks", "changeTeacher"]));
+            }
+
+            // 2. A day: what the subjects can place on it (limit, weekly lessons and free teacher periods) must reach the day's lessons less the slack.
+            var reportedDay = new HashSet<int>();
+            foreach (var day in days)
+            {
+                var fill = plans.Sum(plan => Math.Min(Math.Min(plan.Cap, plan.Weekly), FreeLessons(plan, day.Day, day.Lessons).Count));
+                var needed = day.Lessons - slack;
+                if (fill >= needed)
+                    continue;
+                reportedDay.Add(day.Day);
+                var off = plans.SelectMany(plan => plan.Teachers).Distinct().Where(teacher => teacher.OffDays.Contains(day.Day)).ToArray();
+                findings.Add(Finding(FindingCodes.SectionDayUnderfilled, Error, SectionEntity(section), needed, fill,
+                    related: off.Select(TeacherEntity).ToArray(),
+                    details: [Text(day.Day), Text(day.Lessons)],
+                    fixes: ["removeTeacherBlocks", "raiseDailyCap", "changeTeacher"]));
+            }
+
+            // 3. A slot: some teacher of the section must be free at it, unless the section can keep that slot empty.
+            var uncovered = days.SelectMany(day => Enumerable.Range(1, day.Lessons).Select(lesson => (day.Day, Lesson: lesson)))
+                .Where(slot => !plans.Any(plan => !plan.Subject.Blocked.Contains(new SlotRef(slot.Day, slot.Lesson))
+                    && plan.Teachers.Any(teacher => !teacher.OffDays.Contains(slot.Day) && !teacher.Blocked.Contains(new SlotRef(slot.Day, slot.Lesson))))).ToArray();
+            if (uncovered.Length > slack)
+                findings.Add(Finding(FindingCodes.SectionSlotUncovered, Error, SectionEntity(section), uncovered.Length, slack,
+                    details: [Text(uncovered[0].Day), Text(uncovered[0].Lesson)],
+                    fixes: ["removeTeacherBlocks", "changeTeacher"]));
+
+            // 4. Two teachers of the section who are off the same day and hold more than the weekly lessons less what the others could place that day (warning).
+            foreach (var day in days.Where(day => !reportedDay.Contains(day.Day)))
+            {
+                var off = plans.SelectMany(plan => plan.Teachers).Distinct().Where(teacher => teacher.OffDays.Contains(day.Day)).OrderBy(teacher => teacher.Id).ToArray();
+                for (var first = 0; first < off.Length; first++)
+                {
+                    for (var second = first + 1; second < off.Length; second++)
+                    {
+                        var pair = new[] { off[first], off[second] };
+                        var held = plans.Where(plan => plan.Teachers.All(teacher => pair.Contains(teacher))).Sum(plan => plan.Weekly);
+                        var possibleFill = plans.Where(plan => !plan.Teachers.All(teacher => pair.Contains(teacher)))
+                            .Sum(plan => Math.Min(plan.Cap, FreeLessons(plan, day.Day, day.Lessons).Count));
+                        var limit = totalRequired - Math.Min(day.Lessons, possibleFill);
+                        if (held > limit)
+                            findings.Add(Finding(FindingCodes.TeachersSameDayOff, Warning, SectionEntity(section), held, limit,
+                                related: pair.Select(TeacherEntity).ToArray(),
+                                details: [Text(day.Day), Text(totalRequired)],
+                                fixes: ["removeTeacherBlocks", "changeTeacher"]));
+                    }
+                }
+            }
+        }
     }
 
     /// <summary>Check 8: data that is inconsistent but does not prove infeasibility (warnings).</summary>

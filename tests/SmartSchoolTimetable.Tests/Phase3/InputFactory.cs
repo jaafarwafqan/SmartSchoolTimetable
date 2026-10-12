@@ -33,10 +33,10 @@ internal sealed class InputFactory
         return id;
     }
 
-    public long Subject(string name, SlotRef[]? blocked = null, bool doublePeriod = false, long? resource = null, bool distribution = true)
+    public long Subject(string name, SlotRef[]? blocked = null, bool doublePeriod = false, long? resource = null, bool distribution = true, int? dailyCap = null)
     {
         var id = _next++;
-        _subjects.Add(new SubjectInput(id, name, 3, distribution, false, false, doublePeriod, resource, blocked ?? []));
+        _subjects.Add(new SubjectInput(id, name, 3, distribution, false, false, doublePeriod, resource, blocked ?? [], 1, dailyCap));
         return id;
     }
 

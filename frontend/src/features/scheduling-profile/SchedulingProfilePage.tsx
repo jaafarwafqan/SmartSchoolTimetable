@@ -1,4 +1,4 @@
-import { RotateCcw, Save, CircleCheck, SlidersHorizontal } from "lucide-react";
+import { RotateCcw, Save, CircleCheck, SlidersHorizontal, CalendarRange } from "lucide-react";
 import { useState } from "react";
 import { ConflictAlert } from "../../components/ConflictAlert";
 import { Alert } from "../../components/ui/alert";
@@ -7,6 +7,8 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ChipGroup } from "../../components/ui/chip-group";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
+import { Field } from "../../components/ui/field";
+import { Select } from "../../components/ui/select";
 import { SectionTitle } from "../../components/ui/section-title";
 import { Spinner } from "../../components/ui/spinner";
 import { messages } from "../../i18n/messages";
@@ -14,6 +16,7 @@ import { PageHeader } from "../../layout/PageHeader";
 import { useFormatter } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
 import { useSyncedState } from "../../lib/useSyncedState";
+import { useSetDailyCap, useSubjects } from "../subjects/subjectsApi";
 import { levelOf, priorityLevels, useRestoreDefaults, useSaveProfile, useSchedulingProfile, withLevel, type RuleInput, type SchedulingProfile } from "./profileApi";
 
 const text = messages.school.schedulingProfile;
@@ -89,6 +92,43 @@ function ProfileEditor({ profile, onReload }: { profile: SchedulingProfile; onRe
   );
 }
 
+const dailyCapChoices = [2, 3, 4, 5, 6] as const;
+
+/** The owner's daily limit per subject (H9): automatic unless raised here. */
+function DailyCapCard() {
+  const format = useFormatter();
+  const feedback = useFormFeedback();
+  const subjects = useSubjects({ search: "", page: 1, pageSize: 100, includeArchived: false });
+  const save = useSetDailyCap();
+  const dict = text.dailyCap;
+  return (
+    <Card className="page-card" aria-labelledby="daily-cap-title">
+      <SectionTitle level={2} icon={CalendarRange} id="daily-cap-title">{dict.title}</SectionTitle>
+      <p className="card-note">{dict.description}</p>
+      <Alert tone="success" message={feedback.success} />
+      <Alert tone="error" message={feedback.error} />
+      {subjects.isPending && <Spinner label={messages.app.loadingContent} />}
+      {subjects.data && subjects.data.items.length === 0 && <p className="card-note">{dict.empty}</p>}
+      <ul className="profile-rules" aria-label={dict.title}>
+        {(subjects.data?.items ?? []).map((subject) => (
+          <li key={subject.id} className="profile-rule">
+            <span className="profile-rule-text"><strong>{subject.name}</strong></span>
+            <Field id={`daily-cap-${subject.id}`} label={dict.chooseFor(subject.name)}>
+              <Select id={`daily-cap-${subject.id}`} value={subject.dailyCap ? String(subject.dailyCap) : ""}
+                options={[{ value: "", label: dict.auto }, ...dailyCapChoices.map((cap) => ({ value: String(cap), label: format.number(cap) }))]}
+                onChange={(event) => {
+                  feedback.reset();
+                  save.mutate({ subject, dailyCap: event.target.value === "" ? null : Number(event.target.value) },
+                    { onSuccess: () => feedback.showSuccess(dict.saved), onError: feedback.showError });
+                }} />
+            </Field>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
 /** «أولويات الجدول» under Settings › «متقدم» (MF9): how much each soft rule matters, in three plain levels. */
 export function SchedulingProfilePage() {
   const profile = useSchedulingProfile();
@@ -98,6 +138,7 @@ export function SchedulingProfilePage() {
       {profile.isError && <Alert tone="error" message={messages.school.common.loadFailed} />}
       {profile.isPending && <Spinner label={messages.app.loadingContent} />}
       {profile.data && <ProfileEditor profile={profile.data} onReload={() => void profile.refetch()} />}
+      <DailyCapCard />
     </div>
   );
 }

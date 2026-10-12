@@ -958,6 +958,9 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                     b.Property<int>("ColorIndex")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("DailyCap")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("DistributionEnabled")
                         .HasColumnType("INTEGER");
 
@@ -1009,6 +1012,8 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                     b.ToTable("Subjects", null, t =>
                         {
                             t.HasCheckConstraint("CK_Subjects_ColorIndex", "\"ColorIndex\" BETWEEN 1 AND 10");
+
+                            t.HasCheckConstraint("CK_Subjects_DailyCap", "\"DailyCap\" IS NULL OR \"DailyCap\" BETWEEN 2 AND 6");
 
                             t.HasCheckConstraint("CK_Subjects_Priority", "\"Priority\" BETWEEN 1 AND 5");
                         });

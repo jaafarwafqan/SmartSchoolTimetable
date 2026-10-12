@@ -127,7 +127,7 @@ public static class TimetableVerifier
             var section = group.First().Section;
             var weekly = input.Lines.Where(line => line.StageId == section.StageId && line.SubjectId == group.Key.Item2).Sum(line => line.WeeklyLessons);
             var days = section.AllowedByDay.Count(day => day.Lessons > 0 && input.WorkingDays.Contains(day.Day));
-            var cap = Math.Max(2, days == 0 ? weekly : (weekly + days - 1) / days);
+            var cap = DailyCaps.For(group.First().Subject, weekly, days);
             foreach (var day in group.GroupBy(item => item.Lesson.Day).Where(day => day.Count() > cap))
                 violations.Add(new Violation(ViolationCodes.SubjectDailyCap, "H9", section.Id, SubjectId: group.Key.Item2, Day: day.Key, Count: day.Count(), Limit: cap));
         }

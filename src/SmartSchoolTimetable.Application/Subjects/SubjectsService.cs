@@ -75,6 +75,19 @@ public sealed class SubjectsService(IDataStore store, TimeProvider clock)
         return await store.SaveAsync(() => ToDto(subject), nameof(command.Name), token);
     }
 
+    public async Task<OperationResult<SubjectDto>> SetDailyCapAsync(long id, SetDailyCapCommand command, CancellationToken token)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        if (await FindAsync(id, token) is not { } subject)
+            return OperationResult.Failure<SubjectDto>(ErrorCodes.NotFound);
+        if (!subject.IsVersion(command.Version))
+            return OperationResult.Failure<SubjectDto>(ErrorCodes.Conflict);
+        if (StoreSaving.TryDomain<SubjectDto>(() => subject.SetDailyCap(command.DailyCap)) is { } invalid)
+            return invalid;
+        AuditTrail.Record(store, clock, AuditEvents.SubjectUpdated, $"subject:{id}", "Subject daily limit changed.");
+        return await store.SaveAsync(() => ToDto(subject), nameof(command.DailyCap), token);
+    }
+
     public async Task<OperationResult<SubjectDto>> SetArchivedAsync(long id, int version, bool archived, CancellationToken token)
     {
         if (await FindAsync(id, token) is not { } subject)
@@ -153,5 +166,6 @@ public sealed class SubjectsService(IDataStore store, TimeProvider clock)
         row.IsArchived,
         row.ArchivedAt,
         row.Version,
-        row.RequiredResourceId);
+        row.RequiredResourceId,
+        row.DailyCap);
 }

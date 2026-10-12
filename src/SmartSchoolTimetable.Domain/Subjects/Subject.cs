@@ -31,6 +31,8 @@ public sealed class Subject : VersionedEntity
     public const int MinPriority = 1;
     public const int MaxPriority = 5;
     public const int DefaultPriority = 3;
+    public const int MinDailyCap = 2;
+    public const int MaxDailyCap = 6;
 
     private readonly List<BlockedPeriod> _blockedPeriods = [];
 
@@ -48,6 +50,9 @@ public sealed class Subject : VersionedEntity
     public bool RequiresDoublePeriod { get; private set; }
     public string? Notes { get; private set; }
     public long? RequiredResourceId { get; private set; }
+
+    /// <summary>The owner's override of the most lessons of this subject one section may have on one day (null: the automatic limit, max(2, ceil(weekly ÷ days))).</summary>
+    public int? DailyCap { get; private set; }
     public bool IsArchived { get; private set; }
     public DateTimeOffset? ArchivedAt { get; private set; }
     public IReadOnlyList<BlockedPeriod> BlockedPeriods => _blockedPeriods;
@@ -77,6 +82,14 @@ public sealed class Subject : VersionedEntity
     public void Update(SubjectDetails details, ScheduleGrid grid)
     {
         Apply(details, grid);
+        Touch();
+    }
+
+    /// <summary>Sets or clears the daily limit override (2 to 6 lessons a day).</summary>
+    public void SetDailyCap(int? cap)
+    {
+        new DomainErrors().When(cap is < MinDailyCap or > MaxDailyCap, nameof(DailyCap), DomainErrorCode.OutOfRange).ThrowIfAny();
+        DailyCap = cap;
         Touch();
     }
 

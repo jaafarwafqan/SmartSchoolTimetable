@@ -234,7 +234,7 @@ internal sealed class CpSatModelBuilder
             var section = group.First().Section;
             var weekly = _input.Lines.Where(line => line.StageId == section.StageId && line.SubjectId == group.Key.Item2).Sum(line => line.WeeklyLessons);
             var days = section.AllowedByDay.Count(day => day.Lessons > 0 && _input.WorkingDays.Contains(day.Day));
-            var cap = Math.Max(2, days == 0 ? weekly : (weekly + days - 1) / days);
+            var cap = DailyCaps.For(group.First().Subject, weekly, days);
             foreach (var day in group.SelectMany(line => line.Vars).GroupBy(item => item.Key.Day).Where(day => day.Count() > cap))
                 Enforce(Model.Add(LinearExpr.Sum(day.Select(item => item.Value)) <= cap), Families.SubjectDailyCap, group.Key.Item2);
         }

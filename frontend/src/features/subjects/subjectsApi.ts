@@ -21,8 +21,10 @@ export type Subject = {
   isArchived: boolean;
   archivedAt: string | null;
   version: number;
+  /** The owner's daily limit of the subject in one section (2 to 6), or null for the automatic limit. */
+  dailyCap?: number | null;
 };
-export type SubjectInput = Omit<Subject, "id" | "isArchived" | "archivedAt">;
+export type SubjectInput = Omit<Subject, "id" | "isArchived" | "archivedAt" | "dailyCap">;
 
 const subjectsKey = ["subjects"] as const;
 const subjectsPath = "/api/v1/subjects";
@@ -54,6 +56,12 @@ export function useSaveSubject() {
     id === null
       ? apiRequest<Subject>(`${subjectsPath}/`, "POST", input)
       : apiRequest<Subject>(`${subjectsPath}/${id}`, "PUT", input));
+}
+
+/** Sets (or clears, with null) the daily limit of one subject: «أولويات الجدول › متقدم». */
+export function useSetDailyCap() {
+  return useSubjectsMutation(({ subject, dailyCap }: { subject: Subject; dailyCap: number | null }) =>
+    apiRequest<Subject>(`${subjectsPath}/${subject.id}/daily-cap`, "PUT", { dailyCap, version: subject.version }));
 }
 
 /** Archive or restore one subject and get it back (its new version is needed for an undo). */

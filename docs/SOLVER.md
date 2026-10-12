@@ -26,7 +26,7 @@ The timetable engine is Google OR-Tools CP-SAT 9.15.6755 (ADR 0002, ADR 0037). I
 | H6 | Subject blocked periods are never used | no variables | `SUBJECT_BLOCKED` |
 | H7 | Teacher maximum per day and per week | Σ ≤ max | `TEACHER_DAY_LIMIT`, `TEACHER_WEEK_LIMIT` |
 | H8 | Resource capacity at every moment, across shifts | Σ ≤ capacity per resource and moment | `RESOURCE_CAPACITY` |
-| H9 | Per (section, subject) and day, at most max(2, ⌈weekly ÷ working days⌉) | Σ ≤ cap | `SUBJECT_DAILY_CAP` |
+| H9 | Per (section, subject) and day, at most the daily limit: the owner's override of the subject (2 to 6, «أولويات الجدول › متقدم») or, by default, max(2, ⌈weekly ÷ working days⌉) (`DailyCaps.For`, one rule for the solver, the verifier and the validator) | Σ ≤ cap | `SUBJECT_DAILY_CAP` |
 | H10 | «دروس مزدوجة» mode only: double lines as adjacent pairs; an odd leftover is single | x = pair starting here + pair ending here + single; Σpairs = ⌊n ÷ 2⌋; Σsingles = n mod 2 | `DOUBLE_PERIOD_BROKEN` |
 
 A "moment" is a lesson start time: the group holds every slot whose clock interval contains that time. Intervals lie on a line, so these groups cover every overlap. With one shift, a moment is simply one lesson number.
@@ -45,6 +45,9 @@ The objective minimises Σ weight × penalty, for the enabled rules with weight 
 | `keepDoubleLessonsTogether` | S5 doubles together (standard mode) | per double line: ⌊n ÷ 2⌋ − adjacent pairs it got |
 
 The default weights are 20 / 30 / 15 / 25 / 10. Subject names are never special cases; only subject flags matter.
+
+### Fill checks before the solver (pre-solve validator)
+A section whose weekly lessons equal its slots is full every day, so a day off or the daily limit can make it impossible. The validator proves this before the solver runs (each is an upper bound; a section may keep `slots − lessons` slots empty, and a day or a slot is reported only when that slack cannot absorb it): `SUBJECT_DAYS_SHORT` (a subject needs ⌈weekly ÷ limit⌉ days and its teacher is free on fewer), `SECTION_DAY_UNDERFILLED` (what the subjects can place on a day is below the day's lessons less the slack), `SECTION_SLOT_UNCOVERED` (no teacher of the section is free at a slot), and the warning `TEACHERS_SAME_DAY_OFF`. The checks stay silent for a section with an unassigned line or an archived or released teacher, which have their own findings.
 
 ## 4. Parameters, determinism and progress
 - Time limit: 60 s by default, 10–600 s allowed.

@@ -103,7 +103,8 @@ public sealed class PreSolveValidatorTests
         // Exactly the available number fits: no error (soundness at the boundary).
         var fits = new InputFactory();
         var fitSection = fits.Section(fits.Shift(), 1);
-        fits.Assign(fitSection, fits.Line(1, fits.Subject("العربية"), available), fits.Teacher("أحمد", maxPerDay: maxPerDay, offDays: offDays, blocked: blocked));
+        // The daily limit of the subject is raised so that the lessons that fit are really possible (the automatic limit would not allow 24 lessons on 4 days).
+        fits.Assign(fitSection, fits.Line(1, fits.Subject("العربية", dailyCap: 6), available), fits.Teacher("أحمد", maxPerDay: maxPerDay, offDays: offDays, blocked: blocked));
         Assert.DoesNotContain(PreSolveValidator.Validate(fits.Build()).Findings, finding => finding.Severity == PreSolveValidator.Error);
     }
 

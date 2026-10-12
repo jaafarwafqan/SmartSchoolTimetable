@@ -58,7 +58,7 @@ public static class SchedulingInputBuilder
             }).ToArray(),
             subjects.Select(subject => new SubjectInput(subject.Id, subject.Name, subject.Priority, subject.DistributionEnabled, subject.SpreadAcrossDays,
                 subject.Heavy, subject.RequiresDoublePeriod, subject.RequiredResourceId,
-                subject.BlockedPeriods.Select(period => new SlotRef(period.Day, period.LessonNumber)).ToArray(), subject.ColorIndex)).ToArray(),
+                subject.BlockedPeriods.Select(period => new SlotRef(period.Day, period.LessonNumber)).ToArray(), subject.ColorIndex, subject.DailyCap)).ToArray(),
             lines.Select(line => new LineInput(line.Id, line.StageId, line.SubjectId, line.Label, line.WeeklyLessons, line.NeedsDoublePeriod)).ToArray(),
             assignments.Select(row => new AssignmentInput(row.Id, row.SectionId, row.CurriculumEntryId, row.TeacherId)).ToArray(),
             teachers.Select(teacher => new TeacherInput(teacher.Id, teacher.FullName, teacher.IsArchived,

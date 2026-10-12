@@ -17,7 +17,11 @@ public sealed record SubjectDto(
     bool IsArchived,
     DateTimeOffset? ArchivedAt,
     int Version,
-    long? RequiredResourceId = null);
+    long? RequiredResourceId = null,
+    int? DailyCap = null);
+
+/// <summary>Sets (or clears, with null) the owner's daily limit of one subject: «أولويات الجدول › متقدم».</summary>
+public sealed record SetDailyCapCommand(int? DailyCap, int Version);
 
 /// <param name="RequiredResourceId">The one resource the subject needs (null: none). It must be an active resource,
 /// unless it is the subject's current one.</param>

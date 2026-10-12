@@ -55,7 +55,8 @@ public sealed record SubjectInput(
     bool RequiresDoublePeriod,
     long? RequiredResourceId,
     IReadOnlyList<SlotRef> Blocked,
-    [property: NotHashed] int ColorIndex = 1);
+    [property: NotHashed] int ColorIndex = 1,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] int? DailyCap = null);
 
 /// <summary>A curriculum line of a stage: every section of the stage takes it.</summary>
 public sealed record LineInput(long Id, long StageId, long SubjectId, [property: NotHashed] string? Label, int WeeklyLessons, bool NeedsDoublePeriod);

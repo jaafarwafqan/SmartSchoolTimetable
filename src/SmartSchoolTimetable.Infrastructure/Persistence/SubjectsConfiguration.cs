@@ -21,6 +21,7 @@ internal sealed class SubjectConfiguration : IEntityTypeConfiguration<Subject>
         {
             table.HasCheckConstraint("CK_Subjects_ColorIndex", "\"ColorIndex\" BETWEEN 1 AND 10");
             table.HasCheckConstraint("CK_Subjects_Priority", "\"Priority\" BETWEEN 1 AND 5");
+            table.HasCheckConstraint("CK_Subjects_DailyCap", "\"DailyCap\" IS NULL OR \"DailyCap\" BETWEEN 2 AND 6");
         });
         builder.OwnsMany(subject => subject.BlockedPeriods, period =>
         {

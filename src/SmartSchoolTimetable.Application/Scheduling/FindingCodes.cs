@@ -25,6 +25,10 @@ public static class FindingCodes
     public const string DistributionDisabled = "DISTRIBUTION_DISABLED_IN_CURRICULUM";
     public const string StageWithoutCurriculum = "STAGE_WITHOUT_CURRICULUM";
     public const string TeacherShiftOverlap = "TEACHER_SHIFT_OVERLAP";
+    public const string SubjectDaysShort = "SUBJECT_DAYS_SHORT";
+    public const string SectionDayUnderfilled = "SECTION_DAY_UNDERFILLED";
+    public const string SectionSlotUncovered = "SECTION_SLOT_UNCOVERED";
+    public const string TeachersSameDayOff = "TEACHERS_SAME_DAY_OFF";
 
     /// <summary>Every finding code, in one registry (checked against the frontend dictionary by FindingCodeContractTests).</summary>
     public static readonly IReadOnlyList<string> All =
@@ -48,5 +52,9 @@ public static class FindingCodes
         DistributionDisabled,
         StageWithoutCurriculum,
         TeacherShiftOverlap,
+        SubjectDaysShort,
+        SectionDayUnderfilled,
+        SectionSlotUncovered,
+        TeachersSameDayOff,
     ];
 }

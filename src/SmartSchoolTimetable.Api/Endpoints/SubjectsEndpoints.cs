@@ -15,6 +15,8 @@ public static class SubjectsEndpoints
             ApiResults.From(context, await service.CreateAsync(command, token), value => Results.Created($"/api/v1/subjects/{value.Id}", value)));
         subjects.MapPut("/{id:long}", async (long id, SaveSubjectCommand command, HttpContext context, SubjectsService service, CancellationToken token) =>
             ApiResults.Ok(context, await service.UpdateAsync(id, command, token)));
+        subjects.MapPut("/{id:long}/daily-cap", async (long id, SetDailyCapCommand command, HttpContext context, SubjectsService service, CancellationToken token) =>
+            ApiResults.Ok(context, await service.SetDailyCapAsync(id, command, token)));
         subjects.MapDelete("/{id:long}", async (long id, int version, HttpContext context, SubjectsService service, CancellationToken token) =>
             ApiResults.NoContent(context, await service.DeleteAsync(id, version, token)));
         subjects.MapPost("/{id:long}/archive", async (long id, ArchiveCommand command, HttpContext context, SubjectsService service, CancellationToken token) =>
