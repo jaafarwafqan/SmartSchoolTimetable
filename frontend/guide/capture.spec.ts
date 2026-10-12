@@ -172,6 +172,9 @@ test("ch12 — settings: general, account and security, backups, advanced, histo
   await shot(page, "72-settings-backup");
   await page.goto(`${baseUrl}/settings/advanced`);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: school.schedulingProfile.title })).toBeVisible();
+  await expect(page.getByRole("heading", { name: school.schedulingProfile.dailyCap.title })).toBeVisible();
+  await page.waitForLoadState("networkidle");
   await shot(page, "73-settings-advanced");
   await page.goto(`${baseUrl}/settings/history`);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();

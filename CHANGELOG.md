@@ -2,6 +2,8 @@
 
 ## [1.0.0] - 2026-10-11 (branch `work/phase-5`, tags `v1.0.0`, `phase-5-final`)
 First release for the school. Windows 10 (1809+) 64-bit and Windows 11; installer `SmartSchoolTimetable-Setup-1.0.0-<stamp>.exe` with a SHA-256 file; Arabic user guide `docs/USER_GUIDE_AR.pdf`. Everything below was delivered on `work/phase-5` since `phase-4i`; the last four items (M3, M5, user guide, version) are the final stage.
+### Fix: the program froze when the internet was cut (owner report)
+- TanStack Query's default `networkMode: "online"` paused every request while the browser reported «no network», so cutting the internet left every screen on a spinner although the local server was running. `networkMode: "always"` for queries and mutations (`lib/queryClient.ts`); a Vitest check of the defaults and `m3-offline.spec.ts` (the browser reports offline, then the screens load and a setting saves; confirmed to fail without the fix).
 ### Fill checks and the daily limit (owner's real-school test: generation failed on full sections)
 - Pre-solve validator: `SUBJECT_DAYS_SHORT`, `SECTION_DAY_UNDERFILLED`, `SECTION_SLOT_UNCOVERED` (errors, each a proof) and `TEACHERS_SAME_DAY_OFF` (warning), in plain Arabic naming section, subject, teacher and day (`docs/SOLVER.md`). Corrective migration `Phase5SubjectDailyCap`.
 - Owner override of the daily limit per subject (2 to 6) in «الإعدادات › متقدم › الحد اليومي لحصص المادة»; default unchanged (automatic); `DailyCaps.For` is the one rule for the solver, the verifier and the validator; `PUT /api/v1/subjects/{id}/daily-cap`.

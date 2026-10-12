@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { messages } from "../src/i18n/messages";
 import { ApiServer } from "./support/apiServer";
 import { seedReadySchool } from "./support/readySchool";
 import { setupOwner } from "./support/flows";
@@ -45,6 +46,33 @@ test("(M3) offline: every request goes to 127.0.0.1, nothing is blocked, the fon
     }));
     expect(fontSources.length).toBeGreaterThan(0);
     expect(fontSources.every((source) => !/https?:\/\//.test(source))).toBe(true);
+  } finally {
+    await server.stop();
+  }
+});
+
+test("(M3) the program keeps working when the computer loses its internet connection (the browser reports offline)", async ({ browser, page }) => {
+  test.setTimeout(180_000);
+  await server.start(browser, "m3-offline-event");
+  try {
+    await setupOwner(page, server.baseUrl, "owner", "Offline-Event-1");
+    await seedReadySchool(page, server.baseUrl);
+    await page.goto(`${server.baseUrl}/`);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    // The internet is cut: the browser fires «offline» and navigator.onLine becomes false. The local server is still reachable.
+    await page.evaluate(() => {
+      Object.defineProperty(window.navigator, "onLine", { configurable: true, get: () => false });
+      window.dispatchEvent(new Event("offline"));
+    });
+    // Screens opened from now on (new queries) and saving something (a mutation) still work.
+    await page.getByRole("link", { name: messages.school.nav.teachers }).first().click();
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    await expect(page.locator(".app-main").getByRole("alert")).toHaveCount(0);
+    await page.getByRole("link", { name: messages.school.nav.settings }).first().click();
+    await expect(page.getByRole("button", { name: messages.school.preferences.save })).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("button", { name: messages.school.preferences.save }).click();
+    await expect(page.getByRole("status").filter({ hasText: messages.school.preferences.saved })).toBeVisible({ timeout: 15_000 });
   } finally {
     await server.stop();
   }
