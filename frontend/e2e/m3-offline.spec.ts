@@ -53,7 +53,9 @@ test("(M3) offline: every request goes to 127.0.0.1, nothing is blocked, the fon
 test("(M3) offline: the built program names no internet address except XML namespaces and error-message links", () => {
   const dist = resolve(dirname(fileURLToPath(import.meta.url)), "../../src/SmartSchoolTimetable.Api/wwwroot");
   const files = (folder: string): string[] => readdirSync(folder, { withFileTypes: true }).flatMap((entry) => (entry.isDirectory() ? files(join(folder, entry.name)) : [join(folder, entry.name)]));
-  const allowed = [/^https?:\/\/(www\.)?w3\.org\//, /^https?:\/\/react\.dev\//, /^https?:\/\/reactjs\.org\//, /^https?:\/\/127\.0\.0\.1/, /^https?:\/\/localhost/, /^https?:\/\/reactrouter\.com\//, /^https?:\/\/github\.com\/remix-run\//, /^https?:\/\/mui\.com\//, /^https?:\/\/github\.com\/ungap\//, /^https?:\/\/tailwindcss\.com/];
+  const allowed = [/^https?:\/\/(www\.)?w3\.org\//, /^https?:\/\/react\.dev\//, /^https?:\/\/reactjs\.org\//, /^https?:\/\/127\.0\.0\.1/, /^https?:\/\/localhost/, /^https?:\/\/reactrouter\.com\//, /^https?:\/\/github\.com\/remix-run\//, /^https?:\/\/mui\.com\//, /^https?:\/\/github\.com\/ungap\//, /^https?:\/\/tailwindcss\.com/,
+    // The two contact links of «حول البرنامج» (WhatsApp, Telegram): links the owner clicks, never requested by the program itself.
+    /^https:\/\/wa\.me\/9647806421980$/, /^https:\/\/t\.me\/jaafar_Wafqan$/];
   const offenders: string[] = [];
   for (const file of files(dist).filter((name) => /\.(js|css|html)$/.test(name))) {
     for (const match of readFileSync(file, "utf8").matchAll(/https?:\/\/[^\s"'`)<>\\]+/g)) {
