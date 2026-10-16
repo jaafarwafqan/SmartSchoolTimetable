@@ -48,10 +48,10 @@ internal sealed class InputFactory
     }
 
     public long Teacher(string name, int? maxPerWeek = null, int? maxPerDay = null, int[]? offDays = null, SlotRef[]? blocked = null,
-        bool released = false, bool partial = false, bool archived = false)
+        bool released = false, bool partial = false, bool archived = false, int? maxConsecutive = null)
     {
         var id = _next++;
-        _teachers.Add(new TeacherInput(id, name, archived, released, partial, offDays ?? [], blocked ?? [], maxPerDay, maxPerWeek, []));
+        _teachers.Add(new TeacherInput(id, name, archived, released, partial, offDays ?? [], blocked ?? [], maxPerDay, maxPerWeek, [], null, maxConsecutive));
         return id;
     }
 
@@ -64,8 +64,37 @@ internal sealed class InputFactory
 
     public void Assign(long section, long line, long teacher) => _assignments.Add(new AssignmentInput(_next++, section, line, teacher));
 
+    private int? _defaultConsecutive;
+    private bool _balanceHard;
+    private readonly List<CapOverrideInput> _capOverrides = [];
+
+    public InputFactory Consecutive(int? limit)
+    {
+        _defaultConsecutive = limit;
+        return this;
+    }
+
+    public InputFactory HardBalance()
+    {
+        _balanceHard = true;
+        return this;
+    }
+
+    public InputFactory CapForSection(long subject, long section, int cap)
+    {
+        _capOverrides.Add(new CapOverrideInput(subject, null, section, cap));
+        return this;
+    }
+
+    public InputFactory CapForStage(long subject, long stage, int cap)
+    {
+        _capOverrides.Add(new CapOverrideInput(subject, stage, null, cap));
+        return this;
+    }
+
     public SchedulingInput Build() => new(
         SchedulingInput.CurrentFormatVersion, 1, Week, _shifts.ToArray(), _sections.ToArray(), _subjects.ToArray(), _lines.ToArray(),
         _assignments.ToArray(), _teachers.ToArray(), _resources.ToArray(),
-        new ProfileInput(1, SchedulingRuleKeys.Defaults.Select(rule => new RuleInput(rule.Key, rule.Enabled, rule.Weight)).ToArray()));
+        new ProfileInput(1, SchedulingRuleKeys.Defaults.Select(rule => new RuleInput(rule.Key, rule.Enabled, rule.Weight)).ToArray(), _defaultConsecutive, _balanceHard),
+        CapOverrides: _capOverrides.Count == 0 ? null : _capOverrides.ToArray());
 }

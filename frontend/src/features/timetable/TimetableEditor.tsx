@@ -42,6 +42,8 @@ export function violationMessage(violation: Violation, format: Formatter, look: 
     case "RESOURCE_CAPACITY": return messagesByCode.RESOURCE_CAPACITY(where, count, limit);
     case "SUBJECT_DAILY_CAP": return messagesByCode.SUBJECT_DAILY_CAP(where, count, limit);
     case "DOUBLE_PERIOD_BROKEN": return messagesByCode.DOUBLE_PERIOD_BROKEN(where);
+    case "TEACHER_CONSECUTIVE": return messagesByCode.TEACHER_CONSECUTIVE(where, format.count(violation.count ?? 0, "lesson"), format.count(violation.limit ?? 0, "lesson"));
+    case "TEACHER_BALANCE": return messagesByCode.TEACHER_BALANCE(where, count, limit);
     default: return violationText.unknown;
   }
 }

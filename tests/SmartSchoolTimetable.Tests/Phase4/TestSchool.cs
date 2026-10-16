@@ -18,6 +18,10 @@ internal sealed class TestSchool
     private readonly List<ResourceInput> _resources = [];
     private readonly List<StageInput> _stages = [];
     private List<RuleInput> _rules = SchedulingRuleKeys.Defaults.Select(rule => new RuleInput(rule.Key, rule.Enabled, rule.Weight)).ToList();
+    private readonly List<CapOverrideInput> _capOverrides = [];
+    private int[]? _evening;
+    private int? _defaultConsecutive;
+    private bool _balanceHard;
     private long _next = 100;
 
     public int[] Days { get; init; } = Week;
@@ -59,10 +63,10 @@ internal sealed class TestSchool
         return id;
     }
 
-    public long Subject(SlotRef[]? blocked = null, bool doublePeriod = false, long? resource = null, bool heavy = false, bool spread = false)
+    public long Subject(SlotRef[]? blocked = null, bool doublePeriod = false, long? resource = null, bool heavy = false, bool spread = false, int? dailyCap = null)
     {
         var id = _next++;
-        _subjects.Add(new SubjectInput(id, $"مادة {id}", 3, true, spread, heavy, doublePeriod, resource, blocked ?? []));
+        _subjects.Add(new SubjectInput(id, $"مادة {id}", 3, true, spread, heavy, doublePeriod, resource, blocked ?? [], 1, dailyCap));
         return id;
     }
 
@@ -73,10 +77,10 @@ internal sealed class TestSchool
         return id;
     }
 
-    public long Teacher(int? maxPerWeek = null, int? maxPerDay = null, int[]? offDays = null, SlotRef[]? blocked = null, bool released = false)
+    public long Teacher(int? maxPerWeek = null, int? maxPerDay = null, int[]? offDays = null, SlotRef[]? blocked = null, bool released = false, int? maxConsecutive = null)
     {
         var id = _next++;
-        _teachers.Add(new TeacherInput(id, $"معلم {id}", false, released, false, offDays ?? [], blocked ?? [], maxPerDay, maxPerWeek, []));
+        _teachers.Add(new TeacherInput(id, $"معلم {id}", false, released, false, offDays ?? [], blocked ?? [], maxPerDay, maxPerWeek, [], null, maxConsecutive));
         return id;
     }
 
@@ -88,6 +92,38 @@ internal sealed class TestSchool
     }
 
     public void Assign(long section, long line, long teacher) => _assignments.Add(new AssignmentInput(_next++, section, line, teacher));
+
+    /// <summary>The school's «أقصى حصص متتالية» (2 or 3); without it (the default of these tests) no consecutive-lessons rule applies.</summary>
+    public TestSchool Consecutive(int? limit)
+    {
+        _defaultConsecutive = limit;
+        return this;
+    }
+
+    public TestSchool HardBalance(bool hard = true)
+    {
+        _balanceHard = hard;
+        return this;
+    }
+
+    /// <summary>Working days of an evening session (R3): their last periods weigh double in the fairness priority.</summary>
+    public TestSchool Evening(params int[] days)
+    {
+        _evening = days;
+        return this;
+    }
+
+    public TestSchool CapForStage(long subject, long stage, int cap)
+    {
+        _capOverrides.Add(new CapOverrideInput(subject, stage, null, cap));
+        return this;
+    }
+
+    public TestSchool CapForSection(long subject, long section, int cap)
+    {
+        _capOverrides.Add(new CapOverrideInput(subject, null, section, cap));
+        return this;
+    }
 
     public TestSchool Rules(params (string Key, bool Enabled, int Weight)[] rules)
     {
@@ -101,7 +137,8 @@ internal sealed class TestSchool
 
     public SchedulingInput Build() => SchedulingInputHash.Canonical(new SchedulingInput(
         SchedulingInput.CurrentFormatVersion, 1, Days, _shifts.ToArray(), _sections.ToArray(), _subjects.ToArray(), _lines.ToArray(),
-        _assignments.ToArray(), _teachers.ToArray(), _resources.ToArray(), new ProfileInput(1, _rules.ToArray()), _stages.ToArray()));
+        _assignments.ToArray(), _teachers.ToArray(), _resources.ToArray(), new ProfileInput(1, _rules.ToArray(), _defaultConsecutive, _balanceHard), _stages.ToArray(),
+        _capOverrides.Count == 0 ? null : _capOverrides.ToArray(), _evening));
 
     public static GenerationSettings Settings(string mode = GenerationModes.Standard, int seconds = 10, int seed = 7, bool deterministic = true, int workers = 1) =>
         new(mode, seconds, seed, workers, deterministic);

@@ -13,5 +13,7 @@ export const violationCodes = [
   "RESOURCE_CAPACITY",
   "SUBJECT_DAILY_CAP",
   "DOUBLE_PERIOD_BROKEN",
+  "TEACHER_CONSECUTIVE",
+  "TEACHER_BALANCE",
 ] as const;
 export type ViolationCode = (typeof violationCodes)[number];

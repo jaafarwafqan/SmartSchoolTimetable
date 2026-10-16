@@ -120,6 +120,16 @@ internal static class CpSatDiagnostics
                 var limit = Math.Min(teacher.MaxPerWeek ?? int.MaxValue, teacher.MaxPerDay is { } perDay ? perDay * input.WorkingDays.Count : int.MaxValue);
                 return new SolverFinding(DiagnosticCodes.TeacherLimits, entity, related, required, limit == int.MaxValue ? null : limit, ["raiseTeacherLimit", "moveWorkload"], helps);
             }
+            case Families.TeacherConsecutive:
+            case Families.TeacherBalance:
+            {
+                var teacher = input.Teachers.First(item => item.Id == family.Id);
+                var entity = new FindingEntity(FindingEntities.Teacher, teacher.Id, teacher.Name);
+                var days = TeacherDays.Of(input).GetValueOrDefault(teacher.Id);
+                if (family.Kind == Families.TeacherConsecutive)
+                    return new SolverFinding(DiagnosticCodes.TeacherConsecutive, entity, [], days?.Load, days?.Capacity, ["raiseTeacherConsecutive", "moveWorkload"], helps);
+                return new SolverFinding(DiagnosticCodes.TeacherBalance, entity, [], days?.Load, null, ["relaxBalance", "moveWorkload"], helps);
+            }
             case Families.SectionPacking:
             {
                 var section = sections[family.Id];

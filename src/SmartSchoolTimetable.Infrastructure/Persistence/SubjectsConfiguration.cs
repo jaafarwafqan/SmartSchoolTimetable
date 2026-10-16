@@ -21,7 +21,7 @@ internal sealed class SubjectConfiguration : IEntityTypeConfiguration<Subject>
         {
             table.HasCheckConstraint("CK_Subjects_ColorIndex", "\"ColorIndex\" BETWEEN 1 AND 10");
             table.HasCheckConstraint("CK_Subjects_Priority", "\"Priority\" BETWEEN 1 AND 5");
-            table.HasCheckConstraint("CK_Subjects_DailyCap", "\"DailyCap\" IS NULL OR \"DailyCap\" BETWEEN 2 AND 6");
+            table.HasCheckConstraint("CK_Subjects_DailyCap", "\"DailyCap\" IS NULL OR \"DailyCap\" BETWEEN 1 AND 6");
         });
         builder.OwnsMany(subject => subject.BlockedPeriods, period =>
         {
@@ -32,5 +32,14 @@ internal sealed class SubjectConfiguration : IEntityTypeConfiguration<Subject>
             period.HasIndex("SubjectId", nameof(Domain.SchoolSetup.BlockedPeriod.Day), nameof(Domain.SchoolSetup.BlockedPeriod.LessonNumber)).IsUnique();
         });
         builder.Navigation(subject => subject.BlockedPeriods).UsePropertyAccessMode(PropertyAccessMode.Field);
+        builder.OwnsMany(subject => subject.CapOverrides, item =>
+        {
+            item.ToTable("SubjectCapOverrides", table => table.HasCheckConstraint("CK_SubjectCapOverrides_Cap", "\"Cap\" BETWEEN 1 AND 6"));
+            item.WithOwner().HasForeignKey("SubjectId");
+            item.Property<long>("Id").ValueGeneratedOnAdd();
+            item.HasKey("Id");
+            item.HasIndex("SubjectId", nameof(SubjectCapOverride.Scope), nameof(SubjectCapOverride.ScopeId)).IsUnique();
+        });
+        builder.Navigation(subject => subject.CapOverrides).UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

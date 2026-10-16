@@ -4,8 +4,14 @@ using SmartSchoolTimetable.Domain.SchoolSetup;
 
 namespace SmartSchoolTimetable.Application.Generation;
 
-/// <summary>Total penalty and its breakdown per soft rule (lower is better).</summary>
-public sealed record TimetableScore(long Total, IReadOnlyList<RuleScore> Rules);
+/// <summary>
+/// The last-period fairness of a timetable in the owner's terms: the teacher with the most lessons in the last period of the day and the one with the
+/// fewest (among teachers with a normal load), with their raw counts (a lesson on an evening day counts once here).
+/// </summary>
+public sealed record LastPeriodInsight(string MostTeacher, int MostCount, string LeastTeacher, int LeastCount);
+
+/// <summary>Total penalty and its breakdown per soft rule (lower is better); <paramref name="LastPeriods"/> is set when there are last periods to share.</summary>
+public sealed record TimetableScore(long Total, IReadOnlyList<RuleScore> Rules, LastPeriodInsight? LastPeriods = null);
 
 /// <summary>
 /// Scores a timetable on the soft rules S1–S5 with the profile weights (docs/SOLVER.md §3). The solver minimises the
@@ -16,6 +22,9 @@ public sealed record TimetableScore(long Total, IReadOnlyList<RuleScore> Rules);
 /// S3 heavy early: per lesson of a heavy subject, its lesson number − 1.
 /// S4 repeats: per section and day, consecutive lesson numbers with the same subject (double subjects excluded).
 /// S5 doubles (standard mode only): per double line, ⌊lessons ÷ 2⌋ minus the adjacent pairs it got.
+/// S6 teacher spread: per (teacher, day, shift), lesson numbers n and n + 1 both taught by him (a pair of double lessons excepted).
+/// S7 balanced days: per teacher, the busiest minus the quietest of his full days minus 1 (not below 0), plus the lessons of a partly-available day above its share.
+/// S8 fair last periods: per teacher, his weighted last-period lessons (evening days count double) above his share by weekly load.
 /// </summary>
 public static class TimetableScorer
 {
@@ -60,6 +69,49 @@ public static class TimetableScorer
                 return count;
             });
 
+        // S6: adjacent lessons of one teacher.
+        var teacherSpread = items.GroupBy(item => (item.Lesson.TeacherId, item.Lesson.Day, item.Section.ShiftId))
+            .Sum(group =>
+            {
+                var byLesson = group.GroupBy(item => item.Lesson.Lesson).ToDictionary(slot => slot.Key, slot => slot.ToArray());
+                long count = 0;
+                foreach (var (lesson, here) in byLesson)
+                {
+                    if (!byLesson.TryGetValue(lesson + 1, out var next))
+                        continue;
+                    count += here.Any(first => next.Any(second => !(LineDouble(first.Line) && LineDouble(second.Line)))) ? 1 : 0;
+                }
+                return count;
+            });
+
+        // S7: balanced teacher days.
+        var teacherDays = TeacherDays.Of(input);
+        long balance = 0;
+        foreach (var teacherGroup in items.GroupBy(item => item.Lesson.TeacherId))
+        {
+            if (!teacherDays.TryGetValue(teacherGroup.Key, out var info))
+                continue;
+            var perDay = teacherGroup.GroupBy(item => item.Lesson.Day).ToDictionary(day => day.Key, day => day.Count());
+            if (info.FullDays.Count >= 2)
+            {
+                var counts = info.FullDays.Select(day => perDay.GetValueOrDefault(day)).ToArray();
+                balance += Math.Max(0, counts.Max() - counts.Min() - 1);
+            }
+            foreach (var day in info.Days)
+            {
+                if (info.PartialAllowance(day.Day) is { } allowance)
+                    balance += Math.Max(0, perDay.GetValueOrDefault(day.Day) - allowance);
+            }
+        }
+
+        // S8: fair last periods.
+        var lastLessons = LastPeriodFairness.LastLessons(input);
+        var allowances = LastPeriodFairness.Allowances(input);
+        var lastWeighted = items.Where(item => lastLessons.GetValueOrDefault((item.Section.ShiftId, item.Lesson.Day)) == item.Lesson.Lesson)
+            .GroupBy(item => item.Lesson.TeacherId)
+            .ToDictionary(group => group.Key, group => (Weighted: group.Sum(item => (long)LastPeriodFairness.WeightOf(input, item.Lesson.Day)), Raw: group.Count()));
+        var lastFair = lastWeighted.Sum(pair => Math.Max(0, pair.Value.Weighted - allowances.GetValueOrDefault(pair.Key)));
+
         long doubles = 0;
         if (!doublePeriodsRequired)
         {
@@ -80,6 +132,9 @@ public static class TimetableScorer
             [SchedulingRuleKeys.HeavySubjectsEarly] = heavy,
             [SchedulingRuleKeys.AvoidSameSubjectRepeated] = repeats,
             [SchedulingRuleKeys.KeepDoubleLessonsTogether] = doubles,
+            [SchedulingRuleKeys.SpreadTeacherLessons] = teacherSpread,
+            [SchedulingRuleKeys.BalanceTeacherDays] = balance,
+            [SchedulingRuleKeys.FairLastPeriods] = lastFair,
         };
         var rules = SchedulingRuleKeys.Defaults.Select(rule =>
         {
@@ -89,7 +144,25 @@ public static class TimetableScorer
             var penalty = penalties[rule.Key];
             return new RuleScore(rule.Key, enabled, weight, penalty, enabled ? weight * penalty : 0);
         }).ToArray();
-        return new TimetableScore(rules.Sum(rule => rule.Weighted), rules);
+        return new TimetableScore(rules.Sum(rule => rule.Weighted), rules, Insight(input, teacherDays, lastWeighted.ToDictionary(pair => pair.Key, pair => pair.Value.Raw), allowances));
+    }
+
+    /// <summary>
+    /// The most and the fewest last-period lessons among teachers whose weekly load is at least half the average (a teacher with two lessons a week
+    /// would always be "the fewest"); null when no last period is taught at all.
+    /// </summary>
+    private static LastPeriodInsight? Insight(SchedulingInput input, IReadOnlyDictionary<long, TeacherDays> days, Dictionary<long, int> raw, IReadOnlyDictionary<long, int> allowances)
+    {
+        if (raw.Count == 0 || allowances.Count == 0)
+            return null;
+        var average = days.Values.Average(item => item.Load);
+        var normal = days.Values.Where(item => item.Load * 2 >= average).ToArray();
+        if (normal.Length < 2)
+            return null;
+        string Name(TeacherDays item) => item.Teacher.Name;
+        var most = normal.OrderByDescending(item => raw.GetValueOrDefault(item.Teacher.Id)).ThenBy(item => item.Teacher.Id).First();
+        var least = normal.OrderBy(item => raw.GetValueOrDefault(item.Teacher.Id)).ThenByDescending(item => item.Load).ThenBy(item => item.Teacher.Id).First();
+        return new LastPeriodInsight(Name(most), raw.GetValueOrDefault(most.Teacher.Id), Name(least), raw.GetValueOrDefault(least.Teacher.Id));
     }
 
     /// <summary>Most disjoint pairs (n, n+1) on one day with no break row between them (in any daily session, R3).</summary>

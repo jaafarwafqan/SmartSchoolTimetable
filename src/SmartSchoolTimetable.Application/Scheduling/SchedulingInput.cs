@@ -63,6 +63,7 @@ public sealed record LineInput(long Id, long StageId, long SubjectId, [property:
 
 public sealed record AssignmentInput([property: NotHashed] long Id, long SectionId, long LineId, long TeacherId);
 
+/// <param name="MaxConsecutive">The teacher's own limit of lessons in a row (2 or 3); null follows the school's (<see cref="ProfileInput.DefaultMaxConsecutive"/>).</param>
 /// <param name="Released">Fully released for the whole year (no lessons possible).</param>
 /// <param name="PartiallyReleased">Released for part of the year only (a warning).</param>
 /// <param name="ShortName">Shown in timetable cells (display only, not hashed).</param>
@@ -77,13 +78,21 @@ public sealed record TeacherInput(
     int? MaxPerDay,
     int? MaxPerWeek,
     IReadOnlyList<long> SpecializationIds,
-    [property: NotHashed] string? ShortName = null);
+    [property: NotHashed] string? ShortName = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? MaxConsecutive = null);
 
 public sealed record ResourceInput(long Id, [property: NotHashed] string Name, string Kind, int Capacity, bool IsArchived);
 
 public sealed record RuleInput(string Key, bool Enabled, int Weight);
 
-public sealed record ProfileInput(int ProfileVersion, IReadOnlyList<RuleInput> Rules);
+/// <param name="DefaultMaxConsecutive">The school's «أقصى حصص متتالية للمعلم» (2 or 3); null (hand-built inputs) means no such rule.</param>
+/// <param name="BalanceHard">Balanced teacher days are a hard rule (H12) instead of a priority.</param>
+public sealed record ProfileInput(int ProfileVersion, IReadOnlyList<RuleInput> Rules,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? DefaultMaxConsecutive = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool BalanceHard = false);
+
+/// <summary>A subject's daily limit for one grade or section (exactly one of the two ids is set); it wins over the subject's own limit, the section's over the grade's.</summary>
+public sealed record CapOverrideInput(long SubjectId, long? StageId, long? SectionId, int Cap);
 
 /// <summary>
 /// Everything the solver needs for one academic year (Phase 3 §2.5, ADR 0034): an immutable, serializable snapshot
@@ -103,7 +112,18 @@ public sealed record SchedulingInput(
     IReadOnlyList<TeacherInput> Teachers,
     IReadOnlyList<ResourceInput> Resources,
     ProfileInput Profile,
-    IReadOnlyList<StageInput>? Stages = null)
+    IReadOnlyList<StageInput>? Stages = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<CapOverrideInput>? CapOverrides = null,
+    [property: NotHashed] [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<int>? EveningDays = null)
 {
     public const int CurrentFormatVersion = 1;
+
+    /// <summary>The teacher's «أقصى حصص متتالية»: his own, else the school's; null when no such rule applies.</summary>
+    public int? MaxConsecutiveOf(TeacherInput teacher) => teacher.MaxConsecutive ?? Profile.DefaultMaxConsecutive;
+
+    /// <summary>
+    /// True when the school attends an evening session on this working day in some semester (R3 double shift): its last periods weigh more in the fairness
+    /// priority only. Not hashed (a soft preference never makes a timetable out of date, DECISIONS_PENDING #81).
+    /// </summary>
+    public bool IsEvening(int day) => EveningDays?.Contains(day) == true;
 }

@@ -29,6 +29,8 @@ public static class FindingCodes
     public const string SectionDayUnderfilled = "SECTION_DAY_UNDERFILLED";
     public const string SectionSlotUncovered = "SECTION_SLOT_UNCOVERED";
     public const string TeachersSameDayOff = "TEACHERS_SAME_DAY_OFF";
+    public const string TeacherConsecutiveShort = "TEACHER_CONSECUTIVE_SHORT";
+    public const string TeacherBalanceHardShort = "TEACHER_BALANCE_HARD_SHORT";
 
     /// <summary>Every finding code, in one registry (checked against the frontend dictionary by FindingCodeContractTests).</summary>
     public static readonly IReadOnlyList<string> All =
@@ -56,5 +58,7 @@ public static class FindingCodes
         SectionDayUnderfilled,
         SectionSlotUncovered,
         TeachersSameDayOff,
+        TeacherConsecutiveShort,
+        TeacherBalanceHardShort,
     ];
 }

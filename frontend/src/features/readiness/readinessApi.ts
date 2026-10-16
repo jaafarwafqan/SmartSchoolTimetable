@@ -26,6 +26,8 @@ export const findingCodes = [
   "SECTION_DAY_UNDERFILLED",
   "SECTION_SLOT_UNCOVERED",
   "TEACHERS_SAME_DAY_OFF",
+  "TEACHER_CONSECUTIVE_SHORT",
+  "TEACHER_BALANCE_HARD_SHORT",
 ] as const;
 export type FindingCode = (typeof findingCodes)[number];
 

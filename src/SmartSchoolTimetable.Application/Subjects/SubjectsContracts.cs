@@ -18,7 +18,14 @@ public sealed record SubjectDto(
     DateTimeOffset? ArchivedAt,
     int Version,
     long? RequiredResourceId = null,
-    int? DailyCap = null);
+    int? DailyCap = null,
+    IReadOnlyList<CapOverrideDto>? CapOverrides = null);
+
+/// <param name="Scope">"stage" (every section of a grade) or "section".</param>
+public sealed record CapOverrideDto(string Scope, long ScopeId, int Cap);
+
+/// <summary>Sets (or clears, with a null cap) the daily limit of one subject for one grade or section.</summary>
+public sealed record SetCapOverrideCommand(string? Scope, long ScopeId, int? Cap, int Version);
 
 /// <summary>Sets (or clears, with null) the owner's daily limit of one subject: «أولويات الجدول › متقدم».</summary>
 public sealed record SetDailyCapCommand(int? DailyCap, int Version);

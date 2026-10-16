@@ -17,6 +17,8 @@ public static class SubjectsEndpoints
             ApiResults.Ok(context, await service.UpdateAsync(id, command, token)));
         subjects.MapPut("/{id:long}/daily-cap", async (long id, SetDailyCapCommand command, HttpContext context, SubjectsService service, CancellationToken token) =>
             ApiResults.Ok(context, await service.SetDailyCapAsync(id, command, token)));
+        subjects.MapPut("/{id:long}/cap-override", async (long id, SetCapOverrideCommand command, HttpContext context, SubjectsService service, CancellationToken token) =>
+            ApiResults.Ok(context, await service.SetCapOverrideAsync(id, command, token)));
         subjects.MapDelete("/{id:long}", async (long id, int version, HttpContext context, SubjectsService service, CancellationToken token) =>
             ApiResults.NoContent(context, await service.DeleteAsync(id, version, token)));
         subjects.MapPost("/{id:long}/archive", async (long id, ArchiveCommand command, HttpContext context, SubjectsService service, CancellationToken token) =>

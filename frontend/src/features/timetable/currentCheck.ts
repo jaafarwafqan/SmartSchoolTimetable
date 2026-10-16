@@ -122,6 +122,12 @@ export function findingItems(check: CurrentCheck, format: Formatter): FindingIte
       case "DOUBLE_PERIOD_BROKEN":
         items.push(item(group, sentences.DOUBLE_PERIOD_BROKEN(subjectName(names, finding.subjectId), sectionName(names, finding.sectionId))));
         break;
+      case "TEACHER_CONSECUTIVE":
+        items.push(item(group, sentences.TEACHER_CONSECUTIVE(teacherName(names, finding.teacherId), day(finding.day), format.count(finding.count ?? 0, "lesson"), format.count(finding.limit ?? 0, "lesson"))));
+        break;
+      case "TEACHER_BALANCE":
+        items.push(item(group, sentences.TEACHER_BALANCE(teacherName(names, finding.teacherId))));
+        break;
       default:
         items.push(item(group, sentences.UNKNOWN));
     }
@@ -140,6 +146,7 @@ const areaOf: Record<string, ChangeArea> = {
   TEACHER_SPECIALIZATIONS_CHANGED: "availability",
   TEACHER_DAY_LIMIT_CHANGED: "loads",
   TEACHER_WEEK_LIMIT_CHANGED: "loads",
+  TEACHER_CONSECUTIVE_CHANGED: "loads",
   LESSONS_PER_WEEK_CHANGED: "curriculum",
   LINE_ADDED: "curriculum",
   LINE_REMOVED: "curriculum",
@@ -169,6 +176,7 @@ export function changeItems(check: CurrentCheck, format: Formatter): ChangeItem[
       case "TEACHER_SPECIALIZATIONS_CHANGED": return sentences.TEACHER_SPECIALIZATIONS_CHANGED(teacherName(names, change.teacherId));
       case "TEACHER_DAY_LIMIT_CHANGED": return sentences.TEACHER_DAY_LIMIT_CHANGED(teacherName(names, change.teacherId), limit(change.from), limit(change.to));
       case "TEACHER_WEEK_LIMIT_CHANGED": return sentences.TEACHER_WEEK_LIMIT_CHANGED(teacherName(names, change.teacherId), limit(change.from), limit(change.to));
+      case "TEACHER_CONSECUTIVE_CHANGED": return sentences.TEACHER_CONSECUTIVE_CHANGED(teacherName(names, change.teacherId), change.to === null ? text.followsSchool : format.number(change.to));
       case "LESSONS_PER_WEEK_CHANGED": return sentences.LESSONS_PER_WEEK_CHANGED(subjectName(names, change.subjectId), stageName(names, change.stageId), format.count(change.from ?? 0, "lesson"), format.count(change.to ?? 0, "lesson"));
       case "LINE_ADDED": return sentences.LINE_ADDED(subjectName(names, change.subjectId), stageName(names, change.stageId), format.count(change.to ?? 0, "lesson"));
       case "LINE_REMOVED": return sentences.LINE_REMOVED(subjectName(names, change.subjectId), stageName(names, change.stageId));

@@ -508,6 +508,12 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                     b.Property<long>("Id")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("BalanceHard")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("DefaultMaxConsecutive")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("ProfileVersion")
                         .HasColumnType("INTEGER");
 
@@ -517,7 +523,10 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("SchedulingProfile", (string)null);
+                    b.ToTable("SchedulingProfile", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SchedulingProfile_DefaultMaxConsecutive", "\"DefaultMaxConsecutive\" IN (2, 3)");
+                        });
                 });
 
             modelBuilder.Entity("SmartSchoolTimetable.Domain.SchoolSetup.AcademicYear", b =>
@@ -1013,7 +1022,7 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                         {
                             t.HasCheckConstraint("CK_Subjects_ColorIndex", "\"ColorIndex\" BETWEEN 1 AND 10");
 
-                            t.HasCheckConstraint("CK_Subjects_DailyCap", "\"DailyCap\" IS NULL OR \"DailyCap\" BETWEEN 2 AND 6");
+                            t.HasCheckConstraint("CK_Subjects_DailyCap", "\"DailyCap\" IS NULL OR \"DailyCap\" BETWEEN 1 AND 6");
 
                             t.HasCheckConstraint("CK_Subjects_Priority", "\"Priority\" BETWEEN 1 AND 5");
                         });
@@ -1037,6 +1046,9 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("IsArchived")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("MaxConsecutive")
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("MaxLessonsPerDay")
@@ -1090,7 +1102,10 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                     b.HasIndex("NormalizedShortName")
                         .IsUnique();
 
-                    b.ToTable("Teachers", (string)null);
+                    b.ToTable("Teachers", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Teachers_MaxConsecutive", "\"MaxConsecutive\" IS NULL OR \"MaxConsecutive\" IN (2, 3)");
+                        });
                 });
 
             modelBuilder.Entity("SmartSchoolTimetable.Domain.Workload.WorkloadAssignment", b =>
@@ -1621,7 +1636,41 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                                 .HasForeignKey("SubjectId");
                         });
 
+                    b.OwnsMany("SmartSchoolTimetable.Domain.Subjects.SubjectCapOverride", "CapOverrides", b1 =>
+                        {
+                            b1.Property<long>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("INTEGER");
+
+                            b1.Property<int>("Cap")
+                                .HasColumnType("INTEGER");
+
+                            b1.Property<int>("Scope")
+                                .HasColumnType("INTEGER");
+
+                            b1.Property<long>("ScopeId")
+                                .HasColumnType("INTEGER");
+
+                            b1.Property<long>("SubjectId")
+                                .HasColumnType("INTEGER");
+
+                            b1.HasKey("Id");
+
+                            b1.HasIndex("SubjectId", "Scope", "ScopeId")
+                                .IsUnique();
+
+                            b1.ToTable("SubjectCapOverrides", null, t =>
+                                {
+                                    t.HasCheckConstraint("CK_SubjectCapOverrides_Cap", "\"Cap\" BETWEEN 1 AND 6");
+                                });
+
+                            b1.WithOwner()
+                                .HasForeignKey("SubjectId");
+                        });
+
                     b.Navigation("BlockedPeriods");
+
+                    b.Navigation("CapOverrides");
                 });
 
             modelBuilder.Entity("SmartSchoolTimetable.Domain.Teachers.Teacher", b =>

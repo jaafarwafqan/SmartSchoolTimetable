@@ -55,6 +55,8 @@ public static class InputDiff
                 changes.Add(new InputChange(InputChangeCodes.TeacherDayLimitChanged, TeacherId: teacher.Id, From: old.MaxPerDay, To: teacher.MaxPerDay));
             if (old.MaxPerWeek != teacher.MaxPerWeek)
                 changes.Add(new InputChange(InputChangeCodes.TeacherWeekLimitChanged, TeacherId: teacher.Id, From: old.MaxPerWeek, To: teacher.MaxPerWeek));
+            if (old.MaxConsecutive != teacher.MaxConsecutive)
+                changes.Add(new InputChange(InputChangeCodes.TeacherConsecutiveChanged, TeacherId: teacher.Id, From: old.MaxConsecutive, To: teacher.MaxConsecutive));
         }
 
         // Curriculum lines (hours per week).
@@ -97,7 +99,7 @@ public static class InputDiff
         var oldSubjects = before.Subjects.ToDictionary(subject => subject.Id);
         foreach (var subject in now.Subjects.OrderBy(item => item.Id))
         {
-            if (oldSubjects.TryGetValue(subject.Id, out var old) && !SameSubject(old, subject))
+            if (oldSubjects.TryGetValue(subject.Id, out var old) && (!SameSubject(old, subject) || !SameCaps(before, now, subject.Id)))
                 changes.Add(new InputChange(InputChangeCodes.SubjectRulesChanged, SubjectId: subject.Id));
         }
         var oldResources = before.Resources.ToDictionary(resource => resource.Id);
@@ -107,7 +109,7 @@ public static class InputDiff
                 changes.Add(new InputChange(InputChangeCodes.ResourceChanged, ResourceId: resource.Id, From: old.Capacity, To: resource.Capacity));
         }
 
-        if (before.Profile.ProfileVersion != now.Profile.ProfileVersion || !before.Profile.Rules.OrderBy(rule => rule.Key, StringComparer.Ordinal).SequenceEqual(now.Profile.Rules.OrderBy(rule => rule.Key, StringComparer.Ordinal)))
+        if (before.Profile.ProfileVersion != now.Profile.ProfileVersion || before.Profile.DefaultMaxConsecutive != now.Profile.DefaultMaxConsecutive || before.Profile.BalanceHard != now.Profile.BalanceHard || !before.Profile.Rules.OrderBy(rule => rule.Key, StringComparer.Ordinal).SequenceEqual(now.Profile.Rules.OrderBy(rule => rule.Key, StringComparer.Ordinal)))
             changes.Add(new InputChange(InputChangeCodes.PrioritiesChanged));
         return changes;
     }
@@ -119,8 +121,15 @@ public static class InputDiff
         SameDays(first.LessonsByDay, second.LessonsByDay) && first.StartMinute == second.StartMinute && first.EndMinute == second.EndMinute
         && (first.Periods ?? []).SequenceEqual(second.Periods ?? []) && (first.SessionBreaksAfter ?? []).Order().SequenceEqual((second.SessionBreaksAfter ?? []).Order());
 
+    private static bool SameCaps(SchedulingInput before, SchedulingInput now, long subjectId)
+    {
+        static string[] Of(SchedulingInput input, long subjectId) => (input.CapOverrides ?? []).Where(item => item.SubjectId == subjectId)
+            .Select(item => $"{item.StageId}/{item.SectionId}={item.Cap}").Order(StringComparer.Ordinal).ToArray();
+        return Of(before, subjectId).SequenceEqual(Of(now, subjectId));
+    }
+
     private static bool SameSubject(SubjectInput first, SubjectInput second) =>
-        first.Priority == second.Priority && first.DistributionEnabled == second.DistributionEnabled && first.SpreadAcrossDays == second.SpreadAcrossDays
+        first.Priority == second.Priority && first.DailyCap == second.DailyCap && first.DistributionEnabled == second.DistributionEnabled && first.SpreadAcrossDays == second.SpreadAcrossDays
         && first.Heavy == second.Heavy && first.RequiresDoublePeriod == second.RequiresDoublePeriod && first.RequiredResourceId == second.RequiredResourceId
         && first.Blocked.OrderBy(slot => slot.Day).ThenBy(slot => slot.Lesson).SequenceEqual(second.Blocked.OrderBy(slot => slot.Day).ThenBy(slot => slot.Lesson));
 }

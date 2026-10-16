@@ -19,11 +19,13 @@ public static class ViolationCodes
     public const string ResourceCapacity = "RESOURCE_CAPACITY";
     public const string SubjectDailyCap = "SUBJECT_DAILY_CAP";
     public const string DoublePeriodBroken = "DOUBLE_PERIOD_BROKEN";
+    public const string TeacherConsecutive = "TEACHER_CONSECUTIVE";
+    public const string TeacherBalance = "TEACHER_BALANCE";
 
     public static readonly IReadOnlyList<string> All =
     [
         UnknownLesson, WrongLessonCount, SectionConflict, OutsideSectionDay, SectionGap, TeacherConflict, TeacherUnavailable,
-        SubjectBlocked, TeacherDayLimit, TeacherWeekLimit, ResourceCapacity, SubjectDailyCap, DoublePeriodBroken,
+        SubjectBlocked, TeacherDayLimit, TeacherWeekLimit, ResourceCapacity, SubjectDailyCap, DoublePeriodBroken, TeacherConsecutive, TeacherBalance,
     ];
 }
 
@@ -39,13 +41,15 @@ public static class DiagnosticCodes
     public const string SubjectDailyCap = "CORE_SUBJECT_DAILY_CAP";
     public const string DoublePeriods = "CORE_DOUBLE_PERIODS";
     public const string LockedLessons = "CORE_LOCKED_LESSONS";
+    public const string TeacherConsecutive = "CORE_TEACHER_CONSECUTIVE";
+    public const string TeacherBalance = "CORE_TEACHER_BALANCE";
     public const string Fundamental = "CORE_FUNDAMENTAL";
     public const string TimeoutNoSolution = "TIMEOUT_NO_SOLUTION";
 
     public static readonly IReadOnlyList<string> All =
     [
         TeacherAvailability, TeacherLimits, SectionPacking, StageDays, SubjectBlocked, ResourceCapacity, SubjectDailyCap, DoublePeriods,
-        LockedLessons, Fundamental, TimeoutNoSolution,
+        LockedLessons, TeacherConsecutive, TeacherBalance, Fundamental, TimeoutNoSolution,
     ];
 }
 
@@ -79,6 +83,7 @@ public static class InputChangeCodes
     // Loads
     public const string TeacherDayLimitChanged = "TEACHER_DAY_LIMIT_CHANGED";
     public const string TeacherWeekLimitChanged = "TEACHER_WEEK_LIMIT_CHANGED";
+    public const string TeacherConsecutiveChanged = "TEACHER_CONSECUTIVE_CHANGED";
 
     // Curriculum hours
     public const string LessonsPerWeekChanged = "LESSONS_PER_WEEK_CHANGED";
@@ -104,7 +109,7 @@ public static class InputChangeCodes
     public static readonly IReadOnlyList<string> All =
     [
         AssignmentTeacherChanged, AssignmentAdded, AssignmentRemoved, TeacherOffDaysChanged, TeacherBlockedChanged, TeacherReleasedChanged,
-        TeacherArchivedChanged, TeacherSpecializationsChanged, TeacherDayLimitChanged, TeacherWeekLimitChanged, LessonsPerWeekChanged, LineAdded,
+        TeacherArchivedChanged, TeacherSpecializationsChanged, TeacherDayLimitChanged, TeacherWeekLimitChanged, TeacherConsecutiveChanged, LessonsPerWeekChanged, LineAdded,
         LineRemoved, LineDoubleChanged, WorkingDaysChanged, ShiftTimingChanged, SectionAdded, SectionRemoved, SectionDaysChanged,
         SubjectRulesChanged, ResourceChanged, PrioritiesChanged, OtherChange,
     ];

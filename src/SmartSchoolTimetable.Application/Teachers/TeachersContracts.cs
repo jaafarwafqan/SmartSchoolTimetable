@@ -18,7 +18,8 @@ public sealed record TeacherDto(
     bool IsArchived,
     DateTimeOffset? ArchivedAt,
     int Version,
-    IReadOnlyList<long>? SpecializationIds = null);
+    IReadOnlyList<long>? SpecializationIds = null,
+    int? MaxConsecutive = null);
 
 public sealed record SaveTeacherCommand(
     string? FullName,
@@ -33,7 +34,8 @@ public sealed record SaveTeacherCommand(
     int? MaxLessonsPerWeek,
     string? Notes,
     int Version,
-    IReadOnlyList<long>? SpecializationIds = null);
+    IReadOnlyList<long>? SpecializationIds = null,
+    int? MaxConsecutive = null);
 
 /// <summary>«إضافة المادة لتخصصاته» (Phase 3 §2.1).</summary>
 public sealed record AddSpecializationCommand(int Version);

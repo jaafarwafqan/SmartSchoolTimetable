@@ -17,6 +17,7 @@ internal sealed class TeacherConfiguration : IEntityTypeConfiguration<Teacher>
         builder.Property(teacher => teacher.NormalizedShortName).HasMaxLength(Teacher.ShortNameMaxLength).IsRequired();
         builder.Property(teacher => teacher.ReleaseReason).HasMaxLength(Teacher.ReasonMaxLength);
         builder.Property(teacher => teacher.Notes).HasMaxLength(Teacher.NotesMaxLength);
+        builder.ToTable(table => table.HasCheckConstraint("CK_Teachers_MaxConsecutive", "\"MaxConsecutive\" IS NULL OR \"MaxConsecutive\" IN (2, 3)"));
         builder.Ignore(teacher => teacher.OffDays);
         builder.HasIndex(teacher => teacher.NormalizedShortName).IsUnique();
         builder.HasIndex(teacher => teacher.NormalizedFullName);

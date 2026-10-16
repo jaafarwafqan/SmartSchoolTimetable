@@ -68,6 +68,8 @@ export function diagnosticMessage(finding: SolverFinding, format: Formatter): st
     case "CORE_SUBJECT_DAILY_CAP": return text.diagnostics.CORE_SUBJECT_DAILY_CAP(name);
     case "CORE_DOUBLE_PERIODS": return text.diagnostics.CORE_DOUBLE_PERIODS(name);
     case "CORE_LOCKED_LESSONS": return text.diagnostics.CORE_LOCKED_LESSONS(name);
+    case "CORE_TEACHER_CONSECUTIVE": return text.diagnostics.CORE_TEACHER_CONSECUTIVE(name, lessons(required), lessons(available));
+    case "CORE_TEACHER_BALANCE": return text.diagnostics.CORE_TEACHER_BALANCE(name);
     case "CORE_FUNDAMENTAL": return text.diagnostics.CORE_FUNDAMENTAL;
     case "TIMEOUT_NO_SOLUTION": return text.diagnostics.TIMEOUT_NO_SOLUTION(seconds(required, format));
     default: return text.unknownDiagnostic;
@@ -105,6 +107,13 @@ export function improvementNotes(run: GenerationRun, format: Formatter): { key: 
       case "spreadSubjectsAcrossDays": return [{ key: rule.key, sentence: plain.notes.spreadSubjectsAcrossDays(format.count(rule.penalty, "time", "oblique")) }];
       case "heavySubjectsEarly": return [{ key: rule.key, sentence: plain.notes.heavySubjectsEarly(format.count(rule.penalty, "lesson", "oblique")) }];
       case "keepDoubleLessonsTogether": return [{ key: rule.key, sentence: plain.notes.keepDoubleLessonsTogether(format.count(rule.penalty, "pair")) }];
+      case "spreadTeacherLessons": return [{ key: rule.key, sentence: plain.notes.spreadTeacherLessons(format.count(rule.penalty, "time")) }];
+      case "balanceTeacherDays": return [{ key: rule.key, sentence: plain.notes.balanceTeacherDays(format.count(rule.penalty, "lesson")) }];
+      case "fairLastPeriods": {
+        const last = run.score?.lastPeriods;
+        if (!last) return [];
+        return [{ key: rule.key, sentence: plain.notes.fairLastPeriods(isolate(last.mostTeacher), format.number(last.mostCount), isolate(last.leastTeacher), format.number(last.leastCount)) }];
+      }
       default: return [];
     }
   });

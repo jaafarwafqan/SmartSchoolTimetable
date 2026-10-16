@@ -1,4 +1,4 @@
-import { RotateCcw, Save, CircleCheck, SlidersHorizontal, CalendarRange } from "lucide-react";
+import { RotateCcw, Save, CircleCheck, SlidersHorizontal, Repeat } from "lucide-react";
 import { useState } from "react";
 import { ConflictAlert } from "../../components/ConflictAlert";
 import { Alert } from "../../components/ui/alert";
@@ -7,6 +7,7 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ChipGroup } from "../../components/ui/chip-group";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
+import { Checkbox } from "../../components/ui/checkbox";
 import { Field } from "../../components/ui/field";
 import { Select } from "../../components/ui/select";
 import { SectionTitle } from "../../components/ui/section-title";
@@ -16,8 +17,8 @@ import { PageHeader } from "../../layout/PageHeader";
 import { useFormatter } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
 import { useSyncedState } from "../../lib/useSyncedState";
-import { useSetDailyCap, useSubjects } from "../subjects/subjectsApi";
-import { levelOf, priorityLevels, useRestoreDefaults, useSaveProfile, useSchedulingProfile, withLevel, type RuleInput, type SchedulingProfile } from "./profileApi";
+import { DailyCapCard } from "./DailyCapCard";
+import { applyLevel, exclusiveRules, levelOf, priorityLevels, useRestoreDefaults, useSaveProfile, useSchedulingProfile, type RuleInput, type SchedulingProfile } from "./profileApi";
 
 const text = messages.school.schedulingProfile;
 
@@ -29,7 +30,9 @@ function ProfileEditor({ profile, onReload }: { profile: SchedulingProfile; onRe
   const [confirming, setConfirming] = useState(false);
   const toInputs = () => profile.rules.map((rule): RuleInput => ({ key: rule.key, enabled: rule.enabled, weight: rule.weight }));
   const [rules, setRules] = useSyncedState(toInputs, profile.version);
-  const update = (index: number, change: Partial<RuleInput>) => setRules(rules.map((rule, at) => (at === index ? { ...rule, ...change } : rule)));
+  const [consecutive, setConsecutive] = useSyncedState(() => profile.defaultMaxConsecutive, profile.version);
+  const [balanceHard, setBalanceHard] = useSyncedState(() => profile.balanceHard, profile.version);
+  const balanceLevel = levelOf(rules.find((rule) => rule.key === "balanceTeacherDays") ?? { enabled: false, weight: 0 });
 
   return (
     <Card className="page-card" aria-labelledby="priorities-title">
@@ -47,14 +50,29 @@ function ProfileEditor({ profile, onReload }: { profile: SchedulingProfile; onRe
               <span className="profile-rule-text">
                 <strong>{name}</strong>
                 <span className="card-note">{text.hints[rule.key]}</span>
+                {exclusiveRules[rule.key] && <span className="card-note">{text.exclusiveNote}</span>}
+                {rule.key === "balanceTeacherDays" && (
+                  <Checkbox checked={balanceHard && balanceLevel !== "notImportant"} disabled={balanceLevel === "notImportant"} onChange={(event) => setBalanceHard(event.target.checked)}>
+                    {text.balanceHard}
+                  </Checkbox>
+                )}
+                {rule.key === "balanceTeacherDays" && balanceHard && balanceLevel !== "notImportant" && <span className="card-note">{text.balanceHardHint}</span>}
               </span>
               <ChipGroup label={text.levelOf(name)} value={priorityLevels.indexOf(levelOf(current))}
                 options={priorityLevels.map((level, rank) => ({ value: rank, label: text.levels[level] }))}
-                onChange={(rank) => update(index, withLevel(current, priorityLevels[rank]))} />
+                onChange={(rank) => setRules(applyLevel(rules, rule.key, priorityLevels[rank]))} />
             </li>
           );
         })}
       </ul>
+      <section className="form-stack" aria-labelledby="consecutive-title">
+        <SectionTitle level={3} icon={Repeat} id="consecutive-title">{text.consecutive.title}</SectionTitle>
+        <p className="card-note">{text.consecutive.description}</p>
+        <Field id="default-consecutive" label={text.consecutive.label} hint={text.consecutive.hint}>
+          <Select id="default-consecutive" value={String(consecutive)} options={[{ value: "2", label: text.consecutive.two }, { value: "3", label: text.consecutive.three }]}
+            onChange={(event) => setConsecutive(Number(event.target.value))} />
+        </Field>
+      </section>
       <p className="card-note">
         {text.profileVersion(format.number(profile.profileVersion))}
         {profile.isDefault && <> <Badge tone="success" icon={<CircleCheck aria-hidden="true" size={16} />}>{text.isDefault}</Badge></>}
@@ -63,7 +81,7 @@ function ProfileEditor({ profile, onReload }: { profile: SchedulingProfile; onRe
         <Button icon={<Save aria-hidden="true" size={20} />} loading={save.isPending} disabled={feedback.conflict}
           onClick={() => {
             feedback.reset();
-            save.mutate({ rules, version: profile.version }, { onSuccess: () => feedback.showSuccess(text.saved), onError: feedback.showError });
+            save.mutate({ rules, version: profile.version, defaultMaxConsecutive: consecutive, balanceHard: balanceHard && balanceLevel !== "notImportant" }, { onSuccess: () => feedback.showSuccess(text.saved), onError: feedback.showError });
           }}>
           {text.save}
         </Button>
@@ -82,49 +100,17 @@ function ProfileEditor({ profile, onReload }: { profile: SchedulingProfile; onRe
         onConfirm={() => {
           feedback.reset();
           restore.mutate(profile.version, {
-            onSuccess: (restored) => { setRules(restored.rules.map((rule) => ({ key: rule.key, enabled: rule.enabled, weight: rule.weight }))); feedback.showSuccess(text.restored); },
+            onSuccess: (restored) => {
+              setRules(restored.rules.map((rule) => ({ key: rule.key, enabled: rule.enabled, weight: rule.weight })));
+              setConsecutive(restored.defaultMaxConsecutive);
+              setBalanceHard(restored.balanceHard);
+              feedback.showSuccess(text.restored);
+            },
             onError: feedback.showError,
             onSettled: () => setConfirming(false),
           });
         }}
       />
-    </Card>
-  );
-}
-
-const dailyCapChoices = [2, 3, 4, 5, 6] as const;
-
-/** The owner's daily limit per subject (H9): automatic unless raised here. */
-function DailyCapCard() {
-  const format = useFormatter();
-  const feedback = useFormFeedback();
-  const subjects = useSubjects({ search: "", page: 1, pageSize: 100, includeArchived: false });
-  const save = useSetDailyCap();
-  const dict = text.dailyCap;
-  return (
-    <Card className="page-card" aria-labelledby="daily-cap-title">
-      <SectionTitle level={2} icon={CalendarRange} id="daily-cap-title">{dict.title}</SectionTitle>
-      <p className="card-note">{dict.description}</p>
-      <Alert tone="success" message={feedback.success} />
-      <Alert tone="error" message={feedback.error} />
-      {subjects.isPending && <Spinner label={messages.app.loadingContent} />}
-      {subjects.data && subjects.data.items.length === 0 && <p className="card-note">{dict.empty}</p>}
-      <ul className="profile-rules" aria-label={dict.title}>
-        {(subjects.data?.items ?? []).map((subject) => (
-          <li key={subject.id} className="profile-rule">
-            <span className="profile-rule-text"><strong>{subject.name}</strong></span>
-            <Field id={`daily-cap-${subject.id}`} label={dict.chooseFor(subject.name)}>
-              <Select id={`daily-cap-${subject.id}`} value={subject.dailyCap ? String(subject.dailyCap) : ""}
-                options={[{ value: "", label: dict.auto }, ...dailyCapChoices.map((cap) => ({ value: String(cap), label: format.number(cap) }))]}
-                onChange={(event) => {
-                  feedback.reset();
-                  save.mutate({ subject, dailyCap: event.target.value === "" ? null : Number(event.target.value) },
-                    { onSuccess: () => feedback.showSuccess(dict.saved), onError: feedback.showError });
-                }} />
-            </Field>
-          </li>
-        ))}
-      </ul>
     </Card>
   );
 }

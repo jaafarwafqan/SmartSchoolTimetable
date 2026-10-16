@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { isolate } from "../../i18n/isolate";
 import { messages } from "../../i18n/messages";
 import { createFormatter } from "../../lib/format";
 import { diagnosticCodes, isActive, type GenerationRun, type SolverFinding } from "./generationApi";
@@ -73,5 +74,34 @@ describe("plain result (MF3)", () => {
       text.plain.notes.avoidTeacherGaps("٤ فراغات"),
     ]);
     expect(improvementNotes(run({ score: null }), format)).toEqual([]);
+  });
+
+  it("writes plain Arabic notes for the teacher rules: adjacent lessons, uneven days and the last periods with names and counts", () => {
+    const score = {
+      total: 300,
+      rules: [
+        { key: "spreadTeacherLessons", enabled: true, weight: 30, penalty: 3, weighted: 90 },
+        { key: "balanceTeacherDays", enabled: true, weight: 40, penalty: 2, weighted: 80 },
+        { key: "fairLastPeriods", enabled: true, weight: 20, penalty: 2, weighted: 40 },
+      ],
+      lastPeriods: { mostTeacher: "رغد", mostCount: 4, leastTeacher: "سلمى", leastCount: 1 },
+    };
+    const notes = improvementNotes(run({ score }), format).map((note) => note.sentence);
+    expect(notes).toEqual([
+      text.plain.notes.spreadTeacherLessons("٣ مرات"),
+      text.plain.notes.balanceTeacherDays("حصتان"),
+      `أكثر معلم في الحصص الأخيرة: ${isolate("رغد")} (٤)، وأقلهم: ${isolate("سلمى")} (١).`,
+    ]);
+    // Without last-period details there is nothing to name, so no sentence is invented.
+    expect(improvementNotes(run({ score: { ...score, lastPeriods: null } }), format)).toHaveLength(2);
+    // A fair timetable has no note about it.
+    expect(improvementNotes(run({ score: { ...score, rules: [{ ...score.rules[2], penalty: 0, weighted: 0 }] } }), format)).toEqual([]);
+  });
+
+  it("explains the consecutive and balance diagnostics with the teacher's name", () => {
+    const finding = (code: string): SolverFinding => ({ code, entity: { kind: "teacher", id: 1, name: "رغد" }, related: [], required: 20, available: 15, fixes: [], relaxationHelps: true });
+    expect(diagnosticMessage(finding("CORE_TEACHER_CONSECUTIVE"), format)).toContain("أقصى حصص متتالية للمعلم");
+    expect(diagnosticMessage(finding("CORE_TEACHER_CONSECUTIVE"), format)).toContain("المطلوب ٢٠ حصة، والمتاح ١٥ حصة");
+    expect(diagnosticMessage(finding("CORE_TEACHER_BALANCE"), format)).toContain(isolate("رغد"));
   });
 });

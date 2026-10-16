@@ -71,6 +71,7 @@ public static class PreSolveValidator
         CheckDoublePeriods(context, options, findings);
         CheckConsistency(context, findings);
         CheckSectionFill(context, findings);
+        CheckTeacherDays(context, findings);
         var errors = findings.Count(finding => finding.Severity == Error);
         return new ValidationReport(errors == 0, errors, findings.Count - errors, findings);
     }
@@ -78,6 +79,7 @@ public static class PreSolveValidator
     private sealed class Context(SchedulingInput input)
     {
         public SchedulingInput Input { get; } = input;
+        public DailyCaps Caps { get; } = new(input);
         public Dictionary<long, SubjectInput> Subjects { get; } = input.Subjects.ToDictionary(subject => subject.Id);
         public Dictionary<long, TeacherInput> Teachers { get; } = input.Teachers.ToDictionary(teacher => teacher.Id);
         public Dictionary<long, ShiftInput> Shifts { get; } = input.Shifts.ToDictionary(shift => shift.Id);
@@ -362,6 +364,7 @@ public static class PreSolveValidator
     private static List<SubjectPlan>? PlansOf(Context context, SectionInput section)
     {
         var days = section.AllowedByDay.Count(day => day.Lessons > 0 && context.Input.WorkingDays.Contains(day.Day));
+        var caps = context.Caps;
         var plans = new List<SubjectPlan>();
         foreach (var bySubject in context.LinesByStage[section.StageId].GroupBy(line => line.SubjectId))
         {
@@ -378,7 +381,7 @@ public static class PreSolveValidator
             }
             var weekly = bySubject.Sum(line => line.WeeklyLessons);
             if (weekly > 0)
-                plans.Add(new SubjectPlan(subject, weekly, DailyCaps.For(subject, weekly, days), teachers));
+                plans.Add(new SubjectPlan(subject, weekly, caps.For(subject, section, weekly, days), teachers));
         }
         return plans;
     }
@@ -475,6 +478,43 @@ public static class PreSolveValidator
             }
         }
     }
+
+    /// <summary>
+    /// The teacher-day rules. A teacher can teach at most <c>run - floor(run ÷ (k + 1))</c> lessons in a run of free lesson numbers when no more than k may follow
+    /// each other (k = 2: 4 of 6, k = 3: 5 of 6), so a load above the sum over his days, under his daily and weekly maximum, is impossible (an error; a proof, since the
+    /// numbers over-estimate what any timetable can use). With balanced days made a hard rule, the busiest full day must still fit the load (a proof as well).
+    /// </summary>
+    private static void CheckTeacherDays(Context context, List<ValidationFinding> findings)
+    {
+        foreach (var info in TeacherDays.Of(context.Input).Values)
+        {
+            var teacher = info.Teacher;
+            if (teacher.IsArchived || teacher.Released)
+                continue; // other findings already report those
+            if (info.Consecutive is { } consecutive)
+            {
+                // Only when the rule is what makes it impossible: without it the load would fit.
+                var without = info.Days.Sum(day => Math.Min(day.Usable, teacher.MaxPerDay ?? int.MaxValue));
+                var available = info.Capacity;
+                if (info.Load > available && info.Load <= Math.Min(teacher.MaxPerWeek ?? int.MaxValue, without))
+                {
+                    findings.Add(Finding(FindingCodes.TeacherConsecutiveShort, Error, TeacherEntity(teacher), info.Load, available,
+                        details: [Text(consecutive), Text(info.Days.Count(day => day.Usable > 0))],
+                        fixes: consecutive < Teacher3 ? ["raiseTeacherConsecutive", "moveWorkload"] : ["moveWorkload", "removeTeacherBlocks"]));
+                }
+            }
+            if (context.Input.Profile.BalanceHard && info.FullDays.Count >= 2 && info.Load <= info.Capacity)
+            {
+                // Full days within one lesson of each other: none can hold more than the quietest full day's capacity + 1; a partly-available day holds at most its share.
+                var quietest = info.Days.Where(day => day.Full).Min(day => day.Capacity);
+                var bound = info.Days.Sum(day => day.Full ? Math.Min(day.Capacity, quietest + 1) : Math.Min(day.Capacity, info.PartialAllowance(day.Day) ?? 0));
+                if (info.Load > bound)
+                    findings.Add(Finding(FindingCodes.TeacherBalanceHardShort, Error, TeacherEntity(teacher), info.Load, bound, fixes: ["relaxBalance", "moveWorkload"]));
+            }
+        }
+    }
+
+    private const int Teacher3 = 3;
 
     /// <summary>Check 8: data that is inconsistent but does not prove infeasibility (warnings).</summary>
     private static void CheckConsistency(Context context, List<ValidationFinding> findings)

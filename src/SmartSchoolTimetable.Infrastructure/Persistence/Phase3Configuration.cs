@@ -34,7 +34,7 @@ internal sealed class SchedulingProfileConfiguration : IEntityTypeConfiguration<
 
     public void Configure(EntityTypeBuilder<SchedulingProfile> builder)
     {
-        builder.ToTable("SchedulingProfile");
+        builder.ToTable("SchedulingProfile", table => table.HasCheckConstraint("CK_SchedulingProfile_DefaultMaxConsecutive", "\"DefaultMaxConsecutive\" IN (2, 3)"));
         builder.HasKey(profile => profile.Id);
         builder.Property(profile => profile.Id).ValueGeneratedNever();
         builder.OwnsMany(profile => profile.Rules, rule =>

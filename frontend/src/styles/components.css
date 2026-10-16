@@ -689,3 +689,16 @@
   flex-shrink: 0;
   color: var(--color-primary);
 }
+
+/* Daily-limit table (Phase 5): the grade and section levels open under their subject and indent one step per level. */
+.cap-stages {
+  padding-inline-start: 0.5rem;
+}
+
+.cap-sections {
+  padding-inline-start: 1.5rem;
+}
+
+.cap-stage {
+  list-style: none;
+}
