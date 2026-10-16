@@ -154,7 +154,12 @@ test("scenario (b): a double-shift (مزدوج) ثانوية with branches throu
   // The curriculum screen at four widths.
   await goToSection(page, school.nav.curriculum);
   await expect(page.locator(".curriculum-table")).toBeVisible();
-  await expectBreakpointScreenshots(page, "curriculum");
+  // At 375 px the curriculum table scrolls both ways inside its own box (1148 × 948 px of content in 291 × 628 px) with a sticky header and a
+  // sticky first column. CI runs #8 and #9 rendered that box exactly 1526 pixels differently (0.13 %), the same both times: everything
+  // outside the box was identical, inside it the rows sit one pixel lower (sub-pixel rounding of the sticky parts on that machine, not a
+  // scroll and not timing; measured). So this one width allows 0.3 %; 768, 1024 and 1440 stay at the strict default, and the layout
+  // checks at 375 (no sideways page scroll, no overlapping text) still run.
+  await expectBreakpointScreenshots(page, "curriculum", [], { 375: 0.003 });
 
   // (d) The year label keeps its order in RTL.
   await goToSection(page, school.nav.academicYears);
