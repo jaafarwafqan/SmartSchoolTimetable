@@ -168,11 +168,16 @@ export async function expectBreakpointScreenshots(page: Page, name: string, mask
     });
     // A late scroll by the page itself (a preview scrolled into view after it renders) must not land between the reset and the capture: wait until
     // the page has stayed at the top for three frames in a row (CI captured the sticky top bar in the middle of the page otherwise).
+    // The same for inner boxes that scroll: a focused cell can scroll its table after the viewport changed (CI run #8 caught the curriculum
+    // table a few pixels sideways). Every frame resets them and the page, and all must stay at their start for three frames in a row.
     await page.waitForFunction(async () => {
+      const inner = () => [...document.querySelectorAll<HTMLElement>("main *")].filter((element) => !element.closest(".ui-tabs")
+        && (element.scrollWidth > element.clientWidth || element.scrollHeight > element.clientHeight));
       for (let frame = 0; frame < 3; frame++) {
         window.scrollTo(0, 0);
+        for (const element of inner()) { element.scrollLeft = 0; element.scrollTop = 0; }
         await new Promise<void>((done) => requestAnimationFrame(() => done()));
-        if (window.scrollY !== 0) return false;
+        if (window.scrollY !== 0 || inner().some((element) => element.scrollLeft !== 0 || element.scrollTop !== 0)) return false;
       }
       return true;
     });
