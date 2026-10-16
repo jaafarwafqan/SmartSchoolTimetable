@@ -21,8 +21,17 @@ export type Subject = {
   isArchived: boolean;
   archivedAt: string | null;
   version: number;
+  /** The owner's daily limit of the subject in one section (1 to 6), or null for the automatic limit. */
+  dailyCap?: number | null;
+  /** The subject's daily limit for one grade or one section; the most specific wins (section, grade, subject). */
+  capOverrides?: CapOverride[];
 };
-export type SubjectInput = Omit<Subject, "id" | "isArchived" | "archivedAt">;
+export type CapScope = "stage" | "section";
+export type CapOverride = { scope: CapScope; scopeId: number; cap: number };
+export type SubjectInput = Omit<Subject, "id" | "isArchived" | "archivedAt" | "dailyCap" | "capOverrides">;
+
+/** The daily limit choices (1 to 6 lessons a day); «تلقائي» is the absence of a value. */
+export const dailyCapChoices = [1, 2, 3, 4, 5, 6] as const;
 
 const subjectsKey = ["subjects"] as const;
 const subjectsPath = "/api/v1/subjects";
@@ -54,6 +63,18 @@ export function useSaveSubject() {
     id === null
       ? apiRequest<Subject>(`${subjectsPath}/`, "POST", input)
       : apiRequest<Subject>(`${subjectsPath}/${id}`, "PUT", input));
+}
+
+/** Sets (or clears, with null) the daily limit of one subject: «أولويات الجدول › متقدم». */
+export function useSetDailyCap() {
+  return useSubjectsMutation(({ subject, dailyCap }: { subject: Subject; dailyCap: number | null }) =>
+    apiRequest<Subject>(`${subjectsPath}/${subject.id}/daily-cap`, "PUT", { dailyCap, version: subject.version }));
+}
+
+/** Sets (or clears, with null) the daily limit of one subject for one grade or section: «أولويات الجدول › متقدم». */
+export function useSetCapOverride() {
+  return useSubjectsMutation(({ subject, scope, scopeId, cap }: { subject: Subject; scope: CapScope; scopeId: number; cap: number | null }) =>
+    apiRequest<Subject>(`${subjectsPath}/${subject.id}/cap-override`, "PUT", { scope, scopeId, cap, version: subject.version }));
 }
 
 /** Archive or restore one subject and get it back (its new version is needed for an undo). */

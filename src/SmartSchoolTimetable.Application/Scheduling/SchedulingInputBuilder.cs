@@ -58,18 +58,41 @@ public static class SchedulingInputBuilder
             }).ToArray(),
             subjects.Select(subject => new SubjectInput(subject.Id, subject.Name, subject.Priority, subject.DistributionEnabled, subject.SpreadAcrossDays,
                 subject.Heavy, subject.RequiresDoublePeriod, subject.RequiredResourceId,
-                subject.BlockedPeriods.Select(period => new SlotRef(period.Day, period.LessonNumber)).ToArray(), subject.ColorIndex)).ToArray(),
+                subject.BlockedPeriods.Select(period => new SlotRef(period.Day, period.LessonNumber)).ToArray(), subject.ColorIndex, subject.DailyCap)).ToArray(),
             lines.Select(line => new LineInput(line.Id, line.StageId, line.SubjectId, line.Label, line.WeeklyLessons, line.NeedsDoublePeriod)).ToArray(),
             assignments.Select(row => new AssignmentInput(row.Id, row.SectionId, row.CurriculumEntryId, row.TeacherId)).ToArray(),
             teachers.Select(teacher => new TeacherInput(teacher.Id, teacher.FullName, teacher.IsArchived,
                 Released(teacher, year), PartiallyReleased(teacher, year), teacher.OffDays.ToArray(),
                 teacher.BlockedPeriods.Select(period => new SlotRef(period.Day, period.LessonNumber)).ToArray(),
                 teacher.MaxLessonsPerDay, teacher.MaxLessonsPerWeek, teacher.Specializations.Select(item => item.SubjectId).ToArray(),
-                string.IsNullOrWhiteSpace(teacher.ShortName) ? null : teacher.ShortName)).ToArray(),
+                string.IsNullOrWhiteSpace(teacher.ShortName) ? null : teacher.ShortName, teacher.MaxConsecutive, teacher.MaxConsecutiveHard)).ToArray(),
             resources.Select(resource => new ResourceInput(resource.Id, resource.Name, resource.Kind.ToString(), resource.Capacity, resource.IsArchived)).ToArray(),
-            new ProfileInput(profile.ProfileVersion, profile.Rules.Select(rule => new RuleInput(rule.Key, rule.Enabled, rule.Weight)).ToArray()),
-            stages.Select(stage => new StageInput(stage.Id, stage.Name)).ToArray());
+            new ProfileInput(profile.ProfileVersion, profile.Rules.Select(rule => new RuleInput(rule.Key, rule.Enabled, rule.Weight)).ToArray(), profile.DefaultMaxConsecutive, profile.BalanceHard, profile.ConsecutiveHard),
+            stages.Select(stage => new StageInput(stage.Id, stage.Name)).ToArray(),
+            CapOverridesOf(subjects, stages, sections),
+            EveningDaysOf(sessions, days));
         return SchedulingInputHash.Canonical(input);
+    }
+
+    /// <summary>The subjects' limits for a grade or section that still exist (a limit of an archived grade or section means nothing).</summary>
+    private static CapOverrideInput[]? CapOverridesOf(IEnumerable<Subject> subjects, IEnumerable<Stage> stages, IEnumerable<Section> sections)
+    {
+        var stageIds = stages.Select(stage => stage.Id).ToHashSet();
+        var sectionIds = sections.Select(section => section.Id).ToHashSet();
+        var overrides = subjects.SelectMany(subject => subject.CapOverrides.Select(item => (Subject: subject.Id, Item: item)))
+            .Where(pair => pair.Item.Scope == CapScope.Stage ? stageIds.Contains(pair.Item.ScopeId) : sectionIds.Contains(pair.Item.ScopeId))
+            .Select(pair => new CapOverrideInput(pair.Subject, pair.Item.Scope == CapScope.Stage ? pair.Item.ScopeId : null, pair.Item.Scope == CapScope.Section ? pair.Item.ScopeId : null, pair.Item.Cap))
+            .ToArray();
+        return overrides.Length == 0 ? null : overrides;
+    }
+
+    /// <summary>Working days on which the school attends a non-morning session in some semester (R3 double shift); null for a single session.</summary>
+    private static int[]? EveningDaysOf(SessionPlan? sessions, IReadOnlyList<int> days)
+    {
+        if (sessions is not { System: not SessionSystem.OneSession })
+            return null;
+        var evening = days.Where(day => sessions.Days.Any(item => item.Day == day && item.Session != SessionKind.Morning)).ToArray();
+        return evening.Length == 0 ? null : evening;
     }
 
     /// <summary>Fully released with no dates, or with dates covering the whole year (DECISIONS_PENDING #61).</summary>

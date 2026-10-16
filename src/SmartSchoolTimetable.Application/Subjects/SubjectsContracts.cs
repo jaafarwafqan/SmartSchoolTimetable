@@ -17,7 +17,18 @@ public sealed record SubjectDto(
     bool IsArchived,
     DateTimeOffset? ArchivedAt,
     int Version,
-    long? RequiredResourceId = null);
+    long? RequiredResourceId = null,
+    int? DailyCap = null,
+    IReadOnlyList<CapOverrideDto>? CapOverrides = null);
+
+/// <param name="Scope">"stage" (every section of a grade) or "section".</param>
+public sealed record CapOverrideDto(string Scope, long ScopeId, int Cap);
+
+/// <summary>Sets (or clears, with a null cap) the daily limit of one subject for one grade or section.</summary>
+public sealed record SetCapOverrideCommand(string? Scope, long ScopeId, int? Cap, int Version);
+
+/// <summary>Sets (or clears, with null) the owner's daily limit of one subject: «أولويات الجدول › متقدم».</summary>
+public sealed record SetDailyCapCommand(int? DailyCap, int Version);
 
 /// <param name="RequiredResourceId">The one resource the subject needs (null: none). It must be an active resource,
 /// unless it is the subject's current one.</param>

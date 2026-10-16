@@ -24,7 +24,7 @@ public sealed partial class FindingCodeContractTests
     [Fact]
     public void EveryConstantIsInTheRegistryExactlyOnce()
     {
-        Assert.Equal(19, Constants.Length);
+        Assert.Equal(25, Constants.Length);
         Assert.Equal(Constants.Order(StringComparer.Ordinal), FindingCodes.All.Order(StringComparer.Ordinal));
         Assert.Equal(FindingCodes.All.Count, FindingCodes.All.Distinct(StringComparer.Ordinal).Count());
         Assert.All(FindingCodes.All, code => Assert.Matches(UpperSnake(), code));

@@ -20,7 +20,9 @@ public sealed record TeacherDetails(
     int? MaxLessonsPerDay,
     int? MaxLessonsPerWeek,
     string? Notes,
-    IReadOnlyCollection<long>? SpecializationIds = null);
+    IReadOnlyCollection<long>? SpecializationIds = null,
+    int? MaxConsecutive = null,
+    bool MaxConsecutiveHard = false);
 
 /// <summary>
 /// A teacher (global, DECISIONS_PENDING #1) with constraints. Rules: short name unique after normalization
@@ -36,6 +38,8 @@ public sealed class Teacher : VersionedEntity
     public const int NotesMaxLength = 500;
 
     public const int MaxSpecializations = 30;
+    public const int MinConsecutive = 2;
+    public const int MaxConsecutiveLimit = 3;
 
     private readonly List<BlockedPeriod> _blockedPeriods = [];
     private readonly List<TeacherSpecialization> _specializations = [];
@@ -57,6 +61,12 @@ public sealed class Teacher : VersionedEntity
     public DateOnly? ReleaseTo { get; private set; }
     public int? MaxLessonsPerDay { get; private set; }
     public int? MaxLessonsPerWeek { get; private set; }
+
+    /// <summary>The most lessons in a row this teacher may teach (2 or 3); null follows the school's default («أقصى حصص متتالية للمعلم»).</summary>
+    public int? MaxConsecutive { get; private set; }
+
+    /// <summary>«إلزامي لهذا المعلم»: his consecutive-lessons limit is a hard rule even when the school keeps it a priority.</summary>
+    public bool MaxConsecutiveHard { get; private set; }
     public string? Notes { get; private set; }
     public bool IsArchived { get; private set; }
     public DateTimeOffset? ArchivedAt { get; private set; }
@@ -149,7 +159,8 @@ public sealed class Teacher : VersionedEntity
             .When(details.FullyReleased && details.ReleaseFrom > details.ReleaseTo, nameof(ReleaseTo), DomainErrorCode.InvalidDateRange)
             .When(details.MaxLessonsPerDay is < 1, nameof(MaxLessonsPerDay), DomainErrorCode.OutOfRange)
             .When(details.MaxLessonsPerWeek is < 1, nameof(MaxLessonsPerWeek), DomainErrorCode.OutOfRange)
-            .When(details.MaxLessonsPerDay > details.MaxLessonsPerWeek, nameof(MaxLessonsPerDay), DomainErrorCode.OutOfRange);
+            .When(details.MaxLessonsPerDay > details.MaxLessonsPerWeek, nameof(MaxLessonsPerDay), DomainErrorCode.OutOfRange)
+            .When(details.MaxConsecutive is not null and not (MinConsecutive or MaxConsecutiveLimit), nameof(MaxConsecutive), DomainErrorCode.OutOfRange);
         if (grid.LessonsPerDay > 0)
         {
             errors.When(details.MaxLessonsPerDay > grid.LessonsPerDay, nameof(MaxLessonsPerDay), DomainErrorCode.MaxPerDayExceedsPeriods);
@@ -173,6 +184,8 @@ public sealed class Teacher : VersionedEntity
         ReleaseTo = details.FullyReleased ? details.ReleaseTo : null;
         MaxLessonsPerDay = details.MaxLessonsPerDay;
         MaxLessonsPerWeek = details.MaxLessonsPerWeek;
+        MaxConsecutive = details.MaxConsecutive;
+        MaxConsecutiveHard = details.MaxConsecutiveHard;
         Notes = string.IsNullOrWhiteSpace(details.Notes) ? null : details.Notes.Trim();
         _blockedPeriods.Clear();
         _blockedPeriods.AddRange((details.BlockedPeriods ?? []).Distinct().OrderBy(period => period.Day).ThenBy(period => period.LessonNumber));

@@ -2,6 +2,7 @@ using SmartSchoolTimetable.Application.Common;
 using SmartSchoolTimetable.Application.SchoolSetup;
 using SmartSchoolTimetable.Domain.Curriculum;
 using SmartSchoolTimetable.Domain.Resources;
+using SmartSchoolTimetable.Domain.SchoolSetup;
 using SmartSchoolTimetable.Domain.Subjects;
 using SmartSchoolTimetable.Domain.Text;
 
@@ -74,6 +75,46 @@ public sealed class SubjectsService(IDataStore store, TimeProvider clock)
         AuditTrail.Record(store, clock, AuditEvents.SubjectUpdated, $"subject:{id}", "Subject updated.");
         return await store.SaveAsync(() => ToDto(subject), nameof(command.Name), token);
     }
+
+    public async Task<OperationResult<SubjectDto>> SetDailyCapAsync(long id, SetDailyCapCommand command, CancellationToken token)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        if (await FindAsync(id, token) is not { } subject)
+            return OperationResult.Failure<SubjectDto>(ErrorCodes.NotFound);
+        if (!subject.IsVersion(command.Version))
+            return OperationResult.Failure<SubjectDto>(ErrorCodes.Conflict);
+        if (StoreSaving.TryDomain<SubjectDto>(() => subject.SetDailyCap(command.DailyCap)) is { } invalid)
+            return invalid;
+        AuditTrail.Record(store, clock, AuditEvents.SubjectUpdated, $"subject:{id}", "Subject daily limit changed.");
+        return await store.SaveAsync(() => ToDto(subject), nameof(command.DailyCap), token);
+    }
+
+    /// <summary>The daily limit of a subject for one grade («المرحلة») or one section: the most specific limit wins when generating.</summary>
+    public async Task<OperationResult<SubjectDto>> SetCapOverrideAsync(long id, SetCapOverrideCommand command, CancellationToken token)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        if (await FindAsync(id, token) is not { } subject)
+            return OperationResult.Failure<SubjectDto>(ErrorCodes.NotFound);
+        if (!subject.IsVersion(command.Version))
+            return OperationResult.Failure<SubjectDto>(ErrorCodes.Conflict);
+        CapScope? scope = command.Scope switch { StageScope => CapScope.Stage, SectionScope => CapScope.Section, _ => null };
+        if (scope is not { } known)
+            return OperationResult.Invalid<SubjectDto>(nameof(command.Scope), ErrorCodes.InvalidOption);
+        var exists = known == CapScope.Stage
+            ? await store.AnyAsync(store.Query<Stage>().Where(row => row.Id == command.ScopeId), token)
+            : await store.AnyAsync(store.Query<Section>().Where(row => row.Id == command.ScopeId), token);
+        if (!exists)
+            return OperationResult.Invalid<SubjectDto>(nameof(command.ScopeId), ErrorCodes.InvalidOption);
+        var changed = false;
+        if (StoreSaving.TryDomain<SubjectDto>(() => changed = subject.SetCapOverride(known, command.ScopeId, command.Cap)) is { } invalid)
+            return invalid;
+        if (changed)
+            AuditTrail.Record(store, clock, AuditEvents.SubjectUpdated, $"subject:{id}", "Subject daily limit changed for a grade or section.");
+        return await store.SaveAsync(() => ToDto(subject), nameof(command.Cap), token);
+    }
+
+    private const string StageScope = "stage";
+    private const string SectionScope = "section";
 
     public async Task<OperationResult<SubjectDto>> SetArchivedAsync(long id, int version, bool archived, CancellationToken token)
     {
@@ -153,5 +194,8 @@ public sealed class SubjectsService(IDataStore store, TimeProvider clock)
         row.IsArchived,
         row.ArchivedAt,
         row.Version,
-        row.RequiredResourceId);
+        row.RequiredResourceId,
+        row.DailyCap,
+        row.CapOverrides.OrderBy(item => item.Scope).ThenBy(item => item.ScopeId)
+            .Select(item => new CapOverrideDto(item.Scope == CapScope.Stage ? StageScope : SectionScope, item.ScopeId, item.Cap)).ToArray());
 }

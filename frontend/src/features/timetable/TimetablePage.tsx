@@ -22,18 +22,18 @@ import { useStartRepair } from "../generation/generationApi";
 import { useApproveTimetable, useArchiveTimetable, useCurrentCheck, useReplaceTeachers, useRollbackTimetable, useTimetable, useTimetableVersions, type Term, type Timetable, type TimetableVersionSummary } from "./timetableApi";
 import { VersionComparison } from "./VersionComparison";
 import { PrintDocument } from "./PrintDocument";
-import { defaultOptions, printDefaultsFrom, resolvePrint, type Orientation, type PaperSize, type PrintChoice, type PrintDefaults, type PrintOptions, type PrintScope } from "./printing";
+import { defaultOptions, perPageChoices, printDefaultsFrom, resolvePrint, type OrientationChoice, type PaperSize, type PerPage, type PrintChoice, type PrintDefaults, type PrintOptions, type PrintScope } from "./printing";
 import { usePreferences, type Preferences } from "../settings/preferencesApi";
 import { CurrentDataCheck } from "./CurrentDataCheck";
 import { flaggedSlots, slotKey, type FindingItem } from "./currentCheck";
-import { cellFor, lookups, MasterGrid, sessionViewOf, WeekGrid } from "./TimetableGrids";
+import { cellFor, lookups, MasterGrid, sessionViewOf, WeekGrid, type MasterLayout } from "./TimetableGrids";
 import { TimetableEditor } from "./TimetableEditor";
 
 const text = messages.school.timetable;
 const lifecycle = messages.school.lifecycle;
 const currentText = messages.school.currentCheck;
 
-type View = "section" | "teacher" | "master";
+type View = "section" | "teacher" | "stage" | "master";
 
 type ViewsProps = {
   timetable: Timetable;
@@ -52,12 +52,15 @@ type ViewsProps = {
 function TimetableViews({ timetable, editing, onEditingChange, onSaved, flagged, focusRequest, preferences }: ViewsProps) {
   const format = useFormatter();
   const look = useMemo(() => lookups(timetable), [timetable]);
-  const [chosenView, setView] = useState<View>("section");
-  // The manual editor works on one section at a time, so editing always shows the section view.
-  const view: View = editing ? "section" : chosenView;
+  // Owner (1.0.0 testing): the manual editor works from every view, so the view stays the owner's choice while editing.
+  const [view, setView] = useState<View>("section");
   const setEditing = onEditingChange;
   const [sectionId, setSectionId] = useState<number>(timetable.sections[0]?.id ?? 0);
   const [teacherId, setTeacherId] = useState<number>(timetable.teachers[0]?.id ?? 0);
+  const stageNames = [...new Set(timetable.sections.map((item) => item.stageName))];
+  const [stageName, setStageName] = useState<string>(stageNames[0] ?? "");
+  // «عرض: الأيام عمودياً» is the default of the school and stage views.
+  const [layout, setLayout] = useState<MasterLayout>("byDays");
   // «عرض في الجدول»: adjust the view while rendering when a new request arrives (no effect needed for state).
   const [seenRequest, setSeenRequest] = useState(0);
   if (focusRequest && focusRequest.nonce !== seenRequest) {
@@ -96,13 +99,14 @@ function TimetableViews({ timetable, editing, onEditingChange, onSaved, flagged,
   // MF5: the print job follows the owner's defaults for what is printed, and can be changed before printing.
   const printDefaults: PrintDefaults = useMemo(() => printDefaultsFrom(preferences), [preferences]);
   const [printChoice, setPrintChoice] = useState<PrintChoice>({ scope: "current" });
-  const print = resolvePrint(printChoice, view, printDefaults);
+  const print = resolvePrint(printChoice, view === "stage" ? "master" : view, printDefaults);
   // Choosing another job restores that job's defaults; a change of paper, orientation or fit is kept for this print only.
   // Colour or black and white is a choice for this print job and survives a change of job or view.
   const changePrint = (next: PrintOptions) => setPrintChoice((current) => (next.scope !== current.scope
     ? { scope: next.scope, color: next.color }
-    : { scope: next.scope, paper: next.paper, orientation: next.orientation, fit: next.fit, color: next.color }));
-  const chooseView = (next: View) => { setView(next); setEditing(false); setPrintChoice((current) => ({ scope: current.scope, color: current.color })); };
+    : { scope: next.scope, paper: next.paper, orientation: next.orientation, fit: next.fit, color: next.color, perPage: next.perPage }));
+  // Switching the view keeps the editor open (its edit history covers every view); the print job falls back to its defaults.
+  const chooseView = (next: View) => { setView(next); setPrintChoice((current) => ({ scope: current.scope, color: current.color })); };
   // The print document is built only while the print options are open or the browser is printing (Ctrl+P included).
   const [printPanelOpen, setPrintPanelOpen] = useState(false);
   const [browserPrinting, setBrowserPrinting] = useState(false);
@@ -129,12 +133,24 @@ function TimetableViews({ timetable, editing, onEditingChange, onSaved, flagged,
           </a>
         </div>
       )}
-      {!editing && <PrintPanel options={print} view={view} onChange={changePrint} onToggle={setPrintPanelOpen} />}
+      {!editing && <PrintPanel options={print} view={view === "stage" ? "master" : view} onChange={changePrint} onToggle={setPrintPanelOpen} />}
       <div className="timetable-controls">
         <Field id="timetable-view" label={text.viewsLabel}>
           <Select id="timetable-view" value={view} onChange={(event) => chooseView(event.target.value as View)}
-            options={(["section", "teacher", "master"] as const).map((value) => ({ value, label: text.views[value] }))} />
+            options={(["section", "teacher", "stage", "master"] as const).map((value) => ({ value, label: text.views[value] }))} />
         </Field>
+        {view === "stage" && (
+          <Field id="timetable-stage" label={text.chooseStage}>
+            <Select id="timetable-stage" value={stageName} onChange={(event) => setStageName(event.target.value)}
+              options={stageNames.map((name) => ({ value: name, label: name }))} />
+          </Field>
+        )}
+        {(view === "stage" || view === "master") && (
+          <Field id="timetable-layout" label={text.layoutLabel}>
+            <Select id="timetable-layout" value={layout} onChange={(event) => setLayout(event.target.value === "bySections" ? "bySections" : "byDays")}
+              options={(["byDays", "bySections"] as const).map((value) => ({ value, label: text.layouts[value] }))} />
+          </Field>
+        )}
         {view === "section" && (
           <Field id="timetable-section" label={text.chooseSection}>
             <Select id="timetable-section" value={String(section?.id ?? "")} onChange={(event) => setSectionId(Number(event.target.value))}
@@ -148,9 +164,9 @@ function TimetableViews({ timetable, editing, onEditingChange, onSaved, flagged,
           </Field>
         )}
       </div>
-      {view === "section" && section && editing && (
-        <TimetableEditor timetable={timetable} sectionId={section.id} format={format} look={look} lessonCount={lessonCountOf(section.shiftId)}
-          sessions={sessionViewOf(timetable, section.shiftId, term)}
+      {editing && (
+        <TimetableEditor timetable={timetable} view={view} sectionId={section?.id} teacherId={teacher?.id} stageName={stageName} layout={layout} term={term}
+          format={format} look={look} lessonCountOf={lessonCountOf}
           onClose={() => setEditing(false)} onSaved={(id) => { setEditing(false); onSaved(id); }} />
       )}
       {view === "section" && section && !editing && (
@@ -160,7 +176,7 @@ function TimetableViews({ timetable, editing, onEditingChange, onSaved, flagged,
           secondLine={(lesson) => look.teacher(lesson.teacherId)?.shortName ?? ""}
           cell={(lesson, day, number) => flagCell(cellFor(lesson, day, number, format, look, (item) => look.teacher(item.teacherId)?.shortName ?? ""), flagged.has(slotKey(section.id, day, number)))} />
       )}
-      {view === "teacher" && teacher && (
+      {view === "teacher" && teacher && !editing && (
         <>
           <p className="card-note">{text.teacherLoad(format.count(teacherLessons.length, "lesson"))}</p>
           {teacherShifts.map((shiftId) => (
@@ -174,9 +190,13 @@ function TimetableViews({ timetable, editing, onEditingChange, onSaved, flagged,
           ))}
         </>
       )}
-      {view === "master" && <MasterGrid timetable={timetable} format={format} look={look} term={term} flagged={editing ? undefined : flagged} />}
+      {view === "stage" && !editing && (
+        <MasterGrid timetable={timetable} format={format} look={look} term={term} flagged={flagged} layout={layout}
+          sections={timetable.sections.filter((item) => item.stageName === stageName)} caption={text.stageCaption(stageName)} />
+      )}
+      {view === "master" && !editing && <MasterGrid timetable={timetable} format={format} look={look} term={term} flagged={flagged} layout={layout} />}
       {!editing && (printPanelOpen || browserPrinting) && <PrintDocument timetable={timetable} options={print} term={term} format={format} look={look}
-        current={{ view, sectionId: section?.id, teacherId: teacher?.id }} />}
+        current={{ view, sectionId: section?.id, teacherId: teacher?.id, stageName }} />}
     </div>
   );
 }
@@ -189,9 +209,13 @@ function flagCell<T extends { state?: string; description: string }>(cell: T, fl
 const printText = messages.school.printing;
 
 /** MF5: what to print, on which paper and orientation, and «ملاءمة الصفحة»; choosing what to print restores its defaults. */
-type PrintPanelProps = { options: PrintOptions; view: View; onChange: (options: PrintOptions) => void; onToggle: (open: boolean) => void };
+type PrintPanelProps = { options: PrintOptions; view: "section" | "teacher" | "master"; onChange: (options: PrintOptions) => void; onToggle: (open: boolean) => void };
 
 function PrintPanel({ options, view, onChange, onToggle }: PrintPanelProps) {
+  const kind = options.scope === "current" ? view : options.scope;
+  const wholeSchool = kind === "master" || kind === "school" || kind === "stages";
+  const batch = kind === "sections" || kind === "teachers";
+  const orientations: OrientationChoice[] = wholeSchool ? ["auto", "portrait", "landscape"] : ["portrait", "landscape"];
   return (
     <details className="advanced-options tool-panel print-options" onToggle={(event) => onToggle(event.currentTarget.open)}>
       <summary><Printer aria-hidden="true" size={18} /><span>{printText.title}</span></summary>
@@ -205,9 +229,16 @@ function PrintPanel({ options, view, onChange, onToggle }: PrintPanelProps) {
             options={(["A4", "A3"] as const).map((value) => ({ value, label: value }))} />
         </Field>
         <Field id="print-orientation" label={printText.orientation}>
-          <Select id="print-orientation" value={options.orientation} onChange={(event) => onChange({ ...options, orientation: event.target.value as Orientation })}
-            options={(["portrait", "landscape"] as const).map((value) => ({ value, label: printText.orientations[value] }))} />
+          <Select id="print-orientation" value={options.orientation} onChange={(event) => onChange({ ...options, orientation: event.target.value as OrientationChoice })}
+            options={orientations.map((value) => ({ value, label: printText.orientations[value] }))} />
         </Field>
+        {batch && (
+          <Field id="print-per-page" label={kind === "teachers" ? printText.perPage : printText.perPageSections}>
+            <Select id="print-per-page" value={String(options.perPage)}
+              onChange={(event) => onChange({ ...options, perPage: event.target.value === "auto" ? "auto" : (Number(event.target.value) as PerPage) })}
+              options={perPageChoices.map((value) => ({ value: String(value), label: value === "auto" ? printText.perPageAuto : String(value) }))} />
+          </Field>
+        )}
       </div>
       <div className="print-options-fields">
         <Field id="print-color" label={printText.color}>

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { userInfo } from "node:os";
 import { expect, test } from "@playwright/test";
+import { contactLinks } from "../src/features/about/contactLinks";
 import { messages } from "../src/i18n/messages";
 import { ApiServer } from "./support/apiServer";
 import { expectNoPageScrollX, expectNoSeriousA11yViolations, setupOwner } from "./support/flows";
@@ -20,13 +21,23 @@ test("(M2) «حول البرنامج»: reached from the user menu, shows versio
     await page.getByRole("button", { name: messages.school.shell.userMenu }).click();
     await page.getByRole("menuitem", { name: text.menu }).click();
     await expect(page.getByRole("heading", { name: text.title, level: 1 })).toBeVisible();
-    await expect(page.getByRole("navigation", { name: messages.school.nav.settings }).getByRole("link", { name: messages.school.nav.settingsAbout })).toBeVisible();
+    await expect(page).toHaveURL(/\/about$/);
+    // Owner (1.0.0 testing): «حول البرنامج» is in the sidebar directly below «الإعدادات», no longer a settings tab.
+    const sidebarLinks = await page.getByRole("navigation", { name: messages.school.nav.sidebarLabel }).getByRole("link").allTextContents();
+    expect(sidebarLinks.indexOf(messages.school.nav.about)).toBe(sidebarLinks.indexOf(messages.school.nav.settings) + 1);
+    await expect(page.getByRole("navigation", { name: messages.school.nav.settings })).toHaveCount(0);
+    await page.goto(`${server.baseUrl}/settings/about`);
+    await expect(page).toHaveURL(/\/about$/);
 
     await expect(page.getByRole("heading", { name: text.appName })).toBeVisible();
     await expect(page.getByText(text.facts.buildDate)).toBeVisible();
     await expect(page.getByText(text.facts.developerName, { exact: true })).toBeVisible();
     await expect(page.getByText("جميع الحقوق محفوظة")).toBeVisible();
     await expect(page.getByRole("button", { name: text.dataFolder.open })).toBeVisible();
+    // The contact section shows the number and the user name as text and as links (outside the program).
+    await expect(page.getByRole("heading", { name: text.contact.title })).toBeVisible();
+    await expect(page.getByRole("link", { name: contactLinks.whatsappValue })).toHaveAttribute("href", contactLinks.whatsappLink);
+    await expect(page.getByRole("link", { name: contactLinks.telegramValue })).toHaveAttribute("href", contactLinks.telegramLink);
     const table = page.getByRole("table", { name: text.thirdParty.title });
     await expect(table.getByText("Google OR-Tools")).toBeVisible();
     await expectNoSeriousA11yViolations(page, "about");

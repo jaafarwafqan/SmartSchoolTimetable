@@ -55,13 +55,15 @@ public sealed record SubjectInput(
     bool RequiresDoublePeriod,
     long? RequiredResourceId,
     IReadOnlyList<SlotRef> Blocked,
-    [property: NotHashed] int ColorIndex = 1);
+    [property: NotHashed] int ColorIndex = 1,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] int? DailyCap = null);
 
 /// <summary>A curriculum line of a stage: every section of the stage takes it.</summary>
 public sealed record LineInput(long Id, long StageId, long SubjectId, [property: NotHashed] string? Label, int WeeklyLessons, bool NeedsDoublePeriod);
 
 public sealed record AssignmentInput([property: NotHashed] long Id, long SectionId, long LineId, long TeacherId);
 
+/// <param name="MaxConsecutive">The teacher's own limit of lessons in a row (2 or 3); null follows the school's (<see cref="ProfileInput.DefaultMaxConsecutive"/>).</param>
 /// <param name="Released">Fully released for the whole year (no lessons possible).</param>
 /// <param name="PartiallyReleased">Released for part of the year only (a warning).</param>
 /// <param name="ShortName">Shown in timetable cells (display only, not hashed).</param>
@@ -76,13 +78,24 @@ public sealed record TeacherInput(
     int? MaxPerDay,
     int? MaxPerWeek,
     IReadOnlyList<long> SpecializationIds,
-    [property: NotHashed] string? ShortName = null);
+    [property: NotHashed] string? ShortName = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? MaxConsecutive = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool ConsecutiveHard = false);
 
 public sealed record ResourceInput(long Id, [property: NotHashed] string Name, string Kind, int Capacity, bool IsArchived);
 
 public sealed record RuleInput(string Key, bool Enabled, int Weight);
 
-public sealed record ProfileInput(int ProfileVersion, IReadOnlyList<RuleInput> Rules);
+/// <param name="DefaultMaxConsecutive">The school's «أقصى حصص متتالية للمعلم» (2 or 3); null (hand-built inputs) means no such rule.</param>
+/// <param name="BalanceHard">Balanced teacher days are a hard rule (H12) instead of a priority.</param>
+/// <param name="ConsecutiveHard">The consecutive-lessons limit is a hard rule (H11) for every teacher instead of the priority S9.</param>
+public sealed record ProfileInput(int ProfileVersion, IReadOnlyList<RuleInput> Rules,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? DefaultMaxConsecutive = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool BalanceHard = false,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool ConsecutiveHard = false);
+
+/// <summary>A subject's daily limit for one grade or section (exactly one of the two ids is set); it wins over the subject's own limit, the section's over the grade's.</summary>
+public sealed record CapOverrideInput(long SubjectId, long? StageId, long? SectionId, int Cap);
 
 /// <summary>
 /// Everything the solver needs for one academic year (Phase 3 §2.5, ADR 0034): an immutable, serializable snapshot
@@ -102,7 +115,32 @@ public sealed record SchedulingInput(
     IReadOnlyList<TeacherInput> Teachers,
     IReadOnlyList<ResourceInput> Resources,
     ProfileInput Profile,
-    IReadOnlyList<StageInput>? Stages = null)
+    IReadOnlyList<StageInput>? Stages = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<CapOverrideInput>? CapOverrides = null,
+    [property: NotHashed] [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<int>? EveningDays = null)
 {
     public const int CurrentFormatVersion = 1;
+
+    /// <summary>The teacher's «أقصى حصص متتالية»: his own, else the school's; null when no such rule applies.</summary>
+    public int? MaxConsecutiveOf(TeacherInput teacher) => teacher.MaxConsecutive ?? Profile.DefaultMaxConsecutive;
+
+    /// <summary>The limit when it is a HARD rule for this teacher (the school's «إلزامي» or his own); null when it is only a priority or absent.</summary>
+    public int? HardConsecutiveOf(TeacherInput teacher) =>
+        Profile.ConsecutiveHard || teacher.ConsecutiveHard ? MaxConsecutiveOf(teacher) : null;
+
+    /// <summary>True when some teacher has the consecutive-lessons limit as a hard rule.</summary>
+    public bool AnyHardConsecutive => Teachers.Any(teacher => HardConsecutiveOf(teacher) is not null);
+
+    /// <summary>The same input with the consecutive-lessons limit a priority for everyone (the automatic retry after a timeout).</summary>
+    public SchedulingInput WithSoftConsecutive() => this with
+    {
+        Profile = Profile with { ConsecutiveHard = false },
+        Teachers = Teachers.Select(teacher => teacher with { ConsecutiveHard = false }).ToArray(),
+    };
+
+    /// <summary>
+    /// True when the school attends an evening session on this working day in some semester (R3 double shift): its last periods weigh more in the fairness
+    /// priority only. Not hashed (a soft preference never makes a timetable out of date, DECISIONS_PENDING #81).
+    /// </summary>
+    public bool IsEvening(int day) => EveningDays?.Contains(day) == true;
 }

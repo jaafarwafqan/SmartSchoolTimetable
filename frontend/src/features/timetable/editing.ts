@@ -1,4 +1,4 @@
-import type { GridLesson } from "./timetableApi";
+import type { GridLesson, Violation } from "./timetableApi";
 
 export type Slot = { sectionId: number; day: number; lesson: number };
 
@@ -52,4 +52,23 @@ export function changedCount(original: readonly GridLesson[], current: readonly 
     else changed++;
   }
   return changed;
+}
+
+/**
+ * Slots ("section:day:lesson") touched by a violation, in every section: marked as conflicts on whichever grid is shown. A violation with a
+ * lesson marks that lesson; one about a day (a limit) marks the lessons of that day that it involves.
+ */
+export function conflictKeys(violations: Violation[], lessons: GridLesson[]): Set<string> {
+  const slots = new Set<string>();
+  for (const violation of violations) {
+    if (violation.day === null) continue;
+    for (const lesson of lessons) {
+      if (lesson.day !== violation.day) continue;
+      const sameSlot = violation.lesson === null || violation.lesson === lesson.lesson;
+      const involves = (violation.sectionId !== null && violation.sectionId === lesson.sectionId) || (violation.teacherId !== null && violation.teacherId === lesson.teacherId)
+        || (violation.subjectId !== null && violation.subjectId === lesson.subjectId && (violation.sectionId === null || violation.sectionId === lesson.sectionId));
+      if (sameSlot && involves) slots.add(`${lesson.sectionId}:${lesson.day}:${lesson.lesson}`);
+    }
+  }
+  return slots;
 }

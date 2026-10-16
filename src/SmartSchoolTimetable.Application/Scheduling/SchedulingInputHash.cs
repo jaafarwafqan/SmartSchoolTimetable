@@ -50,6 +50,9 @@ public static class SchedulingInputHash
             Resources = input.Resources.OrderBy(resource => resource.Id).ToArray(),
             Profile = input.Profile with { Rules = input.Profile.Rules.OrderBy(rule => rule.Key, StringComparer.Ordinal).ToArray() },
             Stages = input.Stages?.OrderBy(stage => stage.Id).ToArray(),
+            CapOverrides = input.CapOverrides is { Count: > 0 } overrides
+                ? overrides.OrderBy(item => item.SubjectId).ThenBy(item => item.StageId ?? 0).ThenBy(item => item.SectionId ?? 0).ToArray() : null,
+            EveningDays = input.EveningDays is { Count: > 0 } evening ? evening.Distinct().Order().ToArray() : null,
         };
     }
 

@@ -86,3 +86,57 @@ dotnet test tests/SmartSchoolTimetable.Tests -c Release --filter "Category=Perfo
 ```
 
 Each measurement is printed as one table row in the test output. Without `SST_PERFORMANCE=1` these tests are skipped, so the default `dotnet test` run stays fast.
+
+## M3 (2026-10-11): the published program on school-PC limits
+The solver's default worker count now follows the computer: all cores but one, at most 4, and at most 2 when the computer has under 6 GB of memory; CP-SAT also gets a memory safety net (a quarter of the memory, 512 MB to 2 GB). Measured with the published executable through the API (`e2e/m3-performance.spec.ts`, on demand), a fictional intermediate school, 60 s limit, machine: i7-7500U 2.7 GHz (2 cores / 4 threads), 15.9 GB, Windows 10 22H2.
+
+| Profile | Sections | Workers | First (s) | Total (s) | Status | Server peak | Whole test (runner + server + browser) peak |
+|---|---:|---:|---:|---:|---|---:|---:|
+| normal | 24 | 3 | 7.1 | 27.6 | optimal (penalty 0) | 400 MB | 722 MB |
+| normal | 40 | 3 | 12.4 | 62.4 | feasible (penalty 25) | 513 MB | 849 MB |
+| 2 processors + 512 MB heap limit | 24 | 2 | 7.7 | 29.7 | optimal | 363 MB | 676 MB |
+| 2 processors + 512 MB heap limit | 40 | 2 | 11.2 | 62.2 | feasible (penalty 415) | 447 MB | 786 MB |
+
+Cold start (server start to first answer on a new database): 5.0 s; 12.9 s on the first start after a publish. Details, limits and how to repeat: `docs/M3_RELEASE_VALIDATION_AR.md`.
+
+
+## Phase 5 generation rules (2026-10-16, ADR 0053)
+Every new rule on with the default priorities: «أقصى حصص متتالية» = 3 as a priority «مهم جداً» (the owner's final decision), spread with gaps, balanced days and fair last periods. Standard mode, 60 s, **2 workers** (the default of a 4 GB school PC), seed 12345. `PerformanceTests.Phase5RulesKeepTheGate`, Release build, same machine as above.
+
+| School | Sections | Teachers | Workers | Status | First (s) | Total (s) | Objective | Bound | Violations | Memory |
+|---|---:|---:|---:|---|---:|---:|---:|---:|---:|---|
+| 24/40 s1 P5 | 24 | 40 | 2 | Feasible | 3.50 | 61.89 | 16970 | 6690 | 0 | 67 → 224 MB |
+| 24/40 s2 P5 | 24 | 40 | 2 | Feasible | 2.15 | 60.32 | 16080 | 6965 | 0 | 109 → 235 MB |
+| 24/40 s3 P5 | 24 | 40 | 2 | Feasible | 2.17 | 60.31 | 15685 | 6530 | 0 | 111 → 241 MB |
+| owner-shaped s1 | 12 | 22 | 2 | Feasible | 0.89 | 60.10 | 10780 | 5860 | 0 | 117 → 241 MB |
+| owner-shaped s2 | 12 | 22 | 2 | Feasible | 0.97 | 60.09 | 11385 | 6095 | 0 | 114 → 241 MB |
+| owner-shaped s3 | 12 | 22 | 2 | Feasible | 0.81 | 60.09 | 10805 | 5925 | 0 | 114 → 241 MB |
+
+- **The gate still holds:** 24/40 found its first timetable in 2.2–3.5 s (target 60 s). The objective has more terms than in Phase 4, so it is not comparable with those numbers.
+- **Owner-shaped school** (`SyntheticSchools.OwnerShaped`, fictional; not the owner's data): 12 sections in 3 grades, 30 lessons in 30 slots, 22 teachers, about a third with a day off, up to 2 blocked periods each, and evening sessions Tuesday–Thursday. Readiness was clean on all three seeds.
+- Remaining penalties after 60 s (s1 / s2 / s3), measured honestly:
+
+  | Rule | s1 | s2 | s3 |
+  |---|---:|---:|---:|
+  | runs above the consecutive limit (a priority) | 0 | 3 | 0 |
+  | balanced days (sum of excess over max − min ≤ 1) | 3 | 6 | 3 |
+  | last periods above the share | 6 | 8 | 8 |
+  | most / fewest last periods of one teacher | 4 / 1 | 4 / 1 | 4 / 1 |
+  | adjacent lessons of a teacher | 105 | 107 | 111 |
+
+  An earlier run with the limit as a hard rule had 0 runs over the limit on all three seeds. As a priority the solver may trade a few runs for other rules within 60 s (s2: 3), and the result notes name them.
+  In full sections, a teacher with 18 lessons in 5 days must have some lessons back to back; the adjacency count shows that limit, not a fault. No run proved optimality in 60 s.
+- **Why a priority:** with the limit hard, a fictional primary school with class teachers (24–29 lessons each in their own section; the user guide's school) found no timetable in 60 s, and with the limit off it found one in 0.8 s (ADR 0053 §2).
+
+The Phase 4 gate tests, re-run with the Phase 5 rules (their default profile; no consecutive limit, default workers = 3 on this machine):
+
+| School | Sections | Teachers | Workers | Status | First (s) | Total (s) | Objective | Bound | Violations | Memory |
+|---|---:|---:|---:|---|---:|---:|---:|---:|---:|---|
+| 12/20 s1 | 12 | 20 | 3 | Feasible | 1.00 | 60.12 | 7750 | 3585 | 0 | 115 → 270 MB |
+| 12/20 s2 | 12 | 20 | 3 | Feasible | 0.81 | 60.09 | 8005 | 3585 | 0 | 116 → 270 MB |
+| 12/20 s3 | 12 | 20 | 3 | Feasible | 1.11 | 60.10 | 7600 | 3530 | 0 | 119 → 270 MB |
+| 24/40 s1 | 24 | 40 | 3 | Feasible | 2.05 | 60.42 | 16670 | 6690 | 0 | 66 → 267 MB |
+| 24/40 s2 | 24 | 40 | 3 | Feasible | 2.01 | 60.30 | 16085 | 6965 | 0 | 110 → 270 MB |
+| 24/40 s3 | 24 | 40 | 3 | Feasible | 2.00 | 60.32 | 16420 | 6530 | 0 | 112 → 270 MB |
+
+The 4 GB profile was measured on the solver (2 workers, the default below 6 GB). The published-program measurement under a 512 MB heap limit (`m3-performance.spec.ts`) was not repeated for Phase 5.

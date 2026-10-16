@@ -26,7 +26,9 @@ The timetable engine is Google OR-Tools CP-SAT 9.15.6755 (ADR 0002, ADR 0037). I
 | H6 | Subject blocked periods are never used | no variables | `SUBJECT_BLOCKED` |
 | H7 | Teacher maximum per day and per week | Σ ≤ max | `TEACHER_DAY_LIMIT`, `TEACHER_WEEK_LIMIT` |
 | H8 | Resource capacity at every moment, across shifts | Σ ≤ capacity per resource and moment | `RESOURCE_CAPACITY` |
-| H9 | Per (section, subject) and day, at most max(2, ⌈weekly ÷ working days⌉) | Σ ≤ cap | `SUBJECT_DAILY_CAP` |
+| H9 | Per (section, subject) and day, at most the daily limit: the section's override, else the grade's, else the subject's (1 to 6, «أولويات الجدول › متقدم»), else max(2, ⌈weekly ÷ working days⌉) (`DailyCaps`, one rule for the solver, the verifier and the validator; ADR 0053) | Σ ≤ cap | `SUBJECT_DAILY_CAP` |
+| H11 | «أقصى حصص متتالية للمعلم» **when hard** for the teacher (school «إلزامي لكل المعلمين» or his «إلزامي»; otherwise it is S9): at most k (2 or 3; the teacher's own, else the school's, default 3) consecutive lesson numbers per teacher, shift and day; a break row does not interrupt a run | Σ over every window of k + 1 lesson numbers ≤ k | `TEACHER_CONSECUTIVE` |
+| H12 | Only when «جعل التوازن إلزامياً» is on: a teacher's full days within one lesson of each other; a partly available day at most its share ⌈load × usable ÷ total usable⌉ (`TeacherDays`) | max − min ≤ 1; Σ ≤ share | `TEACHER_BALANCE` |
 | H10 | «دروس مزدوجة» mode only: double lines as adjacent pairs; an odd leftover is single | x = pair starting here + pair ending here + single; Σpairs = ⌊n ÷ 2⌋; Σsingles = n mod 2 | `DOUBLE_PERIOD_BROKEN` |
 
 A "moment" is a lesson start time: the group holds every slot whose clock interval contains that time. Intervals lie on a line, so these groups cover every overlap. With one shift, a moment is simply one lesson number.
@@ -43,8 +45,17 @@ The objective minimises Σ weight × penalty, for the enabled rules with weight 
 | `heavySubjectsEarly` | S3 heavy subjects early | per lesson of a heavy subject: lesson number − 1 |
 | `avoidSameSubjectRepeated` | S4 no back-to-back repeat | per section and day: consecutive lesson numbers with the same subject (double subjects excluded) |
 | `keepDoubleLessonsTogether` | S5 doubles together (standard mode) | per double line: ⌊n ÷ 2⌋ − adjacent pairs it got |
+| `spreadTeacherLessons` | S6 «توزيع حصص المعلم بفواصل» (exclusive with S2) | per (teacher, day, shift): lesson numbers n and n + 1 both his (a pair of two double-lesson lessons excepted) |
+| `balanceTeacherDays` | S7 balanced teacher days (not weighed when H12 is on) | per teacher: max − min − 1 over his full days (not below 0), plus the lessons of a partly available day above its share |
+| `maxConsecutiveLessons` | S9 consecutive lessons (a priority unless hard) | per (teacher, shift, day): windows of k + 1 consecutive lesson numbers all his |
+| `fairLastPeriods` | S8 fair last periods | per teacher: weighted last-period lessons (evening day 2, morning 1) above ⌈total × load ÷ all loads⌉ |
 
-The default weights are 20 / 30 / 15 / 25 / 10. Subject names are never special cases; only subject flags matter.
+The default weights, in display order: S1 20, S9 40, S6 30, S2 off (30), S7 40, S8 20, S3 15, S4 25, S5 10. S2 and S6 cannot both be on (ADR 0053). Subject names are never special cases; only subject flags matter.
+
+### Fill checks before the solver (pre-solve validator)
+A section whose weekly lessons equal its slots is full every day, so a day off or the daily limit can make it impossible. The validator proves this before the solver runs (each is an upper bound; a section may keep `slots − lessons` slots empty, and a day or a slot is reported only when that slack cannot absorb it): `SUBJECT_DAYS_SHORT` (a subject needs ⌈weekly ÷ limit⌉ days and its teacher is free on fewer), `SECTION_DAY_UNDERFILLED` (what the subjects can place on a day is below the day's lessons less the slack), `SECTION_SLOT_UNCOVERED` (no teacher of the section is free at a slot), and the warning `TEACHERS_SAME_DAY_OFF`. The checks stay silent for a section with an unassigned line or an archived or released teacher, which have their own findings.
+
+Teacher-day checks (ADR 0053): `TEACHER_CONSECUTIVE_SHORT` (an error when the limit is hard for that teacher, a warning when it is a priority). In a run of m free lesson numbers at most m − ⌊m ÷ (k + 1)⌋ lessons fit; for P lessons that is ⌊(P + 1)·k ÷ (k + 1)⌋. It is raised only when the rule, and not the day or week maximum, makes the load impossible. `TEACHER_BALANCE_HARD_SHORT` (error, hard balance only): each full day holds at most min(its capacity, the quietest full day's capacity + 1), and a partial day at most its share.
 
 ## 4. Parameters, determinism and progress
 - Time limit: 60 s by default, 10–600 s allowed.

@@ -11,6 +11,7 @@ type Curriculum = { stages: Array<{ id: number }> };
  */
 export async function seedMultiStageSchool(page: Page, baseUrl: string) {
   const { yearId } = await prepareSchool(page, baseUrl, {
+    lessons: 6, // 30 slots a week for 28 lessons: the whole school by days fits one A3 page (owner, 1.0.0 testing)
     schoolType: "intermediate", shiftMode: "morning",
     grades: [{ gradeKey: "intermediate-1", sections: 2 }, { gradeKey: "intermediate-2", sections: 2 }, { gradeKey: "intermediate-3", sections: 2 }],
   });

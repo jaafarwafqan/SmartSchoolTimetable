@@ -3,7 +3,9 @@
   Builds the ready-to-run folder for the school computer (Phase 4 M6, ADR 0042).
 
 .DESCRIPTION
-  Publishes the API as a self-contained win-x64 application (no .NET install needed). The publish build runs the
+  Publishes the server (SmartSchoolTimetable.Api.exe) and the launcher (SmartSchoolTimetable.exe: no console, tray icon, own window) into one
+  self-contained win-x64 folder (ReadyToRun, not trimmed; no .NET install needed). The folder is checked to contain no database, log, symbol file,
+  test data or user path (a failure stops the script). The publish build runs the
   frontend build, whose output goes to wwwroot. The script then adds «تشغيل البرنامج.bat», which starts the server on
   127.0.0.1 and opens the browser, and «اقرأني.txt» with Arabic instructions.
 
@@ -50,12 +52,15 @@ Write-Host "Publishing to $target (log: $log)"
 New-Item -ItemType Directory -Path (Split-Path -Parent $target) -Force | Out-Null
 # The whole output goes to the log; cmd keeps stderr lines (npm, NuGet) as plain text instead of PowerShell errors.
 $networkFailure = 'NU1301|NU1101|NU1102|Unable to load the service index|Failed to download|ENOTFOUND|ETIMEDOUT|EAI_AGAIN'
-cmd /c "dotnet publish `"$project`" -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o `"$target`" > `"$log`" 2>&1"
+# A full rebuild with no debug information, so no assembly keeps a path of this computer (a reused incremental output could).
+cmd /c "dotnet build `"$project`" -c Release -r win-x64 --self-contained true --no-incremental -p:DebugType=None -p:DebugSymbols=false > `"$log`" 2>&1"
+$buildExit = $LASTEXITCODE
+if ($buildExit -eq 0) { cmd /c "dotnet publish `"$project`" -c Release -r win-x64 --no-build --self-contained true -p:PublishSingleFile=false -p:PublishReadyToRun=true -p:DebugType=None -p:DebugSymbols=false -o `"$target`" >> `"$log`" 2>&1" } else { $global:LASTEXITCODE = $buildExit }
 $exitCode = $LASTEXITCODE
 # The first publish on a computer downloads the win-x64 runtime packs; a transient download failure is retried once.
 if ($exitCode -ne 0 -and (Get-Content -LiteralPath $log -Raw) -match $networkFailure) {
     Write-Host "فشل تنزيل بعض الحزم؛ إعادة المحاولة مرة واحدة..." -ForegroundColor Yellow
-    cmd /c "dotnet publish `"$project`" -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o `"$target`" >> `"$log`" 2>&1"
+    cmd /c "dotnet publish `"$project`" -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -p:PublishReadyToRun=true -p:DebugType=None -p:DebugSymbols=false -o `"$target`" >> `"$log`" 2>&1"
     $exitCode = $LASTEXITCODE
 }
 if ($exitCode -ne 0) {
@@ -73,62 +78,44 @@ if ($exitCode -ne 0) {
     Stop-WithArabicError "$hint`nملف السجل: $log`nرمز الخروج: $exitCode" $errors
 }
 
-foreach ($required in @("SmartSchoolTimetable.Api.exe", "wwwroot\index.html", "google-ortools-native.dll")) {
+$launcherProject = Join-Path $repository "src\SmartSchoolTimetable.Launcher\SmartSchoolTimetable.Launcher.csproj"
+cmd /c "dotnet build `"$launcherProject`" -c Release -r win-x64 --self-contained true --no-incremental -p:DebugType=None -p:DebugSymbols=false >> `"$log`" 2>&1"
+if ($LASTEXITCODE -eq 0) {
+    cmd /c "dotnet publish `"$launcherProject`" -c Release -r win-x64 --no-build --self-contained true -p:PublishSingleFile=false -p:PublishReadyToRun=true -p:DebugType=None -p:DebugSymbols=false -o `"$target`" >> `"$log`" 2>&1"
+}
+if ($LASTEXITCODE -ne 0) {
+    Stop-WithArabicError "فشل نشر مشغّل البرنامج (SmartSchoolTimetable.exe). ملف السجل: $log" @()
+}
+
+foreach ($required in @("SmartSchoolTimetable.Api.exe", "SmartSchoolTimetable.exe", "wwwroot\index.html", "google-ortools-native.dll")) {
     if (-not (Test-Path -LiteralPath (Join-Path $target $required))) {
         Stop-WithArabicError "المجلد الناتج ينقصه الملف $required. ملف السجل: $log"
     }
 }
 
-$utf8 = New-Object System.Text.UTF8Encoding $false
-$utf8Bom = New-Object System.Text.UTF8Encoding $true
+# The licence and (when it exists) the Arabic user guide travel with the program.
+Copy-Item -LiteralPath (Join-Path $repository "LICENSE") -Destination (Join-Path $target "LICENSE.txt")
+$guide = Join-Path $repository "docs\USER_GUIDE_AR.pdf"
+if (Test-Path -LiteralPath $guide) { Copy-Item -LiteralPath $guide -Destination (Join-Path $target "USER_GUIDE_AR.pdf") }
 
-# The launcher: the server window stays open (closing it stops the program); the browser opens after a short wait.
-$launcher = @"
-@echo off
-chcp 65001 >nul
-cd /d "%~dp0"
-title برنامج الجدول المدرسي
-echo يعمل البرنامج الآن على هذا الحاسوب فقط. لا تغلق هذه النافذة أثناء العمل.
-echo لإيقاف البرنامج أغلق هذه النافذة.
-if not defined SST_PORT set "SST_PORT=5080"
-if not defined SST_NO_BROWSER start "" cmd /c "timeout /t 4 /nobreak >nul & start http://127.0.0.1:%SST_PORT%/"
-"%~dp0SmartSchoolTimetable.Api.exe" --LocalHost:Port=%SST_PORT% %*
-if errorlevel 1 (
-  echo.
-  echo تعذّر تشغيل البرنامج أو توقف بخطأ.
-  echo إذا كان البرنامج يعمل في نافذة أخرى فاستخدمها، أو أغلقها ثم شغّل هذا الملف من جديد.
-  pause
-)
-"@
-[IO.File]::WriteAllText((Join-Path $target "تشغيل البرنامج.bat"), $launcher.Replace("`r`n", "`n").Replace("`n", "`r`n"), $utf8)
-
-$readme = @"
-برنامج الجدول المدرسي — تعليمات التشغيل
-=========================================
-
-التشغيل
-- انقر نقراً مزدوجاً على «تشغيل البرنامج.bat».
-- تفتح نافذة سوداء (هي الخادم المحلي)، ثم يفتح المتصفح على العنوان http://127.0.0.1:5080/ بعد ثوانٍ.
-- لا تغلق النافذة السوداء أثناء العمل. إغلاقها يوقف البرنامج.
-- يعمل البرنامج على هذا الحاسوب فقط، ولا يحتاج إلى الإنترنت.
-
-أول تشغيل
-- تظهر شاشة إنشاء حساب المالك: اختر اسم مستخدم وكلمة مرور قوية.
-- يظهر رمز الاسترداد مرة واحدة: احفظه في مكان آمن (يلزم إذا نُسيت كلمة المرور).
-- ثم يبدأ معالج الإعداد: المدرسة، السنة الدراسية، الدوام، الصفوف والشعب، المواد والمنهج، المعلمون، الأنصبة.
-
-أين تُحفظ البيانات
-- قاعدة البيانات في مجلد المستخدم: %LOCALAPPDATA%\SmartSchoolTimetable\timetable.db
-- خذ نسخة احتياطية بانتظام من: الإعدادات ← عام ← «النسخ الاحتياطي والاستعادة».
-- عند الاستعادة يحفظ البرنامج نسخة تلقائية من البيانات الحالية في المجلد backups بجوار قاعدة البيانات.
-
-إذا لم يفتح المتصفح
-- افتح المتصفح يدوياً واكتب العنوان: http://127.0.0.1:5080/
-- إذا ظهرت رسالة أن المنفذ مستخدم فالبرنامج يعمل في نافذة أخرى: استخدمها أو أغلقها ثم أعد التشغيل.
-
-الدليل الكامل: USER_GUIDE_AR.md في مجلد docs من حزمة المصدر.
-"@
-[IO.File]::WriteAllText((Join-Path $target "اقرأني.txt"), $readme.Replace("`r`n", "`n").Replace("`n", "`r`n"), $utf8Bom)
+# Clean build: nothing of a computer or of a school may end up in the program (no database, log, symbol file, test data or user path).
+$forbiddenNames = '*.db', '*.db-wal', '*.db-shm', '*.sqlite', '*.sqlite3', '*.sqlite-*', '*.log', '*.pdb', 'startup-error.txt', '*.xlsx', 'timetable-backup-*', 'auto-backup-*', 'pre-upgrade-*', 'pre-restore-*'
+# (-Include is ignored together with -LiteralPath in Windows PowerShell, so the names are matched explicitly.)
+$allFiles = @(Get-ChildItem -LiteralPath $target -Recurse -File)
+$found = @($allFiles | Where-Object { $name = $_.Name; $forbiddenNames | Where-Object { $name -like $_ } | Select-Object -First 1 })
+$found += @(Get-ChildItem -LiteralPath $target -Recurse -Directory | Where-Object { $_.Name -in 'backups', 'test-results', 'e2e', 'fixtures', 'node_modules' })
+# A user path in OUR files (configuration, scripts, styles and our own assemblies); third-party binaries are not scanned.
+$userPath = [regex]'(?i)[A-Z]:\\Users\\[^\\\s"]+'
+$ours = $allFiles | Where-Object { $_.Extension -in '.json', '.config', '.txt', '.xml', '.js', '.html', '.css' -or $_.Name -like 'SmartSchoolTimetable*.dll' -or $_.Name -like 'SmartSchoolTimetable*.exe' }
+foreach ($file in $ours) {
+    if ($file.Name -like 'LICENSE*' -or $file.Length -gt 40MB) { continue }
+    $bytes = [IO.File]::ReadAllBytes($file.FullName)
+    $text = [Text.Encoding]::UTF8.GetString($bytes) + [Text.Encoding]::Unicode.GetString($bytes)
+    if ($userPath.IsMatch($text)) { $found += $file }
+}
+if ($found.Count -gt 0) {
+    Stop-WithArabicError "المجلد الناتج يحتوي ملفات لا يجوز أن تُشحن (قاعدة بيانات أو سجل أو رموز تصحيح أو بيانات اختبار أو مسار مستخدم):" @($found | ForEach-Object { $_.FullName.Substring($target.Length) })
+}
 
 $size = (Get-ChildItem -LiteralPath $target -Recurse -File | Measure-Object -Property Length -Sum).Sum
 Write-Host ("Done: {0} ({1:N0} MB)" -f $target, ($size / 1MB))

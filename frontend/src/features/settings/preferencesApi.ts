@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../../api";
-import type { ThemePreference } from "../../lib/theme";
+import { applyTheme, type ThemePreference } from "../../lib/theme";
 
 export type PrintSetting = { paper: "a4" | "a3"; orientation: "portrait" | "landscape" };
 
@@ -29,8 +29,13 @@ export function useSavePreferences() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (input: PreferencesInput) => apiRequest<Preferences>(`${preferencesPath}/`, "PUT", input),
-    onSuccess: (saved) => {
+    // A refetch that started before this save must not bring the old value back over the saved one (it would also undo the theme).
+    onMutate: () => client.cancelQueries({ queryKey: preferencesKey }),
+    onSuccess: async (saved) => {
+      await client.cancelQueries({ queryKey: preferencesKey });
       client.setQueryData(preferencesKey, saved);
+      // The page changes theme here, before any "saved" message is shown (not later in a render effect), and the choice is remembered for the next load.
+      applyTheme(saved.theme);
       void client.invalidateQueries({ queryKey: ["audit"] });
     },
   });

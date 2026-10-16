@@ -7,11 +7,14 @@ public sealed record SchedulingRuleDto(string Key, bool Enabled, int Weight, boo
 
 /// <param name="ProfileVersion">Grows on every change; a generated timetable records it (Phase 4).</param>
 /// <param name="IsDefault">The rules equal the defaults («استعادة الإعدادات الافتراضية» has nothing to do).</param>
-public sealed record SchedulingProfileDto(IReadOnlyList<SchedulingRuleDto> Rules, int ProfileVersion, bool IsDefault, int Version);
+/// <param name="DefaultMaxConsecutive">The school's «أقصى حصص متتالية للمعلم» (2 or 3).</param>
+/// <param name="BalanceHard">«جعل التوازن إلزامياً»: balanced teacher days as a hard rule.</param>
+public sealed record SchedulingProfileDto(IReadOnlyList<SchedulingRuleDto> Rules, int ProfileVersion, bool IsDefault, int Version,
+    int DefaultMaxConsecutive = SchedulingProfile.DefaultConsecutive, bool BalanceHard = false, bool ConsecutiveHard = false);
 
 public sealed record SchedulingRuleInput(string? Key, bool Enabled, int Weight);
 
-public sealed record SaveSchedulingProfileCommand(IReadOnlyList<SchedulingRuleInput>? Rules, int Version);
+public sealed record SaveSchedulingProfileCommand(IReadOnlyList<SchedulingRuleInput>? Rules, int Version, int? DefaultMaxConsecutive = null, bool? BalanceHard = null, bool? ConsecutiveHard = null);
 
 /// <param name="Confirm">The owner confirmed in the dialog; without it nothing changes.</param>
 public sealed record RestoreSchedulingDefaultsCommand(bool Confirm, int Version);
@@ -29,7 +32,7 @@ public sealed class SchedulingProfileService(IDataStore store, TimeProvider cloc
             return OperationResult.Failure<SchedulingProfileDto>(ErrorCodes.Conflict);
         var rules = (command.Rules ?? []).Select(rule => new SchedulingRule(rule?.Key ?? string.Empty, rule?.Enabled ?? false, rule?.Weight ?? -1)).ToArray();
         var changed = false;
-        if (StoreSaving.TryDomain<SchedulingProfileDto>(() => changed = profile.Update(rules)) is { } invalid)
+        if (StoreSaving.TryDomain<SchedulingProfileDto>(() => changed = profile.Update(rules, command.DefaultMaxConsecutive, command.BalanceHard, command.ConsecutiveHard)) is { } invalid)
             return invalid;
         if (changed)
             AuditTrail.Record(store, clock, AuditEvents.SchedulingProfileUpdated, "scheduling-profile", $"Profile version {profile.ProfileVersion}.");
@@ -67,6 +70,7 @@ public sealed class SchedulingProfileService(IDataStore store, TimeProvider cloc
             .Select(fallback => (Fallback: fallback, Rule: profile.Rules.FirstOrDefault(rule => rule.Key == fallback.Key) ?? fallback))
             .ToArray();
         var rules = ordered.Select(pair => new SchedulingRuleDto(pair.Rule.Key, pair.Rule.Enabled, pair.Rule.Weight, pair.Fallback.Enabled, pair.Fallback.Weight)).ToArray();
-        return new SchedulingProfileDto(rules, profile.ProfileVersion, ordered.All(pair => pair.Rule == pair.Fallback), profile.Version);
+        var isDefault = ordered.All(pair => pair.Rule == pair.Fallback) && profile.DefaultMaxConsecutive == SchedulingProfile.DefaultConsecutive && !profile.BalanceHard && !profile.ConsecutiveHard;
+        return new SchedulingProfileDto(rules, profile.ProfileVersion, isDefault, profile.Version, profile.DefaultMaxConsecutive, profile.BalanceHard, profile.ConsecutiveHard);
     }
 }

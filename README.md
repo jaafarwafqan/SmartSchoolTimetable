@@ -1,8 +1,15 @@
-# SmartSchoolTimetable
+# الجدول الذكي · SmartSchoolTimetable
 
-Single-user, offline-first school timetable application for one local school and one owner account. The browser UI is served by the ASP.NET Core app, which binds only to `127.0.0.1`.
+**العربية:** برنامج محلي لتوليد الجداول المدرسية لمدرسة واحدة ومالك واحد. يعمل دون إنترنت على ويندوز 10 (64-بت، الإصدار 1809 أو أحدث) وويندوز 11، ويحفظ كل البيانات على حاسوب المدرسة وحده. للتثبيت شغّل ملف المثبّت `SmartSchoolTimetable-Setup-1.0.0-<التاريخ>.exe` ثم اتبع [دليل المستخدم](./docs/USER_GUIDE_AR.pdf) (PDF بالعربية، 14 فصلاً بصور حقيقية). الإصدار الحالي: **1.0.0**.
 
-**Status:** Phases 0–4 are delivered on `master`; the latest tag is `phase-4i`.
+**English:** a local, offline school timetable generator for one school and one owner. It runs on Windows 10 (64-bit, version 1809+) and Windows 11 and keeps all data on the school computer. Install with `SmartSchoolTimetable-Setup-1.0.0-<stamp>.exe` (checksum file next to it) and read the Arabic [user guide](./docs/USER_GUIDE_AR.pdf). Current version: **1.0.0**. Release notes: [CHANGELOG.md](./CHANGELOG.md).
+
+**للتواصل والدعم / Contact and support:** واتساب (WhatsApp) [07806421980](https://wa.me/9647806421980) · تلغرام (Telegram) [@jaafar_Wafqan](https://t.me/jaafar_Wafqan). The same details are in the program: Settings › About.
+
+Single-user, offline-first school timetable application for one local school and one owner account. The UI is served by the ASP.NET Core app, which binds only to `127.0.0.1`; the installed program shows it in a WebView2 window (or the default browser when WebView2 is missing).
+
+**Status:** version 1.0.0 (tags `v1.0.0`, `phase-5-final`) on branch `work/phase-5`; the owner merges to `master`. Earlier: Phases 0–4 (`phase-4i`).
+- Installer, tray launcher, safe upgrade, backups with keep-last-N, About page and support log, teacher Excel import, official printing (A4/A3, colour or black and white), dashboard and split settings, release validation (performance on 4 GB machines, localhost attack suite, offline proof).
 - School setup, curriculum, teachers, workload and readiness.
 - CP-SAT timetable generation with an independent verifier.
 - Viewer by section, teacher and school; manual editing and approval.
@@ -12,11 +19,11 @@ Single-user, offline-first school timetable application for one local school and
 
 The change history is in [CHANGELOG.md](./CHANGELOG.md), and the latest report is [docs/PHASE4G_REPORT.md](./docs/PHASE4G_REPORT.md).
 
-## For the school: the ready-to-run program
-1. On the development machine, from the repository root, run `powershell -ExecutionPolicy Bypass -File tools\Publish-Release.ps1`. It writes a new folder `artifacts\release\SmartSchoolTimetable-<date-time>` (self-contained win-x64, about 200 MB). The folder is not stored in git.
-2. Copy that folder to the school computer. No .NET installation is needed.
-3. Double-click «تشغيل البرنامج.bat». The browser opens `http://127.0.0.1:5080/`; keep the black window open while working.
-4. The first run shows the owner setup (account, recovery code), then the wizard. The short Arabic guide is [docs/USER_GUIDE_AR.md](./docs/USER_GUIDE_AR.md).
+## For the school: installer and user guide
+1. Build (developer machine, repository root): `powershell -ExecutionPolicy Bypass -File tools\Publish-Release.ps1` writes a new self-contained win-x64 folder under `artifacts\release` (no .NET needed on the school PC; the script fails if the folder contains a database, log, test data or user path). Then `powershell -ExecutionPolicy Bypass -File tools\Build-Installer.ps1 -Version 1.0.0` writes `artifacts\installer\SmartSchoolTimetable-Setup-1.0.0-<stamp>.exe` and its `.sha256` (Inno Setup is fetched into `artifacts\tools`; nothing is downloaded at install time). Neither folder is stored in git.
+2. On the school computer run the installer (SmartScreen: «More info» → «Run anyway»), then open «الجدول الذكي». The first run shows the owner setup (account, recovery code), then the wizard.
+3. The user guide is [docs/USER_GUIDE_AR.pdf](./docs/USER_GUIDE_AR.pdf), rebuilt with `tools\Build-UserGuide.ps1` (HTML source in `docs/guide`). The final acceptance checklist is [docs/OWNER_TEST_SCRIPT_V1_AR.md](./docs/OWNER_TEST_SCRIPT_V1_AR.md).
+4. Upgrading and moving data between computers: chapter 13 of the guide and [docs/UPGRADE_AR.md](./docs/UPGRADE_AR.md).
 
 ## Stack and environment
 - .NET SDK 9.0.318 and Node.js v24.18.0 are available in the current development environment. Node/npm are required for the React build and frontend tests.
@@ -43,7 +50,7 @@ The frontend test command runs Vitest and Playwright; install Chromium once with
 `npm.cmd --prefix .\frontend run audit:prod` checks only the production dependencies (the code shipped to the browser) and fails on any high-severity finding. `npm.cmd --prefix .\frontend audit` also lists development tools; the current development-only finding (`braces` through stylelint) is explained in `docs/DECISIONS_PENDING.md` #44.
 
 ### Owner test scripts
-Run them on a separate test database (see below), never on the school's real data. The current one is [docs/OWNER_TEST_SCRIPT_PHASE4.md](./docs/OWNER_TEST_SCRIPT_PHASE4.md) (steps 1–34). It covers setup, generation, the viewer, edits, approval, printing, Excel, backup and restore, the release folder, and the double shift. The earlier scripts are for Phases 2, 2.5 and 3 (`docs/OWNER_TEST_SCRIPT_PHASE*.md`).
+Run them on a separate test database (see below), never on the school's real data. The final one for version 1.0.0 is [docs/OWNER_TEST_SCRIPT_V1_AR.md](./docs/OWNER_TEST_SCRIPT_V1_AR.md): install, upgrade and uninstall, first run, setup, generation, editing, approval, printing on real paper, backup and restore. The earlier scripts are for Phases 2 to 4 (`docs/OWNER_TEST_SCRIPT_PHASE*.md`).
 
 ### Readiness and generation
 - «جاهزية الجدولة» (`/readiness`) checks the current year's real data before generation.

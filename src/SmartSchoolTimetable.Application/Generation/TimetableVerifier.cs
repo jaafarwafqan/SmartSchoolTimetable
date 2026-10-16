@@ -3,7 +3,7 @@ using SmartSchoolTimetable.Domain.SchoolSetup;
 
 namespace SmartSchoolTimetable.Application.Generation;
 
-/// <param name="Rule">The hard constraint id (H1–H10).</param>
+/// <param name="Rule">The hard constraint id (H1–H12).</param>
 public sealed record Violation(string Code, string Rule, long? SectionId = null, long? TeacherId = null, long? SubjectId = null,
     long? ResourceId = null, int? Day = null, int? Lesson = null, int? Count = null, int? Limit = null);
 
@@ -101,6 +101,39 @@ public static class TimetableVerifier
             // H7: maximum per week.
             if (teacher.MaxPerWeek is { } maxWeek && group.Count() > maxWeek)
                 violations.Add(new Violation(ViolationCodes.TeacherWeekLimit, "H7", TeacherId: teacher.Id, Count: group.Count(), Limit: maxWeek));
+            // H11 (when hard for him): never more than the teacher's maximum of lessons in a row (consecutive lesson numbers of one shift on one day).
+            if (input.HardConsecutiveOf(teacher) is { } consecutive)
+            {
+                foreach (var shiftDay in group.GroupBy(item => (item.Section.ShiftId, item.Lesson.Day)))
+                {
+                    var numbers = shiftDay.Select(item => item.Lesson.Lesson).ToHashSet();
+                    foreach (var first in numbers.Order().Where(number => Enumerable.Range(number, consecutive + 1).All(numbers.Contains)))
+                        violations.Add(new Violation(ViolationCodes.TeacherConsecutive, "H11", TeacherId: teacher.Id, Day: shiftDay.Key.Day, Lesson: first, Count: consecutive + 1, Limit: consecutive));
+                }
+            }
+        }
+
+        // H12 (only when the school made it a hard rule): a teacher's full days within one lesson of each other, no partly-available day above its share.
+        if (input.Profile.BalanceHard)
+        {
+            var days = TeacherDays.Of(input);
+            foreach (var group in known.GroupBy(item => item.Teacher.Id))
+            {
+                if (!days.TryGetValue(group.Key, out var info))
+                    continue;
+                var perDay = group.GroupBy(item => item.Lesson.Day).ToDictionary(day => day.Key, day => day.Count());
+                if (info.FullDays.Count >= 2)
+                {
+                    var counts = info.FullDays.Select(day => perDay.GetValueOrDefault(day)).ToArray();
+                    if (counts.Max() - counts.Min() > 1)
+                        violations.Add(new Violation(ViolationCodes.TeacherBalance, "H12", TeacherId: group.Key, Count: counts.Max(), Limit: counts.Min() + 1));
+                }
+                foreach (var day in info.Days)
+                {
+                    if (info.PartialAllowance(day.Day) is { } allowance && perDay.GetValueOrDefault(day.Day) > allowance)
+                        violations.Add(new Violation(ViolationCodes.TeacherBalance, "H12", TeacherId: group.Key, Day: day.Day, Count: perDay[day.Day], Limit: allowance));
+                }
+            }
         }
 
         // H8: at the start of every lesson, the lessons that need a resource and are running then stay within its capacity.
@@ -121,13 +154,14 @@ public static class TimetableVerifier
             }
         }
 
-        // H9: per (section, subject) and day at most max(2, ceil(weekly lessons ÷ the section's working days)).
+        // H9: per (section, subject) and day at most the daily limit (section, grade or subject override, else max(2, ceil(weekly lessons ÷ the section's working days))).
+        var caps = new DailyCaps(input);
         foreach (var group in known.GroupBy(item => (item.Section.Id, item.Subject.Id)))
         {
             var section = group.First().Section;
             var weekly = input.Lines.Where(line => line.StageId == section.StageId && line.SubjectId == group.Key.Item2).Sum(line => line.WeeklyLessons);
             var days = section.AllowedByDay.Count(day => day.Lessons > 0 && input.WorkingDays.Contains(day.Day));
-            var cap = Math.Max(2, days == 0 ? weekly : (weekly + days - 1) / days);
+            var cap = caps.For(group.First().Subject, section, weekly, days);
             foreach (var day in group.GroupBy(item => item.Lesson.Day).Where(day => day.Count() > cap))
                 violations.Add(new Violation(ViolationCodes.SubjectDailyCap, "H9", section.Id, SubjectId: group.Key.Item2, Day: day.Key, Count: day.Count(), Limit: cap));
         }

@@ -27,6 +27,9 @@ internal static partial class LocalLog
     [LoggerMessage(EventId = 1203, Level = LogLevel.Error, Message = "The database upgrade stopped ({Failure}); the program did not start.")]
     public static partial void UpgradeFailed(ILogger logger, string failure);
 
+    [LoggerMessage(EventId = 1204, Level = LogLevel.Information, Message = "The launcher ended; the server stops.")]
+    public static partial void LauncherEnded(ILogger logger);
+
     [LoggerMessage(EventId = 1103, Level = LogLevel.Warning, Message = "The solver engine did not load; generation is unavailable.")]
     public static partial void SolverUnavailable(ILogger logger);
 }

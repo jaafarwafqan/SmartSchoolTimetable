@@ -160,7 +160,7 @@ There was no database constraint on the row count, so there is no migration.
   - `lib/time.ts` (`minutesOf`);
   - the dictionary (`structure.ts`, `school.ts`, `wizard.ts`, `phase4.ts`, `errors.ts`);
   - styles.
-- **Docs:** ADR 0043, `API.md`, DECISIONS_PENDING #81–#86, `USER_GUIDE_AR.md`, `OWNER_TEST_SCRIPT_PHASE4.md` (steps 26–32).
+- **Docs:** ADR 0043, `API.md`, DECISIONS_PENDING #81–#86, `USER_GUIDE_AR.md` (replaced by `USER_GUIDE_AR.pdf`), `OWNER_TEST_SCRIPT_PHASE4.md` (steps 26–32).
 
 **Tests added:**
 - `SessionPlanTests` (domain and scheduler):

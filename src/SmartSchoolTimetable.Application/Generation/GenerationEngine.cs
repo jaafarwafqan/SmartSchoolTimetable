@@ -35,6 +35,8 @@ public static class GenerationEngine
             return new GenerationOutcome(new SolverResult(SolverStatus.Failed, [], null, null, 0, null, 0, null, ErrorCodes.GenerationNotReady), readiness, [], null, hash);
         onValidated?.Invoke();
         var result = await solver.SolveAsync(input, settings, progress, token);
+        if (!result.HasTimetable && result.Status == SolverStatus.TimedOut && input.AnyHardConsecutive && !token.IsCancellationRequested)
+            result = await ExplainConsecutiveAsync(solver, input, settings, result, token);
         if (!result.HasTimetable)
             return new GenerationOutcome(result, readiness, [], null, hash);
         var violations = TimetableVerifier.Verify(input, result.Lessons, settings.DoublePeriodsRequired);
@@ -44,5 +46,22 @@ public static class GenerationEngine
             return new GenerationOutcome(failed, readiness, violations, null, hash);
         }
         return new GenerationOutcome(result, readiness, [], TimetableScorer.Score(input, result.Lessons, settings.DoublePeriodsRequired), hash);
+    }
+
+    /// <summary>
+    /// The time ran out with «أقصى حصص متتالية» hard for some teacher: try once more with it as a priority. When that finds a timetable, the rule is
+    /// the likely cause, and the owner is told so (nothing is saved: the timetable would break the rule the owner made hard).
+    /// </summary>
+    private static async Task<SolverResult> ExplainConsecutiveAsync(ISolver solver, SchedulingInput input, GenerationSettings settings, SolverResult timedOut, CancellationToken token)
+    {
+        var relaxed = await solver.SolveAsync(input.WithSoftConsecutive(), settings, null, token);
+        if (!relaxed.HasTimetable)
+            return timedOut;
+        var teachers = input.Teachers.Where(teacher => input.HardConsecutiveOf(teacher) is not null && input.Assignments.Any(row => row.TeacherId == teacher.Id))
+            .Select(teacher => new FindingEntity(FindingEntities.Teacher, teacher.Id, teacher.Name)).ToArray();
+        var finding = new SolverFinding(DiagnosticCodes.ConsecutiveLikelyCause, new FindingEntity(FindingEntities.School, 0, string.Empty), teachers,
+            null, null, ["relaxConsecutive", "raiseTeacherConsecutive"], true);
+        var findings = (timedOut.Diagnostics?.Findings ?? []).Append(finding).ToArray();
+        return timedOut with { Diagnostics = new SolverDiagnostics(findings, timedOut.Diagnostics?.Minimal ?? false), ElapsedSeconds = timedOut.ElapsedSeconds + relaxed.ElapsedSeconds };
     }
 }

@@ -1,6 +1,7 @@
 import { messages } from "../../i18n/messages";
 import { isolate } from "../../i18n/isolate";
 import type { Formatter } from "../../lib/format";
+import { weekdayLabel } from "../timetable-structure/weekdays";
 import type { GenerationRun, LiveProgress, RunStatus, SolverFinding } from "./generationApi";
 
 const text = messages.school.generation;
@@ -68,6 +69,12 @@ export function diagnosticMessage(finding: SolverFinding, format: Formatter): st
     case "CORE_SUBJECT_DAILY_CAP": return text.diagnostics.CORE_SUBJECT_DAILY_CAP(name);
     case "CORE_DOUBLE_PERIODS": return text.diagnostics.CORE_DOUBLE_PERIODS(name);
     case "CORE_LOCKED_LESSONS": return text.diagnostics.CORE_LOCKED_LESSONS(name);
+    case "CORE_TEACHER_CONSECUTIVE": return text.diagnostics.CORE_TEACHER_CONSECUTIVE(name, lessons(required), lessons(available));
+    case "CORE_TEACHER_BALANCE": return text.diagnostics.CORE_TEACHER_BALANCE(name);
+    case "CONSECUTIVE_LIKELY_CAUSE": {
+      const names = finding.related.map((teacher) => isolate(teacher.name)).join("، ");
+      return text.diagnostics.CONSECUTIVE_LIKELY_CAUSE(names ? text.forTeachers(names) : "");
+    }
     case "CORE_FUNDAMENTAL": return text.diagnostics.CORE_FUNDAMENTAL;
     case "TIMEOUT_NO_SOLUTION": return text.diagnostics.TIMEOUT_NO_SOLUTION(seconds(required, format));
     default: return text.unknownDiagnostic;
@@ -105,6 +112,21 @@ export function improvementNotes(run: GenerationRun, format: Formatter): { key: 
       case "spreadSubjectsAcrossDays": return [{ key: rule.key, sentence: plain.notes.spreadSubjectsAcrossDays(format.count(rule.penalty, "time", "oblique")) }];
       case "heavySubjectsEarly": return [{ key: rule.key, sentence: plain.notes.heavySubjectsEarly(format.count(rule.penalty, "lesson", "oblique")) }];
       case "keepDoubleLessonsTogether": return [{ key: rule.key, sentence: plain.notes.keepDoubleLessonsTogether(format.count(rule.penalty, "pair")) }];
+      case "spreadTeacherLessons": return [{ key: rule.key, sentence: plain.notes.spreadTeacherLessons(format.count(rule.penalty, "time")) }];
+      case "balanceTeacherDays": return [{ key: rule.key, sentence: plain.notes.balanceTeacherDays(format.count(rule.penalty, "lesson")) }];
+      case "maxConsecutiveLessons": {
+        const runs = run.score?.consecutiveRuns ?? [];
+        if (runs.length === 0) return [];
+        const byTeacher = new Map<string, string[]>();
+        for (const item of runs) byTeacher.set(item.teacher, [...(byTeacher.get(item.teacher) ?? []), plain.notes.consecutiveDay(weekdayLabel(item.day), format.number(item.count))]);
+        const list = [...byTeacher].map(([teacher, days]) => plain.notes.consecutiveTeacher(isolate(teacher), days.join("، "))).join("؛ ");
+        return [{ key: rule.key, sentence: plain.notes.maxConsecutiveLessons(list) }];
+      }
+      case "fairLastPeriods": {
+        const last = run.score?.lastPeriods;
+        if (!last) return [];
+        return [{ key: rule.key, sentence: plain.notes.fairLastPeriods(isolate(last.mostTeacher), format.number(last.mostCount), isolate(last.leastTeacher), format.number(last.leastCount)) }];
+      }
       default: return [];
     }
   });

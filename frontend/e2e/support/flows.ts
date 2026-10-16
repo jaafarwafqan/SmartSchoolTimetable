@@ -155,11 +155,29 @@ export async function expectBreakpointScreenshots(page: Page, name: string, mask
     await page.setViewportSize({ width, height: 900 });
     await page.evaluate(async () => {
       await document.fonts.ready;
+      // Two frames: the resize handlers (for example the tab strip centring its active tab) have run before the picture is taken.
+      await new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done())));
       window.scrollTo(0, 0);
+      // Inner tables that scroll sideways start at their start edge (a focused cell may have scrolled them; CI showed a few pixels of drift).
+      // The tab strip keeps its own centring of the active tab.
+      for (const element of document.querySelectorAll<HTMLElement>("main *")) {
+        if (element.scrollWidth > element.clientWidth && !element.closest(".ui-tabs")) element.scrollLeft = 0;
+      }
+    });
+    // A late scroll by the page itself (a preview scrolled into view after it renders) must not land between the reset and the capture: wait until
+    // the page has stayed at the top for three frames in a row (CI captured the sticky top bar in the middle of the page otherwise).
+    await page.waitForFunction(async () => {
+      for (let frame = 0; frame < 3; frame++) {
+        window.scrollTo(0, 0);
+        await new Promise<void>((done) => requestAnimationFrame(() => done()));
+        if (window.scrollY !== 0) return false;
+      }
+      return true;
     });
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow, `${name} scrolls horizontally at ${width}px`).toBeLessThanOrEqual(0);
-    await expect(page).toHaveScreenshot(`${name}-${width}.png`, { fullPage: true, mask });
+    // The upcoming-holiday card changes with today's date (which holiday, how many days): never part of a baseline.
+    await expect(page).toHaveScreenshot(`${name}-${width}.png`, { fullPage: true, mask: [...mask, page.locator("[aria-labelledby='upcoming-holiday-title']")] });
   }
   await page.setViewportSize({ width: 1280, height: 900 });
 }

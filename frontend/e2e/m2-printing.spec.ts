@@ -26,7 +26,7 @@ async function smallestFont(page: Page, selector: string): Promise<number> {
   return page.locator(selector).evaluateAll((elements) => Math.min(...elements.map((element) => parseFloat(getComputedStyle(element).fontSize))));
 }
 
-test("(M2 printing) colour and black-and-white, stage rows, readable sizes, split pages, a page per stage", async ({ browser, page }, testInfo) => {
+test("(M2 printing) colour and black-and-white, the school by days on one A3 page, teachers packed, readable sizes, a page per stage", async ({ browser, page }, testInfo) => {
   test.setTimeout(300_000);
   await server.start(browser, "m2-printing");
   try {
@@ -69,55 +69,73 @@ test("(M2 printing) colour and black-and-white, stage rows, readable sizes, spli
     await page.emulateMedia({ media: null });
     await page.locator("#print-color").selectOption("color");
 
-    // 3. A teacher on A4 portrait.
+    // 3. Teachers on A4 portrait, packed (owner, 1.0.0 testing): «تلقائي» puts several on a page, never one split over two; a fixed number
+    // is kept when it is readable.
     await page.locator("#print-scope").selectOption("teachers");
     await expect(page.locator("#print-orientation")).toHaveValue("portrait");
+    await expect(page.locator("#print-per-page")).toHaveValue("auto");
+    const packedPages = Number(await page.locator(".print-document").getAttribute("data-pages"));
+    expect(packedPages).toBeLessThan(12);
+    await page.emulateMedia({ media: "print" });
+    expect(await page.locator(".print-block").count()).toBe(12);
+    for (const printed of await page.locator(".print-page").all()) {
+      expect(await printed.evaluate((element) => element.scrollHeight <= element.clientHeight + 1)).toBe(true); // nothing spills onto another page
+    }
+    await expect(page.locator(".print-block-title").first()).toContainText(printing.load("").trim().replace(":", ""));
+    expect(await smallestFont(page, ".print-blocks .ui-tt-subject")).toBeGreaterThanOrEqual(pt(8) - 0.2);
     const teacherPdf = await savePdf("a4-portrait-teachers");
-    expect(pdfPages(teacherPdf)).toBe(12);
+    expect(pdfPages(teacherPdf)).toBe(packedPages);
+    await page.emulateMedia({ media: null });
+    await page.locator("#print-per-page").selectOption("1");
+    await expect(page.locator(".print-document")).toHaveAttribute("data-pages", "12");
+    await page.locator("#print-per-page").selectOption("2");
+    await expect(page.locator(".print-document")).toHaveAttribute("data-pages", "6");
 
-    // 4. The whole school on A3 landscape: three stages, a header row each, split over pages by days at a readable size.
+    // 4. The whole school BY DAYS on ONE A3 page («تلقائي» orientation): a stage header row over its sections, days down with their lessons.
     await page.locator("#print-scope").selectOption("school");
     await expect(page.locator("#print-paper")).toHaveValue("A3");
-    await expect(page.locator("#print-orientation")).toHaveValue("landscape");
-    const schoolPages = Number(await page.locator(".print-document").getAttribute("data-pages"));
-    expect(schoolPages).toBe(2); // 5 days × 7 lessons = 36 columns do not fit A3 at 8 pt: 3 days, then 2 days
+    await expect(page.locator("#print-orientation")).toHaveValue("auto");
+    await expect(page.locator(".print-document")).toHaveAttribute("data-pages", "1");
     await page.emulateMedia({ media: "print" });
-    for (const printed of await page.locator(".print-page").all()) {
-      await expect(printed.locator(".print-stage-row")).toHaveCount(3);
-      expect(await printed.locator(".print-stage").count()).toBe(3);
-      await expect(printed.locator(".print-page-header")).toContainText(printing.school);
-      await expect(printed.locator(".print-page-footer")).toContainText(printing.signature);
-      expect(await printed.locator(".print-master").evaluate((table) => table.scrollWidth <= (table.closest(".print-page") as HTMLElement).clientWidth + 1)).toBe(true);
+    const printed = page.locator(".print-page").first();
+    await expect(printed.locator(".print-days-stage")).toHaveCount(3);
+    await expect(printed.locator(".print-days-day")).toHaveCount(5);
+    await expect(printed.locator(".print-page-header")).toContainText(printing.school);
+    await expect(printed.locator(".print-page-footer")).toContainText(printing.signature);
+    expect(await printed.locator(".print-days").evaluate((table) => table.scrollWidth <= (table.closest(".print-page") as HTMLElement).clientWidth + 1)).toBe(true);
+    expect(await printed.evaluate((element) => element.scrollHeight <= element.clientHeight + 1)).toBe(true);
+    expect(await smallestFont(page, ".print-days .ui-tt-subject")).toBeGreaterThanOrEqual(pt(8) - 0.2);
+    expect(await smallestFont(page, ".print-days .ui-tt-teacher")).toBeGreaterThanOrEqual(pt(7) - 0.2);
+    // The 12-hour time is printed beside each lesson number; a thick rule separates stages and days.
+    await expect(printed.locator(".print-days tbody .print-days-number .timetable-time").first()).toContainText(/ص|م/);
+    expect(await printed.locator(".print-days td.is-stage-start").first().evaluate((cell) => parseFloat(getComputedStyle(cell).borderInlineStartWidth))).toBeGreaterThan(2);
+    for (const cell of [".print-days-day", ".print-days-number", "td"]) {
+      expect(await printed.locator(".print-days tbody tr.is-day-start").nth(1).locator(cell).first().evaluate((element) => parseFloat(getComputedStyle(element).borderTopWidth)), cell).toBeGreaterThan(2);
     }
-    await expect(page.locator(".print-page-header").first()).toContainText(printing.daysRange("الأحد", "الثلاثاء"));
-    expect(await smallestFont(page, ".print-master .ui-tt-subject")).toBeGreaterThanOrEqual(pt(8) - 0.2);
-    expect(await smallestFont(page, ".print-master .ui-tt-teacher")).toBeGreaterThanOrEqual(pt(7) - 0.2);
-    // Stage bands: the first column is tinted in colour mode, a thick rule precedes the second stage.
-    expect(await page.locator(".print-stage .print-section").first().evaluate((cell) => getComputedStyle(cell).backgroundColor)).not.toBe("rgba(0, 0, 0, 0)");
-    expect(await page.locator(".print-stage + .print-stage tr").first().locator("> *").first().evaluate((cell) => parseFloat(getComputedStyle(cell).borderTopWidth))).toBeGreaterThan(2);
-    const schoolColour = await savePdf("a3-landscape-school-colour");
-    expect(pdfPages(schoolColour)).toBe(schoolPages);
+    expect(await page.locator(".print-days-stage").first().evaluate((cell) => getComputedStyle(cell).backgroundColor)).not.toBe("rgba(0, 0, 0, 0)");
+    const schoolColour = await savePdf("a3-school-colour");
+    expect(pdfPages(schoolColour)).toBe(1);
 
     // 5. Black and white: the stage header text and rules remain, no tint, no fill.
     await page.locator("#print-color").selectOption("bw");
     await page.emulateMedia({ media: "print" });
-    expect(await page.locator(".print-stage .print-section").first().evaluate((cell) => getComputedStyle(cell).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
-    expect(await page.locator(".print-master td").first().evaluate((cell) => getComputedStyle(cell).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
-    await expect(page.locator(".print-stage-row").first()).toContainText("الأول المتوسط");
-    await savePdf("a3-landscape-school-bw");
+    expect(await page.locator(".print-days-stage").first().evaluate((cell) => getComputedStyle(cell).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
+    expect(await page.locator(".print-days td").first().evaluate((cell) => getComputedStyle(cell).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
+    await expect(page.locator(".print-days-stage").first()).toContainText("الأول المتوسط");
+    await savePdf("a3-school-bw");
     await page.emulateMedia({ media: null });
     await page.locator("#print-color").selectOption("color");
 
-    // 6. A page per stage: three stages × the day pages, one stage on each page and no stage header row (the title names it).
+    // 6. A page per stage: three pages, one stage on each and no stage header row (the title names it).
     await page.locator("#print-scope").selectOption("stages");
     const stagePages = Number(await page.locator(".print-document").getAttribute("data-pages"));
-    expect(stagePages).toBe(6);
+    expect(stagePages).toBe(3);
     await page.emulateMedia({ media: "print" });
-    for (const printed of await page.locator(".print-page").all()) {
-      expect(await printed.locator(".print-stage").count()).toBe(1);
-      await expect(printed.locator(".print-page-header")).toContainText("المرحلة:");
+    for (const stagePage of await page.locator(".print-page").all()) {
+      await expect(stagePage.locator(".print-days-stage")).toHaveCount(0);
+      await expect(stagePage.locator(".print-page-header")).toContainText("المرحلة:");
     }
-    const stagePdf = await savePdf("a3-landscape-school-per-stage");
+    const stagePdf = await savePdf("a3-school-per-stage");
     expect(pdfPages(stagePdf)).toBe(stagePages);
   } finally {
     await server.stop();

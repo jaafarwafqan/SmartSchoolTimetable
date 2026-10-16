@@ -32,6 +32,8 @@ export function TeacherEditor({ teacher, onSaved, onCancel, onReload }: TeacherE
     offDays: teacher.offDays,
     blocked: teacher.blockedPeriods,
     released: teacher.fullyReleased,
+    maxConsecutive: teacher.maxConsecutive ?? null,
+    maxConsecutiveHard: teacher.maxConsecutiveHard ?? false,
   });
   const format = useFormatter();
   const subjects = useSubjects({ search: "", page: 1, pageSize: 100, includeArchived: false });
@@ -59,6 +61,8 @@ export function TeacherEditor({ teacher, onSaved, onCancel, onReload }: TeacherE
         releaseTo: optionalText(value("releaseTo")),
         maxLessonsPerDay: optionalNumber(value("maxPerDay")),
         maxLessonsPerWeek: optionalNumber(value("maxPerWeek")),
+        maxConsecutive: constraints.maxConsecutive,
+        maxConsecutiveHard: constraints.maxConsecutiveHard,
         notes: optionalText(value("notes")),
         specializationIds: specializations,
         version: teacher.version,

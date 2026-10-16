@@ -26,7 +26,7 @@ namespace SmartSchoolTimetable.Tests.Phase3;
 /// </summary>
 public sealed class ResourcesAndProfileTests
 {
-    private static readonly int[] Weights = [20, 30, 15, 25, 10];
+    private static readonly int[] Weights = [20, 40, 30, 30, 40, 20, 15, 25, 10];
     private const string ResourcesPath = "/api/v1/resources/";
     private const string ProfilePath = "/api/v1/scheduling-profile/";
 
@@ -49,7 +49,7 @@ public sealed class ResourcesAndProfileTests
     {
         var profile = SchedulingProfile.CreateDefault();
         Assert.Equal(Weights, profile.Rules.Select(rule => rule.Weight));
-        Assert.All(profile.Rules, rule => Assert.True(rule.Enabled));
+        Assert.All(profile.Rules, rule => Assert.Equal(rule.Key != SchedulingRuleKeys.AvoidTeacherGaps, rule.Enabled)); // «متتالية» is off: it is the opposite of «بفواصل»
         Assert.False(profile.RestoreDefaults()); // already default: nothing changes
 
         var changed = profile.Rules.Select(rule => rule.Key == SchedulingRuleKeys.AvoidTeacherGaps ? rule with { Weight = 80, Enabled = false } : rule).ToArray();
@@ -160,7 +160,10 @@ public sealed class ResourcesAndProfileTests
         Assert.Equal((1, true), (profile.ProfileVersion, profile.IsDefault));
         Assert.Equal(Weights, profile.Rules.Select(rule => rule.Weight));
 
-        var rules = profile.Rules.Select(rule => new SchedulingRuleInput(rule.Key, rule.Key != SchedulingRuleKeys.HeavySubjectsEarly, rule.Key == SchedulingRuleKeys.AvoidTeacherGaps ? 60 : rule.Weight)).ToArray();
+        // «متتالية» with weight 60 replaces «بفواصل» (the two are mutually exclusive).
+        var rules = profile.Rules.Select(rule => new SchedulingRuleInput(rule.Key,
+            rule.Key == SchedulingRuleKeys.AvoidTeacherGaps || (rule.Key != SchedulingRuleKeys.HeavySubjectsEarly && rule.Key != SchedulingRuleKeys.SpreadTeacherLessons),
+            rule.Key == SchedulingRuleKeys.AvoidTeacherGaps ? 60 : rule.Weight)).ToArray();
         var saved = await ReadAsync<SchedulingProfileDto>(await host.PutAsync(ProfilePath, new SaveSchedulingProfileCommand(rules, profile.Version), token));
         Assert.Equal((2, false, 60), (saved.ProfileVersion, saved.IsDefault, saved.Rules.Single(rule => rule.Key == SchedulingRuleKeys.AvoidTeacherGaps).Weight));
         Assert.Equal(30, saved.Rules.Single(rule => rule.Key == SchedulingRuleKeys.AvoidTeacherGaps).DefaultWeight);
@@ -198,7 +201,7 @@ public sealed class ResourcesAndProfileTests
             upgraded.Add(Resource.Create("مختبر العلوم", ResourceKind.Lab, 1, null));
             upgraded.Add(SchedulingProfile.CreateDefault());
             await upgraded.SaveChangesAsync();
-            Assert.Equal(5, (await upgraded.Set<SchedulingProfile>().AsNoTracking().SingleAsync()).Rules.Count);
+            Assert.Equal(9, (await upgraded.Set<SchedulingProfile>().AsNoTracking().SingleAsync()).Rules.Count);
         }
         finally
         {

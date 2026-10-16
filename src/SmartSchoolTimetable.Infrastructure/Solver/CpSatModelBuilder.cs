@@ -18,6 +18,8 @@ internal static class Families
     public const string SubjectDailyCap = "subjectDailyCap";
     public const string DoublePeriods = "doublePeriods";
     public const string LockedLessons = "lockedLessons";
+    public const string TeacherConsecutive = "teacherConsecutive";
+    public const string TeacherBalance = "teacherBalance";
 }
 
 internal sealed record Family(string Kind, long Id, BoolVar Literal);
@@ -36,7 +38,7 @@ internal sealed class LineVars(AssignmentInput row, LineInput line, SectionInput
 
 /// <summary>
 /// Builds the CP-SAT model (docs/SOLVER.md). Boolean x[line, day, lesson] exists only for allowed slots; H1–H10 are
-/// hard, S1–S5 form the weighted objective. In DIAGNOSTIC mode the variables cover every lesson of the shift, each
+/// hard, S1–S8 form the weighted objective. In DIAGNOSTIC mode the variables cover every lesson of the shift, each
 /// restriction family is enforced only under its own assumption literal, and there is no objective, so the solver can
 /// return a core of families that together make the timetable impossible.
 /// </summary>
@@ -50,6 +52,8 @@ internal sealed class CpSatModelBuilder
     private readonly bool _diagnostic;
     private readonly Dictionary<long, ShiftInput> _shifts;
     private readonly Dictionary<string, Family> _families = new(StringComparer.Ordinal);
+    private readonly DailyCaps _caps;
+    private readonly IReadOnlyDictionary<long, TeacherDays> _teacherDays;
 
     private readonly IReadOnlyList<PlacedLesson> _locked;
 
@@ -60,6 +64,8 @@ internal sealed class CpSatModelBuilder
         _doubles = doublePeriodsRequired;
         _diagnostic = diagnostic;
         _shifts = input.Shifts.ToDictionary(shift => shift.Id);
+        _caps = new DailyCaps(input);
+        _teacherDays = TeacherDays.Of(input);
     }
 
     public CpModel Model { get; } = new();
@@ -234,9 +240,56 @@ internal sealed class CpSatModelBuilder
             var section = group.First().Section;
             var weekly = _input.Lines.Where(line => line.StageId == section.StageId && line.SubjectId == group.Key.Item2).Sum(line => line.WeeklyLessons);
             var days = section.AllowedByDay.Count(day => day.Lessons > 0 && _input.WorkingDays.Contains(day.Day));
-            var cap = Math.Max(2, days == 0 ? weekly : (weekly + days - 1) / days);
+            var cap = _caps.For(group.First().Subject, section, weekly, days);
             foreach (var day in group.SelectMany(line => line.Vars).GroupBy(item => item.Key.Day).Where(day => day.Count() > cap))
                 Enforce(Model.Add(LinearExpr.Sum(day.Select(item => item.Value)) <= cap), Families.SubjectDailyCap, group.Key.Item2);
+        }
+
+        // H11 «أقصى حصص متتالية للمعلم» when it is HARD for the teacher (school or teacher «إلزامي»): in any k + 1 consecutive lesson numbers of one
+        // shift on one day, he teaches at most k. Otherwise it is the priority S9.
+        foreach (var teacher in Lines.GroupBy(line => line.Teacher.Id))
+        {
+            var info = teacher.First().Teacher;
+            if (_input.HardConsecutiveOf(info) is not { } consecutive)
+                continue;
+            foreach (var group in teacher.SelectMany(line => line.Vars.Select(item => (line.Section.ShiftId, item.Key.Day, item.Key.Lesson, Var: item.Value)))
+                         .GroupBy(item => (item.ShiftId, item.Day)))
+            {
+                var bySlot = group.GroupBy(item => item.Lesson).ToDictionary(slot => slot.Key, slot => slot.Select(item => item.Var).ToArray());
+                for (var first = bySlot.Keys.Min(); first + consecutive <= bySlot.Keys.Max(); first++)
+                {
+                    var present = Enumerable.Range(first, consecutive + 1).Where(bySlot.ContainsKey).ToArray();
+                    if (present.Length > consecutive)
+                        Enforce(Model.Add(LinearExpr.Sum(present.SelectMany(lesson => bySlot[lesson])) <= consecutive), Families.TeacherConsecutive, info.Id);
+                }
+            }
+        }
+
+        // H12 (only when the school made balanced teacher days a hard rule): full days within one lesson of each other, no partial day above its share.
+        if (_input.Profile.BalanceHard)
+        {
+            foreach (var teacher in Lines.GroupBy(line => line.Teacher.Id))
+            {
+                if (!_teacherDays.TryGetValue(teacher.Key, out var days))
+                    continue;
+                var counts = DayCounts(teacher);
+                if (days.FullDays.Count >= 2)
+                {
+                    var high = Model.NewIntVar(0, days.Load, $"bhi_{teacher.Key}");
+                    var low = Model.NewIntVar(0, days.Load, $"blo_{teacher.Key}");
+                    foreach (var day in days.FullDays)
+                    {
+                        Model.Add(high >= counts(day));
+                        Model.Add(low <= counts(day));
+                    }
+                    Enforce(Model.Add(high - low <= 1), Families.TeacherBalance, teacher.Key);
+                }
+                foreach (var day in days.Days)
+                {
+                    if (days.PartialAllowance(day.Day) is { } allowance)
+                        Enforce(Model.Add(counts(day.Day) <= allowance), Families.TeacherBalance, teacher.Key);
+                }
+            }
         }
 
         // H10 («دروس مزدوجة»): x = pair starting here + pair ending here + single; ⌊n ÷ 2⌋ pairs and n mod 2 singles.
@@ -261,6 +314,13 @@ internal sealed class CpSatModelBuilder
                 Enforce(Model.Add(LinearExpr.Sum(singles) == line.Line.WeeklyLessons % 2), Families.DoublePeriods, line.Subject.Id);
             }
         }
+    }
+
+    /// <summary>The number of lessons one teacher teaches on a day, as an expression (0 when he has no variable that day).</summary>
+    private static Func<int, LinearExpr> DayCounts(IEnumerable<LineVars> teacherLines)
+    {
+        var byDay = teacherLines.SelectMany(line => line.Vars).GroupBy(item => item.Key.Day).ToDictionary(day => day.Key, day => LinearExpr.Sum(day.Select(item => item.Value)));
+        return day => byDay.TryGetValue(day, out var count) ? count : LinearExpr.Constant(0);
     }
 
     /// <summary>A pair variable for every adjacent (n, n+1) of one line on one day, keyed by its first lesson.</summary>
@@ -364,6 +424,111 @@ internal sealed class CpSatModelBuilder
                     Model.Add(gap >= before[lesson - 1] + after[lesson + 1] - 1 - At(lesson));
                     objective.AddTerm(gap, gapWeight);
                 }
+            }
+        }
+
+        // S9 «أقصى حصص متتالية للمعلم» as a priority: every window of k + 1 consecutive lesson numbers a teacher fills completely.
+        if (RuleWeight(SchedulingRuleKeys.MaxConsecutiveLessons) is var consecutiveWeight and > 0)
+        {
+            foreach (var teacher in Lines.GroupBy(line => line.Teacher.Id))
+            {
+                var info = teacher.First().Teacher;
+                if (_input.MaxConsecutiveOf(info) is not { } consecutive || _input.HardConsecutiveOf(info) is not null)
+                    continue;
+                foreach (var group in teacher.SelectMany(line => line.Vars.Select(item => (line.Section.ShiftId, item.Key.Day, item.Key.Lesson, Var: item.Value)))
+                             .GroupBy(item => (item.ShiftId, item.Day)))
+                {
+                    var bySlot = group.GroupBy(item => item.Lesson).ToDictionary(slot => slot.Key, slot => slot.Select(item => item.Var).ToArray());
+                    for (var first = bySlot.Keys.Min(); first + consecutive <= bySlot.Keys.Max(); first++)
+                    {
+                        if (!Enumerable.Range(first, consecutive + 1).All(bySlot.ContainsKey))
+                            continue;
+                        var over = Model.NewBoolVar($"run_{teacher.Key}_{group.Key}_{first}");
+                        Model.Add(over >= LinearExpr.Sum(Enumerable.Range(first, consecutive + 1).SelectMany(lesson => bySlot[lesson])) - consecutive);
+                        objective.AddTerm(over, consecutiveWeight);
+                    }
+                }
+            }
+        }
+
+        // S6 «توزيع حصص المعلم بفواصل»: a teacher's lessons n and n + 1 on one day (same shift) are penalised, unless both belong to double lessons.
+        if (RuleWeight(SchedulingRuleKeys.SpreadTeacherLessons) is var teacherSpreadWeight and > 0)
+        {
+            foreach (var group in Lines.SelectMany(line => line.Vars.Select(item => (line.Teacher.Id, line.Section.ShiftId, item.Key.Day, item.Key.Lesson, line.Double, Var: item.Value)))
+                         .GroupBy(item => (item.Id, item.Day, item.ShiftId)))
+            {
+                var plain = group.Where(item => !item.Double).GroupBy(item => item.Lesson).ToDictionary(slot => slot.Key, slot => slot.Select(item => item.Var).ToArray());
+                var doubled = group.Where(item => item.Double).GroupBy(item => item.Lesson).ToDictionary(slot => slot.Key, slot => slot.Select(item => item.Var).ToArray());
+                foreach (var lesson in group.Select(item => item.Lesson).Distinct().Order())
+                {
+                    var combos = new List<(BoolVar[] First, BoolVar[] Second)>();
+                    if (plain.TryGetValue(lesson, out var plainHere))
+                    {
+                        if (plain.TryGetValue(lesson + 1, out var plainNext))
+                            combos.Add((plainHere, plainNext));
+                        if (doubled.TryGetValue(lesson + 1, out var doubledNext))
+                            combos.Add((plainHere, doubledNext));
+                    }
+                    if (doubled.TryGetValue(lesson, out var doubledHere) && plain.TryGetValue(lesson + 1, out var plainAfter))
+                        combos.Add((doubledHere, plainAfter));
+                    if (combos.Count == 0)
+                        continue;
+                    var adjacent = Model.NewBoolVar($"adj_{group.Key}_{lesson}");
+                    foreach (var (first, second) in combos)
+                        Model.Add(adjacent >= LinearExpr.Sum(first) + LinearExpr.Sum(second) - 1);
+                    objective.AddTerm(adjacent, teacherSpreadWeight);
+                }
+            }
+        }
+
+        // S7 «توزيع أيام المعلم بالتساوي»: over the full days the busiest day is at most one lesson above the quietest; a partly-available day stays within its share.
+        if (RuleWeight(SchedulingRuleKeys.BalanceTeacherDays) is var balanceWeight and > 0 && !_input.Profile.BalanceHard)
+        {
+            foreach (var teacher in Lines.GroupBy(line => line.Teacher.Id))
+            {
+                if (!_teacherDays.TryGetValue(teacher.Key, out var days))
+                    continue;
+                var counts = DayCounts(teacher);
+                if (days.FullDays.Count >= 2)
+                {
+                    var high = Model.NewIntVar(0, days.Load, $"shi_{teacher.Key}");
+                    var low = Model.NewIntVar(0, days.Load, $"slo_{teacher.Key}");
+                    var uneven = Model.NewIntVar(0, days.Load, $"sun_{teacher.Key}");
+                    foreach (var day in days.FullDays)
+                    {
+                        Model.Add(high >= counts(day));
+                        Model.Add(low <= counts(day));
+                    }
+                    Model.Add(uneven >= high - low - 1);
+                    objective.AddTerm(uneven, balanceWeight);
+                }
+                foreach (var day in days.Days)
+                {
+                    if (days.PartialAllowance(day.Day) is not { } allowance)
+                        continue;
+                    var over = Model.NewIntVar(0, days.Load, $"sov_{teacher.Key}_{day.Day}");
+                    Model.Add(over >= counts(day.Day) - allowance);
+                    objective.AddTerm(over, balanceWeight);
+                }
+            }
+        }
+
+        // S8 «عدالة الحصص الأخيرة»: the weighted last periods of a teacher above his share by weekly load (evening days weigh more).
+        if (RuleWeight(SchedulingRuleKeys.FairLastPeriods) is var fairWeight and > 0)
+        {
+            var lastLessons = LastPeriodFairness.LastLessons(_input);
+            var allowances = LastPeriodFairness.Allowances(_input);
+            foreach (var teacher in Lines.GroupBy(line => line.Teacher.Id))
+            {
+                var terms = teacher.SelectMany(line => line.Vars.Where(item => lastLessons.GetValueOrDefault((line.Section.ShiftId, item.Key.Day)) == item.Key.Lesson)
+                    .Select(item => (Var: item.Value, Weight: (long)LastPeriodFairness.WeightOf(_input, item.Key.Day)))).ToArray();
+                var allowance = allowances.GetValueOrDefault(teacher.Key);
+                var most = terms.Sum(term => term.Weight);
+                if (most <= allowance)
+                    continue;
+                var excess = Model.NewIntVar(0, most - allowance, $"fair_{teacher.Key}");
+                Model.Add(excess >= LinearExpr.WeightedSum(terms.Select(term => term.Var), terms.Select(term => term.Weight)) - allowance);
+                objective.AddTerm(excess, fairWeight);
             }
         }
 

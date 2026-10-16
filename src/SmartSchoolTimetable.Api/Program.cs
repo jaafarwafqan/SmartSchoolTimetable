@@ -103,6 +103,7 @@ var supportLog = new SupportLogBuffer();
 builder.Services.AddSingleton(supportLog);
 builder.Logging.AddProvider(new SupportLogProvider(supportLog, TimeProvider.System));
 builder.Services.AddScoped<SupportLogBuilder>();
+builder.Services.AddHostedService<ParentProcessWatcher>();
 builder.Services.AddHostedService<GenerationWorker>();
 if (!builder.Environment.IsEnvironment("Testing"))
     builder.Services.AddHostedService<AutoBackupWorker>();
@@ -165,6 +166,8 @@ app.MapGenerationEndpoints();
 app.MapTimetableEndpoints();
 app.MapBackupEndpoints();
 app.MapAboutEndpoints();
+// Only when the launcher started this process with a control token (never from a browser; docs: ADR 0052).
+app.MapControlEndpoints(builder.Configuration["Control:Token"]);
 app.MapAuditEndpoints();
 app.MapSettingsEndpoints();
 app.MapFallback(async (HttpContext context) =>

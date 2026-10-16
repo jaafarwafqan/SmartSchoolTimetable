@@ -64,7 +64,6 @@ export const navGroups: readonly NavGroup[] = [
       { to: "/settings/backup", label: nav.settingsBackup, icon: DatabaseBackup },
       { to: "/settings/advanced", label: nav.settingsAdvanced, icon: SlidersHorizontal },
       { to: "/settings/history", label: nav.settingsHistory, icon: ScrollText },
-      { to: "/settings/about", label: nav.settingsAbout, icon: Info },
     ],
   },
 ];
@@ -77,6 +76,8 @@ export const navItems: readonly NavItem[] = [
   { to: "/teachers", label: nav.teachers, icon: UsersRound },
   { to: "/timetable", label: nav.timetable, icon: CalendarRange },
   { to: "/settings", label: nav.settings, icon: Settings },
+  // Owner (1.0.0 testing): «حول البرنامج» sits in the sidebar directly below «الإعدادات» (also in the user menu).
+  { to: "/about", label: nav.about, icon: Info },
 ];
 
 /** Phase 2 URLs that keep working (bookmarks, links in docs). */
@@ -86,6 +87,7 @@ export const legacyRedirects: Readonly<Record<string, string>> = {
   "/calendar": "/school/calendar",
   "/stages-sections": "/classes/stages",
   "/subjects": "/classes/subjects",
+  "/settings/about": "/about",
 };
 
 export function groupFor(pathname: string): NavGroup | undefined {

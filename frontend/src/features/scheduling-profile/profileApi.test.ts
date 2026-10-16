@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { levelOf, levelWeights, priorityLevels, withLevel, type RuleInput } from "./profileApi";
+import { applyLevel, levelOf, levelWeights, priorityLevels, ruleKeys, withLevel, type RuleInput } from "./profileApi";
 
 const rule = (enabled: boolean, weight: number): RuleInput => ({ key: "avoidTeacherGaps", enabled, weight });
 
@@ -17,6 +17,30 @@ describe("priority levels (MF9)", () => {
     expect([30, 40, 100].map((weight) => levelOf(rule(true, weight)))).toEqual(Array(3).fill("veryImportant"));
     // Defaults: spread 20, gaps 30, heavy 15, repeated 25, doubles 10.
     expect([20, 30, 15, 25, 10].map((weight) => levelOf(rule(true, weight)))).toEqual(["important", "veryImportant", "important", "important", "important"]);
+  });
+
+  it("reads the new defaults as the owner set them: spread with gaps and balanced days very important, fair last periods important, consecutive off", () => {
+    // Defaults in display order: spread subjects 20, spread teacher 30, consecutive (off) 30, balance 40, fair last periods 20, heavy 15, repeated 25, doubles 10.
+    expect(ruleKeys).toHaveLength(9);
+    expect(levelOf({ enabled: true, weight: 30 })).toBe("veryImportant");
+    expect(levelOf({ enabled: true, weight: 40 })).toBe("veryImportant");
+    expect(levelOf({ enabled: true, weight: 20 })).toBe("important");
+    expect(levelOf({ enabled: false, weight: 30 })).toBe("notImportant");
+  });
+
+  it("switching one form of the teacher's day on switches the other off, and only those two exclude each other", () => {
+    const rules: RuleInput[] = [
+      { key: "spreadTeacherLessons", enabled: true, weight: 30 },
+      { key: "avoidTeacherGaps", enabled: false, weight: 30 },
+      { key: "balanceTeacherDays", enabled: true, weight: 40 },
+    ];
+    const consecutive = applyLevel(rules, "avoidTeacherGaps", "important");
+    expect(consecutive.find((item) => item.key === "avoidTeacherGaps")).toEqual({ key: "avoidTeacherGaps", enabled: true, weight: 20 });
+    expect(consecutive.find((item) => item.key === "spreadTeacherLessons")).toEqual({ key: "spreadTeacherLessons", enabled: false, weight: 0 });
+    expect(consecutive.find((item) => item.key === "balanceTeacherDays")).toBe(rules[2]);
+    // Switching one off leaves the other as it is.
+    const off = applyLevel(rules, "spreadTeacherLessons", "notImportant");
+    expect(off.find((item) => item.key === "avoidTeacherGaps")).toBe(rules[1]);
   });
 
   it("rewrites a rule only when its level changes", () => {

@@ -23,7 +23,7 @@ export function UserMenu({ username, onError }: { username: string | null; onErr
       items={[
         { key: "account", label: messages.school.shell.account, icon: <CircleUser aria-hidden="true" size={20} />, onSelect: () => navigate("/settings/account") },
         { key: "settings", label: messages.school.nav.settings, icon: <Settings aria-hidden="true" size={20} />, onSelect: () => navigate("/settings") },
-        { key: "about", label: messages.school.about.menu, icon: <Info aria-hidden="true" size={20} />, onSelect: () => navigate("/settings/about") },
+        { key: "about", label: messages.school.about.menu, icon: <Info aria-hidden="true" size={20} />, onSelect: () => navigate("/about") },
         { key: "lock", label: messages.school.shell.lock, icon: <Lock aria-hidden="true" size={20} />, onSelect: () => lock.mutate() },
         { key: "logout", label: messages.app.logout, icon: <LogOut aria-hidden="true" size={20} />, onSelect: () => logout.mutate() },
       ]}

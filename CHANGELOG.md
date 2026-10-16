@@ -1,6 +1,43 @@
 # Changelog
 
-## [Unreleased]
+## [1.0.0] - 2026-10-11 (branch `work/phase-5`, tags `v1.0.0`, `phase-5-final`)
+First release for the school. Windows 10 (1809+) 64-bit and Windows 11; installer `SmartSchoolTimetable-Setup-1.0.0-<stamp>.exe` with a SHA-256 file; Arabic user guide `docs/USER_GUIDE_AR.pdf`. Everything below was delivered on `work/phase-5` since `phase-4i`; the last four items (M3, M5, user guide, version) are the final stage.
+### Owner testing feedback for 1.0.0 (ADR 0054)
+- The whole school prints BY DAYS: rows days × lessons (day label spanning its lessons, lesson number and 12-hour time), columns sections under a stage header row, thick rules between stages and days. One A3 page when it fits at 8 pt or more, in the orientation chosen automatically («تلقائي (الأنسب)»); otherwise the fewest pages (days split, or a page per stage), headers repeated. Colour/B&W, logo, header, footer and signatures unchanged.
+- «عدد المعلمين في الصفحة» / «عدد الشعب في الصفحة» (تلقائي / ١ / ٢ / ٤ / ٦): batches packed several to a page, never one split over two; each block shows the name, the weekly load and the full grid with times.
+- No browser margin (`@page { margin: 0 }`): Chromium has nowhere to print its date, title and address; the document numbers its own pages («صفحة ١ من ٢»). The print hint tells users to turn off «الرؤوس والتذييلات» if anything still appears. Printed rows are deterministic (three clamped lines), so the page plan holds for any data.
+- On screen: «عرض: الأيام عمودياً» (default) or «الأيام أفقياً» for the school view and the new «حسب المرحلة» view.
+- Manual editing from any view (section, teacher, stage, the whole school) with one history across views and the same checks and Arabic reasons; in the teacher view a lesson moves within its own section.
+- «حول البرنامج» moved to the sidebar below «الإعدادات» (`/about`; `/settings/about` redirects; the user menu keeps its link).
+- CI fixes (run #6): the settings-tabs race in `layout-375`; screenshots mask the date-dependent holiday card, reset inner sideways scroll and wait for the page to stay at the top; a stale 5.0.0 dashboard baseline.
+- Tests: Vitest for both planners and for editing from every view; `phase5-edit-views.spec.ts`; the printing specs check one-page A3, packing, page numbers and that each planned page is exactly one PDF page.
+### Generation rules decided by the owner before the final tag (ADR 0053)
+- Daily limit of a subject: «حصة واحدة في اليوم» added (1 to 6), and limits per grade and per section in an inline table (choose, never type; «تلقائي» inherits; the most specific wins). Readiness error when limit × available days < weekly lessons.
+- «أقصى حصص متتالية للمعلم»: 2 or 3 (school default 3, per-teacher choice), a priority «مهم جداً» by default (S9). The school or one teacher can make it «إلزامي» (H11). The result notes list every teacher over the limit (name, day, count); a hard run that times out is retried once without it, and the owner is told it is the likely cause. Readiness `TEACHER_CONSECUTIVE_SHORT` (an error when hard, a warning as a priority) uses the owner's formula. Migration `Phase5ConsecutivePriority`.
+- «توزيع حصص المعلم بفواصل» (S6) is the default form of the teacher's day; «حصص المعلم متتالية بلا فراغات» (S2) is off by default and mutually exclusive with it.
+- «توزيع أيام المعلم بالتساوي» (S7, «مهم جداً»), with «جعل التوازن إلزامياً» (H12): full days within one lesson; partial days a proportional share.
+- «عدالة الحصص الأخيرة» (S8, «مهم»): each teacher's share of the last periods by weekly load, evening days weighted double; the result note says «أكثر معلم في الحصص الأخيرة: … (عدد)، وأقلهم: … (عدد)».
+- Corrective migration `Phase5GenerationRules` (new columns, `SubjectCapOverrides`, the existing school's priorities upgraded without both forms of the teacher's day).
+- Tests: `GenerationRulesTests` (unit, CP-SAT model, verifier, diagnostics per rule), `GenerationRulesApiTests` (API, migration), Vitest notes, findings and exclusivity; performance gate re-run (docs/PERFORMANCE.md).
+- User guide: new chapter «كيف يعمل توليد الجدول».
+### Fix: the program froze when the internet was cut (owner report)
+- TanStack Query's default `networkMode: "online"` paused every request while the browser reported «no network», so cutting the internet left every screen on a spinner although the local server was running. `networkMode: "always"` for queries and mutations (`lib/queryClient.ts`); a Vitest check of the defaults and `m3-offline.spec.ts` (the browser reports offline, then the screens load and a setting saves; confirmed to fail without the fix).
+### Fill checks and the daily limit (owner's real-school test: generation failed on full sections)
+- Pre-solve validator: `SUBJECT_DAYS_SHORT`, `SECTION_DAY_UNDERFILLED`, `SECTION_SLOT_UNCOVERED` (errors, each a proof) and `TEACHERS_SAME_DAY_OFF` (warning), in plain Arabic naming section, subject, teacher and day (`docs/SOLVER.md`). Corrective migration `Phase5SubjectDailyCap`.
+- Owner override of the daily limit per subject (2 to 6) in «الإعدادات › متقدم › الحد اليومي لحصص المادة»; default unchanged (automatic); `DailyCaps.For` is the one rule for the solver, the verifier and the validator; `PUT /api/v1/subjects/{id}/daily-cap`.
+- Tests: `SectionFillChecksTests` (smallest counter-example per check, slack cases, override), a Vitest sentence test, and `phase5-fill-checks.spec.ts`. One older test was corrected: 24 lessons of one subject on 4 days are impossible under the automatic limit (it needs a limit of 6).
+### M3 release validation (ADR 0010 SQLCipher NO-GO)
+- Solver workers adapt to the machine: `GenerationSettings.WorkersFor` (cap 4; 2 on a machine with at most 2 logical processors or little memory), CP-SAT `max_memory_in_mb`; measured on the published program with a 512 MB heap cap and 2 logical processors: 24 sections first timetable in 7.7 s, 40 sections in 11.2 s, server peak 447 MB (`docs/PERFORMANCE.md`, `docs/M3_RELEASE_VALIDATION_AR.md`).
+- `LocalAttackSuiteTests`: every state-changing route refuses a request without the per-launch token; CORS and preflight, Host spellings, CSP and the control channel are tested. `m3-offline.spec.ts` proves nothing leaves 127.0.0.1.
+- SQLCipher: NO-GO (ADR 0010): the database stays an ordinary SQLite file; the risk is accepted in `RISKS.md` (R9).
+### M5 launcher and installer (ADR 0052)
+- `SmartSchoolTimetable.exe` (WinForms, 64-bit only): tray icon (open / backup now / stop), one instance, free port when 5080 is busy, the page inside WebView2 restricted to the local origin (devtools and permissions off), automatic fall-back to the default browser when WebView2 is missing, the server stops when the launcher ends. Control channel `/api/v1/control/*` exists only when a per-launch token is configured.
+- Inno Setup installer (Arabic, x64 only, Windows 10 1809+, a 32-bit Windows is refused with «هذا البرنامج يحتاج ويندوز 64-بت»), per-machine by default and `/CURRENTUSER` per user, optional start with Windows, shortcuts incl. «دليل المستخدم», upgrade in place, uninstall that never removes data or backups. A clean-output check makes `Publish-Release.ps1` fail when a database, log, symbol file, test data or a user path is in the folder.
+- `m5-installer.spec.ts` (install, first run, single instance, port fallback, browser fallback, upgrade, refuse while running, uninstall keeps data).
+### User guide
+- `docs/USER_GUIDE_AR.pdf` (A4 RTL, cover, contents with page numbers, 15 chapters, numbered steps, tips and warnings, figures) built reproducibly by `tools/Build-UserGuide.ps1`: it starts the published program on a temporary database, drives a scripted scenario for a fictional school (`frontend/guide`, `tools/guide`), saves the figures and prints the guide. Source: `docs/guide/USER_GUIDE_AR.html`, `docs/guide/img`. No real school data.
+- Version number 1.0.0 (`Directory.Build.props`).
+- «حول البرنامج» › «للتواصل والدعم»: WhatsApp 07806421980 and Telegram @jaafar_Wafqan as text and links; the desktop window opens only these two addresses in the default browser.
 ### M0 truth and hygiene (branch `work/phase-5`)
 - `DELIVERY_PLAN.md` rewritten to match what Phase 4 delivered and what remains; Phase 7 (attendance, monitoring) cancelled by the owner and replaced by M4; the Phase 1 acceptance table moved to `docs/PHASE1_ACCEPTANCE.md`.
 - `docs/DECISIONS_PENDING.md` now lists open decisions only; approved, decided, superseded and informational rows moved unchanged to `docs/DECISIONS_LOG.md` (numbering shared, never reused).
@@ -110,7 +147,7 @@
   - `tools/Publish-Release.ps1` builds a self-contained win-x64 folder (196 MB) under `artifacts/release/`, which git ignores, with `تشغيل البرنامج.bat` and `اقرأني.txt`.
   - The published executable passed the auth and Phase 4 Playwright scenarios on temporary databases (`SST_RELEASE_EXE`).
   - The settings screenshot was re-baselined after viewing it; the suggested backup folder is masked because it contains the machine's user path.
-  - New documents: `docs/USER_GUIDE_AR.md` and `docs/OWNER_TEST_SCRIPT_PHASE4.md` (25 steps).
+  - New documents: `docs/USER_GUIDE_AR.md` (since replaced by the PDF `docs/USER_GUIDE_AR.pdf`) and `docs/OWNER_TEST_SCRIPT_PHASE4.md` (25 steps).
 - **Before final (owner review, 2026-10-09):**
   - Decisions #69–#77 approved.
   - The two files the owner named were deleted.

@@ -2,11 +2,25 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../../api";
 import { refreshQueries } from "../../lib/refreshQueries";
 
-export const ruleKeys = ["spreadSubjectsAcrossDays", "avoidTeacherGaps", "heavySubjectsEarly", "avoidSameSubjectRepeated", "keepDoubleLessonsTogether"] as const;
+export const ruleKeys = [
+  "spreadSubjectsAcrossDays", "maxConsecutiveLessons", "spreadTeacherLessons", "avoidTeacherGaps", "balanceTeacherDays", "fairLastPeriods",
+  "heavySubjectsEarly", "avoidSameSubjectRepeated", "keepDoubleLessonsTogether",
+] as const;
 export type RuleKey = (typeof ruleKeys)[number];
 
 export type SchedulingRule = { key: RuleKey; enabled: boolean; weight: number; enabledByDefault: boolean; defaultWeight: number };
-export type SchedulingProfile = { rules: SchedulingRule[]; profileVersion: number; isDefault: boolean; version: number };
+export type SchedulingProfile = {
+  rules: SchedulingRule[];
+  profileVersion: number;
+  isDefault: boolean;
+  version: number;
+  /** The school's «أقصى حصص متتالية للمعلم»: 2 or 3. */
+  defaultMaxConsecutive: number;
+  /** «جعل التوازن إلزامياً»: balanced teacher days as a hard rule. */
+  balanceHard: boolean;
+  /** «إلزامي لكل المعلمين»: the consecutive-lessons limit as a hard rule for the whole school. */
+  consecutiveHard: boolean;
+};
 export type RuleInput = { key: RuleKey; enabled: boolean; weight: number };
 
 const profileKey = ["scheduling-profile"] as const;
@@ -25,11 +39,23 @@ function useProfileMutation<TInput>(request: (input: TInput) => Promise<Scheduli
 }
 
 export function useSaveProfile() {
-  return useProfileMutation((input: { rules: RuleInput[]; version: number }) => apiRequest<SchedulingProfile>(`${profilePath}/`, "PUT", input));
+  return useProfileMutation((input: { rules: RuleInput[]; version: number; defaultMaxConsecutive: number; balanceHard: boolean; consecutiveHard: boolean }) => apiRequest<SchedulingProfile>(`${profilePath}/`, "PUT", input));
 }
 
 export function useRestoreDefaults() {
   return useProfileMutation((version: number) => apiRequest<SchedulingProfile>(`${profilePath}/restore-defaults`, "POST", { confirm: true, version }));
+}
+
+/** Two forms of the teacher's day that exclude each other: choosing one switches the other off. */
+export const exclusiveRules: Partial<Record<RuleKey, RuleKey>> = { spreadTeacherLessons: "avoidTeacherGaps", avoidTeacherGaps: "spreadTeacherLessons" };
+
+/** The rules after `key` got `level`: the rule it excludes is switched off when `key` is switched on. */
+export function applyLevel(rules: readonly RuleInput[], key: RuleKey, level: PriorityLevel): RuleInput[] {
+  const other = exclusiveRules[key];
+  return rules.map((rule) => {
+    if (rule.key === key) return withLevel(rule, level);
+    return other && rule.key === other && level !== "notImportant" ? withLevel(rule, "notImportant") : rule;
+  });
 }
 
 /**

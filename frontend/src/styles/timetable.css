@@ -285,12 +285,32 @@
 .ui-tt-grid td:has(.ui-tt-cell) {
   cursor: default;
 }
+/* The school view by days: a day label spanning its lessons, a thick rule between days and between stages. */
+.ui-tt-grid .ui-tt-group {
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.ui-tt-grid tr.is-group-start > * {
+  border-block-start: 3px solid var(--color-ink);
+}
+
+.ui-tt-grid :is(th, td).is-group-start {
+  border-inline-start: 3px solid var(--color-ink);
+}
+
 /* ---------- MF5: official printing ----------
    The printed document lives beside the app root (portal) and is the only thing on paper: the app is hidden, every
    page carries its own header and signature footer, the grid shrinks with --print-scale so nothing is cut, rows never
    split, the column headers repeat, and black borders keep it clear with background graphics turned off. */
 .print-document {
+  --paper-width: 297mm;
+  --paper-height: 210mm;
   display: none;
+}
+
+.print-blocks {
+  --print-columns: 1;
 }
 
 .print-page {
@@ -330,13 +350,134 @@
     -webkit-print-color-adjust: exact;
   }
 
+  /* One .print-page is exactly one piece of paper: the @page has no margin (so Chromium draws no date, title or address of its own), and the
+     page pads itself. The height is a hair under the paper so rounding never pushes a page onto a second one. */
   .print-page {
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    inline-size: var(--paper-width, 297mm);
+    block-size: calc(var(--paper-height, 210mm) - 0.5mm);
+    padding: 10mm;
+    overflow: hidden;
     font-size: calc(10pt * var(--print-scale, 1));
     break-after: page;
+    break-inside: avoid;
   }
 
   .print-page:last-child {
     break-after: auto;
+  }
+
+  .print-page-number {
+    font-weight: 700;
+  }
+
+  /* Packed teachers or sections: a grid of equal blocks; a block never splits. */
+  .print-blocks {
+    display: grid;
+    grid-template-columns: repeat(var(--print-columns, 1), minmax(0, 1fr));
+    gap: 5mm;
+    align-content: start;
+  }
+
+  .print-block {
+    break-inside: avoid;
+    min-inline-size: 0;
+  }
+
+  .print-block-title {
+    margin: 0 0 1mm;
+    font-size: 1.05em;
+    font-weight: 700;
+  }
+
+  /* The whole school by days: day and lesson number down, sections of each stage across. */
+  .print-days {
+    inline-size: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    border-spacing: 0;
+  }
+
+  .print-days caption {
+    display: none;
+  }
+
+  .print-days thead {
+    display: table-header-group;
+  }
+
+  .print-days tr {
+    break-inside: avoid;
+  }
+
+  .print-days th,
+  .print-days td {
+    min-inline-size: 0;
+    padding: 0.2em;
+    border: 0.3mm solid var(--color-print-ink);
+    color: var(--color-print-ink);
+    font-size: 1em;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  .print-days th {
+    background: var(--color-print-header);
+    font-weight: 700;
+  }
+
+  .print-days .print-days-corner,
+  .print-days .print-days-day {
+    inline-size: calc(15mm * var(--print-scale, 1));
+  }
+
+  .print-days .print-days-number {
+    inline-size: calc(18mm * var(--print-scale, 1));
+  }
+
+  .print-days .print-days-day {
+    white-space: nowrap;
+  }
+
+  .print-days .ui-tt-subject {
+    display: block;
+    font-weight: 700;
+  }
+
+  .print-days .ui-tt-teacher {
+    display: block;
+    font-size: max(7pt, 0.85em);
+  }
+
+  .print-days .timetable-time {
+    display: block;
+    font-size: max(7pt, 0.75em);
+    font-weight: 400;
+  }
+
+  /* A thick rule between stages (columns) and between days (rows). */
+  .print-days .is-stage-start {
+    border-inline-start: 0.9mm solid var(--color-print-ink);
+  }
+
+  .print-days tr.is-day-start > * {
+    border-block-start: 0.9mm solid var(--color-print-ink);
+  }
+
+  .print-days .print-days-stage[data-band="1"] { background: var(--color-print-stage-1); }
+  .print-days .print-days-stage[data-band="2"] { background: var(--color-print-stage-2); }
+  .print-days .print-days-stage[data-band="3"] { background: var(--color-print-stage-3); }
+  .print-days .print-days-stage[data-band="4"] { background: var(--color-print-stage-4); }
+  .print-days .print-days-stage[data-band="5"] { background: var(--color-print-stage-5); }
+  .print-days .print-days-stage[data-band="6"] { background: var(--color-print-stage-6); }
+
+  .print-document.is-bw .print-days td,
+  .print-document.is-bw .print-days .print-days-stage {
+    background: none;
   }
 
   .print-page-header {
@@ -531,6 +672,69 @@
   .print-master .print-stage[data-band="5"] .print-section { background: var(--color-print-stage-5); }
   .print-master .print-stage[data-band="6"] .print-section { background: var(--color-print-stage-6); }
 
+  /* Deterministic rows (owner, 1.0.0 testing): a lesson cell is exactly three lines (the subject on at most two, the teacher or section on
+     one), so the page planner's sizes hold whatever the names are. A lesson-number header holds the number and at most two lines of time. */
+  :is(.print-grid .ui-tt-grid, .print-days) :is(th, td, .ui-tt-cell, .ui-tt-subject, .ui-tt-teacher, .timetable-time) {
+    line-height: 1.1;
+  }
+
+  /* The cell stacks its lines from the top, so the clamp hides whole lines only (centring could cut a line in half). */
+  .print-grid .ui-tt-grid td .ui-tt-cell {
+    align-content: start;
+  }
+
+  .print-days td {
+    block-size: 3.6em;
+    padding: 0.15em;
+    overflow: hidden;
+  }
+
+  /* A section or teacher grid: four lines, so a section name on the second line keeps its letter («السادس الابتدائي / أ»). */
+  .print-grid .ui-tt-grid td .ui-tt-cell {
+    block-size: 4.7em;
+    padding: 0.15em;
+    overflow: hidden;
+  }
+
+  :is(.print-grid .ui-tt-grid, .print-days) td .ui-tt-subject {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+  }
+
+  :is(.print-grid .ui-tt-grid, .print-days) td .ui-tt-teacher {
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  /* In a section or teacher grid the second line may take two lines (after the one-line rule of the school grid, which it overrides). */
+  .print-grid .ui-tt-grid td .ui-tt-teacher {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
+  }
+
+  :is(.print-grid .ui-tt-grid, .print-days) .timetable-time {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+  }
+
+  .print-days thead th {
+    padding-block: 0.15em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   /* «أبيض وأسود»: no fills at all; borders, the stage header rows and bold subject names carry the structure. */
   .print-document.is-bw .print-grid .ui-tt-grid td .ui-tt-cell,
   .print-document.is-bw .print-master td,
@@ -547,11 +751,12 @@
   }
 
   .print-page-footer {
+    margin-block-start: auto;
     display: flex;
     flex-wrap: wrap;
     justify-content: space-between;
     gap: 4mm;
-    margin-block-start: 6mm;
+    padding-block-start: 6mm;
     font-size: 10pt;
     break-inside: avoid;
   }

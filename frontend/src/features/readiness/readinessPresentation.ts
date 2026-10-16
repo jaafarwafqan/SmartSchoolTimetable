@@ -1,5 +1,6 @@
 import { messages } from "../../i18n/messages";
 import { isolate } from "../../i18n/isolate";
+import { weekdayLabel } from "../timetable-structure/weekdays";
 import type { Formatter } from "../../lib/format";
 import type { ReadinessFinding } from "./readinessApi";
 
@@ -56,6 +57,33 @@ export function findingMessage(finding: ReadinessFinding, format: Formatter): st
     case "DISTRIBUTION_DISABLED_IN_CURRICULUM": return text.messages.DISTRIBUTION_DISABLED_IN_CURRICULUM(name);
     case "STAGE_WITHOUT_CURRICULUM": return text.messages.STAGE_WITHOUT_CURRICULUM(name);
     case "TEACHER_SHIFT_OVERLAP": return text.messages.TEACHER_SHIFT_OVERLAP(name);
+    case "SUBJECT_DAYS_SHORT": {
+      const [subject, ...teachers] = finding.related;
+      const [weekly, cap, ...lost] = finding.details.map(Number);
+      const lostDays = lost.length > 0 ? text.daysOff(lost.map(weekdayLabel).join("، ")) : "";
+      return text.messages.SUBJECT_DAYS_SHORT(isolate(subject?.name ?? ""), name, format.count(required, "day"), format.count(weekly ?? 0, "lesson"), format.count(cap ?? 0, "lesson"),
+        isolate(teachers.map((teacher) => teacher.name).join("، ")), format.count(available, "day"), lostDays);
+    }
+    case "SECTION_DAY_UNDERFILLED": {
+      const [day, lessons] = finding.details.map(Number);
+      const off = finding.related.length > 0 ? text.teachersOff(finding.related.map((teacher) => isolate(teacher.name)).join("، ")) : "";
+      return text.messages.SECTION_DAY_UNDERFILLED(name, weekdayLabel(day ?? 0), format.count(lessons ?? 0, "lesson"), format.count(required, "lesson"), format.count(available, "lesson"), off);
+    }
+    case "SECTION_SLOT_UNCOVERED": {
+      const [day, lesson] = finding.details.map(Number);
+      return text.messages.SECTION_SLOT_UNCOVERED(name, weekdayLabel(day ?? 0), format.number(lesson ?? 0), format.number(required), format.number(available));
+    }
+    case "TEACHERS_SAME_DAY_OFF": {
+      const [day, total] = finding.details.map(Number);
+      const [first, second] = finding.related;
+      return text.messages.TEACHERS_SAME_DAY_OFF(name, isolate(first?.name ?? ""), isolate(second?.name ?? ""), weekdayLabel(day ?? 0), format.count(required, "lesson"), format.count(total ?? 0, "lesson"));
+    }
+    case "TEACHER_CONSECUTIVE_SHORT": {
+      const [limit, days] = finding.details.map(Number);
+      return text.messages.TEACHER_CONSECUTIVE_SHORT(name, format.count(required, "lesson"), format.count(available, "lesson"), format.count(limit ?? 0, "lesson"), format.count(days ?? 0, "day"),
+        finding.severity === "warning" ? text.consecutiveSoftNote : (limit ?? 0) < 3 ? text.consecutiveAdviceRaise : text.consecutiveAdviceReduce);
+    }
+    case "TEACHER_BALANCE_HARD_SHORT": return text.messages.TEACHER_BALANCE_HARD_SHORT(name, format.count(required, "lesson"), format.count(available, "lesson"));
     default: return text.unknownFinding;
   }
 }
@@ -79,6 +107,8 @@ export function fixHref(fix: string): string {
   if (["raiseTeacherLimit", "checkRelease", "removeTeacherBlocks"].includes(fix)) return "/teachers/list";
   if (["removeSubjectBlocks", "enableDistribution", "turnOffDoublePeriod"].includes(fix)) return "/classes/subjects";
   if (["raiseResourceCapacity", "restoreResource"].includes(fix)) return "/classes/resources";
+  if (fix === "raiseDailyCap" || fix === "relaxBalance" || fix === "relaxConsecutive") return "/settings/advanced";
+  if (fix === "raiseTeacherConsecutive") return "/teachers/list";
   if (fix === "raiseTimeLimit" || fix === "unlockEdits") return "/timetable/generate";
   if (fix === "reviewWarnings") return "/readiness";
   return "/school/timing";

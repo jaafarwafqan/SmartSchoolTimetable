@@ -12,6 +12,9 @@ export const diagnosticCodes = [
   "CORE_SUBJECT_DAILY_CAP",
   "CORE_DOUBLE_PERIODS",
   "CORE_LOCKED_LESSONS",
+  "CORE_TEACHER_CONSECUTIVE",
+  "CORE_TEACHER_BALANCE",
+  "CONSECUTIVE_LIKELY_CAUSE",
   "CORE_FUNDAMENTAL",
   "TIMEOUT_NO_SOLUTION",
 ] as const;
@@ -33,6 +36,12 @@ export type SolverFinding = {
 };
 
 export type RuleScore = { key: string; enabled: boolean; weight: number; penalty: number; weighted: number };
+
+/** The teacher with the most and the fewest last-period lessons (raw counts), when the timetable has last periods to share. */
+export type LastPeriodInsight = { mostTeacher: string; mostCount: number; leastTeacher: string; leastCount: number };
+
+/** A teacher who got more lessons in a row than his limit on one day (the longest run that day). */
+export type ConsecutiveRun = { teacher: string; day: number; count: number; limit: number };
 
 /** Real counters of an active run (solver events only, never an estimate). */
 export type LiveProgress = {
@@ -66,7 +75,7 @@ export type GenerationRun = {
   improvements: number;
   firstSolutionSeconds: number | null;
   lessonsPlaced: number;
-  score: { total: number; rules: RuleScore[] } | null;
+  score: { total: number; rules: RuleScore[]; lastPeriods?: LastPeriodInsight | null; consecutiveRuns?: ConsecutiveRun[] | null } | null;
   diagnostics: { findings: SolverFinding[]; minimal: boolean } | null;
   errorCode: string | null;
   timetableVersionId: number | null;

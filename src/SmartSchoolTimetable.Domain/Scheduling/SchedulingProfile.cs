@@ -14,15 +14,36 @@ public static class SchedulingRuleKeys
     public const string AvoidSameSubjectRepeated = "avoidSameSubjectRepeated";
     public const string KeepDoubleLessonsTogether = "keepDoubleLessonsTogether";
 
-    /// <summary>Defaults in display order: every rule enabled with the owner's weights.</summary>
+    /// <summary>«توزيع حصص المعلم بفواصل»: lessons of a teacher on one day are not back to back (the default of the teacher's day).</summary>
+    public const string SpreadTeacherLessons = "spreadTeacherLessons";
+
+    /// <summary>«توزيع أيام المعلم بالتساوي»: a teacher's lessons are balanced over the days he is free.</summary>
+    public const string BalanceTeacherDays = "balanceTeacherDays";
+
+    /// <summary>«عدالة الحصص الأخيرة»: no teacher always gets the last periods of the day.</summary>
+    public const string FairLastPeriods = "fairLastPeriods";
+
+    /// <summary>«أقصى حصص متتالية للمعلم» as a priority: lessons in a row above the limit (2 or 3) are penalised; the school or a teacher can make it hard.</summary>
+    public const string MaxConsecutiveLessons = "maxConsecutiveLessons";
+
+    /// <summary>Defaults in display order. <see cref="AvoidTeacherGaps"/> («متتالية») is off by default: it is the opposite of <see cref="SpreadTeacherLessons"/>.</summary>
     public static readonly IReadOnlyList<SchedulingRule> Defaults =
     [
         new(SpreadSubjectsAcrossDays, true, 20),
-        new(AvoidTeacherGaps, true, 30),
+        new(MaxConsecutiveLessons, true, 40),
+        new(SpreadTeacherLessons, true, 30),
+        new(AvoidTeacherGaps, false, 30),
+        new(BalanceTeacherDays, true, 40),
+        new(FairLastPeriods, true, 20),
         new(HeavySubjectsEarly, true, 15),
         new(AvoidSameSubjectRepeated, true, 25),
         new(KeepDoubleLessonsTogether, true, 10),
     ];
+
+    /// <summary>True when <paramref name="rules"/> turn on both the spread and the consecutive form of the teacher's day (they are mutually exclusive).</summary>
+    public static bool Conflicting(IEnumerable<SchedulingRule> rules) =>
+        rules.Any(rule => rule.Key == SpreadTeacherLessons && rule.Enabled && rule.Weight > 0)
+        && rules.Any(rule => rule.Key == AvoidTeacherGaps && rule.Enabled && rule.Weight > 0);
 }
 
 /// <summary>
@@ -36,6 +57,10 @@ public sealed class SchedulingProfile : VersionedEntity
     public const int MaxWeight = 100;
     public const string RulesField = "Rules";
     public const long SingletonId = 1;
+    public const int MinConsecutive = 2;
+    public const int MaxConsecutive = 3;
+    public const int DefaultConsecutive = 3;
+    public const string ConsecutiveField = "DefaultMaxConsecutive";
 
     private readonly List<SchedulingRule> _rules = [];
 
@@ -44,6 +69,15 @@ public sealed class SchedulingProfile : VersionedEntity
     }
 
     public int ProfileVersion { get; private set; } = 1;
+
+    /// <summary>The school's «أقصى حصص متتالية للمعلم» (2 or 3), used by every teacher without his own.</summary>
+    public int DefaultMaxConsecutive { get; private set; } = DefaultConsecutive;
+
+    /// <summary>«جعل التوازن إلزامياً»: balanced teacher days become a hard rule instead of a priority.</summary>
+    public bool BalanceHard { get; private set; }
+
+    /// <summary>«إلزامي» for the whole school: the consecutive-lessons limit is a hard rule for every teacher (a teacher can also be made hard alone).</summary>
+    public bool ConsecutiveHard { get; private set; }
     public IReadOnlyList<SchedulingRule> Rules => _rules;
 
     public static SchedulingProfile CreateDefault()
@@ -53,8 +87,11 @@ public sealed class SchedulingProfile : VersionedEntity
         return profile;
     }
 
-    /// <summary>Replaces the rules; every known rule exactly once, weights 0–100. Returns false when nothing changed.</summary>
-    public bool Update(IReadOnlyCollection<SchedulingRule>? rules)
+    /// <summary>
+    /// Replaces the rules; every known rule exactly once, weights 0–100, and not both forms of the teacher's day. A null
+    /// <paramref name="defaultMaxConsecutive"/> or <paramref name="balanceHard"/> keeps the stored value. Returns false when nothing changed.
+    /// </summary>
+    public bool Update(IReadOnlyCollection<SchedulingRule>? rules, int? defaultMaxConsecutive = null, bool? balanceHard = null, bool? consecutiveHard = null)
     {
         var input = rules ?? [];
         var keys = SchedulingRuleKeys.Defaults.Select(rule => rule.Key).ToArray();
@@ -63,21 +100,27 @@ public sealed class SchedulingProfile : VersionedEntity
             .When(input.Where(rule => rule is not null).GroupBy(rule => rule.Key).Any(group => group.Count() > 1), RulesField, DomainErrorCode.Duplicate)
             .When(keys.Any(key => input.All(rule => rule?.Key != key)), RulesField, DomainErrorCode.Required)
             .When(input.Any(rule => rule is not null && rule.Weight is < MinWeight or > MaxWeight), RulesField, DomainErrorCode.OutOfRange)
+            .When(defaultMaxConsecutive is not null and not (MinConsecutive or MaxConsecutive), ConsecutiveField, DomainErrorCode.OutOfRange)
             .ThrowIfAny();
-        return Replace(keys.Select(key => input.First(rule => rule.Key == key)));
+        var ordered = keys.Select(key => input.First(rule => rule.Key == key)).ToArray();
+        new DomainErrors().When(SchedulingRuleKeys.Conflicting(ordered), RulesField, DomainErrorCode.InvalidOption).ThrowIfAny();
+        return Replace(ordered, defaultMaxConsecutive ?? DefaultMaxConsecutive, balanceHard ?? BalanceHard, consecutiveHard ?? ConsecutiveHard);
     }
 
     /// <summary>«استعادة الإعدادات الافتراضية». Returns false when the rules were already the defaults.</summary>
-    public bool RestoreDefaults() => Replace(SchedulingRuleKeys.Defaults);
+    public bool RestoreDefaults() => Replace(SchedulingRuleKeys.Defaults, DefaultConsecutive, false, false);
 
-    private bool Replace(IEnumerable<SchedulingRule> ordered)
+    private bool Replace(IEnumerable<SchedulingRule> ordered, int defaultMaxConsecutive, bool balanceHard, bool consecutiveHard)
     {
         // Fresh copies: owned rows must never share an instance (the defaults are static).
         var next = ordered.Select(rule => rule with { }).ToArray();
-        if (next.Length == _rules.Count && next.All(_rules.Contains))
+        if (next.Length == _rules.Count && next.All(_rules.Contains) && defaultMaxConsecutive == DefaultMaxConsecutive && balanceHard == BalanceHard && consecutiveHard == ConsecutiveHard)
             return false;
         _rules.Clear();
         _rules.AddRange(next);
+        DefaultMaxConsecutive = defaultMaxConsecutive;
+        BalanceHard = balanceHard;
+        ConsecutiveHard = consecutiveHard;
         ProfileVersion++;
         Touch();
         return true;

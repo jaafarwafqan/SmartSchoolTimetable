@@ -42,6 +42,7 @@ export const currentCheck = {
     shift: "دوام محذوف",
   },
   noLimit: "بلا حد",
+  followsSchool: "حسب المدرسة",
   noDays: "لا أيام",
   findings: {
     TEACHER_UNAVAILABLE: (teacher: string, day: string, count: string) => `${isolate(teacher)}: غير متاح يوم ${day}، وفي الجدول ${count} فيه.`,
@@ -65,6 +66,8 @@ export const currentCheck = {
     SUBJECT_DAILY_CAP: (subject: string, section: string, day: string, count: string, limit: string) =>
       `مادة ${isolate(subject)} في الشعبة ${section}: في يوم ${day} ${count}، والحد ${limit}.`,
     DOUBLE_PERIOD_BROKEN: (subject: string, section: string) => `مادة ${isolate(subject)} في الشعبة ${section}: الحصص المزدوجة ليست متتالية.`,
+    TEACHER_CONSECUTIVE: (teacher: string, day: string, count: string, limit: string) => `${isolate(teacher)}: في يوم ${day} له ${count} متتالية، والأقصى المسموح ${limit}.`,
+    TEACHER_BALANCE: (teacher: string) => `${isolate(teacher)}: توزيع حصصه على أيامه غير متوازن، وقد جعلت المدرسة التوازن إلزامياً.`,
     UNKNOWN: "حصة في الجدول لا تطابق بيانات المدرسة الحالية.",
   },
   changes: {
@@ -79,6 +82,7 @@ export const currentCheck = {
     TEACHER_SPECIALIZATIONS_CHANGED: (teacher: string) => `تغيّرت تخصصات ${isolate(teacher)}.`,
     TEACHER_DAY_LIMIT_CHANGED: (teacher: string, from: string, to: string) => `${isolate(teacher)}: الحد الأقصى اليومي صار ${to} بعد أن كان ${from}.`,
     TEACHER_WEEK_LIMIT_CHANGED: (teacher: string, from: string, to: string) => `${isolate(teacher)}: الحد الأقصى الأسبوعي صار ${to} بعد أن كان ${from}.`,
+    TEACHER_CONSECUTIVE_CHANGED: (teacher: string, limit: string) => `${isolate(teacher)}: أقصى حصص متتالية صار ${limit}.`,
     LESSONS_PER_WEEK_CHANGED: (subject: string, stage: string, from: string, to: string) => `مادة ${isolate(subject)} في ${isolate(stage)}: ${to} في الأسبوع بعد أن كانت ${from}.`,
     LINE_ADDED: (subject: string, stage: string, count: string) => `أُضيفت مادة ${isolate(subject)} إلى منهج ${isolate(stage)} بمعدل ${count} في الأسبوع.`,
     LINE_REMOVED: (subject: string, stage: string) => `أُزيلت مادة ${isolate(subject)} من منهج ${isolate(stage)}.`,
@@ -89,7 +93,7 @@ export const currentCheck = {
     SECTION_ADDED: (section: string) => `أُضيفت الشعبة ${section}.`,
     SECTION_REMOVED: (section: string) => `أُزيلت الشعبة ${section}.`,
     SECTION_DAYS_CHANGED: (section: string) => `تغيّر عدد حصص الشعبة ${section} في أيام الأسبوع أو مرحلتها أو دوامها.`,
-    SUBJECT_RULES_CHANGED: (subject: string) => `تغيّرت قواعد مادة ${isolate(subject)} (حصص محجوبة أو حصة مزدوجة أو مورد أو أولوية).`,
+    SUBJECT_RULES_CHANGED: (subject: string) => `تغيّرت قواعد مادة ${isolate(subject)} (حصص محجوبة أو حصة مزدوجة أو مورد أو أولوية أو حد يومي).`,
     RESOURCE_CHANGED: (resource: string, capacity: string) => `تغيّر ${isolate(resource)} (السعة الآن ${capacity}).`,
     PRIORITIES_CHANGED: "تغيّرت أولويات الجدول؛ هذا يؤثر في جودة الجدول لا في صحته.",
     OTHER_CHANGE: "تغيّرت بيانات أخرى في المدرسة.",

@@ -22,7 +22,7 @@ test("(M4b) 375 px: no sideways page scroll, tabs in one row, tables as cards, a
     await expect(term).toBeVisible();
     await expect(term).not.toContainText(`${messages.school.shell.currentTerm("x").split(":")[0]}: `);
 
-    for (const path of ["/", "/settings/general", "/settings/account", "/settings/backup", "/settings/advanced", "/settings/about", "/teachers/workload", "/teachers/list", "/school/year", "/classes/stages"]) {
+    for (const path of ["/", "/settings/general", "/settings/account", "/settings/backup", "/settings/advanced", "/about", "/teachers/workload", "/teachers/list", "/school/year", "/classes/stages"]) {
       await page.goto(`${server.baseUrl}${path}`);
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
       await expectNoPageScrollX(page, path);
@@ -31,6 +31,8 @@ test("(M4b) 375 px: no sideways page scroll, tabs in one row, tables as cards, a
     // Settings tabs: one row that scrolls sideways (no wrapped stack).
     await page.goto(`${server.baseUrl}/settings/backup`);
     const tabs = page.locator(".ui-tabs ul");
+    // Count only once the tabs are on screen (CI measured an empty list right after navigation).
+    await expect(tabs.locator("li").first()).toBeVisible();
     const tops = await tabs.locator("li").evaluateAll((items) => new Set(items.map((item) => Math.round(item.getBoundingClientRect().top))).size);
     expect(tops).toBe(1);
 

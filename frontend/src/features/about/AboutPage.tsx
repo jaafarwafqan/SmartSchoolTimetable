@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { FileDown, FolderOpen, Info, LifeBuoy, Scale, Boxes } from "lucide-react";
+import { Boxes, FileDown, FolderOpen, Info, LifeBuoy, MessageCircle, Phone, Scale, Send } from "lucide-react";
 import { apiRequest } from "../../api";
 import { Alert } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
@@ -12,9 +12,12 @@ import { messages } from "../../i18n/messages";
 import { PageHeader } from "../../layout/PageHeader";
 import { useFormatter } from "../../lib/schoolContext";
 import { useFormFeedback } from "../../lib/useFormFeedback";
+import { contactLinks } from "./contactLinks";
 import { arabicLicense, useAbout, type ThirdPartyLicense } from "./aboutApi";
 
 const text = messages.school.about;
+/** Contact links open outside the program (the desktop window hands them to the default browser). */
+const externalLink = { target: "_blank", rel: "noopener noreferrer" } as const;
 
 const thirdPartyColumns: readonly TableColumn<ThirdPartyLicense>[] = [
   { key: "name", header: text.thirdParty.component, cell: (item) => <LtrText>{item.name}</LtrText> },
@@ -73,6 +76,27 @@ export function AboutPage() {
                 <FileDown aria-hidden="true" size={18} /><span>{text.support.export}</span>
               </a>
             </div>
+          </Card>
+
+          <Card className="settings-section" aria-labelledby="about-contact-title">
+            <SectionTitle level={2} icon={Phone} id="about-contact-title">{text.contact.title}</SectionTitle>
+            <p className="card-note">{text.contact.hint}</p>
+            <ul className="about-contact">
+              <li>
+                <MessageCircle aria-hidden="true" size={18} />
+                <span>{text.contact.whatsapp}</span>
+                <a className="link-button" href={contactLinks.whatsappLink} {...externalLink} title={text.contact.opensOutside}>
+                  <LtrText>{contactLinks.whatsappValue}</LtrText>
+                </a>
+              </li>
+              <li>
+                <Send aria-hidden="true" size={18} />
+                <span>{text.contact.telegram}</span>
+                <a className="link-button" href={contactLinks.telegramLink} {...externalLink} title={text.contact.opensOutside}>
+                  <LtrText>{contactLinks.telegramValue}</LtrText>
+                </a>
+              </li>
+            </ul>
           </Card>
 
           <Card className="settings-section" aria-labelledby="about-third-title">
