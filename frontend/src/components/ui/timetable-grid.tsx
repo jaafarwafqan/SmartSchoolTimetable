@@ -1,7 +1,8 @@
 import type { KeyboardEvent, ReactNode } from "react";
 import { TimetableCell, type SubjectColorIndex, type TimetableCellState } from "./timetable-cell";
 
-export type GridColumnHeader = { key: string; label: ReactNode; span?: number };
+/** `boundary`: the column opens a group (a stage in the school view by days) and gets a thick rule before it. */
+export type GridColumnHeader = { key: string; label: ReactNode; span?: number; boundary?: boolean };
 
 export type GridCell = {
   key: string;
@@ -14,9 +15,15 @@ export type GridCell = {
   description: string;
   /** Optional action on Enter or click (the manual editor); read-only grids leave it out. */
   onActivate?: () => void;
+  /** The cell opens a column group (a thick rule before it). */
+  boundary?: boolean;
 };
 
-export type GridRow = { key: string; label: ReactNode; cells: GridCell[] };
+/**
+ * `group`: on the first row of a group (a day in the school view by days), a row header spanning `span` rows before the row's own label;
+ * `groupStart` gives the row a thick rule above it.
+ */
+export type GridRow = { key: string; label: ReactNode; cells: GridCell[]; group?: { label: ReactNode; span: number }; groupStart?: boolean };
 
 type TimetableGridProps = {
   caption: string;
@@ -31,6 +38,8 @@ type TimetableGridProps = {
   headerRowLabels?: ReactNode[];
   rows: GridRow[];
   className?: string;
+  /** Header of the row-group column, when rows have groups (for example «اليوم» over the day labels). */
+  groupCorner?: ReactNode;
 };
 
 /**
@@ -39,7 +48,8 @@ type TimetableGridProps = {
  * End jump within the row; Enter or Space activates a cell that has an action. The grid scrolls inside its own
  * container only (never the page).
  */
-export function TimetableGrid({ caption, corner, headerRows, headerRowLabels, rows, className = "" }: TimetableGridProps) {
+export function TimetableGrid({ caption, corner, headerRows, headerRowLabels, rows, className = "", groupCorner }: TimetableGridProps) {
+  const grouped = groupCorner !== undefined;
   function onKeyDown(event: KeyboardEvent<HTMLTableElement>) {
     const cell = (event.target as HTMLElement).closest<HTMLElement>("[data-cell]");
     if (!cell) return;
@@ -83,20 +93,22 @@ export function TimetableGrid({ caption, corner, headerRows, headerRowLabels, ro
         <thead>
           {headerRows.map((headers, index) => (
             <tr key={index}>
+              {index === 0 && grouped && <th scope="col" rowSpan={headerRows.length} className="ui-tt-group-corner">{groupCorner}</th>}
               {index === 0 && <th scope="col" rowSpan={headerRowLabels ? 1 : headerRows.length}>{corner}</th>}
               {index > 0 && headerRowLabels && <th scope="row" className="ui-tt-header-label">{headerRowLabels[index]}</th>}
               {headers.map((header) => (
-                <th key={header.key} scope={header.span && header.span > 1 ? "colgroup" : "col"} colSpan={header.span}>{header.label}</th>
+                <th key={header.key} scope={header.span && header.span > 1 ? "colgroup" : "col"} colSpan={header.span} className={header.boundary ? "is-group-start" : undefined}>{header.label}</th>
               ))}
             </tr>
           ))}
         </thead>
         <tbody>
           {rows.map((row, rowIndex) => (
-            <tr key={row.key}>
+            <tr key={row.key} className={row.groupStart ? "is-group-start" : undefined}>
+              {row.group && <th scope="rowgroup" rowSpan={row.group.span} className="ui-tt-group">{row.group.label}</th>}
               <th scope="row">{row.label}</th>
               {row.cells.map((cell, columnIndex) => (
-                <td key={cell.key} data-cell={`${rowIndex}:${columnIndex}`} onClick={cell.onActivate}>
+                <td key={cell.key} data-cell={`${rowIndex}:${columnIndex}`} onClick={cell.onActivate} className={cell.boundary ? "is-group-start" : undefined}>
                   <TimetableCell subject={cell.subject} teacher={cell.detail} color={cell.color} state={cell.state} description={cell.description} />
                 </td>
               ))}

@@ -27,7 +27,7 @@ test("(M3) offline: every request goes to 127.0.0.1, nothing is blocked, the fon
   try {
     await setupOwner(page, server.baseUrl, "owner", "Offline-Owner-1");
     await seedReadySchool(page, server.baseUrl);
-    for (const path of ["/", "/school/profile", "/school/year", "/classes/stages", "/teachers/list", "/teachers/workload", "/timetable/generate", "/settings/general", "/settings/backup", "/settings/about"]) {
+    for (const path of ["/", "/school/profile", "/school/year", "/classes/stages", "/teachers/list", "/teachers/workload", "/timetable/generate", "/settings/general", "/settings/backup", "/about"]) {
       await page.goto(`${server.baseUrl}${path}`);
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
       await page.waitForLoadState("networkidle");

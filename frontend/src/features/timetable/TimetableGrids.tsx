@@ -3,7 +3,7 @@ import { TimetableGrid, type GridCell } from "../../components/ui/timetable-grid
 import { messages } from "../../i18n/messages";
 import type { Formatter } from "../../lib/format";
 import { weekdayLabel } from "../timetable-structure/weekdays";
-import { clock, sessionOn, type GridLesson, type GridLessonTime, type GridSessions, type GridShift, type Term, type Timetable } from "./timetableApi";
+import { clock, sessionOn, type GridLesson, type GridLessonTime, type GridSection, type GridSessions, type GridShift, type Term, type Timetable } from "./timetableApi";
 
 const text = messages.school.timetable;
 
@@ -126,18 +126,47 @@ export function WeekGrid({ caption, days, shift, lessonCount, lessons, format, s
   );
 }
 
-/** All sections × (days × lessons): the master timetable, scrolling inside its own container only. */
-export function MasterGrid({ timetable, format, look, term = 1, flagged }: { timetable: Timetable; format: Formatter; look: Lookups; term?: Term; flagged?: ReadonlySet<string> }) {
-  const lessonCount = Math.max(1, ...timetable.sections.flatMap((section) => section.allowedByDay.map((day) => day.lessons)));
+/** «عرض: الأيام عمودياً» (owner, 1.0.0 testing; the default of the school view) or the older layout with the days across. */
+export type MasterLayout = "byDays" | "bySections";
+
+type MasterGridProps = {
+  timetable: Timetable;
+  format: Formatter;
+  look: Lookups;
+  term?: Term;
+  flagged?: ReadonlySet<string>;
+  layout?: MasterLayout;
+  /** The sections shown (a stage view shows its own); all of them by default. */
+  sections?: GridSection[];
+  /** Builds the cell (the editor adds selection and conflicts); defaults to the read-only cell. */
+  cell?: (lesson: GridLesson | undefined, sectionId: number, day: number, number: number) => GridCell;
+  caption?: string;
+};
+
+/**
+ * The whole school (or one stage): by days, rows are days × lessons (the day label spans its lessons; each row shows the lesson number and
+ * its 12-hour time) and columns are the sections grouped by stage, with a thick rule between stages and between days; by sections, the older
+ * layout with the days across. It scrolls inside its own container only.
+ */
+export function MasterGrid({ timetable, format, look, term = 1, flagged, layout = "byDays", sections: shown, cell, caption }: MasterGridProps) {
+  const sections = shown ?? timetable.sections;
+  const lessonCount = Math.max(1, ...sections.flatMap((section) => section.allowedByDay.map((day) => day.lessons)));
   const numbers = Array.from({ length: lessonCount }, (_, index) => index + 1);
   const at = new Map(timetable.lessons.map((lesson) => [`${lesson.sectionId}:${lesson.day}:${lesson.lesson}`, lesson]));
   const teacherOf = (lesson: GridLesson) => look.teacher(lesson.teacherId)?.shortName ?? "";
   // R3: with daily sessions each day shows its session in the semester, and its lesson numbers that session's clock.
-  const sessions = timetable.sessions && timetable.sections.every((section) => section.shiftId === timetable.sessions?.shiftId) ? timetable.sessions : null;
+  const sessions = timetable.sessions && sections.every((section) => section.shiftId === timetable.sessions?.shiftId) ? timetable.sessions : null;
   const dayHeader = (day: number) => (sessions ? text.dayWithSession(weekdayLabel(day), text.sessionShort[sessionOn(sessions, term, day)]) : weekdayLabel(day));
+  const shiftIds = new Set(sections.map((section) => section.shiftId));
+  const timeOf = (day: number, number: number) => {
+    if (shiftIds.size !== 1) return undefined;
+    const [shiftId] = [...shiftIds];
+    return sessions
+      ? sessions.timings.find((timing) => timing.session === sessionOn(sessions, term, day))?.lessons.find((lesson) => lesson.number === number)
+      : timetable.shifts.find((shift) => shift.id === shiftId)?.lessons.find((lesson) => lesson.number === number);
+  };
   const numberHeader = (day: number, number: number) => {
-    if (!sessions) return format.number(number);
-    const time = sessions.timings.find((timing) => timing.session === sessionOn(sessions, term, day))?.lessons.find((lesson) => lesson.number === number);
+    const time = timeOf(day, number);
     return (
       <>
         <span>{format.number(number)}</span>
@@ -145,23 +174,54 @@ export function MasterGrid({ timetable, format, look, term = 1, flagged }: { tim
       </>
     );
   };
+  const build = (sectionId: number, day: number, number: number): GridCell => {
+    const lesson = at.get(`${sectionId}:${day}:${number}`);
+    if (cell) return cell(lesson, sectionId, day, number);
+    const built = cellFor(lesson, day, number, format, look, teacherOf, look.sectionName(sectionId));
+    // MF11: a slot that conflicts with today's school data shows an icon and a border as well as its text.
+    return flagged?.has(`${sectionId}:${day}:${number}`) ? { ...built, state: "conflict" as const, description: messages.school.currentCheck.cellConflict(built.description) } : built;
+  };
+  if (layout === "byDays") {
+    const groups: { stageName: string; sections: GridSection[] }[] = [];
+    for (const section of sections) {
+      const last = groups[groups.length - 1];
+      if (last && last.stageName === section.stageName) last.sections.push(section);
+      else groups.push({ stageName: section.stageName, sections: [section] });
+    }
+    const starts = new Set(groups.slice(1).map((group) => group.sections[0]?.id));
+    return (
+      <TimetableGrid
+        caption={caption ?? text.views.master}
+        groupCorner={text.dayColumn}
+        corner={text.lessonCorner}
+        className="timetable-master timetable-by-days"
+        headerRows={[
+          groups.map((group, index) => ({ key: `s${index}`, label: group.stageName, span: group.sections.length, boundary: index > 0 })),
+          sections.map((section) => ({ key: String(section.id), label: section.label, boundary: starts.has(section.id) })),
+        ]}
+        rows={timetable.days.flatMap((day) => numbers.map((number) => ({
+          key: `${day}:${number}`,
+          group: number === 1 ? { label: dayHeader(day), span: numbers.length } : undefined,
+          groupStart: number === 1,
+          label: numberHeader(day, number),
+          cells: sections.map((section) => ({ ...build(section.id, day, number), key: String(section.id), boundary: starts.has(section.id) })),
+        })))}
+      />
+    );
+  }
   return (
     <TimetableGrid
-      caption={text.views.master}
+      caption={caption ?? text.views.master}
       corner={text.sectionColumn}
       className="timetable-master"
       headerRows={[
         timetable.days.map((day) => ({ key: `d${day}`, label: dayHeader(day), span: numbers.length })),
-        timetable.days.flatMap((day) => numbers.map((number) => ({ key: `${day}:${number}`, label: numberHeader(day, number) }))),
+        timetable.days.flatMap((day) => numbers.map((number) => ({ key: `${day}:${number}`, label: sessions ? numberHeader(day, number) : format.number(number) }))),
       ]}
-      rows={timetable.sections.map((section) => ({
+      rows={sections.map((section) => ({
         key: String(section.id),
         label: look.sectionName(section.id),
-        cells: timetable.days.flatMap((day) => numbers.map((number) => {
-          const cell = cellFor(at.get(`${section.id}:${day}:${number}`), day, number, format, look, teacherOf, look.sectionName(section.id));
-          // MF11: a slot that conflicts with today's school data shows an icon and a border as well as its text.
-          return flagged?.has(`${section.id}:${day}:${number}`) ? { ...cell, state: "conflict" as const, description: messages.school.currentCheck.cellConflict(cell.description) } : cell;
-        })),
+        cells: timetable.days.flatMap((day) => numbers.map((number) => build(section.id, day, number))),
       }))}
     />
   );

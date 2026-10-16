@@ -82,7 +82,7 @@ test("(MF5) official printing: header, signature footer, A4/A3, portrait/landsca
     await page.getByRole("link", { name: generation.openTimetable }).click();
     await expect(page.locator(".timetable-main .ui-tt-grid")).toHaveCount(1);
 
-    // The panel: defaults per job (section A4 landscape, teacher A4 portrait, school A3 landscape), fit on.
+    // The panel: defaults per job (section A4 landscape, teacher A4 portrait, the school A3 with «تلقائي» orientation), fit on.
     // The print document exists only while the panel is open (or while the browser prints).
     await expect(page.locator(".print-document")).toHaveCount(0);
     await page.getByText(printing.title).click();
@@ -92,7 +92,7 @@ test("(MF5) official printing: header, signature footer, A4/A3, portrait/landsca
     await expect(page.locator("#print-orientation")).toHaveValue("portrait");
     await choosePrint(page, "school");
     await expect(page.locator("#print-paper")).toHaveValue("A3");
-    await expect(page.locator("#print-orientation")).toHaveValue("landscape");
+    await expect(page.locator("#print-orientation")).toHaveValue("auto");
     await expect(page.getByLabel(printing.fit)).toBeChecked();
 
     // Print media shows only the document: every page has the full header and the signature footer.
@@ -107,17 +107,27 @@ test("(MF5) official printing: header, signature footer, A4/A3, portrait/landsca
     // page.pdf() prints with print CSS only when no screen media is emulated.
     await page.emulateMedia({ media: null });
 
-    const jobs: Array<{ name: string; scope: keyof typeof printing.scopes; view?: string; pages: number }> = [
-      { name: "a3-landscape-school", scope: "school", pages: 2 }, // 36 columns do not fit A3 at a readable 8 pt: split by days
-      { name: "a4-landscape-sections", scope: "sections", pages: 2 },
-      { name: "a4-portrait-teachers", scope: "teachers", pages: 5 },
+    // Owner (1.0.0 testing): the whole school by days on ONE A3 page; sections and teachers packed several to a page. Each planned page is
+    // exactly one sheet of the PDF (the page has no browser margin and numbers itself).
+    // This school has 7 lessons a day: its 35 rows of three lines do not fit one A3 page at 8 pt, so every section stays on each page and the
+    // days are split (two pages). The six-lesson school of m2-printing proves the one-page case.
+    const jobs: Array<{ name: string; scope: keyof typeof printing.scopes; pages?: number; fewerThan?: number }> = [
+      { name: "a3-school", scope: "school", pages: 2 },
+      { name: "a4-landscape-sections", scope: "sections", fewerThan: 2 },
+      { name: "a4-portrait-teachers", scope: "teachers", fewerThan: 5 },
     ];
     for (const job of jobs) {
       await choosePrint(page, job.scope);
-      await expect(page.locator(".print-document")).toHaveAttribute("data-pages", String(job.pages));
+      if (job.pages) await expect(page.locator(".print-document")).toHaveAttribute("data-pages", String(job.pages));
+      const planned = Number(await page.locator(".print-document").getAttribute("data-pages"));
+      if (job.fewerThan) expect(planned, job.name).toBeLessThan(job.fewerThan + 1);
       const pdf = await page.pdf({ path: testInfo.outputPath(`mf5-${job.name}.pdf`), preferCSSPageSize: true, printBackground: false });
-      expect(pdfPages(pdf), job.name).toBe(job.pages);
+      expect(pdfPages(pdf), job.name).toBe(planned);
     }
+    await choosePrint(page, "school");
+    await expect(page.locator(".print-document")).toHaveAttribute("data-paper", "A3 portrait"); // «تلقائي» chose the orientation that fits best
+    await expect(page.locator(".print-page-number").first()).toHaveText(printing.pageNumber("١", "٢"));
+    await expect(page.locator(".print-page-header").first()).toContainText(printing.daysRange("الأحد", "الثلاثاء"));
 
     // Never cut: at the A4-portrait size, no printed grid is wider than its page.
     await choosePrint(page, "sections");
@@ -129,7 +139,7 @@ test("(MF5) official printing: header, signature footer, A4/A3, portrait/landsca
     }
     await page.emulateMedia({ media: null });
     const pdf = await page.pdf({ path: testInfo.outputPath("mf5-a4-portrait-sections.pdf"), preferCSSPageSize: true, printBackground: false });
-    expect(pdfPages(pdf)).toBe(2);
+    expect(pdfPages(pdf)).toBe(Number(await page.locator(".print-document").getAttribute("data-pages")));
   } finally {
     await server.stop();
   }

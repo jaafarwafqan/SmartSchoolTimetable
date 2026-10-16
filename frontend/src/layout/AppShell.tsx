@@ -88,7 +88,7 @@ export function AppShell({ bootstrap }: { bootstrap: Bootstrap }) {
             <Route path="/settings/advanced" element={<SchedulingProfilePage />} />
             <Route path="/settings/scheduling" element={<Navigate to="/settings/advanced" replace />} />
             <Route path="/settings/history" element={<HistoryPage />} />
-            <Route path="/settings/about" element={<AboutPage />} />
+            <Route path="/about" element={<AboutPage />} />
             {Object.entries(legacyRedirects).map(([from, to]) => <Route key={from} path={from} element={<Navigate to={to} replace />} />)}
             <Route path="*" element={<NotFoundPage />} />
           </Routes>

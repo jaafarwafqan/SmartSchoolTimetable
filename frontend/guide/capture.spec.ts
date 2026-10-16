@@ -34,7 +34,9 @@ test("ch8 — reading the timetable: by section, by teacher, the whole school, t
   await page.locator("#timetable-view").selectOption("teacher");
   await shot(page, "46-view-teacher", { width: 1600, target: ".timetable-main" });
   await page.locator("#timetable-view").selectOption("master");
-  await shot(page, "47-view-master", { width: 1900, target: ".timetable-main" });
+  await shot(page, "47-view-master", { width: 1600, target: ".timetable-main" });
+  await page.locator("#timetable-view").selectOption("stage");
+  await shot(page, "47b-view-stage", { width: 1600, target: ".timetable-main" });
   await page.locator("#timetable-view").selectOption("section");
   await page.getByRole("group", { name: school.timetable.termLabel }).getByRole("button", { name: school.timetable.terms[2] }).click();
   await shot(page, "48-view-semester-two", { width: 1600, target: ".timetable-main" });
@@ -73,6 +75,11 @@ test("ch9 — manual edit, undo and redo, keep or discard before regenerating", 
   await page.getByRole("button", { name: school.timetable.undo }).click();
   await shot(page, "53-edit-undo", { width: 1600, target: ".timetable-main" });
   await page.getByRole("button", { name: school.timetable.redo }).click();
+  // The editor works from every view: the same edit, seen in the teacher view of the moved lesson's teacher.
+  await page.locator("#timetable-view").selectOption("teacher");
+  await page.locator("#timetable-teacher").selectOption(String(swap![0].teacherId));
+  await expect(page.getByText(school.timetable.noConflicts)).toBeVisible();
+  await shot(page, "53b-edit-teacher-view", { width: 1600, target: ".timetable-main" });
   await page.getByRole("button", { name: school.timetable.saveEdit }).click();
   await expect(page.getByText(school.timetable.savedEdit)).toBeVisible();
   await expect(page.locator(".timetable-main .ui-tt-grid").first()).toBeVisible({ timeout: 30_000 });
@@ -182,7 +189,7 @@ test("ch12 — settings: general, account and security, backups, advanced, histo
   await expect(page.getByText(/نسخة احتياطية/).first()).toBeVisible();
   await page.waitForTimeout(800);
   await shot(page, "74-settings-history");
-  await page.goto(`${baseUrl}/settings/about`);
+  await page.goto(`${baseUrl}/about`);
   await expect(page.getByRole("heading", { name: school.about.title, level: 1 })).toBeVisible();
   await shot(page, "75-settings-about");
 });

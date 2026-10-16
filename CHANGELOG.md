@@ -2,6 +2,15 @@
 
 ## [1.0.0] - 2026-10-11 (branch `work/phase-5`, tags `v1.0.0`, `phase-5-final`)
 First release for the school. Windows 10 (1809+) 64-bit and Windows 11; installer `SmartSchoolTimetable-Setup-1.0.0-<stamp>.exe` with a SHA-256 file; Arabic user guide `docs/USER_GUIDE_AR.pdf`. Everything below was delivered on `work/phase-5` since `phase-4i`; the last four items (M3, M5, user guide, version) are the final stage.
+### Owner testing feedback for 1.0.0 (ADR 0054)
+- The whole school prints BY DAYS: rows days × lessons (day label spanning its lessons, lesson number and 12-hour time), columns sections under a stage header row, thick rules between stages and days. One A3 page when it fits at 8 pt or more, in the orientation chosen automatically («تلقائي (الأنسب)»); otherwise the fewest pages (days split, or a page per stage), headers repeated. Colour/B&W, logo, header, footer and signatures unchanged.
+- «عدد المعلمين في الصفحة» / «عدد الشعب في الصفحة» (تلقائي / ١ / ٢ / ٤ / ٦): batches packed several to a page, never one split over two; each block shows the name, the weekly load and the full grid with times.
+- No browser margin (`@page { margin: 0 }`): Chromium has nowhere to print its date, title and address; the document numbers its own pages («صفحة ١ من ٢»). The print hint tells users to turn off «الرؤوس والتذييلات» if anything still appears. Printed rows are deterministic (three clamped lines), so the page plan holds for any data.
+- On screen: «عرض: الأيام عمودياً» (default) or «الأيام أفقياً» for the school view and the new «حسب المرحلة» view.
+- Manual editing from any view (section, teacher, stage, the whole school) with one history across views and the same checks and Arabic reasons; in the teacher view a lesson moves within its own section.
+- «حول البرنامج» moved to the sidebar below «الإعدادات» (`/about`; `/settings/about` redirects; the user menu keeps its link).
+- CI fixes (run #6): the settings-tabs race in `layout-375`; screenshots mask the date-dependent holiday card, reset inner sideways scroll and wait for the page to stay at the top; a stale 5.0.0 dashboard baseline.
+- Tests: Vitest for both planners and for editing from every view; `phase5-edit-views.spec.ts`; the printing specs check one-page A3, packing, page numbers and that each planned page is exactly one PDF page.
 ### Generation rules decided by the owner before the final tag (ADR 0053)
 - Daily limit of a subject: «حصة واحدة في اليوم» added (1 to 6), and limits per grade and per section in an inline table (choose, never type; «تلقائي» inherits; the most specific wins). Readiness error when limit × available days < weekly lessons.
 - «أقصى حصص متتالية للمعلم»: 2 or 3 (school default 3, per-teacher choice), a priority «مهم جداً» by default (S9). The school or one teacher can make it «إلزامي» (H11). The result notes list every teacher over the limit (name, day, count); a hard run that times out is retried once without it, and the owner is told it is the likely cause. Readiness `TEACHER_CONSECUTIVE_SHORT` (an error when hard, a warning as a priority) uses the owner's formula. Migration `Phase5ConsecutivePriority`.

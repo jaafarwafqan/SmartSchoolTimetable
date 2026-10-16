@@ -21,7 +21,13 @@ test("(M2) «حول البرنامج»: reached from the user menu, shows versio
     await page.getByRole("button", { name: messages.school.shell.userMenu }).click();
     await page.getByRole("menuitem", { name: text.menu }).click();
     await expect(page.getByRole("heading", { name: text.title, level: 1 })).toBeVisible();
-    await expect(page.getByRole("navigation", { name: messages.school.nav.settings }).getByRole("link", { name: messages.school.nav.settingsAbout })).toBeVisible();
+    await expect(page).toHaveURL(/\/about$/);
+    // Owner (1.0.0 testing): «حول البرنامج» is in the sidebar directly below «الإعدادات», no longer a settings tab.
+    const sidebarLinks = await page.getByRole("navigation", { name: messages.school.nav.sidebarLabel }).getByRole("link").allTextContents();
+    expect(sidebarLinks.indexOf(messages.school.nav.about)).toBe(sidebarLinks.indexOf(messages.school.nav.settings) + 1);
+    await expect(page.getByRole("navigation", { name: messages.school.nav.settings })).toHaveCount(0);
+    await page.goto(`${server.baseUrl}/settings/about`);
+    await expect(page).toHaveURL(/\/about$/);
 
     await expect(page.getByRole("heading", { name: text.appName })).toBeVisible();
     await expect(page.getByText(text.facts.buildDate)).toBeVisible();

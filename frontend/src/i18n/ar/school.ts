@@ -39,6 +39,7 @@ export const school = {
     settingsBackup: "النسخ الاحتياطي",
     settingsHistory: "سجل التغييرات",
     settingsAbout: "حول",
+    about: "حول البرنامج",
     settingsAdvanced: "متقدم",
     settingsAdvancedDescription: "إعدادات لا تحتاج إلى تغييرها عادةً.",
     timetable: "الجدول",
