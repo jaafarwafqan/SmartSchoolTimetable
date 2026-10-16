@@ -102,8 +102,9 @@ export const generation = {
       keepDoubleLessonsTogether: (pairs: string) => `حصص مزدوجة لم تأتِ متتالية: ${pairs}.`,
       spreadTeacherLessons: (times: string) => `${times} يدرّس فيها معلم حصتين متتاليتين دون فاصل بينهما.`,
       balanceTeacherDays: (lessons: string) => `بعض المعلمين يتفاوت عدد حصصهم بين أيامهم أكثر من حصة واحدة؛ مجموع التفاوت ${lessons}.`,
-      maxConsecutiveLessons: (list: string) => `تجاوز حد الحصص المتتالية: ${list}.`,
-      consecutiveRun: (teacher: string, day: string, count: string) => `${teacher}، ${day}: ${count} متتالية`,
+      maxConsecutiveLessons: (list: string) => `معلمون تجاوزوا حد الحصص المتتالية (أطول تتابع في اليوم): ${list}.`,
+      consecutiveTeacher: (teacher: string, days: string) => `${teacher} (${days})`,
+      consecutiveDay: (day: string, count: string) => `${day}: ${count}`,
       fairLastPeriods: (most: string, mostCount: string, least: string, leastCount: string) =>
         `أكثر معلم في الحصص الأخيرة: ${most} (${mostCount})، وأقلهم: ${least} (${leastCount}).`,
     },

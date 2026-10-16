@@ -102,10 +102,10 @@ describe("plain result (MF3)", () => {
     const score = {
       total: 80,
       rules: [{ key: "maxConsecutiveLessons", enabled: true, weight: 40, penalty: 2, weighted: 80 }],
-      consecutiveRuns: [{ teacher: "رغد", day: 7, count: 4, limit: 3 }, { teacher: "سلمى", day: 1, count: 4, limit: 3 }],
+      consecutiveRuns: [{ teacher: "رغد", day: 7, count: 4, limit: 3 }, { teacher: "رغد", day: 2, count: 5, limit: 3 }, { teacher: "سلمى", day: 1, count: 4, limit: 3 }],
     };
     expect(improvementNotes(run({ score }), format).map((note) => note.sentence)).toEqual([
-      `تجاوز حد الحصص المتتالية: ${isolate("رغد")}، الأحد: ٤ حصص متتالية؛ ${isolate("سلمى")}، الاثنين: ٤ حصص متتالية.`,
+      `معلمون تجاوزوا حد الحصص المتتالية (أطول تتابع في اليوم): ${isolate("رغد")} (الأحد: ٤، الثلاثاء: ٥)؛ ${isolate("سلمى")} (الاثنين: ٤).`,
     ]);
     const cause: SolverFinding = { code: "CONSECUTIVE_LIKELY_CAUSE", entity: { kind: "school", id: 0, name: "" }, related: [{ kind: "teacher", id: 1, name: "رغد" }], required: null, available: null, fixes: ["relaxConsecutive"], relaxationHelps: true };
     const message = diagnosticMessage(cause, format);

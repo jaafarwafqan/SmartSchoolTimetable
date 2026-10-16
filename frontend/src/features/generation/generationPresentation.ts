@@ -117,7 +117,9 @@ export function improvementNotes(run: GenerationRun, format: Formatter): { key: 
       case "maxConsecutiveLessons": {
         const runs = run.score?.consecutiveRuns ?? [];
         if (runs.length === 0) return [];
-        const list = runs.map((item) => plain.notes.consecutiveRun(isolate(item.teacher), weekdayLabel(item.day), format.count(item.count, "lesson"))).join("؛ ");
+        const byTeacher = new Map<string, string[]>();
+        for (const item of runs) byTeacher.set(item.teacher, [...(byTeacher.get(item.teacher) ?? []), plain.notes.consecutiveDay(weekdayLabel(item.day), format.number(item.count))]);
+        const list = [...byTeacher].map(([teacher, days]) => plain.notes.consecutiveTeacher(isolate(teacher), days.join("، "))).join("؛ ");
         return [{ key: rule.key, sentence: plain.notes.maxConsecutiveLessons(list) }];
       }
       case "fairLastPeriods": {

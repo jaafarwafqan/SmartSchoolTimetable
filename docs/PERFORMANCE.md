@@ -101,29 +101,32 @@ Cold start (server start to first answer on a new database): 5.0 s; 12.9 s on th
 
 
 ## Phase 5 generation rules (2026-10-16, ADR 0053)
-Every new rule on with the default priorities (spread with gaps, balanced days, fair last periods), the school's «أقصى حصص متتالية» = 3, standard mode, 60 s, **2 workers** (the default of a 4 GB school PC), seed 12345. `PerformanceTests.Phase5RulesKeepTheGate`, Release build, same machine as above.
+Every new rule on with the default priorities: «أقصى حصص متتالية» = 3 as a priority «مهم جداً» (the owner's final decision), spread with gaps, balanced days and fair last periods. Standard mode, 60 s, **2 workers** (the default of a 4 GB school PC), seed 12345. `PerformanceTests.Phase5RulesKeepTheGate`, Release build, same machine as above.
 
 | School | Sections | Teachers | Workers | Status | First (s) | Total (s) | Objective | Bound | Violations | Memory |
 |---|---:|---:|---:|---|---:|---:|---:|---:|---:|---|
-| 24/40 s1 P5 | 24 | 40 | 2 | Feasible | 2.31 | 60.42 | 16905 | 7485 | 0 | 67 → 229 MB |
-| 24/40 s2 P5 | 24 | 40 | 2 | Feasible | 2.08 | 60.29 | 16335 | 7835 | 0 | 111 → 236 MB |
-| 24/40 s3 P5 | 24 | 40 | 2 | Feasible | 2.02 | 60.25 | 15840 | 7265 | 0 | 111 → 236 MB |
-| owner-shaped s1 | 12 | 22 | 2 | Feasible | 0.92 | 60.09 | 10775 | 6040 | 0 | 114 → 236 MB |
-| owner-shaped s2 | 12 | 22 | 2 | Feasible | 0.85 | 60.09 | 11020 | 6245 | 0 | 113 → 236 MB |
-| owner-shaped s3 | 12 | 22 | 2 | Feasible | 0.81 | 60.07 | 10990 | 5985 | 0 | 115 → 236 MB |
+| 24/40 s1 P5 | 24 | 40 | 2 | Feasible | 3.50 | 61.89 | 16970 | 6690 | 0 | 67 → 224 MB |
+| 24/40 s2 P5 | 24 | 40 | 2 | Feasible | 2.15 | 60.32 | 16080 | 6965 | 0 | 109 → 235 MB |
+| 24/40 s3 P5 | 24 | 40 | 2 | Feasible | 2.17 | 60.31 | 15685 | 6530 | 0 | 111 → 241 MB |
+| owner-shaped s1 | 12 | 22 | 2 | Feasible | 0.89 | 60.10 | 10780 | 5860 | 0 | 117 → 241 MB |
+| owner-shaped s2 | 12 | 22 | 2 | Feasible | 0.97 | 60.09 | 11385 | 6095 | 0 | 114 → 241 MB |
+| owner-shaped s3 | 12 | 22 | 2 | Feasible | 0.81 | 60.09 | 10805 | 5925 | 0 | 114 → 241 MB |
 
-- **The gate still holds:** 24/40 found its first timetable in 2.0–2.3 s (target 60 s). The objective is larger than before because it has more terms, so it is not comparable with the Phase 4 numbers.
+- **The gate still holds:** 24/40 found its first timetable in 2.2–3.5 s (target 60 s). The objective has more terms than in Phase 4, so it is not comparable with those numbers.
 - **Owner-shaped school** (`SyntheticSchools.OwnerShaped`, fictional; not the owner's data): 12 sections in 3 grades, 30 lessons in 30 slots, 22 teachers, about a third with a day off, up to 2 blocked periods each, and evening sessions Tuesday–Thursday. Readiness was clean on all three seeds.
 - Remaining penalties after 60 s (s1 / s2 / s3), measured honestly:
 
   | Rule | s1 | s2 | s3 |
   |---|---:|---:|---:|
-  | balanced days (sum of excess over max − min ≤ 1) | 3 | 4 | 3 |
-  | last periods above the share | 4 | 4 | 6 |
-  | most / fewest last periods of one teacher | 4 / 1 | 5 / 1 | 4 / 1 |
-  | adjacent lessons of a teacher | 104 | 110 | 109 |
+  | runs above the consecutive limit (a priority) | 0 | 3 | 0 |
+  | balanced days (sum of excess over max − min ≤ 1) | 3 | 6 | 3 |
+  | last periods above the share | 6 | 8 | 8 |
+  | most / fewest last periods of one teacher | 4 / 1 | 4 / 1 | 4 / 1 |
+  | adjacent lessons of a teacher | 105 | 107 | 111 |
 
-  In full sections a teacher with 18 lessons in 5 days must have some lessons back to back. The adjacency count shows that limit, not a fault. No run proved optimality in 60 s.
+  An earlier run with the limit as a hard rule had 0 runs over the limit on all three seeds. As a priority the solver may trade a few runs for other rules within 60 s (s2: 3), and the result notes name them.
+  In full sections, a teacher with 18 lessons in 5 days must have some lessons back to back; the adjacency count shows that limit, not a fault. No run proved optimality in 60 s.
+- **Why a priority:** with the limit hard, a fictional primary school with class teachers (24–29 lessons each in their own section; the user guide's school) found no timetable in 60 s, and with the limit off it found one in 0.8 s (ADR 0053 §2).
 
 The Phase 4 gate tests, re-run with the Phase 5 rules (their default profile; no consecutive limit, default workers = 3 on this machine):
 
