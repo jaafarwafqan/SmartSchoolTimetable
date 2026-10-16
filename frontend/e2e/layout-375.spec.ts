@@ -31,6 +31,8 @@ test("(M4b) 375 px: no sideways page scroll, tabs in one row, tables as cards, a
     // Settings tabs: one row that scrolls sideways (no wrapped stack).
     await page.goto(`${server.baseUrl}/settings/backup`);
     const tabs = page.locator(".ui-tabs ul");
+    // Count only once the tabs are on screen (CI measured an empty list right after navigation).
+    await expect(tabs.locator("li").first()).toBeVisible();
     const tops = await tabs.locator("li").evaluateAll((items) => new Set(items.map((item) => Math.round(item.getBoundingClientRect().top))).size);
     expect(tops).toBe(1);
 
