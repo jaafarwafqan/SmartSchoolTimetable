@@ -80,9 +80,9 @@ export const DAY_COLUMN_MM = 15;
 export const NUMBER_COLUMN_MM = 18;
 /** The title line of a packed teacher or section block (name and weekly load). */
 export const BLOCK_TITLE_MM = 8;
-/** A day row of a teacher or section grid: the same three clamped lines as {@link ROW_MM}. */
-export const BLOCK_ROW_MM = ROW_MM;
-/** The lesson-number header of a teacher or section grid: «الحصة ١» and its time on at most two lines (the time never below 7 pt). */
+/** A day row of a teacher or section grid: four clamped lines (the subject on two, the section or teacher on two): 4.7 em + borders. */
+export const BLOCK_ROW_MM = 17;
+/** A header row of a teacher or section grid: «الحصة ١» and its time, or a session's clock row, on at most two lines (time never below 7 pt). */
 export const BLOCK_HEADER_ROW_MM = 12.5;
 /** The space between packed blocks. */
 export const BLOCK_GAP_MM = 5;

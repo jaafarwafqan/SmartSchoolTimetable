@@ -99,8 +99,11 @@ export function PrintDocument({ timetable, options, current, term, format, look 
     const ids = kind === "sections" ? timetable.sections.map((item) => item.id) : timetable.teachers.map((item) => item.id);
     const shiftsOf = (id: number) => (kind === "sections" ? [look.section(id)?.shiftId ?? 0] : teacherShifts(id));
     const columns = Math.max(1, ...ids.flatMap((id) => shiftsOf(id).map(lessonCountOf))) + 1;
-    const rows = Math.max(1, ...ids.map((id) => shiftsOf(id).reduce((sum, shiftId) => sum + timetable.days.length + headerRowsOf(shiftId) - 1, 0)));
-    const plan = planPacking(options, blockSize(columns, rows, 1), ids.length);
+    // A block's size: the most day rows (a teacher in two shifts has a grid per shift) and the most header rows (a lesson-number row, plus a
+    // clock row per daily session) of the batch.
+    const dayRows = Math.max(1, ...ids.map((id) => shiftsOf(id).length * timetable.days.length));
+    const headerRows = Math.max(1, ...ids.map((id) => shiftsOf(id).reduce((sum, shiftId) => sum + headerRowsOf(shiftId), 0)));
+    const plan = planPacking(options, blockSize(columns, dayRows, headerRows), ids.length);
     const pages = chunk(ids, plan.perPage).map((group, index) => ({
       key: `${kind}-${index}`,
       heading: kind === "sections" ? timetableText.views.section : timetableText.views.teacher,

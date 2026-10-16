@@ -674,13 +674,24 @@
 
   /* Deterministic rows (owner, 1.0.0 testing): a lesson cell is exactly three lines (the subject on at most two, the teacher or section on
      one), so the page planner's sizes hold whatever the names are. A lesson-number header holds the number and at most two lines of time. */
-  :is(.print-grid .ui-tt-grid, .print-days) :is(th, td) {
+  :is(.print-grid .ui-tt-grid, .print-days) :is(th, td, .ui-tt-cell, .ui-tt-subject, .ui-tt-teacher, .timetable-time) {
     line-height: 1.1;
   }
 
-  .print-grid .ui-tt-grid td .ui-tt-cell,
+  /* The cell stacks its lines from the top, so the clamp hides whole lines only (centring could cut a line in half). */
+  .print-grid .ui-tt-grid td .ui-tt-cell {
+    align-content: start;
+  }
+
   .print-days td {
     block-size: 3.6em;
+    padding: 0.15em;
+    overflow: hidden;
+  }
+
+  /* A section or teacher grid: four lines, so a section name on the second line keeps its letter («السادس الابتدائي / أ»). */
+  .print-grid .ui-tt-grid td .ui-tt-cell {
+    block-size: 4.7em;
     padding: 0.15em;
     overflow: hidden;
   }
@@ -698,6 +709,15 @@
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
+  }
+
+  /* In a section or teacher grid the second line may take two lines (after the one-line rule of the school grid, which it overrides). */
+  .print-grid .ui-tt-grid td .ui-tt-teacher {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
   }
 
   :is(.print-grid .ui-tt-grid, .print-days) .timetable-time {
