@@ -158,10 +158,12 @@ export async function expectBreakpointScreenshots(page: Page, name: string, mask
       // Two frames: the resize handlers (for example the tab strip centring its active tab) have run before the picture is taken.
       await new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done())));
       window.scrollTo(0, 0);
-      // Inner tables that scroll sideways start at their start edge (a focused cell may have scrolled them; CI showed a few pixels of drift).
-      // The tab strip keeps its own centring of the active tab.
+      // Inner boxes that scroll (a table sideways or down) start at their start edge: a focused cell may have scrolled them (CI showed the
+      // curriculum table's rows shifted). The tab strip keeps its own centring of the active tab.
       for (const element of document.querySelectorAll<HTMLElement>("main *")) {
-        if (element.scrollWidth > element.clientWidth && !element.closest(".ui-tabs")) element.scrollLeft = 0;
+        if (element.closest(".ui-tabs")) continue;
+        if (element.scrollWidth > element.clientWidth) element.scrollLeft = 0;
+        if (element.scrollHeight > element.clientHeight) element.scrollTop = 0;
       }
     });
     // A late scroll by the page itself (a preview scrolled into view after it renders) must not land between the reset and the capture: wait until

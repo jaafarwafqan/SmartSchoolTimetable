@@ -40,7 +40,9 @@ async function acknowledgeShownCode(page: Page): Promise<string> {
 
 test("setup, blocked reload until a new code is confirmed, logout, login, and password recovery", async ({ page }) => {
   await page.goto(baseUrl);
-  await expect(page.getByRole("heading", { name: messages.app.setupTitle })).toBeVisible();
+  // The first page after the server's cold start (the first test of the whole run on a fresh CI machine, run #7) can take longer than the
+  // default 5 s: wait for it as setupOwner does, then keep the default for everything after.
+  await expect(page.getByRole("heading", { name: messages.app.setupTitle })).toBeVisible({ timeout: 30_000 });
   await page.getByLabel(messages.app.username).fill("owner");
   await page.getByLabel(messages.app.password, { exact: true }).fill(initialPassword);
   await page.getByLabel(messages.app.confirmPassword).fill(initialPassword);
