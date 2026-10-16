@@ -91,8 +91,10 @@ public sealed class GenerationRulesApiTests
             await using var upgraded = new LocalDbContext(options);
             await upgraded.Database.MigrateAsync();
             var profile = await upgraded.Set<SchedulingProfile>().AsNoTracking().SingleAsync();
-            Assert.Equal(8, profile.Rules.Count);
-            Assert.Equal(5, profile.ProfileVersion);
+            Assert.Equal(9, profile.Rules.Count);
+            Assert.Equal(6, profile.ProfileVersion); // one step per corrective migration
+            Assert.Equal(new SchedulingRule(SchedulingRuleKeys.MaxConsecutiveLessons, true, 40), profile.Rules.Single(rule => rule.Key == SchedulingRuleKeys.MaxConsecutiveLessons));
+            Assert.False(profile.ConsecutiveHard);
             Assert.Equal((3, false), (profile.DefaultMaxConsecutive, profile.BalanceHard));
             Assert.Equal(gapsAfter, profile.Rules.Single(rule => rule.Key == SchedulingRuleKeys.AvoidTeacherGaps).Enabled);
             Assert.Equal(spreadAfter, profile.Rules.Single(rule => rule.Key == SchedulingRuleKeys.SpreadTeacherLessons).Enabled);

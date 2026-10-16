@@ -22,6 +22,7 @@ internal sealed class TestSchool
     private int[]? _evening;
     private int? _defaultConsecutive;
     private bool _balanceHard;
+    private bool _consecutiveHard;
     private long _next = 100;
 
     public int[] Days { get; init; } = Week;
@@ -77,10 +78,10 @@ internal sealed class TestSchool
         return id;
     }
 
-    public long Teacher(int? maxPerWeek = null, int? maxPerDay = null, int[]? offDays = null, SlotRef[]? blocked = null, bool released = false, int? maxConsecutive = null)
+    public long Teacher(int? maxPerWeek = null, int? maxPerDay = null, int[]? offDays = null, SlotRef[]? blocked = null, bool released = false, int? maxConsecutive = null, bool consecutiveHard = false)
     {
         var id = _next++;
-        _teachers.Add(new TeacherInput(id, $"معلم {id}", false, released, false, offDays ?? [], blocked ?? [], maxPerDay, maxPerWeek, [], null, maxConsecutive));
+        _teachers.Add(new TeacherInput(id, $"معلم {id}", false, released, false, offDays ?? [], blocked ?? [], maxPerDay, maxPerWeek, [], null, maxConsecutive, consecutiveHard));
         return id;
     }
 
@@ -94,9 +95,10 @@ internal sealed class TestSchool
     public void Assign(long section, long line, long teacher) => _assignments.Add(new AssignmentInput(_next++, section, line, teacher));
 
     /// <summary>The school's «أقصى حصص متتالية» (2 or 3); without it (the default of these tests) no consecutive-lessons rule applies.</summary>
-    public TestSchool Consecutive(int? limit)
+    public TestSchool Consecutive(int? limit, bool hard = true)
     {
         _defaultConsecutive = limit;
+        _consecutiveHard = hard;
         return this;
     }
 
@@ -137,7 +139,7 @@ internal sealed class TestSchool
 
     public SchedulingInput Build() => SchedulingInputHash.Canonical(new SchedulingInput(
         SchedulingInput.CurrentFormatVersion, 1, Days, _shifts.ToArray(), _sections.ToArray(), _subjects.ToArray(), _lines.ToArray(),
-        _assignments.ToArray(), _teachers.ToArray(), _resources.ToArray(), new ProfileInput(1, _rules.ToArray(), _defaultConsecutive, _balanceHard), _stages.ToArray(),
+        _assignments.ToArray(), _teachers.ToArray(), _resources.ToArray(), new ProfileInput(1, _rules.ToArray(), _defaultConsecutive, _balanceHard, _consecutiveHard), _stages.ToArray(),
         _capOverrides.Count == 0 ? null : _capOverrides.ToArray(), _evening));
 
     public static GenerationSettings Settings(string mode = GenerationModes.Standard, int seconds = 10, int seed = 7, bool deterministic = true, int workers = 1) =>

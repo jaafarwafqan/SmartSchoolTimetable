@@ -43,13 +43,16 @@ public static class DiagnosticCodes
     public const string LockedLessons = "CORE_LOCKED_LESSONS";
     public const string TeacherConsecutive = "CORE_TEACHER_CONSECUTIVE";
     public const string TeacherBalance = "CORE_TEACHER_BALANCE";
+
+    /// <summary>The time ran out with «أقصى حصص متتالية» hard; the same school with it as a priority has a timetable, so the rule is the likely cause.</summary>
+    public const string ConsecutiveLikelyCause = "CONSECUTIVE_LIKELY_CAUSE";
     public const string Fundamental = "CORE_FUNDAMENTAL";
     public const string TimeoutNoSolution = "TIMEOUT_NO_SOLUTION";
 
     public static readonly IReadOnlyList<string> All =
     [
         TeacherAvailability, TeacherLimits, SectionPacking, StageDays, SubjectBlocked, ResourceCapacity, SubjectDailyCap, DoublePeriods,
-        LockedLessons, TeacherConsecutive, TeacherBalance, Fundamental, TimeoutNoSolution,
+        LockedLessons, TeacherConsecutive, TeacherBalance, Fundamental, TimeoutNoSolution, ConsecutiveLikelyCause,
     ];
 }
 

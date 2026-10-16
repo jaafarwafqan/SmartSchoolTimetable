@@ -245,11 +245,12 @@ internal sealed class CpSatModelBuilder
                 Enforce(Model.Add(LinearExpr.Sum(day.Select(item => item.Value)) <= cap), Families.SubjectDailyCap, group.Key.Item2);
         }
 
-        // H11 «أقصى حصص متتالية للمعلم»: in any k + 1 consecutive lesson numbers of one shift on one day, a teacher teaches at most k.
+        // H11 «أقصى حصص متتالية للمعلم» when it is HARD for the teacher (school or teacher «إلزامي»): in any k + 1 consecutive lesson numbers of one
+        // shift on one day, he teaches at most k. Otherwise it is the priority S9.
         foreach (var teacher in Lines.GroupBy(line => line.Teacher.Id))
         {
             var info = teacher.First().Teacher;
-            if (_input.MaxConsecutiveOf(info) is not { } consecutive)
+            if (_input.HardConsecutiveOf(info) is not { } consecutive)
                 continue;
             foreach (var group in teacher.SelectMany(line => line.Vars.Select(item => (line.Section.ShiftId, item.Key.Day, item.Key.Lesson, Var: item.Value)))
                          .GroupBy(item => (item.ShiftId, item.Day)))
@@ -422,6 +423,30 @@ internal sealed class CpSatModelBuilder
                     var gap = Model.NewBoolVar($"gap_{group.Key}_{lesson}");
                     Model.Add(gap >= before[lesson - 1] + after[lesson + 1] - 1 - At(lesson));
                     objective.AddTerm(gap, gapWeight);
+                }
+            }
+        }
+
+        // S9 «أقصى حصص متتالية للمعلم» as a priority: every window of k + 1 consecutive lesson numbers a teacher fills completely.
+        if (RuleWeight(SchedulingRuleKeys.MaxConsecutiveLessons) is var consecutiveWeight and > 0)
+        {
+            foreach (var teacher in Lines.GroupBy(line => line.Teacher.Id))
+            {
+                var info = teacher.First().Teacher;
+                if (_input.MaxConsecutiveOf(info) is not { } consecutive || _input.HardConsecutiveOf(info) is not null)
+                    continue;
+                foreach (var group in teacher.SelectMany(line => line.Vars.Select(item => (line.Section.ShiftId, item.Key.Day, item.Key.Lesson, Var: item.Value)))
+                             .GroupBy(item => (item.ShiftId, item.Day)))
+                {
+                    var bySlot = group.GroupBy(item => item.Lesson).ToDictionary(slot => slot.Key, slot => slot.Select(item => item.Var).ToArray());
+                    for (var first = bySlot.Keys.Min(); first + consecutive <= bySlot.Keys.Max(); first++)
+                    {
+                        if (!Enumerable.Range(first, consecutive + 1).All(bySlot.ContainsKey))
+                            continue;
+                        var over = Model.NewBoolVar($"run_{teacher.Key}_{group.Key}_{first}");
+                        Model.Add(over >= LinearExpr.Sum(Enumerable.Range(first, consecutive + 1).SelectMany(lesson => bySlot[lesson])) - consecutive);
+                        objective.AddTerm(over, consecutiveWeight);
+                    }
                 }
             }
         }

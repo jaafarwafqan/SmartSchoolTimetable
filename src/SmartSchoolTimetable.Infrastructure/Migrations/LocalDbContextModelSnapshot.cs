@@ -511,6 +511,9 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                     b.Property<bool>("BalanceHard")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("ConsecutiveHard")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("DefaultMaxConsecutive")
                         .HasColumnType("INTEGER");
 
@@ -1049,6 +1052,9 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("MaxConsecutive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("MaxConsecutiveHard")
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("MaxLessonsPerDay")

@@ -3,7 +3,7 @@ import { apiRequest } from "../../api";
 import { refreshQueries } from "../../lib/refreshQueries";
 
 export const ruleKeys = [
-  "spreadSubjectsAcrossDays", "spreadTeacherLessons", "avoidTeacherGaps", "balanceTeacherDays", "fairLastPeriods",
+  "spreadSubjectsAcrossDays", "maxConsecutiveLessons", "spreadTeacherLessons", "avoidTeacherGaps", "balanceTeacherDays", "fairLastPeriods",
   "heavySubjectsEarly", "avoidSameSubjectRepeated", "keepDoubleLessonsTogether",
 ] as const;
 export type RuleKey = (typeof ruleKeys)[number];
@@ -18,6 +18,8 @@ export type SchedulingProfile = {
   defaultMaxConsecutive: number;
   /** «جعل التوازن إلزامياً»: balanced teacher days as a hard rule. */
   balanceHard: boolean;
+  /** «إلزامي لكل المعلمين»: the consecutive-lessons limit as a hard rule for the whole school. */
+  consecutiveHard: boolean;
 };
 export type RuleInput = { key: RuleKey; enabled: boolean; weight: number };
 
@@ -37,7 +39,7 @@ function useProfileMutation<TInput>(request: (input: TInput) => Promise<Scheduli
 }
 
 export function useSaveProfile() {
-  return useProfileMutation((input: { rules: RuleInput[]; version: number; defaultMaxConsecutive: number; balanceHard: boolean }) => apiRequest<SchedulingProfile>(`${profilePath}/`, "PUT", input));
+  return useProfileMutation((input: { rules: RuleInput[]; version: number; defaultMaxConsecutive: number; balanceHard: boolean; consecutiveHard: boolean }) => apiRequest<SchedulingProfile>(`${profilePath}/`, "PUT", input));
 }
 
 export function useRestoreDefaults() {

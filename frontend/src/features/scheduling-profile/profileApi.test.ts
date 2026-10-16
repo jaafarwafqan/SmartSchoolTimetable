@@ -21,7 +21,7 @@ describe("priority levels (MF9)", () => {
 
   it("reads the new defaults as the owner set them: spread with gaps and balanced days very important, fair last periods important, consecutive off", () => {
     // Defaults in display order: spread subjects 20, spread teacher 30, consecutive (off) 30, balance 40, fair last periods 20, heavy 15, repeated 25, doubles 10.
-    expect(ruleKeys).toHaveLength(8);
+    expect(ruleKeys).toHaveLength(9);
     expect(levelOf({ enabled: true, weight: 30 })).toBe("veryImportant");
     expect(levelOf({ enabled: true, weight: 40 })).toBe("veryImportant");
     expect(levelOf({ enabled: true, weight: 20 })).toBe("important");

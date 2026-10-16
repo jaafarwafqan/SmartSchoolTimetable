@@ -65,7 +65,7 @@ public sealed class PerformanceTests(ITestOutputHelper output)
         }
     }
 
-    /// <summary>The production defaults of the profile (Phase 5): at most three lessons in a row for every teacher.</summary>
+    /// <summary>The production defaults of the profile (Phase 5): at most three lessons in a row for every teacher, as a priority.</summary>
     private static SchedulingInput Production(SchedulingInput input) => input with { Profile = input.Profile with { DefaultMaxConsecutive = 3 } };
 
     /// <summary>

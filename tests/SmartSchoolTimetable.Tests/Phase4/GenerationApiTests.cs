@@ -141,7 +141,7 @@ public sealed class GenerationApiTests
         Assert.Equal(42, run.GetProperty("seed").GetInt32());
         Assert.Equal(10, run.GetProperty("lessonsPlaced").GetInt32());
         Assert.StartsWith("OR-Tools 9.15", run.GetProperty("solverVersion").GetString(), StringComparison.Ordinal);
-        Assert.Equal(8, run.GetProperty("score").GetProperty("rules").GetArrayLength());
+        Assert.Equal(9, run.GetProperty("score").GetProperty("rules").GetArrayLength());
         var versionId = run.GetProperty("timetableVersionId").GetInt64();
 
         var current = await JsonAsync(await host.Client.GetAsync($"{school.Root}/generation/current"));

@@ -81,7 +81,7 @@ export function findingMessage(finding: ReadinessFinding, format: Formatter): st
     case "TEACHER_CONSECUTIVE_SHORT": {
       const [limit, days] = finding.details.map(Number);
       return text.messages.TEACHER_CONSECUTIVE_SHORT(name, format.count(required, "lesson"), format.count(available, "lesson"), format.count(limit ?? 0, "lesson"), format.count(days ?? 0, "day"),
-        (limit ?? 0) < 3 ? text.consecutiveAdviceRaise : text.consecutiveAdviceReduce);
+        finding.severity === "warning" ? text.consecutiveSoftNote : (limit ?? 0) < 3 ? text.consecutiveAdviceRaise : text.consecutiveAdviceReduce);
     }
     case "TEACHER_BALANCE_HARD_SHORT": return text.messages.TEACHER_BALANCE_HARD_SHORT(name, format.count(required, "lesson"), format.count(available, "lesson"));
     default: return text.unknownFinding;
@@ -107,7 +107,7 @@ export function fixHref(fix: string): string {
   if (["raiseTeacherLimit", "checkRelease", "removeTeacherBlocks"].includes(fix)) return "/teachers/list";
   if (["removeSubjectBlocks", "enableDistribution", "turnOffDoublePeriod"].includes(fix)) return "/classes/subjects";
   if (["raiseResourceCapacity", "restoreResource"].includes(fix)) return "/classes/resources";
-  if (fix === "raiseDailyCap" || fix === "relaxBalance") return "/settings/advanced";
+  if (fix === "raiseDailyCap" || fix === "relaxBalance" || fix === "relaxConsecutive") return "/settings/advanced";
   if (fix === "raiseTeacherConsecutive") return "/teachers/list";
   if (fix === "raiseTimeLimit" || fix === "unlockEdits") return "/timetable/generate";
   if (fix === "reviewWarnings") return "/readiness";

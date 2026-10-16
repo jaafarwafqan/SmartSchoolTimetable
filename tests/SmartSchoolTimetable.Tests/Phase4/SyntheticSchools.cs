@@ -234,13 +234,13 @@ internal static class SyntheticSchools
 
     /// <summary>
     /// A fictional school shaped like the owner's (never his data): 12 sections in 3 grades, 30 lessons a week in 30 slots (6 × 5, every section full every
-    /// day), 22 teachers, some days off and blocked periods, evening sessions on Tuesday to Thursday, and the production defaults (at most 3 lessons in a row).
+    /// day), 22 teachers, some days off and blocked periods, evening sessions on Tuesday to Thursday, and the production defaults (at most 3 lessons in a row, as a priority).
     /// The seed moves the days off and the blocked periods. Assignment: each teacher takes consecutive sections of his subject.
     /// </summary>
     public static SchedulingInput OwnerShaped(int seed)
     {
         var random = new Random(seed);
-        var school = new TestSchool().Consecutive(3).Evening(2, 3, 4);
+        var school = new TestSchool().Consecutive(3, hard: false).Evening(2, 3, 4);
         var shift = school.Shift(6, breakAfter: 3);
         var stages = Enumerable.Range(0, 3).Select(_ => school.Stage()).ToArray();
         var sections = Enumerable.Range(0, 12).Select(index => (Id: school.Section(shift, stages[index / 4]), Stage: stages[index / 4])).ToArray();

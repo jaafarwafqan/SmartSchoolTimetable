@@ -2,8 +2,9 @@ namespace SmartSchoolTimetable.Application.Scheduling;
 
 /// <param name="Usable">How many (shift, lesson) slots the teacher could teach in on this day: his sections' lessons that day without his blocked periods; 0 on an off day.</param>
 /// <param name="Full">The day has the most usable slots of the week (the teacher is not hampered that day): balanced strictly against the other full days.</param>
-/// <param name="Capacity">The most lessons he can teach that day under his daily maximum and the consecutive-lessons rule (an upper bound: every shift counted on its own).</param>
-public sealed record TeacherDayInfo(int Day, int Usable, bool Full, int Capacity);
+/// <param name="Capacity">The most lessons he can teach that day under his daily maximum and, when it is HARD for him, the consecutive-lessons rule (an upper bound: every shift counted on its own).</param>
+/// <param name="Runs">Lengths of the runs of consecutive free lesson numbers that day, per shift.</param>
+public sealed record TeacherDayInfo(int Day, int Usable, bool Full, int Capacity, IReadOnlyList<int> Runs);
 
 /// <summary>
 /// What one teacher's week looks like before any timetable exists (Phase 5 generation rules): the lessons he holds, his usable slots and capacity per
@@ -12,11 +13,12 @@ public sealed record TeacherDayInfo(int Day, int Usable, bool Full, int Capacity
 /// </summary>
 public sealed class TeacherDays
 {
-    private TeacherDays(TeacherInput teacher, int load, int? consecutive, IReadOnlyList<TeacherDayInfo> days)
+    private TeacherDays(TeacherInput teacher, int load, int? limit, bool hard, IReadOnlyList<TeacherDayInfo> days)
     {
         Teacher = teacher;
         Load = load;
-        Consecutive = consecutive;
+        Limit = limit;
+        Hard = hard;
         Days = days;
     }
 
@@ -25,8 +27,18 @@ public sealed class TeacherDays
     /// <summary>Weekly lessons assigned to him.</summary>
     public int Load { get; }
 
-    /// <summary>His «أقصى حصص متتالية» (own or the school's); null: no such rule.</summary>
-    public int? Consecutive { get; }
+    /// <summary>His «أقصى حصص متتالية» (own or the school's), as a priority or a hard rule; null: no such limit.</summary>
+    public int? Limit { get; }
+
+    /// <summary>The limit is a hard rule for him (the school's «إلزامي» or his own).</summary>
+    public bool Hard { get; }
+
+    /// <summary>The limit when it is hard for him, else null.</summary>
+    public int? Consecutive => Hard ? Limit : null;
+
+    /// <summary>What he could teach in the week if no more than <paramref name="consecutive"/> lessons followed each other (with his daily and weekly maximum).</summary>
+    public int CapacityUnder(int? consecutive) => Math.Min(Teacher.MaxPerWeek ?? int.MaxValue,
+        Days.Sum(day => Math.Min(day.Runs.Sum(run => RunCapacity(run, consecutive)), Teacher.MaxPerDay ?? int.MaxValue)));
 
     public IReadOnlyList<TeacherDayInfo> Days { get; }
 
@@ -75,7 +87,8 @@ public sealed class TeacherDays
 
     private static TeacherDays Build(SchedulingInput input, TeacherInput teacher, int load, IReadOnlyList<SectionInput> sections)
     {
-        var consecutive = input.MaxConsecutiveOf(teacher);
+        var limit = input.MaxConsecutiveOf(teacher);
+        var consecutive = input.HardConsecutiveOf(teacher);
         var days = new List<TeacherDayInfo>();
         foreach (var day in input.WorkingDays)
         {
@@ -92,11 +105,12 @@ public sealed class TeacherDays
                     }
                 }
             }
-            var capacity = slots.GroupBy(slot => slot.Shift).Sum(shift => Runs(shift.Select(slot => slot.Lesson)).Sum(run => RunCapacity(run, consecutive)));
-            days.Add(new TeacherDayInfo(day, slots.Count, false, Math.Min(capacity, teacher.MaxPerDay ?? int.MaxValue)));
+            var runs = slots.GroupBy(slot => slot.Shift).SelectMany(shift => Runs(shift.Select(slot => slot.Lesson))).ToArray();
+            var capacity = runs.Sum(run => RunCapacity(run, consecutive));
+            days.Add(new TeacherDayInfo(day, slots.Count, false, Math.Min(capacity, teacher.MaxPerDay ?? int.MaxValue), runs));
         }
         var most = days.Max(day => day.Usable);
-        return new TeacherDays(teacher, load, consecutive, days.Select(day => day with { Full = most > 0 && day.Usable == most }).ToArray());
+        return new TeacherDays(teacher, load, limit, consecutive is not null, days.Select(day => day with { Full = most > 0 && day.Usable == most }).ToArray());
     }
 
     /// <summary>Lengths of the maximal runs of consecutive numbers.</summary>

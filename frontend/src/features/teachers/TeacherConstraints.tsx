@@ -14,7 +14,7 @@ import type { Teacher } from "./teachersApi";
 
 const text = messages.school.teachers;
 
-export type ConstraintState = { offDays: number[]; blocked: BlockedSlot[]; released: boolean; maxConsecutive: number | null };
+export type ConstraintState = { offDays: number[]; blocked: BlockedSlot[]; released: boolean; maxConsecutive: number | null; maxConsecutiveHard: boolean };
 
 type TeacherConstraintsProps = {
   /** Unique per open editor, so several rows can be expanded at once. */
@@ -62,6 +62,8 @@ export function TeacherConstraints({ prefix, teacher, state, onChange, errors }:
             onChange={(event) => onChange({ ...state, maxConsecutive: event.target.value === "" ? null : Number(event.target.value) })} />
         </Field>
       </div>
+      <Checkbox checked={state.maxConsecutiveHard} onChange={(event) => onChange({ ...state, maxConsecutiveHard: event.target.checked })}>{text.consecutiveHard}</Checkbox>
+      {state.maxConsecutiveHard && <p className="ui-field-hint">{text.consecutiveHardHint}</p>}
     </section>
   );
 }

@@ -491,14 +491,16 @@ public static class PreSolveValidator
             var teacher = info.Teacher;
             if (teacher.IsArchived || teacher.Released)
                 continue; // other findings already report those
-            if (info.Consecutive is { } consecutive)
+            // Hard for him: an error (a proof). A priority: a warning (some lessons will exceed the limit), only while the priority is on.
+            var softOn = context.Input.Profile.Rules.FirstOrDefault(rule => rule.Key == SchedulingRuleKeys.MaxConsecutiveLessons) is not { } rule || (rule.Enabled && rule.Weight > 0);
+            if (info.Limit is { } consecutive && (info.Hard || softOn))
             {
-                // Only when the rule is what makes it impossible: without it the load would fit.
-                var without = info.Days.Sum(day => Math.Min(day.Usable, teacher.MaxPerDay ?? int.MaxValue));
-                var available = info.Capacity;
-                if (info.Load > available && info.Load <= Math.Min(teacher.MaxPerWeek ?? int.MaxValue, without))
+                // Only when the limit is what makes it impossible: without it the load would fit.
+                var without = info.CapacityUnder(null);
+                var available = info.CapacityUnder(consecutive);
+                if (info.Load > available && info.Load <= without)
                 {
-                    findings.Add(Finding(FindingCodes.TeacherConsecutiveShort, Error, TeacherEntity(teacher), info.Load, available,
+                    findings.Add(Finding(FindingCodes.TeacherConsecutiveShort, info.Hard ? Error : Warning, TeacherEntity(teacher), info.Load, available,
                         details: [Text(consecutive), Text(info.Days.Count(day => day.Usable > 0))],
                         fixes: consecutive < Teacher3 ? ["raiseTeacherConsecutive", "moveWorkload"] : ["moveWorkload", "removeTeacherBlocks"]));
                 }

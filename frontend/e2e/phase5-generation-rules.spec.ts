@@ -66,6 +66,13 @@ test("(generation rules) a section's daily limit, the school's consecutive limit
     await page.getByLabel(profile.consecutive.label).selectOption("2");
     await page.getByRole("button", { name: profile.save }).click();
     await expect(page.getByRole("status").filter({ hasText: profile.saved })).toBeVisible();
+    // As a priority (the default) the readiness only warns; made «إلزامي» for the whole school it is an error with the advice.
+    await page.goto(`${server.baseUrl}/readiness`);
+    await expect(page.getByText(readiness.consecutiveSoftNote)).toBeVisible();
+    await page.goto(`${server.baseUrl}/settings/advanced`);
+    await page.getByText(profile.consecutive.hard).click();
+    await page.getByRole("button", { name: profile.save }).click();
+    await expect(page.getByRole("status").filter({ hasText: profile.saved })).toBeVisible();
     await page.goto(`${server.baseUrl}/readiness`);
     await expect(page.getByText(readiness.consecutiveAdviceRaise)).toBeVisible();
     await expect(page.getByText("هدى سالم").first()).toBeVisible();

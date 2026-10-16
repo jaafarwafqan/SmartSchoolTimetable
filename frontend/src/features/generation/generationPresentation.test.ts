@@ -98,6 +98,21 @@ describe("plain result (MF3)", () => {
     expect(improvementNotes(run({ score: { ...score, rules: [{ ...score.rules[2], penalty: 0, weighted: 0 }] } }), format)).toEqual([]);
   });
 
+  it("lists every teacher over the consecutive-lessons limit with the day and the count, and names the likely cause after a timeout", () => {
+    const score = {
+      total: 80,
+      rules: [{ key: "maxConsecutiveLessons", enabled: true, weight: 40, penalty: 2, weighted: 80 }],
+      consecutiveRuns: [{ teacher: "رغد", day: 7, count: 4, limit: 3 }, { teacher: "سلمى", day: 1, count: 4, limit: 3 }],
+    };
+    expect(improvementNotes(run({ score }), format).map((note) => note.sentence)).toEqual([
+      `تجاوز حد الحصص المتتالية: ${isolate("رغد")}، الأحد: ٤ حصص متتالية؛ ${isolate("سلمى")}، الاثنين: ٤ حصص متتالية.`,
+    ]);
+    const cause: SolverFinding = { code: "CONSECUTIVE_LIKELY_CAUSE", entity: { kind: "school", id: 0, name: "" }, related: [{ kind: "teacher", id: 1, name: "رغد" }], required: null, available: null, fixes: ["relaxConsecutive"], relaxationHelps: true };
+    const message = diagnosticMessage(cause, format);
+    expect(message).toContain("السبب على الأرجح");
+    expect(message).toContain(isolate("رغد"));
+  });
+
   it("explains the consecutive and balance diagnostics with the teacher's name", () => {
     const finding = (code: string): SolverFinding => ({ code, entity: { kind: "teacher", id: 1, name: "رغد" }, related: [], required: 20, available: 15, fixes: [], relaxationHelps: true });
     expect(diagnosticMessage(finding("CORE_TEACHER_CONSECUTIVE"), format)).toContain("أقصى حصص متتالية للمعلم");

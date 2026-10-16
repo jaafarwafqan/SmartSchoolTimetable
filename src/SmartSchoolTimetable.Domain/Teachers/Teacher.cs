@@ -21,7 +21,8 @@ public sealed record TeacherDetails(
     int? MaxLessonsPerWeek,
     string? Notes,
     IReadOnlyCollection<long>? SpecializationIds = null,
-    int? MaxConsecutive = null);
+    int? MaxConsecutive = null,
+    bool MaxConsecutiveHard = false);
 
 /// <summary>
 /// A teacher (global, DECISIONS_PENDING #1) with constraints. Rules: short name unique after normalization
@@ -63,6 +64,9 @@ public sealed class Teacher : VersionedEntity
 
     /// <summary>The most lessons in a row this teacher may teach (2 or 3); null follows the school's default («أقصى حصص متتالية للمعلم»).</summary>
     public int? MaxConsecutive { get; private set; }
+
+    /// <summary>«إلزامي لهذا المعلم»: his consecutive-lessons limit is a hard rule even when the school keeps it a priority.</summary>
+    public bool MaxConsecutiveHard { get; private set; }
     public string? Notes { get; private set; }
     public bool IsArchived { get; private set; }
     public DateTimeOffset? ArchivedAt { get; private set; }
@@ -181,6 +185,7 @@ public sealed class Teacher : VersionedEntity
         MaxLessonsPerDay = details.MaxLessonsPerDay;
         MaxLessonsPerWeek = details.MaxLessonsPerWeek;
         MaxConsecutive = details.MaxConsecutive;
+        MaxConsecutiveHard = details.MaxConsecutiveHard;
         Notes = string.IsNullOrWhiteSpace(details.Notes) ? null : details.Notes.Trim();
         _blockedPeriods.Clear();
         _blockedPeriods.AddRange((details.BlockedPeriods ?? []).Distinct().OrderBy(period => period.Day).ThenBy(period => period.LessonNumber));

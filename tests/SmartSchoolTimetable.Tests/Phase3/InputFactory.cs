@@ -66,11 +66,13 @@ internal sealed class InputFactory
 
     private int? _defaultConsecutive;
     private bool _balanceHard;
+    private bool _consecutiveHard;
     private readonly List<CapOverrideInput> _capOverrides = [];
 
-    public InputFactory Consecutive(int? limit)
+    public InputFactory Consecutive(int? limit, bool hard = true)
     {
         _defaultConsecutive = limit;
+        _consecutiveHard = hard;
         return this;
     }
 
@@ -95,6 +97,6 @@ internal sealed class InputFactory
     public SchedulingInput Build() => new(
         SchedulingInput.CurrentFormatVersion, 1, Week, _shifts.ToArray(), _sections.ToArray(), _subjects.ToArray(), _lines.ToArray(),
         _assignments.ToArray(), _teachers.ToArray(), _resources.ToArray(),
-        new ProfileInput(1, SchedulingRuleKeys.Defaults.Select(rule => new RuleInput(rule.Key, rule.Enabled, rule.Weight)).ToArray(), _defaultConsecutive, _balanceHard),
+        new ProfileInput(1, SchedulingRuleKeys.Defaults.Select(rule => new RuleInput(rule.Key, rule.Enabled, rule.Weight)).ToArray(), _defaultConsecutive, _balanceHard, _consecutiveHard),
         CapOverrides: _capOverrides.Count == 0 ? null : _capOverrides.ToArray());
 }

@@ -65,9 +65,9 @@ public static class SchedulingInputBuilder
                 Released(teacher, year), PartiallyReleased(teacher, year), teacher.OffDays.ToArray(),
                 teacher.BlockedPeriods.Select(period => new SlotRef(period.Day, period.LessonNumber)).ToArray(),
                 teacher.MaxLessonsPerDay, teacher.MaxLessonsPerWeek, teacher.Specializations.Select(item => item.SubjectId).ToArray(),
-                string.IsNullOrWhiteSpace(teacher.ShortName) ? null : teacher.ShortName, teacher.MaxConsecutive)).ToArray(),
+                string.IsNullOrWhiteSpace(teacher.ShortName) ? null : teacher.ShortName, teacher.MaxConsecutive, teacher.MaxConsecutiveHard)).ToArray(),
             resources.Select(resource => new ResourceInput(resource.Id, resource.Name, resource.Kind.ToString(), resource.Capacity, resource.IsArchived)).ToArray(),
-            new ProfileInput(profile.ProfileVersion, profile.Rules.Select(rule => new RuleInput(rule.Key, rule.Enabled, rule.Weight)).ToArray(), profile.DefaultMaxConsecutive, profile.BalanceHard),
+            new ProfileInput(profile.ProfileVersion, profile.Rules.Select(rule => new RuleInput(rule.Key, rule.Enabled, rule.Weight)).ToArray(), profile.DefaultMaxConsecutive, profile.BalanceHard, profile.ConsecutiveHard),
             stages.Select(stage => new StageInput(stage.Id, stage.Name)).ToArray(),
             CapOverridesOf(subjects, stages, sections),
             EveningDaysOf(sessions, days));

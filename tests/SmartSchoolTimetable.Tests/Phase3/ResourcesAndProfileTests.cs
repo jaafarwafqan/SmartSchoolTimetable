@@ -26,7 +26,7 @@ namespace SmartSchoolTimetable.Tests.Phase3;
 /// </summary>
 public sealed class ResourcesAndProfileTests
 {
-    private static readonly int[] Weights = [20, 30, 30, 40, 20, 15, 25, 10];
+    private static readonly int[] Weights = [20, 40, 30, 30, 40, 20, 15, 25, 10];
     private const string ResourcesPath = "/api/v1/resources/";
     private const string ProfilePath = "/api/v1/scheduling-profile/";
 
@@ -201,7 +201,7 @@ public sealed class ResourcesAndProfileTests
             upgraded.Add(Resource.Create("مختبر العلوم", ResourceKind.Lab, 1, null));
             upgraded.Add(SchedulingProfile.CreateDefault());
             await upgraded.SaveChangesAsync();
-            Assert.Equal(8, (await upgraded.Set<SchedulingProfile>().AsNoTracking().SingleAsync()).Rules.Count);
+            Assert.Equal(9, (await upgraded.Set<SchedulingProfile>().AsNoTracking().SingleAsync()).Rules.Count);
         }
         finally
         {

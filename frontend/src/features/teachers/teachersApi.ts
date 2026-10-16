@@ -18,6 +18,8 @@ export type Teacher = {
   maxLessonsPerWeek: number | null;
   /** The teacher's own most lessons in a row (2 or 3); null follows the school's default. */
   maxConsecutive?: number | null;
+  /** «إلزامي لهذا المعلم»: his limit is a hard rule. */
+  maxConsecutiveHard?: boolean;
   notes: string | null;
   isArchived: boolean;
   archivedAt: string | null;

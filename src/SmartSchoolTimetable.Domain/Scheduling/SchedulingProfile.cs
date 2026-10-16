@@ -23,10 +23,14 @@ public static class SchedulingRuleKeys
     /// <summary>«عدالة الحصص الأخيرة»: no teacher always gets the last periods of the day.</summary>
     public const string FairLastPeriods = "fairLastPeriods";
 
+    /// <summary>«أقصى حصص متتالية للمعلم» as a priority: lessons in a row above the limit (2 or 3) are penalised; the school or a teacher can make it hard.</summary>
+    public const string MaxConsecutiveLessons = "maxConsecutiveLessons";
+
     /// <summary>Defaults in display order. <see cref="AvoidTeacherGaps"/> («متتالية») is off by default: it is the opposite of <see cref="SpreadTeacherLessons"/>.</summary>
     public static readonly IReadOnlyList<SchedulingRule> Defaults =
     [
         new(SpreadSubjectsAcrossDays, true, 20),
+        new(MaxConsecutiveLessons, true, 40),
         new(SpreadTeacherLessons, true, 30),
         new(AvoidTeacherGaps, false, 30),
         new(BalanceTeacherDays, true, 40),
@@ -71,6 +75,9 @@ public sealed class SchedulingProfile : VersionedEntity
 
     /// <summary>«جعل التوازن إلزامياً»: balanced teacher days become a hard rule instead of a priority.</summary>
     public bool BalanceHard { get; private set; }
+
+    /// <summary>«إلزامي» for the whole school: the consecutive-lessons limit is a hard rule for every teacher (a teacher can also be made hard alone).</summary>
+    public bool ConsecutiveHard { get; private set; }
     public IReadOnlyList<SchedulingRule> Rules => _rules;
 
     public static SchedulingProfile CreateDefault()
@@ -84,7 +91,7 @@ public sealed class SchedulingProfile : VersionedEntity
     /// Replaces the rules; every known rule exactly once, weights 0–100, and not both forms of the teacher's day. A null
     /// <paramref name="defaultMaxConsecutive"/> or <paramref name="balanceHard"/> keeps the stored value. Returns false when nothing changed.
     /// </summary>
-    public bool Update(IReadOnlyCollection<SchedulingRule>? rules, int? defaultMaxConsecutive = null, bool? balanceHard = null)
+    public bool Update(IReadOnlyCollection<SchedulingRule>? rules, int? defaultMaxConsecutive = null, bool? balanceHard = null, bool? consecutiveHard = null)
     {
         var input = rules ?? [];
         var keys = SchedulingRuleKeys.Defaults.Select(rule => rule.Key).ToArray();
@@ -97,22 +104,23 @@ public sealed class SchedulingProfile : VersionedEntity
             .ThrowIfAny();
         var ordered = keys.Select(key => input.First(rule => rule.Key == key)).ToArray();
         new DomainErrors().When(SchedulingRuleKeys.Conflicting(ordered), RulesField, DomainErrorCode.InvalidOption).ThrowIfAny();
-        return Replace(ordered, defaultMaxConsecutive ?? DefaultMaxConsecutive, balanceHard ?? BalanceHard);
+        return Replace(ordered, defaultMaxConsecutive ?? DefaultMaxConsecutive, balanceHard ?? BalanceHard, consecutiveHard ?? ConsecutiveHard);
     }
 
     /// <summary>«استعادة الإعدادات الافتراضية». Returns false when the rules were already the defaults.</summary>
-    public bool RestoreDefaults() => Replace(SchedulingRuleKeys.Defaults, DefaultConsecutive, false);
+    public bool RestoreDefaults() => Replace(SchedulingRuleKeys.Defaults, DefaultConsecutive, false, false);
 
-    private bool Replace(IEnumerable<SchedulingRule> ordered, int defaultMaxConsecutive, bool balanceHard)
+    private bool Replace(IEnumerable<SchedulingRule> ordered, int defaultMaxConsecutive, bool balanceHard, bool consecutiveHard)
     {
         // Fresh copies: owned rows must never share an instance (the defaults are static).
         var next = ordered.Select(rule => rule with { }).ToArray();
-        if (next.Length == _rules.Count && next.All(_rules.Contains) && defaultMaxConsecutive == DefaultMaxConsecutive && balanceHard == BalanceHard)
+        if (next.Length == _rules.Count && next.All(_rules.Contains) && defaultMaxConsecutive == DefaultMaxConsecutive && balanceHard == BalanceHard && consecutiveHard == ConsecutiveHard)
             return false;
         _rules.Clear();
         _rules.AddRange(next);
         DefaultMaxConsecutive = defaultMaxConsecutive;
         BalanceHard = balanceHard;
+        ConsecutiveHard = consecutiveHard;
         ProfileVersion++;
         Touch();
         return true;

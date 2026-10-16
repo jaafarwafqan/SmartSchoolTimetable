@@ -11,7 +11,10 @@ namespace SmartSchoolTimetable.Application.Generation;
 public sealed record LastPeriodInsight(string MostTeacher, int MostCount, string LeastTeacher, int LeastCount);
 
 /// <summary>Total penalty and its breakdown per soft rule (lower is better); <paramref name="LastPeriods"/> is set when there are last periods to share.</summary>
-public sealed record TimetableScore(long Total, IReadOnlyList<RuleScore> Rules, LastPeriodInsight? LastPeriods = null);
+public sealed record TimetableScore(long Total, IReadOnlyList<RuleScore> Rules, LastPeriodInsight? LastPeriods = null, IReadOnlyList<ConsecutiveRun>? ConsecutiveRuns = null);
+
+/// <summary>A teacher who got more lessons in a row than his limit on one day: his name, the day, the longest run that day and the limit.</summary>
+public sealed record ConsecutiveRun(string Teacher, int Day, int Count, int Limit);
 
 /// <summary>
 /// Scores a timetable on the soft rules S1–S5 with the profile weights (docs/SOLVER.md §3). The solver minimises the
@@ -24,6 +27,7 @@ public sealed record TimetableScore(long Total, IReadOnlyList<RuleScore> Rules, 
 /// S5 doubles (standard mode only): per double line, ⌊lessons ÷ 2⌋ minus the adjacent pairs it got.
 /// S6 teacher spread: per (teacher, day, shift), lesson numbers n and n + 1 both taught by him (a pair of double lessons excepted).
 /// S7 balanced days: per teacher, the busiest minus the quietest of his full days minus 1 (not below 0), plus the lessons of a partly-available day above its share.
+/// S9 consecutive lessons (a priority): per (teacher, shift, day), windows of limit + 1 consecutive lesson numbers all his.
 /// S8 fair last periods: per teacher, his weighted last-period lessons (evening days count double) above his share by weekly load.
 /// </summary>
 public static class TimetableScorer
@@ -112,6 +116,24 @@ public static class TimetableScorer
             .ToDictionary(group => group.Key, group => (Weighted: group.Sum(item => (long)LastPeriodFairness.WeightOf(input, item.Lesson.Day)), Raw: group.Count()));
         var lastFair = lastWeighted.Sum(pair => Math.Max(0, pair.Value.Weighted - allowances.GetValueOrDefault(pair.Key)));
 
+        // S9: lessons in a row above the teacher's limit (a priority for him; a hard teacher has none in a valid timetable).
+        var teachersById = input.Teachers.ToDictionary(teacher => teacher.Id);
+        long overRuns = 0;
+        var runs = new List<ConsecutiveRun>();
+        foreach (var group in items.GroupBy(item => (item.Lesson.TeacherId, item.Section.ShiftId, item.Lesson.Day)))
+        {
+            if (!teachersById.TryGetValue(group.Key.TeacherId, out var teacher) || input.MaxConsecutiveOf(teacher) is not { } limit)
+                continue;
+            var numbers = group.Select(item => item.Lesson.Lesson).ToHashSet();
+            overRuns += numbers.Count(number => Enumerable.Range(number, limit + 1).All(numbers.Contains));
+            var longest = numbers.Max(number => numbers.Contains(number - 1) ? 0 : Enumerable.Range(number, numbers.Count).TakeWhile(numbers.Contains).Count());
+            if (longest > limit)
+                runs.Add(new ConsecutiveRun(teacher.Name, group.Key.Day, longest, limit));
+        }
+        var dayOrder = input.WorkingDays.Select((day, index) => (day, index)).ToDictionary(pair => pair.day, pair => pair.index);
+        var runList = runs.GroupBy(run => (run.Teacher, run.Day)).Select(day => day.MaxBy(run => run.Count)!)
+            .OrderBy(run => run.Teacher, StringComparer.Ordinal).ThenBy(run => dayOrder.GetValueOrDefault(run.Day)).ToArray();
+
         long doubles = 0;
         if (!doublePeriodsRequired)
         {
@@ -135,6 +157,7 @@ public static class TimetableScorer
             [SchedulingRuleKeys.SpreadTeacherLessons] = teacherSpread,
             [SchedulingRuleKeys.BalanceTeacherDays] = balance,
             [SchedulingRuleKeys.FairLastPeriods] = lastFair,
+            [SchedulingRuleKeys.MaxConsecutiveLessons] = overRuns,
         };
         var rules = SchedulingRuleKeys.Defaults.Select(rule =>
         {
@@ -144,7 +167,8 @@ public static class TimetableScorer
             var penalty = penalties[rule.Key];
             return new RuleScore(rule.Key, enabled, weight, penalty, enabled ? weight * penalty : 0);
         }).ToArray();
-        return new TimetableScore(rules.Sum(rule => rule.Weighted), rules, Insight(input, teacherDays, lastWeighted.ToDictionary(pair => pair.Key, pair => pair.Value.Raw), allowances));
+        return new TimetableScore(rules.Sum(rule => rule.Weighted), rules, Insight(input, teacherDays, lastWeighted.ToDictionary(pair => pair.Key, pair => pair.Value.Raw), allowances),
+            runList.Length == 0 ? null : runList);
     }
 
     /// <summary>

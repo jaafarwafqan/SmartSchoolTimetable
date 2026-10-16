@@ -159,7 +159,8 @@ public sealed class TeachersService(IDataStore store, TimeProvider clock)
         command.MaxLessonsPerWeek,
         command.Notes,
         command.SpecializationIds,
-        command.MaxConsecutive);
+        command.MaxConsecutive,
+        command.MaxConsecutiveHard);
 
     /// <summary>«إضافة المادة لتخصصاته»: adds one active subject to the teacher's specializations.</summary>
     public async Task<OperationResult<TeacherDto>> AddSpecializationAsync(long id, long subjectId, AddSpecializationCommand command, CancellationToken token)
@@ -219,5 +220,6 @@ public sealed class TeachersService(IDataStore store, TimeProvider clock)
         row.ArchivedAt,
         row.Version,
         row.Specializations.Select(item => item.SubjectId).Order().ToArray(),
-        row.MaxConsecutive);
+        row.MaxConsecutive,
+        row.MaxConsecutiveHard);
 }

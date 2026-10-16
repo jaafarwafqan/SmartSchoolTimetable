@@ -32,6 +32,7 @@ function ProfileEditor({ profile, onReload }: { profile: SchedulingProfile; onRe
   const [rules, setRules] = useSyncedState(toInputs, profile.version);
   const [consecutive, setConsecutive] = useSyncedState(() => profile.defaultMaxConsecutive, profile.version);
   const [balanceHard, setBalanceHard] = useSyncedState(() => profile.balanceHard, profile.version);
+  const [consecutiveHard, setConsecutiveHard] = useSyncedState(() => profile.consecutiveHard, profile.version);
   const balanceLevel = levelOf(rules.find((rule) => rule.key === "balanceTeacherDays") ?? { enabled: false, weight: 0 });
 
   return (
@@ -72,6 +73,8 @@ function ProfileEditor({ profile, onReload }: { profile: SchedulingProfile; onRe
           <Select id="default-consecutive" value={String(consecutive)} options={[{ value: "2", label: text.consecutive.two }, { value: "3", label: text.consecutive.three }]}
             onChange={(event) => setConsecutive(Number(event.target.value))} />
         </Field>
+        <Checkbox checked={consecutiveHard} onChange={(event) => setConsecutiveHard(event.target.checked)}>{text.consecutive.hard}</Checkbox>
+        {consecutiveHard && <p className="card-note">{text.consecutive.hardHint}</p>}
       </section>
       <p className="card-note">
         {text.profileVersion(format.number(profile.profileVersion))}
@@ -81,7 +84,7 @@ function ProfileEditor({ profile, onReload }: { profile: SchedulingProfile; onRe
         <Button icon={<Save aria-hidden="true" size={20} />} loading={save.isPending} disabled={feedback.conflict}
           onClick={() => {
             feedback.reset();
-            save.mutate({ rules, version: profile.version, defaultMaxConsecutive: consecutive, balanceHard: balanceHard && balanceLevel !== "notImportant" }, { onSuccess: () => feedback.showSuccess(text.saved), onError: feedback.showError });
+            save.mutate({ rules, version: profile.version, defaultMaxConsecutive: consecutive, balanceHard: balanceHard && balanceLevel !== "notImportant", consecutiveHard }, { onSuccess: () => feedback.showSuccess(text.saved), onError: feedback.showError });
           }}>
           {text.save}
         </Button>
@@ -104,6 +107,7 @@ function ProfileEditor({ profile, onReload }: { profile: SchedulingProfile; onRe
               setRules(restored.rules.map((rule) => ({ key: rule.key, enabled: rule.enabled, weight: rule.weight })));
               setConsecutive(restored.defaultMaxConsecutive);
               setBalanceHard(restored.balanceHard);
+              setConsecutiveHard(restored.consecutiveHard);
               feedback.showSuccess(text.restored);
             },
             onError: feedback.showError,

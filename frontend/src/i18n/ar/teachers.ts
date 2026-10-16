@@ -39,6 +39,8 @@ export const teachers = {
   consecutiveSchool: "حسب المدرسة",
   consecutiveTwo: "حصتان",
   consecutiveThree: "ثلاث حصص",
+  consecutiveHard: "إلزامي لهذا المعلم",
+  consecutiveHardHint: "لا يتجاوز هذا المعلم الحد أبداً، ولو أبقت المدرسة القاعدة أولوية.",
   notes: "ملاحظات (اختياري)",
   offDaysColumn: "أيام الإجازة",
   blockedColumn: "حصص محجوبة",

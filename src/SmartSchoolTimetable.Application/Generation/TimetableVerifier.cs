@@ -101,8 +101,8 @@ public static class TimetableVerifier
             // H7: maximum per week.
             if (teacher.MaxPerWeek is { } maxWeek && group.Count() > maxWeek)
                 violations.Add(new Violation(ViolationCodes.TeacherWeekLimit, "H7", TeacherId: teacher.Id, Count: group.Count(), Limit: maxWeek));
-            // H11: never more than the teacher's maximum of lessons in a row (consecutive lesson numbers of one shift on one day).
-            if (input.MaxConsecutiveOf(teacher) is { } consecutive)
+            // H11 (when hard for him): never more than the teacher's maximum of lessons in a row (consecutive lesson numbers of one shift on one day).
+            if (input.HardConsecutiveOf(teacher) is { } consecutive)
             {
                 foreach (var shiftDay in group.GroupBy(item => (item.Section.ShiftId, item.Lesson.Day)))
                 {
