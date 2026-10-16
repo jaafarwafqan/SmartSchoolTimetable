@@ -53,7 +53,7 @@ function StageCaps({ yearId, subject, stage, disabled, onSet }: { yearId: number
     <li className="cap-stage">
       <div className="profile-rule">
         <span className="profile-rule-text"><strong>{text.stageRow(stageName)}</strong></span>
-        <CapSelect id={`cap-${subject.id}-stage-${stage.id}`} label={text.chooseForStage(isolate(subject.name), stageName)} value={stageCap}
+        <CapSelect id={`cap-${subject.id}-stage-${stage.id}`} label={text.chooseForStage(subject.name, stage.name)} value={stageCap}
           inherited={subject.dailyCap ?? null} disabled={disabled} onChange={(cap) => onSet("stage", stage.id, cap)} />
       </div>
       {sections.isPending && <Spinner label={messages.app.loadingContent} />}
@@ -62,7 +62,7 @@ function StageCaps({ yearId, subject, stage, disabled, onSet }: { yearId: number
         {(sections.data?.items ?? []).map((section) => (
           <li key={section.id} className="profile-rule">
             <span className="profile-rule-text">{text.sectionRow(isolate(section.label))}</span>
-            <CapSelect id={`cap-${subject.id}-section-${section.id}`} label={text.chooseForSection(isolate(subject.name), isolate(`${stage.name} ${section.label}`))}
+            <CapSelect id={`cap-${subject.id}-section-${section.id}`} label={text.chooseForSection(subject.name, `${stage.name} / ${section.label}`)}
               value={overrideOf(subject, "section", section.id)} inherited={stageCap ?? subject.dailyCap ?? null} disabled={disabled}
               onChange={(cap) => onSet("section", section.id, cap)} />
           </li>
@@ -98,12 +98,12 @@ export function DailyCapCard() {
       {subjects.isPending && <Spinner label={messages.app.loadingContent} />}
       {subjects.data && subjects.data.items.length === 0 && <p className="card-note">{text.empty}</p>}
       {subjects.data && subjects.data.items.length > 0 && (
-        <DataTable caption={text.title} rows={subjects.data.items} rowKey={(subject) => String(subject.id)} selectedKey={open === null ? null : String(open)} columns={[
+        <DataTable stacked caption={text.title} rows={subjects.data.items} rowKey={(subject) => String(subject.id)} selectedKey={open === null ? null : String(open)} columns={[
           { key: "subject", header: text.subject, cell: (subject) => <strong>{isolate(subject.name)}</strong> },
           {
             key: "default", header: text.subjectDefault,
             cell: (subject) => (
-              <CapSelect id={`daily-cap-${subject.id}`} label={text.chooseFor(isolate(subject.name))} value={subject.dailyCap ?? null} inherited={null} disabled={busy}
+              <CapSelect id={`daily-cap-${subject.id}`} label={text.chooseFor(subject.name)} value={subject.dailyCap ?? null} inherited={null} disabled={busy}
                 onChange={(cap) => { feedback.reset(); saveDefault.mutate({ subject, dailyCap: cap }, done); }} />
             ),
           },

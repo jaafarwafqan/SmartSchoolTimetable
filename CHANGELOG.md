@@ -2,6 +2,15 @@
 
 ## [1.0.0] - 2026-10-11 (branch `work/phase-5`, tags `v1.0.0`, `phase-5-final`)
 First release for the school. Windows 10 (1809+) 64-bit and Windows 11; installer `SmartSchoolTimetable-Setup-1.0.0-<stamp>.exe` with a SHA-256 file; Arabic user guide `docs/USER_GUIDE_AR.pdf`. Everything below was delivered on `work/phase-5` since `phase-4i`; the last four items (M3, M5, user guide, version) are the final stage.
+### Generation rules decided by the owner before the final tag (ADR 0053)
+- Daily limit of a subject: «حصة واحدة في اليوم» added (1 to 6), and limits per grade and per section in an inline table (choose, never type; «تلقائي» inherits; the most specific wins). Readiness error when limit × available days < weekly lessons.
+- «أقصى حصص متتالية للمعلم» (H11, hard): 2 or 3, school default 3, per-teacher choice in the teacher's card; readiness error `TEACHER_CONSECUTIVE_SHORT` with the owner's formula and the advice «اجعل الحد ٣» or «خفّف نصابه».
+- «توزيع حصص المعلم بفواصل» (S6) is the default form of the teacher's day; «حصص المعلم متتالية بلا فراغات» (S2) is off by default and mutually exclusive with it.
+- «توزيع أيام المعلم بالتساوي» (S7, «مهم جداً»), with «جعل التوازن إلزامياً» (H12): full days within one lesson; partial days a proportional share.
+- «عدالة الحصص الأخيرة» (S8, «مهم»): each teacher's share of the last periods by weekly load, evening days weighted double; the result note says «أكثر معلم في الحصص الأخيرة: … (عدد)، وأقلهم: … (عدد)».
+- Corrective migration `Phase5GenerationRules` (new columns, `SubjectCapOverrides`, the existing school's priorities upgraded without both forms of the teacher's day).
+- Tests: `GenerationRulesTests` (unit, CP-SAT model, verifier, diagnostics per rule), `GenerationRulesApiTests` (API, migration), Vitest notes, findings and exclusivity; performance gate re-run (docs/PERFORMANCE.md).
+- User guide: new chapter «كيف يعمل توليد الجدول».
 ### Fix: the program froze when the internet was cut (owner report)
 - TanStack Query's default `networkMode: "online"` paused every request while the browser reported «no network», so cutting the internet left every screen on a spinner although the local server was running. `networkMode: "always"` for queries and mutations (`lib/queryClient.ts`); a Vitest check of the defaults and `m3-offline.spec.ts` (the browser reports offline, then the screens load and a setting saves; confirmed to fail without the fix).
 ### Fill checks and the daily limit (owner's real-school test: generation failed on full sections)

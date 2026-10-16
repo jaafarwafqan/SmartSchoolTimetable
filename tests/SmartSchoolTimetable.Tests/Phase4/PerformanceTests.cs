@@ -65,6 +65,39 @@ public sealed class PerformanceTests(ITestOutputHelper output)
         }
     }
 
+    /// <summary>The production defaults of the profile (Phase 5): at most three lessons in a row for every teacher.</summary>
+    private static SchedulingInput Production(SchedulingInput input) => input with { Profile = input.Profile with { DefaultMaxConsecutive = 3 } };
+
+    /// <summary>
+    /// Phase 5 gate with every new rule on (the default priorities, max 3 in a row): 24/40 with 2 workers (the 4 GB school-PC default), the owner-shaped
+    /// school (12 sections, 30/30, 22 teachers) on three seeds, through the validator first so its readiness is reported too.
+    /// </summary>
+    [PerformanceFact]
+    public async Task Phase5RulesKeepTheGate()
+    {
+        foreach (var seed in new[] { 1, 2, 3 })
+        {
+            var (result, violations) = await Measure($"24/40 s{seed} P5", Production(SyntheticSchools.Realistic(24, 40, seed)), 60, 2, deterministic: false);
+            Assert.True(result.HasTimetable);
+            Assert.Equal(0, violations);
+            Assert.True(result.FirstSolutionSeconds < 60, $"first timetable after {result.FirstSolutionSeconds} s");
+        }
+        foreach (var seed in new[] { 1, 2, 3 })
+        {
+            var input = SyntheticSchools.OwnerShaped(seed);
+            var readiness = PreSolveValidator.Validate(input);
+            output.WriteLine($"owner-shaped s{seed}: ready={readiness.Ready} errors={readiness.Errors} warnings={readiness.Warnings} {string.Join(",", readiness.Findings.Where(item => item.Severity == PreSolveValidator.Error).Select(item => item.Code))}");
+            var (result, violations) = await Measure($"owner-shaped s{seed}", input, 60, 2, deterministic: false);
+            if (readiness.Ready)
+            {
+                Assert.True(result.HasTimetable);
+                Assert.Equal(0, violations);
+                var score = TimetableScorer.Score(input, result.Lessons, false);
+                output.WriteLine("  " + string.Join(" ", score.Rules.Select(rule => $"{rule.Key}={rule.Penalty}")) + (score.LastPeriods is { } last ? $" last: {last.MostCount}/{last.LeastCount}" : ""));
+            }
+        }
+    }
+
     /// <summary>«نتيجة قابلة للإعادة» (one worker, deterministic time): measured and reported, no target.</summary>
     [PerformanceFact]
     public async Task TheDeterministicModeIsMeasuredWithoutAPromise()

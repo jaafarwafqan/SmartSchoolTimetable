@@ -13,7 +13,7 @@ using static SmartSchoolTimetable.Tests.ApiTestHelpers;
 
 namespace SmartSchoolTimetable.Tests.Phase5;
 
-/// <summary>The generation rules through the API and the corrective migration of an existing school's priorities (Phase 5, ADR 0051).</summary>
+/// <summary>The generation rules through the API and the corrective migration of an existing school's priorities (Phase 5, ADR 0053).</summary>
 public sealed class GenerationRulesApiTests
 {
     private const string ProfilePath = "/api/v1/scheduling-profile/";

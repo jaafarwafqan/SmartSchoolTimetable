@@ -12,7 +12,7 @@ using SmartSchoolTimetable.Tests.Phase4;
 namespace SmartSchoolTimetable.Tests.Phase5;
 
 /// <summary>
-/// The owner's generation rules (Phase 5, ADR 0051): the daily limit per subject, grade and section, the teacher's most lessons in a row (H11),
+/// The owner's generation rules (Phase 5, ADR 0053): the daily limit per subject, grade and section, the teacher's most lessons in a row (H11),
 /// spread with gaps (S6), balanced teacher days (S7, H12) and fair last periods (S8). Synthetic schools only; each rule has its unit, solver and verifier tests.
 /// </summary>
 [Collection(SerialSolverRuns.Name)]

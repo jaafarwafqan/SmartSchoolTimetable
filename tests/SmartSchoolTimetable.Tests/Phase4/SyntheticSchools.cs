@@ -231,4 +231,46 @@ internal static class SyntheticSchools
         }
         return school.Build();
     }
+
+    /// <summary>
+    /// A fictional school shaped like the owner's (never his data): 12 sections in 3 grades, 30 lessons a week in 30 slots (6 × 5, every section full every
+    /// day), 22 teachers, some days off and blocked periods, evening sessions on Tuesday to Thursday, and the production defaults (at most 3 lessons in a row).
+    /// The seed moves the days off and the blocked periods. Assignment: each teacher takes consecutive sections of his subject.
+    /// </summary>
+    public static SchedulingInput OwnerShaped(int seed)
+    {
+        var random = new Random(seed);
+        var school = new TestSchool().Consecutive(3).Evening(2, 3, 4);
+        var shift = school.Shift(6, breakAfter: 3);
+        var stages = Enumerable.Range(0, 3).Select(_ => school.Stage()).ToArray();
+        var sections = Enumerable.Range(0, 12).Select(index => (Id: school.Section(shift, stages[index / 4]), Stage: stages[index / 4])).ToArray();
+        // Weekly lessons, flags and teachers per subject: 30 lessons a section, 22 teachers in all.
+        var plan = new (int Weekly, bool Heavy, bool Spread, int Teachers)[]
+        {
+            (6, true, true, 4), (6, true, true, 4), (5, false, true, 4), (4, true, true, 3), (3, false, true, 2), (3, false, true, 2), (1, false, false, 1), (1, false, false, 1), (1, false, false, 1),
+        };
+        var dayOffUsed = new HashSet<int>();
+        for (var subjectIndex = 0; subjectIndex < plan.Length; subjectIndex++)
+        {
+            var (weekly, heavy, spread, count) = plan[subjectIndex];
+            var subject = school.Subject(heavy: heavy, spread: spread);
+            var lines = stages.ToDictionary(stage => stage, stage => school.Line(stage, subject, weekly));
+            var staff = Enumerable.Range(0, count).Select(teacherIndex =>
+            {
+                // About one teacher in three has a day off (never two of the same subject on the same day), and up to two blocked periods.
+                int[] offDays = [];
+                if (random.Next(3) == 0)
+                {
+                    var day = TestSchool.Week[random.Next(5)];
+                    if (dayOffUsed.Add(subjectIndex * 10 + day))
+                        offDays = [day];
+                }
+                var blocked = Enumerable.Range(0, random.Next(0, 3)).Select(_ => new SlotRef(TestSchool.Week[random.Next(5)], random.Next(1, 7))).Distinct().ToArray();
+                return school.Teacher(offDays: offDays, blocked: blocked);
+            }).ToArray();
+            for (var index = 0; index < sections.Length; index++)
+                school.Assign(sections[index].Id, lines[sections[index].Stage], staff[index * count / sections.Length]);
+        }
+        return school.Build();
+    }
 }
