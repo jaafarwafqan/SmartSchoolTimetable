@@ -69,9 +69,12 @@ test("(3C) workload: matrix, loads, bulk class teacher, shortage, protection and
       await page.setViewportSize({ width, height: 900 });
       await expectNoPageScrollX(page, `workload matrix at ${width}px`);
       await expectNoTextOverlap(page.locator("main"), `workload matrix at ${width}px`);
-      const matrixWidth = await page.locator(".workload-matrix").evaluate((element) => element.getBoundingClientRect().width);
-      const tableWidth = await page.locator(".workload-matrix > .ui-table-container").evaluate((element) => element.getBoundingClientRect().width);
-      expect(tableWidth).toBeGreaterThanOrEqual(matrixWidth - 1);
+      // Both widths in the same frame, retried until the layout after the resize settles: measured in two calls, CI run #31 caught the page's
+      // vertical scrollbar appearing in between (430 px then 414 px at 768, exactly a Windows scrollbar).
+      await expect.poll(() => page.locator(".workload-matrix").evaluate((matrix) => {
+        const table = matrix.querySelector(":scope > .ui-table-container");
+        return table ? table.getBoundingClientRect().width - matrix.getBoundingClientRect().width : -Infinity;
+      }), { message: `workload table fills the matrix at ${width}px` }).toBeGreaterThanOrEqual(-1);
     }
     await page.setViewportSize({ width: 1280, height: 900 });
     await expectBreakpointScreenshots(page, "phase3-workload-matrix");
