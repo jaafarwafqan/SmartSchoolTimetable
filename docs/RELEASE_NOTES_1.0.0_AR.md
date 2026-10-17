@@ -8,11 +8,11 @@
 |---|---|
 | `SmartSchoolTimetable-Setup-1.0.0.exe` | مثبّت البرنامج (75 ميغابايت) |
 | `SmartSchoolTimetable-Setup-1.0.0.exe.sha256` | بصمة الملف للتحقق منه |
-| `USER_GUIDE_AR.pdf` | دليل المستخدم بالعربية (86 صفحة، 15 فصلاً بصور حقيقية، منها «كيف يعمل توليد الجدول») |
+| `USER_GUIDE_AR.pdf` | دليل المستخدم بالعربية (93 صفحة، 15 فصلاً بصور حقيقية، منها «كيف يعمل توليد الجدول») |
 
-**SHA-256 للمثبّت:** `749c36cce4632803987140772b74e75fe2c3db32df454e0f73758ecaf0921267`
+**SHA-256 للمثبّت:** مكتوبة في الملف `SmartSchoolTimetable-Setup-1.0.0.exe.sha256` المرافق له (تُحسب من المثبّت نفسه بعد بنائه، فلا تُكتب هنا).
 
-للتحقق: في PowerShell اكتب `Get-FileHash .\SmartSchoolTimetable-Setup-1.0.0.exe -Algorithm SHA256` وقارن الناتج بالقيمة أعلاه.
+للتحقق: في PowerShell اكتب `Get-FileHash .\SmartSchoolTimetable-Setup-1.0.0.exe -Algorithm SHA256` وقارن الناتج بالقيمة في ملف `.sha256`.
 
 ## المتطلبات
 
