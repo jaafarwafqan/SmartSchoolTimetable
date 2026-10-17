@@ -120,4 +120,9 @@ public static class ErrorCodes
     public const string ShareTeacherHasNoLessons = "SHARE_TEACHER_HAS_NO_LESSONS";
     public const string ShareKeyUnreadable = "SHARE_KEY_UNREADABLE";
     public const string ShareKeyConfirmationRequired = "SHARE_KEY_CONFIRMATION_REQUIRED";
+    public const string ShareKeyFileInvalid = "SHARE_KEY_FILE_INVALID";
+    public const string ShareKeyFileWrongPassword = "SHARE_KEY_FILE_WRONG_PASSWORD";
+    public const string ShareKeyFileTampered = "SHARE_KEY_FILE_TAMPERED";
+    public const string ShareKeyImportConfirmationRequired = "SHARE_KEY_IMPORT_CONFIRMATION_REQUIRED";
+    public const string KioskKeyInvalid = "KIOSK_KEY_INVALID";
 }

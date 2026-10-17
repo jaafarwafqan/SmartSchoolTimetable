@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.1.0] - unreleased (branch `work/phase-9a`)
+## [1.1.0] - unreleased (branch `work/phase-9a`, phone sharing; DECISIONS_PENDING #115)
 ### Phase 9a-1: phone packages, school key, exports, test vectors (ADR 0056)
 - Signed offline `.sst` packages for the phone app: `"SST"` envelope, Ed25519 signature, raw DEFLATE of a CBOR payload with integer keys; QR form = unpadded base64url (docs/SST_PACKAGE_FORMAT.md). Kinds: pairing («رمز ربط المدرسة»), teacher, principal.
 - Content: academic year, approved version number and date, expiry (end of the year), time zone, semesters, holidays (approximate / by-decision flags), working days, each session's lessons and breaks, the day → session mapping per semester (double shift), subjects with colour, sections, teachers, lessons.
@@ -9,6 +9,26 @@
 - Shared test vectors in `tests/vectors/` (valid, tampered, wrong school, key changed, expired, future format, not paired; manifest and `SHA256SUMS`), fictional data and test keys only.
 - Dependencies (Infrastructure only, `ArchitectureTests`): BouncyCastle.Cryptography 2.6.2, System.Formats.Cbor 9.0.20, System.Security.Cryptography.ProtectedData 9.0.20.
 - Tests: `PhonePackageCodecTests`, `SstVectorTests`, `SharingApiTests` (single and double shift, conflicts, ended year, key recreation, unreadable key, DPAPI round trip).
+### Phase 9a-2: «مشاركة الجدول مع الهاتف», teacher cards, «شاشة العرض», version 1.1.0 (ADR 0057)
+- New tab «الجدول ← مشاركة مع الهاتف» (`/timetable/share`): the approved version («الإصدار N — بتاريخ …», expiry), the school key (fingerprint, «حفظ نسخة من مفتاح المدرسة» asked right after the key is made, «استيراد مفتاح المدرسة» offered first when the key cannot be read, «إعادة إنشاء مفتاح المدرسة» with two confirmations), «عرض رمز ربط المدرسة», one teacher's code or `.sst` file, all teachers as a zip, the principal file with «يحتوي أسماء كل المعلمين — شاركه بشكل خاص».
+- QR codes from the server (QRCoder 1.6.0, level M, at most version 25; beyond it «استخدم ملف .sst لهذا المعلم»), drawn as one SVG path, dark on white in every theme. Tests decode every code with ZXing.Net.
+- «بطاقات المعلمين»: A4, four cards a sheet, each with the teacher's name, «حمّل التطبيق» (configurable https link, `SharingSettings`, migration `Phase9SharingSettings`), the pairing code and the teacher's code at 6 cm, year, version, date and key fingerprint.
+- «شاشة العرض» (`/kiosk`): every section's current and next period with subject and teacher, large Arabic type, light/dark, reduced motion respected, refreshed every minute; «عطلة: …», «لا دوام اليوم», «خارج الدوام»; today's semester and session clock (`PackageCalendar`, the same rules as the phone). Its own in-memory key (never the owner's session); the launcher opens it full screen on the second screen.
+- API: `POST /sharing/pairing-qr`, `POST /sharing/teachers/{id}/qr`, `POST /sharing/cards`, `GET/PUT /sharing/settings`, `POST /sharing/kiosk/start|stop`, `GET /kiosk/today` (header `X-Kiosk-Key`, `401 KIOSK_KEY_INVALID`). Audit `SharingPairingShown`, `SharingTeacherQrShown`, `SharingCardsPrinted`, `SharingSettingsUpdated`, `SharingKioskStarted`.
+- User guide: new chapter 13 «مشاركة الجدول مع الهاتف وشاشة العرض»; moving to another computer and troubleshooting mention the key copy.
+- Version 1.1.0 (`Directory.Build.props`, installer); the installer upgrades 1.0.0 in place.
+- Tests: `SharingScreensTests` (codes decode and read back valid, cards, link validation, kiosk key and statuses, day resolution), Vitest `kiosk.test.ts`, Playwright + axe `phase9-sharing.spec.ts` (page, downloads, key copy, 6 cm card code in print media, kiosk live and fixed, light and dark, 375/768/1920 px).
+### Owner decisions on 9a-2 (DECISIONS_LOG #110–#114)
+- One scan: teacher and principal packages carry the school's public key; on an unpaired phone the first valid package pairs it (trust on first use, the school name and fingerprint confirmed first); a paired phone accepts only its stored key («تغيّر مفتاح المدرسة» otherwise). The reference reader returns the proposed school (`NewTrust`); vectors `first-scan`, `not-paired` (no key carried) and `carried-key-mismatch`.
+- Cards number their codes «١ تحميل التطبيق» and «٢ جدولي»; the pairing code is optional, 1.8 cm, labelled.
+- QR size re-checked with the key inside: a full-time teacher with the whole Iraqi calendar needed 1051–1062 characters (above version 25); Iraqi-template holidays now travel as fixed codes (DECISIONS_PENDING #115, `holiday-codes.json`), giving 896–912 characters (version 24–25). A teacher over 11 sections and 4 subjects (1015) gets the file.
+- Guide: the staff-room TV must be connected to the school computer itself (HDMI), because the program listens on 127.0.0.1 only.
+- `m2-preferences.spec.ts`: the theme checks poll instead of reading once (one failure under the full suite's load, passing alone).
+### Owner decisions on 9a-1 (DECISIONS_LOG #106–#109)
+- «حفظ نسخة من مفتاح المدرسة» / «استيراد مفتاح المدرسة»: a `.sstkey` file encrypted with an owner-chosen password (PBKDF2-HMAC-SHA256 600 000, AES-256-GCM, a separate password check so a wrong password is told from a changed file); import keeps the school id so paired phones keep working; a different working key or another school id needs a confirmation. API `POST /sharing/key/backup.sstkey`, `POST /sharing/key/import`; audit `SharingKeyBackedUp`, `SharingKeyImported`; the key's `backedUpAt` (migration `Phase9SchoolKeyBackup`).
+- Every enabled calendar entry that affects the timetable is sent to phones with its kind (an exam day too); key-18 rows gain a fifth field (vectors regenerated).
+- Teacher file names are made safe for Windows, Android and iOS (direction marks, reserved names, dots, 80-character cap).
+- Tests: `SchoolKeyBackupFileTests` (round trip, wrong password, tampered file, weakened or foreign file, file names), `SharingApiTests` (moving the key to a new computer keeps phones working; confirmation rules).
 
 ## [1.0.0] - 2026-10-11 (branch `work/phase-5`, tags `v1.0.0`, `phase-5-final`)
 First release for the school. Windows 10 (1809+) 64-bit and Windows 11; installer `SmartSchoolTimetable-Setup-1.0.0-<stamp>.exe` with a SHA-256 file; Arabic user guide `docs/USER_GUIDE_AR.pdf`. Everything below was delivered on `work/phase-5` since `phase-4i`; the last four items (M3, M5, user guide, version) are the final stage.

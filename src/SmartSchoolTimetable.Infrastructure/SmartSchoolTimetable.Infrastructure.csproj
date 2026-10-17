@@ -9,6 +9,7 @@
     <!-- Phone packages (ADR 0056): Ed25519 signing (managed, no native library), CBOR payload, DPAPI for the school's private key.
          Confined to Infrastructure by ArchitectureTests. -->
     <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
+    <PackageReference Include="QRCoder" Version="1.6.0" />
     <PackageReference Include="System.Formats.Cbor" Version="9.0.20" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.20" />
     <PackageReference Include="ClosedXML" Version="0.105.1" />

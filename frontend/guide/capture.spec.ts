@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { join } from "node:path";
 import { api } from "../e2e/support/api";
 import { repositoryRoot, shot } from "./helpers";
-import { baseUrl, fixedTime, generateTimetable, openLatestVersion, school, signIn, type Lesson, type Version } from "./shared";
+import { baseUrl, data as fictional, fixedTime, generateTimetable, openLatestVersion, school, signIn, type Lesson, type Version } from "./shared";
 
 // The user-guide scenario, part 2 (chapters 6 to 12): readiness, generating, reading the result, manual edits, versions and the check against the
 // school's data, printing and the settings screens. Part 1 (the first run and the wizard) is 01-first-run.spec.ts; they run in that order.
@@ -164,7 +164,61 @@ test("ch11 — printing: the print panel, colour or black and white, a page per 
   await shot(page, "63-print-options", { width: 1600, target: ".timetable-main" });
 });
 
-test("ch12 — settings: general, account and security, backups, advanced, history, about", async ({ page }) => {
+test("ch12 — sharing with phones: the sharing page, the codes, the key copy, the teacher cards and the staff-room screen", async ({ page }) => {
+  await page.clock.setFixedTime(fixedTime);
+  await signIn(page);
+  // Chapter 10 left a teacher away on a day (the approved version then conflicts): the guide puts the day back before sharing.
+  const teachers = await api<{ items: { id: number; fullName: string; shortName: string; version: number; offDays: number[]; blockedPeriods: unknown[]; specializationIds?: number[] }[] }>(page, baseUrl, "GET", "/teachers/?pageSize=100");
+  for (const teacher of teachers.items.filter((item) => item.offDays.length > 0)) {
+    await api(page, baseUrl, "PUT", `/teachers/${teacher.id}`, {
+      fullName: teacher.fullName, shortName: teacher.shortName, offDays: [], blockedPeriods: teacher.blockedPeriods, fullyReleased: false, releaseReason: null,
+      releaseFrom: null, releaseTo: null, maxLessonsPerDay: null, maxLessonsPerWeek: null, notes: null, version: teacher.version, specializationIds: teacher.specializationIds ?? [],
+    });
+  }
+  await page.goto(`${baseUrl}/timetable/share`);
+  await expect(page.getByRole("heading", { name: school.sharing.title, level: 1 })).toBeVisible();
+  await shot(page, "69a-share-page", { width: 1440, part: "top" });
+  await page.getByRole("button", { name: school.sharing.pairing.show }).click();
+  const backup = page.getByRole("dialog", { name: school.sharing.backupDialog.title });
+  await expect(backup).toBeVisible();
+  await shot(page, "69b-share-key-copy", { window: true });
+  await backup.getByRole("button", { name: school.sharing.backupDialog.later }).click();
+  await expect(page.getByRole("img", { name: school.sharing.pairing.alt })).toBeVisible();
+  await shot(page, "69c-share-pairing", { target: ".settings-section:has(#share-pairing-title)" });
+  await page.getByLabel(school.sharing.teacher.choose, { exact: true }).selectOption({ index: 1 });
+  await page.getByRole("button", { name: school.sharing.teacher.show }).click();
+  await expect(page.locator(".settings-section:has(#share-teacher-title) .share-qr")).toBeVisible();
+  await shot(page, "69d-share-teacher", { target: ".settings-section:has(#share-teacher-title)" });
+  // The teacher cards: printing is replaced by a PDF of the same document (rendered to a figure by render_prints.py).
+  await page.evaluate(() => { window.print = () => undefined; });
+  await page.getByRole("button", { name: school.sharing.cards.print }).click();
+  await expect(page.locator(".cards-document .teacher-card").first()).toBeAttached();
+  await page.pdf({ path: join(repositoryRoot, "docs", "guide", "tmp", "print-teacher-cards.pdf"), preferCSSPageSize: true, printBackground: true });
+  await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
+  // The staff-room screen with Monday's lessons of the approved version at 09:00 (the screen's data is built from the same version).
+  const year = (await api<{ items: { id: number }[] }>(page, baseUrl, "GET", "/academic-years/")).items[0];
+  const approved = (await api<Version[]>(page, baseUrl, "GET", `/academic-years/${year.id}/timetables`)).find((version) => version.status === "approved")!;
+  const grid = await api<{ shifts: { lessons: { number: number; startMinute: number; endMinute: number }[] }[]; sections: { id: number; stageName: string; label: string }[];
+    subjects: { id: number; name: string; colorIndex: number }[]; teachers: { id: number; shortName: string }[]; lessons: Lesson[]; summary: { number: number } }>(page, baseUrl, "GET", `/timetables/${approved.id}`);
+  const sections = grid.sections.slice(0, 8);
+  const kioskDay = {
+    schoolName: fictional.schoolName, date: "2026-10-05", timeZone: "Asia/Baghdad", status: "school", dayOffTitle: null, versionNumber: grid.summary.number, semester: 1, session: 1,
+    periods: grid.shifts[0].lessons.map((lesson) => ({ number: lesson.number, startMinute: lesson.startMinute, endMinute: lesson.endMinute })),
+    sections: sections.map((section, index) => ({ index, stageName: section.stageName, label: section.label })),
+    lessons: grid.lessons.filter((lesson) => lesson.day === 1 && sections.some((section) => section.id === lesson.sectionId)).map((lesson) => {
+      const subject = grid.subjects.find((item) => item.id === lesson.subjectId)!;
+      return { section: sections.findIndex((section) => section.id === lesson.sectionId), lesson: lesson.lesson, subject: subject.name, colorIndex: subject.colorIndex,
+        teacher: grid.teachers.find((item) => item.id === lesson.teacherId)?.shortName ?? "" };
+    }),
+  };
+  await page.route("**/api/v1/kiosk/today", (route) => route.fulfill({ json: kioskDay }));
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await page.goto(`${baseUrl}/kiosk#k=guideguideguideguideguideguide12`);
+  await expect(page.getByRole("table")).toBeVisible();
+  await shot(page, "69f-kiosk", { window: true });
+});
+
+test("ch13 — settings: general, account and security, backups, advanced, history, about", async ({ page }) => {
   await page.clock.setFixedTime(fixedTime);
   await signIn(page);
   await page.goto(`${baseUrl}/settings/general`);

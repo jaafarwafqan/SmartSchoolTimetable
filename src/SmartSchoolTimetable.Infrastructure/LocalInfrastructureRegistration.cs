@@ -51,6 +51,8 @@ public static class LocalInfrastructureRegistration
         if (OperatingSystem.IsWindows())
             services.AddSingleton<Application.Sharing.ISchoolKeyCrypto, Sharing.DpapiSchoolKeyCrypto>();
         services.AddSingleton<Application.Sharing.IPhonePackageWriter, Sharing.PhonePackageWriter>();
+        services.AddSingleton<Application.Sharing.ISchoolKeyBackupFile, Sharing.SchoolKeyBackupFile>();
+        services.AddSingleton<Application.Sharing.IQrEncoder, Sharing.QrEncoder>();
         return services;
     }
 

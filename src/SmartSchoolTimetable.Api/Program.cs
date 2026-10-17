@@ -90,6 +90,7 @@ builder.Services.AddScoped<SmartSchoolTimetable.Application.Generation.Generatio
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Generation.TimetableService>();
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Generation.TimetableExportService>();
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Sharing.SharingService>();
+builder.Services.AddSingleton<SmartSchoolTimetable.Application.Sharing.KioskAccess>();
 // Backups go to Documents only when the database is in its normal place; an overridden database path (tests, a portable copy) keeps them beside it.
 var usingDefaultDatabase = string.Equals(Path.GetFullPath(databasePath), Path.GetFullPath(defaultDatabasePath), StringComparison.OrdinalIgnoreCase);
 builder.Services.AddSingleton(new SmartSchoolTimetable.Application.Backup.BackupDefaults(usingDefaultDatabase

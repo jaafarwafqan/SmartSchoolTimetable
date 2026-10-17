@@ -62,11 +62,11 @@ public sealed class ArchitectureTests
         }
     }
 
-    /// <summary>ADR 0056: the signing, CBOR and DPAPI libraries stay behind the Application interfaces, in Infrastructure.</summary>
+    /// <summary>ADR 0056: the signing, CBOR, DPAPI and QR libraries stay behind the Application interfaces, in Infrastructure.</summary>
     [Fact]
     public void PackageCryptoLibrariesAreNotUsedByDomainApplicationOrApi()
     {
-        string[] prefixes = ["BouncyCastle", "Org.BouncyCastle", "System.Formats.Cbor", "System.Security.Cryptography.ProtectedData"];
+        string[] prefixes = ["BouncyCastle", "Org.BouncyCastle", "System.Formats.Cbor", "System.Security.Cryptography.ProtectedData", "QRCoder"];
         foreach (var assembly in new[] { DomainAssembly, ApplicationAssembly, ApiAssembly })
         {
             Assert.DoesNotContain(ReferencedAssemblyNames(assembly), name => prefixes.Any(prefix => name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)));
@@ -86,9 +86,10 @@ public sealed class ArchitectureTests
     {
         var domainViolations = FeatureViolations(DomainAssembly, "SmartSchoolTimetable.Domain", ["Common", "Text", "SchoolSetup"], []);
         // Documented edges: Generation (Phase 4) consumes the Scheduling input contract and validator; Sharing (Phase 9, ADR 0056)
-        // reads the approved version (Generation) and today's scheduling input (Scheduling) to build phone packages. Nothing else.
+        // reads the approved version (Generation), today's scheduling input (Scheduling) and the Iraqi holiday template (Calendar, for the
+        // short holiday codes) to build phone packages. Nothing else.
         var applicationViolations = FeatureViolations(ApplicationAssembly, "SmartSchoolTimetable.Application", ["Common", "SchoolSetup"], ["Dashboard", "Setup"],
-            new Dictionary<string, string[]> { ["Generation"] = ["Scheduling"], ["Sharing"] = ["Generation", "Scheduling"] });
+            new Dictionary<string, string[]> { ["Generation"] = ["Scheduling"], ["Sharing"] = ["Generation", "Scheduling", "Calendar"] });
         Assert.Empty(domainViolations);
         Assert.Empty(applicationViolations);
     }

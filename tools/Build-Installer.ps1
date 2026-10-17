@@ -11,11 +11,11 @@
   Nothing outside the repository is changed and nothing is deleted.
 
 .EXAMPLE
-  powershell -ExecutionPolicy Bypass -File tools\Build-Installer.ps1 -Version 1.0.0
+  powershell -ExecutionPolicy Bypass -File tools\Build-Installer.ps1 -Version 1.1.0
 #>
 [CmdletBinding()]
 param(
-    [string]$Version = "1.0.0",
+    [string]$Version = "1.1.0",
     [string]$SourceDir = "",
     # Adds a timestamp to the file name, so repeated test builds never need an old file removed.
     [switch]$Stamp

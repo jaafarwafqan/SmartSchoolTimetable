@@ -963,6 +963,9 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                     b.Property<long>("Id")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTimeOffset?>("BackedUpAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("TEXT");
 
@@ -989,6 +992,27 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                     b.ToTable("SchoolKeys", null, t =>
                         {
                             t.HasCheckConstraint("CK_SchoolKeys_Singleton", "\"Id\" = 1");
+                        });
+                });
+
+            modelBuilder.Entity("SmartSchoolTimetable.Domain.Sharing.SharingSettings", b =>
+                {
+                    b.Property<long>("Id")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AppLink")
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SharingSettings", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SharingSettings_Singleton", "\"Id\" = 1");
                         });
                 });
 

@@ -106,6 +106,11 @@ public static class ApiErrorCodes
             [ErrorCodes.ShareTeacherHasNoLessons] = StatusCodes.Status422UnprocessableEntity,
             [ErrorCodes.ShareKeyUnreadable] = StatusCodes.Status409Conflict,
             [ErrorCodes.ShareKeyConfirmationRequired] = StatusCodes.Status422UnprocessableEntity,
+            [ErrorCodes.ShareKeyFileInvalid] = StatusCodes.Status422UnprocessableEntity,
+            [ErrorCodes.ShareKeyFileWrongPassword] = StatusCodes.Status422UnprocessableEntity,
+            [ErrorCodes.ShareKeyFileTampered] = StatusCodes.Status422UnprocessableEntity,
+            [ErrorCodes.ShareKeyImportConfirmationRequired] = StatusCodes.Status409Conflict,
+            [ErrorCodes.KioskKeyInvalid] = StatusCodes.Status401Unauthorized,
 
             [ErrorCodes.RecordInUse] = StatusCodes.Status409Conflict,
             [ErrorCodes.CurrentYearRequired] = StatusCodes.Status409Conflict,

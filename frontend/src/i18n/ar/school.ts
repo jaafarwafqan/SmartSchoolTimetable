@@ -17,6 +17,7 @@ import { currentCheck } from "./currentCheck";
 import { preferences } from "./preferences";
 import { about } from "./about";
 import { backup, generation, timetable, violations } from "./phase4";
+import { kioskScreen, sharing } from "./sharing";
 
 export const school = {
   nav: {
@@ -45,6 +46,7 @@ export const school = {
     timetable: "الجدول",
     generate: "التوليد",
     timetables: "الجداول",
+    share: "مشاركة مع الهاتف",
     setupWizard: "معالج الإعداد",
     sidebarLabel: "القائمة الجانبية",
     collapse: "طي القائمة",
@@ -290,4 +292,6 @@ export const school = {
   violations,
   backup,
   about,
+  sharing,
+  kioskScreen,
 } as const;

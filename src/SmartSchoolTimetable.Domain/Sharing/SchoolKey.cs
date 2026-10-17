@@ -31,6 +31,9 @@ public sealed class SchoolKey : VersionedEntity
 
     public DateTimeOffset CreatedAt { get; private set; }
 
+    /// <summary>When «حفظ نسخة من مفتاح المدرسة» last saved THIS key to a password-protected file; null until then (the page then asks for it).</summary>
+    public DateTimeOffset? BackedUpAt { get; private set; }
+
     public static SchoolKey Create(Guid schoolId, byte[] publicKey, byte[] protectedPrivateKey, DateTimeOffset now)
     {
         Validate(publicKey, protectedPrivateKey);
@@ -54,6 +57,36 @@ public sealed class SchoolKey : VersionedEntity
         ProtectedPrivateKey = protectedPrivateKey.ToArray();
         Generation++;
         CreatedAt = now;
+        BackedUpAt = null;
+        Touch();
+    }
+
+    public void MarkBackedUp(DateTimeOffset now)
+    {
+        BackedUpAt = now;
+        Touch();
+    }
+
+    /// <summary>A key imported from its backup file (a new computer, or a restore DPAPI cannot read): the file's school id, generation and creation date.</summary>
+    public static SchoolKey Restore(Guid schoolId, int generation, DateTimeOffset createdAt, byte[] publicKey, byte[] protectedPrivateKey, DateTimeOffset now)
+    {
+        var key = Create(schoolId, publicKey, protectedPrivateKey, createdAt);
+        new DomainErrors().When(generation < 1, nameof(Generation), DomainErrorCode.OutOfRange).ThrowIfAny();
+        key.Generation = generation;
+        key.BackedUpAt = now;
+        return key;
+    }
+
+    /// <summary>Replaces this row with an imported key (the same rules as <see cref="Restore"/>).</summary>
+    public void ReplaceWith(SchoolKey imported)
+    {
+        ArgumentNullException.ThrowIfNull(imported);
+        SchoolId = imported.SchoolId;
+        PublicKey = imported.PublicKey.ToArray();
+        ProtectedPrivateKey = imported.ProtectedPrivateKey.ToArray();
+        Generation = imported.Generation;
+        CreatedAt = imported.CreatedAt;
+        BackedUpAt = imported.BackedUpAt;
         Touch();
     }
 

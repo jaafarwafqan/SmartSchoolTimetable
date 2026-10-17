@@ -15,11 +15,15 @@ internal sealed class AppWindow : Form
     private readonly WebView2 view = new() { Dock = DockStyle.Fill };
     private readonly string origin;
     private readonly string userData;
+    private readonly Icon icon;
+    private CoreWebView2Environment? environment;
+    private KioskWindow? kiosk;
 
     public AppWindow(string origin, string userData, Icon icon)
     {
         this.origin = origin;
         this.userData = userData;
+        this.icon = icon;
         Text = Texts.AppName;
         Icon = icon;
         RightToLeft = RightToLeft.Yes;
@@ -45,7 +49,7 @@ internal sealed class AppWindow : Form
 
     public async Task LoadAsync()
     {
-        var environment = await CoreWebView2Environment.CreateAsync(null, userData);
+        environment = await CoreWebView2Environment.CreateAsync(null, userData);
         await view.EnsureCoreWebView2Async(environment);
         var core = view.CoreWebView2;
         core.Settings.AreDevToolsEnabled = false;
@@ -63,8 +67,10 @@ internal sealed class AppWindow : Form
         };
         core.NewWindowRequested += (_, e) =>
         {
-            e.Handled = true; // never a second window; a link inside the program opens in this one
-            if (SameOrigin(e.Uri))
+            e.Handled = true; // never a second browser window; a link inside the program opens in this one
+            if (SameOrigin(e.Uri) && IsKioskPath(e.Uri))
+                _ = OpenKioskAsync(e.Uri);
+            else if (SameOrigin(e.Uri))
                 core.Navigate(e.Uri);
             else
                 OpenSupportLink(e.Uri);
@@ -88,6 +94,27 @@ internal sealed class AppWindow : Form
         catch (Exception exception) when (exception is System.ComponentModel.Win32Exception or InvalidOperationException)
         {
             // No default browser: the number and the user name are also shown as text on the page.
+        }
+    }
+
+    private static bool IsKioskPath(string uri) => Uri.TryCreate(uri, UriKind.Absolute, out var target) && target.AbsolutePath == "/kiosk";
+
+    /// <summary>«شاشة العرض» in its own full-screen window (one at a time: opening again shows the new key in the same window).</summary>
+    private async Task OpenKioskAsync(string uri)
+    {
+        if (environment is null)
+            return;
+        kiosk?.Close();
+        kiosk = new KioskWindow(origin, icon);
+        kiosk.FormClosed += (_, _) => kiosk = null;
+        kiosk.Show();
+        try
+        {
+            await kiosk.LoadAsync(environment, uri);
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or System.Runtime.InteropServices.COMException)
+        {
+            kiosk?.Close();
         }
     }
 

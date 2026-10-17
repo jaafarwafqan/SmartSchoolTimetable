@@ -4,8 +4,9 @@ import { messages } from "./messages";
 // Spec 2.5 §2.3: every fixed UI text is Arabic. Walks the whole dictionary (template functions are called with
 // Arabic sample values) and fails on any Latin letter. Values that are data, not prose, are listed explicitly.
 const allowedValues = new Set(["/", ":", "رمز-الاسترداد.txt"]);
-// File format codes the owner must recognise: the upload hint and «حفظ بتنسيق PDF» in the print dialog (codes are allowed by the spec).
-const allowedTerms = /\b(?:PNG|JPEG|WebP|PDF)\b/g;
+// File format codes the owner must recognise: the upload hint and «حفظ بتنسيق PDF» in the print dialog (codes are allowed by the spec);
+// Phase 9 adds the phone files (.sst, .sstkey, .zip), QR codes, USB memory and A4 paper, which have no Arabic names in use.
+const allowedTerms = /\b(?:PNG|JPEG|WebP|PDF|QR|USB|A4|sst|sstkey|zip)\b/g;
 const sample = "قيمة";
 
 function visibleTexts(value: unknown, path: string): { path: string; text: string }[] {

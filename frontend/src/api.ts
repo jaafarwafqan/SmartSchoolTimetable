@@ -64,3 +64,65 @@ export function userErrorMessage(error: unknown): string {
   if (error instanceof ApiRequestError) return error.arabicMessage;
   return messages.errors.UNKNOWN_ERROR;
 }
+
+/** The file name of a download: RFC 5987 `filename*` (Arabic names) first, then `filename`. */
+export function fileNameOf(disposition: string | null, fallback: string): string {
+  if (!disposition) return fallback;
+  const encoded = /filename\*\s*=\s*UTF-8''([^;]+)/i.exec(disposition);
+  if (encoded) {
+    try {
+      return decodeURIComponent(encoded[1].trim());
+    } catch {
+      // A malformed name falls through to the plain one.
+    }
+  }
+  const plain = /filename\s*=\s*"?([^";]+)"?/i.exec(disposition);
+  return plain ? plain[1].trim() : fallback;
+}
+
+/**
+ * A POST that answers with a file (phone packages, the key copy): the per-launch token like any state-changing request, the error
+ * envelope's code on failure, and the browser's download of the bytes on success. Returns the saved file name.
+ */
+export async function apiDownload(path: string, body: unknown, fallbackName: string): Promise<string> {
+  let response: Response;
+  try {
+    response = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Local-Launch-Token": launchToken() },
+      body: JSON.stringify(body ?? {}),
+      credentials: "same-origin",
+      cache: "no-store",
+      signal: AbortSignal.timeout(60_000),
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "TimeoutError") throw new ApiRequestError("REQUEST_TIMEOUT");
+    throw new ApiRequestError("NETWORK_ERROR");
+  }
+  if (!response.ok) {
+    let payload: unknown = null;
+    try {
+      payload = await response.json();
+    } catch {
+      // No envelope: the generic message.
+    }
+    const failure: ApiFailure = isErrorEnvelope(payload) ? payload : {};
+    throw new ApiRequestError(failure.code ?? "UNKNOWN_ERROR", failure.errors ?? []);
+  }
+  const name = fileNameOf(response.headers.get("Content-Disposition"), fallbackName);
+  saveBlob(await response.blob(), name);
+  return name;
+}
+
+/** Hands bytes to the browser's own download (the Downloads folder); nothing is written by the program itself. */
+export function saveBlob(blob: Blob, name: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  link.rel = "noopener";
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}

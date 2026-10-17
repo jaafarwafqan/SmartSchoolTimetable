@@ -4,6 +4,7 @@ namespace SmartSchoolTimetable.Launcher;
 internal static class Texts
 {
     public const string AppName = "الجدول الذكي";
+    public const string KioskName = "شاشة العرض — الجدول الذكي";
     public const string Needs64Bit = "هذا البرنامج يحتاج ويندوز 64-بت.";
     public const string Open = "فتح البرنامج";
     public const string BackupNow = "نسخة احتياطية الآن";

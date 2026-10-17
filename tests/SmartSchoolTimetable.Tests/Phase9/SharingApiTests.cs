@@ -111,6 +111,12 @@ public sealed class SharingApiTests
         Assert.Contains(content.Sessions[0].Periods, period => !period.IsBreak);
         Assert.All(content.Lessons, lesson => Assert.InRange(lesson.Lesson, 1, content.Sessions[0].Periods.Count(period => !period.IsBreak)));
 
+        // One scan (DECISIONS_LOG #111): the same file on a phone that was never paired is valid and proposes exactly the school of the pairing code.
+        var firstScan = PhonePackageReader.Read(await BytesAsync(await host.PostAsync($"/api/v1/sharing/teachers/{teacherId}/package.sst", new { }, fixture.Token)), null, Today);
+        Assert.Equal(PackageReadStatus.Valid, firstScan.Status);
+        Assert.Equal(trusted.SchoolId, firstScan.NewTrust!.SchoolId);
+        Assert.Equal(trusted.PublicKey, firstScan.NewTrust.PublicKey);
+
         var principal = PhonePackageReader.Read(await BytesAsync(await host.PostAsync("/api/v1/sharing/principal.sst", new { }, fixture.Token)), trusted, Today);
         Assert.Equal(PackageReadStatus.Valid, principal.Status);
         Assert.Equal(PhonePackageKind.Principal, principal.Package!.Header.Kind);
@@ -131,7 +137,7 @@ public sealed class SharingApiTests
         Assert.Contains(zip.Entries, entry => entry.FullName.StartsWith(SharingService.SafeFileName(teachers[0].GetProperty("name").GetString()!), StringComparison.Ordinal));
 
         await AssertApiErrorAsync(await host.PostAsync("/api/v1/sharing/teachers/999999/package.sst", new { }, fixture.Token), ErrorCodes.NotFound);
-        Assert.Equal(["SharingAllTeachersExported", "SharingPrincipalExported", "SharingTeacherExported", "SharingPairingExported", "SharingKeyCreated"],
+        Assert.Equal(["SharingAllTeachersExported", "SharingPrincipalExported", "SharingTeacherExported", "SharingTeacherExported", "SharingPairingExported", "SharingKeyCreated"],
             await SharingEventsAsync(host));
     }
 
@@ -169,10 +175,12 @@ public sealed class SharingApiTests
         Assert.Equal(3, content.SessionDays.Single(day => day.Semester == 2 && day.Day == 7).Session);
         Assert.Equal(week, content.WorkingDays);
         Assert.Equal(7, content.WeekStart);
-        // The year also has the Iraqi template holidays (some approximate); exams, entries that do not affect the timetable and dates outside the year are left out.
-        Assert.Contains(content.Holidays, holiday => (holiday.Title, holiday.Start) == ("عطلة رسمية", new DateOnly(2026, 11, 10)));
+        // The year also has the Iraqi template holidays (some approximate). DECISIONS_LOG #107: every enabled entry that affects the timetable is sent
+        // with its kind (an exam day too); entries that do not affect it and dates outside the year are left out.
+        Assert.Contains(content.Holidays, holiday => (holiday.Title, holiday.Start, holiday.Kind) == ("عطلة رسمية", new DateOnly(2026, 11, 10), PackageDayKind.OfficialHoliday));
+        Assert.Contains(content.Holidays, holiday => (holiday.Title, holiday.Kind) == ("امتحانات", PackageDayKind.Exam));
         Assert.Contains(content.Holidays, holiday => holiday.Approximate);
-        Assert.DoesNotContain(content.Holidays, holiday => holiday.Title is "امتحانات" or "عطلة لا تؤثر" or "خارج السنة");
+        Assert.DoesNotContain(content.Holidays, holiday => holiday.Title is "عطلة لا تؤثر" or "خارج السنة");
         Assert.All(content.Holidays, holiday => Assert.True(holiday.End >= content.YearStart && holiday.Start <= content.YearEnd));
         Assert.Equal(content.Holidays.OrderBy(holiday => holiday.Start), content.Holidays);
         Assert.Equal(fixture, content.TimetableVersion);
@@ -260,6 +268,94 @@ public sealed class SharingApiTests
         unreadable.Broken = false;
         Assert.Equal(PackageReadStatus.Valid, PhonePackageReader.Read(await BytesAsync(await host.PostAsync("/api/v1/sharing/principal.sst", new { }, fixture.Token)),
             await PairAsync(host, fixture.Token), Today).Status);
+    }
+
+    private const string KeyPassword = "كلمة مرور المفتاح 2026";
+
+    private static async Task<byte[]> BackupKeyAsync(TestHost host, string token) =>
+        await BytesAsync(await host.PostAsync("/api/v1/sharing/key/backup.sstkey", new { password = KeyPassword, confirmPassword = KeyPassword }, token));
+
+    private static Task<HttpResponseMessage> ImportKeyAsync(TestHost host, string token, byte[] file, string password = KeyPassword, bool confirmReplace = false) =>
+        host.PostAsync("/api/v1/sharing/key/import", new { file = Convert.ToBase64String(file), password, confirmReplace }, token);
+
+    [Fact]
+    public async Task ASavedKeyMovesToANewComputerWithTheSameSchoolIdSoPairedPhonesKeepWorking()
+    {
+        await using var oldComputer = new TestHost();
+        var fixture = await ApprovedAsync(oldComputer);
+        var trusted = await PairAsync(oldComputer, fixture.Token);
+        Assert.Equal(JsonValueKind.Null, (await StatusAsync(oldComputer)).GetProperty("key").GetProperty("backedUpAt").ValueKind);
+
+        // Password rules are the account's: required, 8 or more characters, typed twice the same.
+        var weak = await AssertApiErrorAsync(await oldComputer.PostAsync("/api/v1/sharing/key/backup.sstkey", new { password = "قصيرة", confirmPassword = "قصيرة" }, fixture.Token), ErrorCodes.ValidationFailed);
+        Assert.Equal(ErrorCodes.PasswordTooShort, Assert.Single(weak.Errors).Code);
+        var mismatch = await AssertApiErrorAsync(await oldComputer.PostAsync("/api/v1/sharing/key/backup.sstkey", new { password = KeyPassword, confirmPassword = KeyPassword + "!" }, fixture.Token), ErrorCodes.ValidationFailed);
+        Assert.Equal((nameof(BackupSchoolKeyCommand.ConfirmPassword), ErrorCodes.PasswordMismatch), (Assert.Single(mismatch.Errors).Field, mismatch.Errors[0].Code));
+
+        var response = await oldComputer.PostAsync("/api/v1/sharing/key/backup.sstkey", new { password = KeyPassword, confirmPassword = KeyPassword }, fixture.Token);
+        var name = response.Content.Headers.ContentDisposition!.FileName!.Trim('"');
+        Assert.Equal($"school-key-{SharingService.FingerprintOf(trusted.PublicKey)}.sstkey", name);
+        var keyFile = await BytesAsync(response);
+        Assert.NotEqual(JsonValueKind.Null, (await StatusAsync(oldComputer)).GetProperty("key").GetProperty("backedUpAt").ValueKind);
+
+        await using var newComputer = new TestHost();
+        var school = await ApprovedAsync(newComputer);
+        await AssertApiErrorAsync(await ImportKeyAsync(newComputer, school.Token, keyFile, "خطأ في كلمة المرور"), ErrorCodes.ShareKeyFileWrongPassword);
+        var tampered = keyFile.ToArray();
+        tampered[100] ^= 0x01;
+        await AssertApiErrorAsync(await ImportKeyAsync(newComputer, school.Token, tampered), ErrorCodes.ShareKeyFileTampered);
+        await AssertApiErrorAsync(await ImportKeyAsync(newComputer, school.Token, [1, 2, 3]), ErrorCodes.ShareKeyFileInvalid);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity,
+            (await newComputer.PostAsync("/api/v1/sharing/key/import", new { file = "not base64!", password = KeyPassword, confirmReplace = false }, school.Token)).StatusCode);
+
+        var imported = await JsonAsync(await ImportKeyAsync(newComputer, school.Token, keyFile));
+        Assert.True(imported.GetProperty("changed").GetBoolean());
+        Assert.Equal(trusted.SchoolId, imported.GetProperty("key").GetProperty("schoolId").GetGuid());
+        Assert.Equal(SharingService.FingerprintOf(trusted.PublicKey), imported.GetProperty("key").GetProperty("fingerprint").GetString());
+        // A phone paired with the OLD computer accepts what the new one exports.
+        var principal = await BytesAsync(await newComputer.PostAsync("/api/v1/sharing/principal.sst", new { }, school.Token));
+        Assert.Equal(PackageReadStatus.Valid, PhonePackageReader.Read(principal, trusted, Today).Status);
+        // Importing the same file again changes nothing.
+        Assert.False((await JsonAsync(await ImportKeyAsync(newComputer, school.Token, keyFile))).GetProperty("changed").GetBoolean());
+        Assert.Contains("SharingKeyImported", await SharingEventsAsync(newComputer));
+        Assert.Contains("SharingKeyBackedUp", await SharingEventsAsync(oldComputer));
+
+        // Recreating the key forgets that it was saved: the page asks again.
+        await oldComputer.PostAsync("/api/v1/sharing/key/regenerate", new { confirm = true, confirmRepair = true }, fixture.Token);
+        Assert.Equal(JsonValueKind.Null, (await StatusAsync(oldComputer)).GetProperty("key").GetProperty("backedUpAt").ValueKind);
+    }
+
+    [Fact]
+    public async Task ImportingOverAKeyThatStillWorksNeedsAConfirmationButAnUnreadableOneIsReplacedDirectly()
+    {
+        await using var source = new TestHost();
+        var origin = await ApprovedAsync(source);
+        var keyFile = await BackupKeyAsync(source, origin.Token);
+        var trusted = await PairAsync(source, origin.Token);
+
+        var unreadable = new UnreadableAfterFirstUse();
+        await using var target = new TestHost(configureServices: services =>
+        {
+            services.RemoveAll<ISchoolKeyCrypto>();
+            services.AddSingleton<ISchoolKeyCrypto>(unreadable);
+        });
+        var school = await ApprovedAsync(target);
+        await PairAsync(target, school.Token);
+
+        // A different key that works here: replacing it would break the phones paired with it.
+        await AssertApiErrorAsync(await ImportKeyAsync(target, school.Token, keyFile), ErrorCodes.ShareKeyImportConfirmationRequired);
+
+        // After a restore DPAPI cannot read, the import is the way back; another school id still asks first.
+        unreadable.Broken = true;
+        await AssertApiErrorAsync(await ImportKeyAsync(target, school.Token, keyFile), ErrorCodes.ShareKeyImportConfirmationRequired);
+        Assert.Equal(HttpStatusCode.OK, (await ImportKeyAsync(target, school.Token, keyFile, confirmReplace: true)).StatusCode);
+        unreadable.Broken = false;
+        Assert.Equal(PackageReadStatus.Valid, PhonePackageReader.Read(await BytesAsync(await target.PostAsync("/api/v1/sharing/principal.sst", new { }, school.Token)), trusted, Today).Status);
+
+        // The same school id but unreadable here (a restored backup): replaced without a question.
+        unreadable.Broken = true;
+        var same = await JsonAsync(await ImportKeyAsync(target, school.Token, keyFile));
+        Assert.True(same.GetProperty("changed").GetBoolean());
     }
 
     [Fact]

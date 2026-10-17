@@ -28,9 +28,22 @@ public sealed record PackageSessionDay(int Semester, int Day, int Session);
 
 public sealed record PackageSemester(DateOnly Start, DateOnly End);
 
+/// <summary>A calendar entry that affects the timetable (a holiday, an exam or a special day).</summary>
 /// <param name="Approximate">The date follows the Hijri calendar by calculation; the official announcement may differ by a day or two.</param>
 /// <param name="ByDecision">Whether the day is a holiday may be announced yearly by a decision.</param>
-public sealed record PackageHoliday(DateOnly Start, DateOnly End, string Title, bool Approximate, bool ByDecision);
+/// <param name="Kind">What the day is; every day sent has no lessons on the phone and silences its notifications (DECISIONS_LOG #107).</param>
+/// <param name="TitleCode">An Iraqi-template holiday with its title unchanged travels as this code (<see cref="PackageHolidayCodes"/>) instead of its title; 0 = none.</param>
+public sealed record PackageHoliday(DateOnly Start, DateOnly End, string Title, bool Approximate, bool ByDecision, PackageDayKind Kind = PackageDayKind.OfficialHoliday,
+    int TitleCode = 0);
+
+/// <summary>The calendar kind of a day without lessons in a package. Stored as an integer; never reorder.</summary>
+public enum PackageDayKind
+{
+    OfficialHoliday = 0,
+    SchoolHoliday = 1,
+    Exam = 2,
+    SpecialDay = 3,
+}
 
 public sealed record PackageSubject(string Name, int ColorIndex);
 
@@ -64,7 +77,11 @@ public sealed record TimetableContent(
     IReadOnlyList<PackageTeacher> Teachers,
     IReadOnlyList<PackageLesson> Lessons);
 
-/// <summary>A decoded package: the header plus exactly one of <paramref name="PublicKey"/> (pairing) or <paramref name="Timetable"/>.</summary>
+/// <summary>
+/// A decoded package: the header, the school's public key and, except for a pairing code, the timetable. A teacher or principal
+/// package carries the key too, so the first one a phone scans can pair it (DECISIONS_LOG #111: one scan); a package without the key
+/// (a hand-made test payload) can only be read by a phone that is already paired.
+/// </summary>
 public sealed record PhonePackage(PackageHeader Header, byte[]? PublicKey, TimetableContent? Timetable);
 
 /// <summary>Ed25519 keys and the DPAPI protection of the private seed (Infrastructure, ADR 0056).</summary>
@@ -84,4 +101,41 @@ public interface ISchoolKeyCrypto
 public interface IPhonePackageWriter
 {
     byte[] Write(PhonePackage package, byte[] privateSeed);
+}
+
+/// <summary>What a «حفظ نسخة من مفتاح المدرسة» file holds once opened (the seed stays in memory only).</summary>
+public sealed record SchoolKeyBackup(Guid SchoolId, int Generation, DateTimeOffset CreatedAt, byte[] PublicKey, byte[] PrivateSeed);
+
+public enum KeyBackupOpenStatus
+{
+    Opened,
+
+    /// <summary>Not a key file, or a format this build does not know.</summary>
+    Invalid,
+
+    /// <summary>The password check failed.</summary>
+    WrongPassword,
+
+    /// <summary>The password is right but the content was changed or damaged.</summary>
+    Tampered,
+}
+
+public sealed record KeyBackupOpenResult(KeyBackupOpenStatus Status, SchoolKeyBackup? Backup);
+
+/// <summary>The password-protected .sstkey file (docs/SST_PACKAGE_FORMAT.md §6.1; Infrastructure).</summary>
+public interface ISchoolKeyBackupFile
+{
+    byte[] Seal(SchoolKeyBackup backup, string password);
+
+    KeyBackupOpenResult Open(byte[] file, string password);
+}
+
+/// <summary>A QR code's modules, one string of '0'/'1' per row, quiet zone included (4 modules on every side).</summary>
+public sealed record QrCodeDto(int Version, int Size, IReadOnlyList<string> Rows);
+
+/// <summary>QR encoding (Infrastructure, QRCoder). Error correction level M, byte mode.</summary>
+public interface IQrEncoder
+{
+    /// <summary>The QR of <paramref name="text"/>, or null when it needs a version above <paramref name="maxVersion"/> (too dense to scan reliably).</summary>
+    QrCodeDto? Encode(string text, int maxVersion);
 }

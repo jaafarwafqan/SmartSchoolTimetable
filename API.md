@@ -306,5 +306,15 @@ There is no user/tenant attribution in request logs. Avoid logging credentials, 
 - `GET /api/v1/sharing/`: `{ key: {schoolId, fingerprint, generation, createdAt, readable} | null, approved: {id, number, approvedAt, conflicts, expiresOn, yearEnded} | null, teachers: [{id, name, lessons}] }`. Never carries the private key.
 - `POST /api/v1/sharing/pairing.sst` → `school-pairing.sst` (makes the school key on first use). `409 SHARE_KEY_UNREADABLE`.
 - `POST /api/v1/sharing/teachers/{id}/package.sst` → `<name>-v<N>.sst`; `POST /api/v1/sharing/teachers.zip`; `POST /api/v1/sharing/principal.sst`. Errors: `409 SHARE_NO_APPROVED_TIMETABLE`, `409 SHARE_TIMETABLE_CONFLICTS`, `409 SHARE_YEAR_ENDED`, `409 SHARE_KEY_UNREADABLE`, `422 SHARE_TEACHER_HAS_NO_LESSONS`, `404`.
+- `POST /api/v1/sharing/key/backup.sstkey` `{password, confirmPassword}` → `school-key-<fingerprint>.sstkey` (PBKDF2 600 000 + AES-GCM); 422 `VALIDATION_FAILED` with `PASSWORD_TOO_SHORT` / `PASSWORD_TOO_LONG` / `PASSWORD_MISMATCH` / `REQUIRED`. The key's `backedUpAt` is set (null again after recreation).
+- `POST /api/v1/sharing/key/import` `{file: base64, password, confirmReplace}` → `{key, changed}`; `422 SHARE_KEY_FILE_INVALID`, `422 SHARE_KEY_FILE_WRONG_PASSWORD`, `422 SHARE_KEY_FILE_TAMPERED`, `409 SHARE_KEY_IMPORT_CONFIRMATION_REQUIRED`.
 - `POST /api/v1/sharing/key/regenerate` `{confirm, confirmRepair}` → the new key; `422 SHARE_KEY_CONFIRMATION_REQUIRED` unless both are true.
-- Audit events (category `sharing`): `SharingKeyCreated`, `SharingKeyRegenerated`, `SharingPairingExported`, `SharingTeacherExported`, `SharingAllTeachersExported`, `SharingPrincipalExported`.
+- Audit events (category `sharing`): `SharingKeyCreated`, `SharingKeyBackedUp`, `SharingKeyImported`, `SharingKeyRegenerated`, `SharingPairingExported`, `SharingTeacherExported`, `SharingAllTeachersExported`, `SharingPrincipalExported`.
+
+## Phase 9a-2: sharing page, cards, staff-room screen (ADR 0057)
+- `POST /api/v1/sharing/pairing-qr` → `{schoolName, fingerprint, code: {qr: {version, size, rows[]} | null, characters}}` (rows of "0"/"1", quiet zone included). Audit `SharingPairingShown`.
+- `POST /api/v1/sharing/teachers/{id}/qr` → `{teacherId, name, lessons, versionNumber, approvedAt, code}`; `code.qr` is null above version 25 (send the file). Audit `SharingTeacherQrShown`.
+- `POST /api/v1/sharing/cards` `{teacherIds: [id] | null}` → `{schoolName, academicYear, versionNumber, approvedAt, fingerprint, pairing, appLink, appQr, cards: [{teacherId, name, lessons, code}]}`; `422` on an id without lessons. Audit `SharingCardsPrinted`.
+- `GET /api/v1/sharing/settings` → `{appLink, version}`; `PUT` `{appLink, version}` (https only, ≤ 300; `422` on `AppLink`, `409 CONFLICT`). Audit `SharingSettingsUpdated`.
+- `POST /api/v1/sharing/kiosk/start` → `{key}` (audit `SharingKioskStarted`); `POST /api/v1/sharing/kiosk/stop` → 204.
+- `GET /api/v1/kiosk/today` with header `X-Kiosk-Key` (no owner session) → `{schoolName, date, timeZone, status: school|dayOff|notAWorkingDay|outsideYear|noTimetable, dayOffTitle, versionNumber, semester, session, periods: [{number|null, startMinute, endMinute}], sections: [{index, stageName, label}], lessons: [{section, lesson, subject, colorIndex, teacher}]}`; `401 KIOSK_KEY_INVALID`.

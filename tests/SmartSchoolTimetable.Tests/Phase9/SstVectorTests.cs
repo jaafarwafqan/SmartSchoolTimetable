@@ -33,6 +33,10 @@ public sealed class SstVectorTests
             Assert.Equal(vector.GetProperty("sha256").GetString(), Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant());
             var result = PhonePackageReader.Read(bytes, vector.GetProperty("trusted").GetBoolean() ? trusted : null, today);
             Assert.True(JsonNamingPolicy.CamelCase.ConvertName(result.Status.ToString()) == vector.GetProperty("expected").GetString(), $"{name}: {result.Status}");
+            // One scan: an unpaired read proposes school A exactly when the manifest says so.
+            Assert.Equal(vector.GetProperty("pairs").GetBoolean(), result.NewTrust is not null);
+            if (result.NewTrust is { } proposed)
+                Assert.Equal((trusted.SchoolId, Convert.ToHexString(trusted.PublicKey)), (proposed.SchoolId, Convert.ToHexString(proposed.PublicKey)));
             if (vector.GetProperty("expectedJson").GetString() is { } expected)
                 Assert.Equal(File.ReadAllText(Path.Combine(Folder, expected)).ReplaceLineEndings("\n"), SstVectors.ToJson(result.Package!));
         }

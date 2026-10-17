@@ -9,7 +9,7 @@ for a real school.
 
 | File | Expected (paired with school A, today = `vectors.json` → `today`) |
 |---|---|
-| `pairing.sst` | valid (self-signed; trusting it pairs the phone with school A) |
+| `pairing.sst` | valid (self-signed; read unpaired it pairs the phone with school A, `pairs: true`) |
 | `valid-teacher.sst` | valid; decoded content in `valid-teacher.expected.json`; `valid-teacher.qr.txt` is the same bytes as QR text |
 | `valid-principal.sst` | valid; `valid-principal.expected.json` |
 | `tampered.sst` | tampered (a lesson moved after signing) |
@@ -17,7 +17,9 @@ for a real school.
 | `key-changed.sst` | keyChanged (school A, recreated key) |
 | `expired.sst` | expired (year 2025-2026) |
 | `future-format.sst` | newerFormat (payload format 2) |
-| `not-paired.sst` | notPaired (read without any trusted school) |
+| `first-scan.sst` | valid, read on an UNPAIRED phone: it pairs the phone with school A (`pairs: true`; the phone confirms the school name first) |
+| `not-paired.sst` | notPaired: a package without the school's public key, read unpaired |
+| `carried-key-mismatch.sst` | tampered: signed with key A but carrying key B |
 
 The expected JSON files use: byte strings as base64, the school id as a UUID string, dates as `yyyy-MM-dd`, instants as
 ISO 8601 with offset, the kind as `pairing` / `teacher` / `principal`.

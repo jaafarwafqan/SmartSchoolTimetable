@@ -29,11 +29,12 @@ internal static class SstVectors
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
 
-    public sealed record Vector(string File, string Expected, bool Trusted, string? ExpectedJson = null, string? Note = null);
+    /// <param name="Pairs">Read on an unpaired phone, the package proposes its school for trust (one scan, DECISIONS_LOG #111).</param>
+    public sealed record Vector(string File, string Expected, bool Trusted, string? ExpectedJson = null, string? Note = null, bool Pairs = false);
 
     public static readonly IReadOnlyList<Vector> All =
     [
-        new("pairing.sst", "valid", false, "pairing.expected.json", "School A pairing code (self-signed). Scanning it makes school A trusted."),
+        new("pairing.sst", "valid", false, "pairing.expected.json", "School A pairing code (self-signed). Scanning it makes school A trusted.", Pairs: true),
         new("valid-teacher.sst", "valid", true, "valid-teacher.expected.json", "Teacher package of school A; valid-teacher.qr.txt holds the same bytes as QR text."),
         new("valid-principal.sst", "valid", true, "valid-principal.expected.json", "Principal package of school A."),
         new("tampered.sst", "tampered", true, null, "valid-teacher with one lesson moved after signing (the signature is the original one)."),
@@ -41,7 +42,9 @@ internal static class SstVectors
         new("key-changed.sst", "keyChanged", true, null, "School A, signed with a recreated key (A2): the phone must scan the new pairing code."),
         new("expired.sst", "expired", true, null, "School A, academic year 2025-2026 (expired on 2026-06-30)."),
         new("future-format.sst", "newerFormat", true, null, "School A, payload format 2 with an unknown key: «حدّث التطبيق»."),
-        new("not-paired.sst", "notPaired", false, null, "valid-teacher.sst read before any pairing (same bytes, no trusted school)."),
+        new("first-scan.sst", "valid", false, "valid-teacher.expected.json", "valid-teacher.sst read on an unpaired phone: valid, and it pairs the phone with school A (after the user confirms the school name).", Pairs: true),
+        new("not-paired.sst", "notPaired", false, null, "A teacher package WITHOUT the school's public key (key 6), read on an unpaired phone: it cannot pair, so «امسح رمز ربط المدرسة أولاً»."),
+        new("carried-key-mismatch.sst", "tampered", false, null, "Signed with key A but carrying key B: the carried key must be the signing key (key id), on paired and unpaired phones alike."),
     ];
 
     private static PackageHeader Header(PhonePackageKind kind, Guid school, byte[] seed) =>
@@ -51,10 +54,11 @@ internal static class SstVectors
     public static PhonePackage Pairing(Guid school, byte[] seed) =>
         new(Header(PhonePackageKind.Pairing, school, seed), Ed25519.PublicKeyOf(seed), null);
 
+    /// <summary>A timetable package carries the school's public key, so one scan pairs a new phone.</summary>
     public static PhonePackage Teacher(Guid school, byte[] seed, TimetableContent? content = null) =>
-        new(Header(PhonePackageKind.Teacher, school, seed), null, content ?? TeacherContent());
+        new(Header(PhonePackageKind.Teacher, school, seed), Ed25519.PublicKeyOf(seed), content ?? TeacherContent());
 
-    public static PhonePackage Principal() => new(Header(PhonePackageKind.Principal, SchoolA, SeedA), null, PrincipalContent());
+    public static PhonePackage Principal() => new(Header(PhonePackageKind.Principal, SchoolA, SeedA), Ed25519.PublicKeyOf(SeedA), PrincipalContent());
 
     public static TimetableContent TeacherContent()
     {
@@ -98,8 +102,11 @@ internal static class SstVectors
             [new(new DateOnly(2026, 9, 1), new DateOnly(2027, 1, 15)), new(new DateOnly(2027, 2, 1), new DateOnly(2027, 6, 30))],
             [
                 new(new DateOnly(2026, 11, 5), new DateOnly(2026, 11, 5), "عطلة تجريبية", true, false),
-                new(new DateOnly(2027, 1, 16), new DateOnly(2027, 1, 31), "عطلة نصف السنة", false, false),
+                new(new DateOnly(2027, 1, 3), new DateOnly(2027, 1, 14), "امتحانات نصف السنة", false, false, PackageDayKind.Exam),
+                new(new DateOnly(2027, 1, 16), new DateOnly(2027, 1, 31), "عطلة نصف السنة", false, false, PackageDayKind.SchoolHoliday),
                 new(new DateOnly(2027, 3, 21), new DateOnly(2027, 3, 21), "عطلة بقرار", false, true),
+                new(new DateOnly(2027, 3, 10), new DateOnly(2027, 3, 12), "عيد الفطر المبارك", true, false, PackageDayKind.OfficialHoliday, 12),
+                new(new DateOnly(2027, 1, 6), new DateOnly(2027, 1, 6), "عيد الجيش العراقي", false, false, PackageDayKind.OfficialHoliday, 2),
             ],
             days, 7, [morning, evening], sessionDays,
             [new("رياضيات", 1), new("علوم", 3), new("لغة عربية", 5)],
@@ -129,7 +136,9 @@ internal static class SstVectors
             }), SeedA),
             ["future-format.sst"] = PhonePackageWriter.Seal(FuturePayload(), SeedA),
         };
-        files["not-paired.sst"] = files["valid-teacher.sst"];
+        files["first-scan.sst"] = files["valid-teacher.sst"];
+        files["not-paired.sst"] = writer.Write(Teacher(SchoolA, SeedA) with { PublicKey = null }, SeedA);
+        files["carried-key-mismatch.sst"] = writer.Write(Teacher(SchoolA, SeedA) with { PublicKey = Ed25519.PublicKeyOf(SeedB) }, SeedA);
         // Tampered: the payload of a moved lesson, sealed, then given the original signature.
         var original = files["valid-teacher.sst"];
         var moved = TeacherContent() with { Lessons = [.. TeacherContent().Lessons.Select((lesson, index) => index == 0 ? lesson with { Lesson = 6 } : lesson)] };
@@ -160,10 +169,14 @@ internal static class SstVectors
                 sha256 = Convert.ToHexString(SHA256.HashData(files[vector.File])).ToLowerInvariant(),
                 expected = vector.Expected,
                 trusted = vector.Trusted,
+                pairs = vector.Pairs,
                 expectedJson = vector.ExpectedJson,
                 note = vector.Note,
             }),
         };
+        // The holiday code table the phone bundles (docs/SST_PACKAGE_FORMAT.md §4.1).
+        File.WriteAllText(Path.Combine(directory, "holiday-codes.json"), JsonSerializer.Serialize(PackageHolidayCodes.Table.OrderBy(entry => entry.Key)
+            .Select(entry => new { code = entry.Key, key = entry.Value.Key, title = entry.Value.Title }), Json).ReplaceLineEndings("\n") + "\n", new UTF8Encoding(false));
         File.WriteAllText(Path.Combine(directory, "vectors.json"), JsonSerializer.Serialize(manifest, Json).ReplaceLineEndings("\n") + "\n", new UTF8Encoding(false));
         var sums = Directory.EnumerateFiles(directory).Select(Path.GetFileName).Where(name => name is not "SHA256SUMS" and not "README.md").Order(StringComparer.Ordinal)
             .Select(name => $"{Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(directory, name!)))).ToLowerInvariant()}  {name}");

@@ -1,6 +1,6 @@
 import {
   BookOpen, CalendarCheck, DatabaseBackup, CalendarDays, CalendarRange, Clock, Cpu, DoorOpen, Gauge, Info, LayoutDashboard, Layers, Library, School,
-  ScrollText, Settings, ShieldCheck, SlidersHorizontal, UsersRound, type LucideIcon,
+  ScrollText, Settings, ShieldCheck, SlidersHorizontal, Smartphone, UsersRound, type LucideIcon,
 } from "lucide-react";
 import { messages } from "../i18n/messages";
 
@@ -53,6 +53,7 @@ export const navGroups: readonly NavGroup[] = [
     tabs: [
       { to: "/timetable/generate", label: nav.generate, icon: Cpu },
       { to: "/timetable/view", label: nav.timetables, icon: CalendarCheck },
+      { to: "/timetable/share", label: nav.share, icon: Smartphone },
     ],
   },
   {

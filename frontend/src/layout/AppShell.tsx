@@ -29,6 +29,7 @@ import { HistoryPage } from "../features/history/HistoryPage";
 import { ReadinessPage } from "../features/readiness/ReadinessPage";
 import { GenerationPage } from "../features/generation/GenerationPage";
 import { TimetablePage } from "../features/timetable/TimetablePage";
+import { SharingPage } from "../features/sharing/SharingPage";
 import { NotFoundPage } from "./NotFoundPage";
 import { Sidebar } from "./Sidebar";
 import { AppFooter } from "./AppFooter";
@@ -81,6 +82,7 @@ export function AppShell({ bootstrap }: { bootstrap: Bootstrap }) {
             <Route path="/readiness" element={<ReadinessPage />} />
             <Route path="/timetable/generate" element={<GenerationPage />} />
             <Route path="/timetable/view" element={<TimetablePage />} />
+            <Route path="/timetable/share" element={<SharingPage />} />
             <Route path="/setup" element={<SetupWizardPage />} />
             <Route path="/settings/general" element={<SettingsScreen />} />
             <Route path="/settings/account" element={<AccountSettingsPage bootstrap={bootstrap} />} />

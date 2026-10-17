@@ -1,10 +1,10 @@
 ﻿; Inno Setup script of «الجدول الذكي» (M5, ADR 0052). Built by tools/Build-Installer.ps1:
-;   ISCC /DSourceDir=<published folder> /DAppVersion=1.0.0 /DLicenseFile=<license with BOM> /DOutputDir=<folder> installer\SmartSchoolTimetable.iss
+;   ISCC /DSourceDir=<published folder> /DAppVersion=1.1.0 /DLicenseFile=<license with BOM> /DOutputDir=<folder> installer\SmartSchoolTimetable.iss
 ; Rules: 64-bit Windows 10 (1809 or newer) only; installs to Program Files; shortcuts on the desktop and in the Start menu; the program's data
 ; (database, backups) lives in the user's profile and is NEVER touched by an upgrade or by the uninstaller.
 
 #ifndef AppVersion
-  #define AppVersion "1.0.0"
+  #define AppVersion "1.1.0"
 #endif
 #ifndef SourceDir
   #error SourceDir (the published folder) is required.

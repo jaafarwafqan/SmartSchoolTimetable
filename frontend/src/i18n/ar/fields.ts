@@ -64,4 +64,6 @@ export const fields = {
   SpecializationIds: "التخصصات",
   Rules: "أولويات الجدول",
   Confirm: "التأكيد",
+  AppLink: "رابط تحميل التطبيق",
+  TeacherIds: "المعلمون",
 } as const;

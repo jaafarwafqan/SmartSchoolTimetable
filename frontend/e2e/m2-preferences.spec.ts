@@ -33,13 +33,13 @@ test("(M2) preferences: dark theme with AA contrast, persistence, digits, print 
     // Light by default; the section sits in Settings › عام.
     await goToSection(page, messages.school.nav.settings);
     await expect(page.getByRole("heading", { name: text.title, level: 2 })).toBeVisible();
-    expect(await themeOf(page)).toBe("light");
+    await expect.poll(() => themeOf(page)).toBe("light");
 
     // Dark: chosen, saved, applied at once, remembered across a reload before the app paints.
     await chooseTheme(page, text.theme.dark);
-    expect(await themeOf(page)).toBe("dark");
+    await expect.poll(() => themeOf(page)).toBe("dark");
     await page.reload();
-    expect(await themeOf(page)).toBe("dark");
+    await expect.poll(() => themeOf(page)).toBe("dark");
     await expect(page.getByRole("heading", { name: text.title, level: 2 })).toBeVisible();
     await expectNoSeriousA11yViolations(page, "settings in the dark theme");
     await page.screenshot({ path: testInfo.outputPath("m2-settings-dark.png"), fullPage: true });
@@ -73,7 +73,7 @@ test("(M2) preferences: dark theme with AA contrast, persistence, digits, print 
     await page.waitForFunction(() => document.documentElement.getAttribute("data-theme") === "light");
     await chooseTheme(page, text.theme.light);
     await page.emulateMedia({ colorScheme: "dark" });
-    expect(await themeOf(page)).toBe("light");
+    await expect.poll(() => themeOf(page)).toBe("light");
     await page.emulateMedia({ colorScheme: "light" });
 
     // Digits: Latin on every screen, then back.

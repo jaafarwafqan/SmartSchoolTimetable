@@ -14,6 +14,7 @@ names = {
     "print-teachers": "66-print-teacher",
     "print-school-colour": "67-print-school",
     "print-school-per-stage": "68-print-school-per-stage",
+    "print-teacher-cards": "69e-share-cards",
 }
 for source, target in names.items():
     pdf = tmp / f"{source}.pdf"

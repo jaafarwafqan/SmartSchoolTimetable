@@ -1,0 +1,72 @@
+[
+  {
+    "code": 1,
+    "key": "new-year",
+    "title": "رأس السنة الميلادية"
+  },
+  {
+    "code": 2,
+    "key": "army-day",
+    "title": "عيد الجيش العراقي"
+  },
+  {
+    "code": 3,
+    "key": "nowruz",
+    "title": "عيد نوروز"
+  },
+  {
+    "code": 4,
+    "key": "labour-day",
+    "title": "عيد العمال"
+  },
+  {
+    "code": 5,
+    "key": "christmas",
+    "title": "عيد الميلاد المجيد"
+  },
+  {
+    "code": 6,
+    "key": "revolution-14-july",
+    "title": "ثورة ١٤ تموز"
+  },
+  {
+    "code": 7,
+    "key": "national-day",
+    "title": "اليوم الوطني العراقي"
+  },
+  {
+    "code": 8,
+    "key": "victory-day",
+    "title": "عيد النصر"
+  },
+  {
+    "code": 9,
+    "key": "hijri-new-year",
+    "title": "رأس السنة الهجرية"
+  },
+  {
+    "code": 10,
+    "key": "ashura",
+    "title": "يوم عاشوراء"
+  },
+  {
+    "code": 11,
+    "key": "mawlid",
+    "title": "المولد النبوي الشريف"
+  },
+  {
+    "code": 12,
+    "key": "eid-al-fitr",
+    "title": "عيد الفطر المبارك"
+  },
+  {
+    "code": 13,
+    "key": "eid-al-adha",
+    "title": "عيد الأضحى المبارك"
+  },
+  {
+    "code": 14,
+    "key": "ghadir",
+    "title": "عيد الغدير"
+  }
+]

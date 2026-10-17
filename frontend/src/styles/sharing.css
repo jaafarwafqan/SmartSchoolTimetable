@@ -1,0 +1,336 @@
+/* ---------- Phase 9a-2: «مشاركة الجدول مع الهاتف», teacher cards, «شاشة العرض» (ADR 0056) ---------- */
+
+/* QR codes are dark on white in every theme: phone cameras read inverted codes badly. */
+.qr-code {
+  display: block;
+  inline-size: min(100%, 18rem);
+  block-size: auto;
+  aspect-ratio: 1;
+}
+
+.qr-code-light {
+  fill: var(--color-print-paper);
+}
+
+.qr-code-dark {
+  fill: var(--color-print-ink);
+}
+
+.share-qr {
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md, 0.5rem);
+  background: var(--color-print-paper);
+  color: var(--color-print-ink);
+}
+
+.share-qr figcaption {
+  font-weight: 600;
+  text-align: center;
+}
+
+.share-version {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+
+.share-fingerprint {
+  display: inline-block;
+  padding-block: 0.25rem;
+  padding-inline: 0.5rem;
+  border-radius: 0.375rem;
+  background: var(--color-surface-muted);
+  font-size: var(--text-lg);
+  letter-spacing: 0.05em;
+}
+
+.share-file-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* ---------- Teacher cards: four on each A4 page ---------- */
+@media print {
+  .cards-document {
+    display: block;
+  }
+
+  .cards-page {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(2, 1fr) auto;
+    gap: 6mm;
+    box-sizing: border-box;
+    inline-size: 210mm;
+    block-size: calc(297mm - 0.5mm);
+    padding: 8mm;
+    overflow: hidden;
+    break-after: page;
+    font-size: 10pt;
+  }
+
+  .cards-page:last-child {
+    break-after: auto;
+  }
+
+  .cards-page-number {
+    grid-column: 1 / -1;
+    margin: 0;
+    text-align: center;
+    font-size: 8pt;
+  }
+
+  .teacher-card {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas:
+      "header header"
+      "main side"
+      "footer footer";
+    gap: 3mm;
+    padding: 4mm;
+    border: 0.4mm dashed var(--color-print-ink);
+    break-inside: avoid;
+  }
+
+  .teacher-card-header {
+    grid-area: header;
+    display: grid;
+    gap: 1mm;
+    text-align: center;
+  }
+
+  .teacher-card-school {
+    font-size: 9pt;
+  }
+
+  .teacher-card-name {
+    font-size: 15pt;
+  }
+
+  .teacher-card-title,
+  .teacher-card-step,
+  .teacher-card-small figcaption {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1mm;
+    font-weight: 700;
+  }
+
+  .teacher-card-main {
+    grid-area: main;
+    display: grid;
+    justify-items: center;
+    align-content: start;
+    gap: 2mm;
+  }
+
+  .teacher-card-side {
+    grid-area: side;
+    display: grid;
+    align-content: start;
+    gap: 3mm;
+  }
+
+  .teacher-card-small {
+    display: grid;
+    justify-items: center;
+    gap: 1mm;
+    margin: 0;
+    font-size: 8pt;
+  }
+
+  .teacher-card-small.is-optional {
+    padding-block-start: 2mm;
+    border-block-start: 0.2mm dotted var(--color-print-ink);
+    font-size: 7pt;
+    font-weight: 400;
+  }
+
+  .teacher-card-file,
+  .teacher-card-note {
+    max-inline-size: 30mm;
+    margin: 0;
+    text-align: center;
+    font-size: 8pt;
+  }
+
+  .teacher-card-footer {
+    grid-area: footer;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 2mm;
+    font-size: 8pt;
+  }
+
+  /* The codes keep their printed size: «6cm» on the card is a minimum, never scaled down. */
+  .teacher-card .qr-code {
+    max-inline-size: none;
+  }
+}
+
+/* ---------- «شاشة العرض» ---------- */
+.kiosk {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.75rem, 1.5vw, 1.5rem);
+  min-block-size: 100vh;
+  padding: clamp(1rem, 2.5vw, 2.5rem);
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-size: clamp(1.125rem, 1.6vw, 2rem);
+}
+
+.kiosk-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.kiosk-titles {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.kiosk-school {
+  margin: 0;
+  font-size: clamp(1.75rem, 3vw, 3.5rem);
+  line-height: var(--leading-tight);
+}
+
+.kiosk-meta {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: 0.75em;
+}
+
+.kiosk-clock {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 4.5rem);
+  font-weight: 700;
+}
+
+.kiosk-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.kiosk-banner {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin: 0;
+  text-align: center;
+  font-size: clamp(2rem, 4.5vw, 5rem);
+  font-weight: 700;
+}
+
+.kiosk-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding-block: 0.5rem;
+  padding-inline: 1rem;
+  border-radius: 0.5rem;
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+  font-size: 0.8em;
+}
+
+.kiosk-main {
+  flex: 1;
+}
+
+.kiosk-table {
+  inline-size: 100%;
+  border-collapse: separate;
+  border-spacing: 0 0.4em;
+}
+
+.kiosk-table th,
+.kiosk-table td {
+  padding-block: 0.35em;
+  padding-inline: 0.6em;
+  text-align: start;
+  vertical-align: middle;
+}
+
+.kiosk-table thead th {
+  color: var(--color-ink-muted);
+  font-weight: 600;
+}
+
+.kiosk-column-title {
+  display: block;
+  color: var(--color-ink);
+  font-size: 1.25em;
+  font-weight: 800;
+}
+
+.kiosk-column-period {
+  display: block;
+  font-size: 0.8em;
+}
+
+.kiosk-table tbody th {
+  inline-size: 16%;
+  border-radius: 0 0.5rem 0.5rem 0;
+  background: var(--color-surface);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.kiosk-table tbody td {
+  inline-size: 42%;
+  background: var(--color-surface);
+}
+
+.kiosk-table tbody td:last-child {
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+
+.kiosk-lesson {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25em 1em;
+  padding-block: 0.3em;
+  padding-inline: 0.6em;
+  border-radius: 0.4rem;
+  color: var(--color-on-subject);
+}
+
+.kiosk-subject {
+  font-weight: 800;
+}
+
+.kiosk-teacher {
+  font-size: 0.85em;
+}
+
+.kiosk-free,
+.kiosk-break {
+  color: var(--color-ink-muted);
+}

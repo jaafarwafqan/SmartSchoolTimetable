@@ -13,72 +13,99 @@
       "sha256": "567367568aff1338f97a48473bfd980170702fb17a288d8625cf4fbc9ee86a34",
       "expected": "valid",
       "trusted": false,
+      "pairs": true,
       "expectedJson": "pairing.expected.json",
       "note": "School A pairing code (self-signed). Scanning it makes school A trusted."
     },
     {
       "file": "valid-teacher.sst",
-      "sha256": "058f37eab648b665206dbedfa23b04a06be831c6899c76e3251c1ecfcfaa892d",
+      "sha256": "5ffcdd6247d59a55e628cfbd65e1442ebd0f6198c159ef055af96210ea780fea",
       "expected": "valid",
       "trusted": true,
+      "pairs": false,
       "expectedJson": "valid-teacher.expected.json",
       "note": "Teacher package of school A; valid-teacher.qr.txt holds the same bytes as QR text."
     },
     {
       "file": "valid-principal.sst",
-      "sha256": "8307721778cabed1e90d694d40c31e6978a89429d6e7a9252d87b2cf5f573370",
+      "sha256": "338201143a0708c72a06cf1800122ddb6875bcd7e1e38493584c22a648837fc8",
       "expected": "valid",
       "trusted": true,
+      "pairs": false,
       "expectedJson": "valid-principal.expected.json",
       "note": "Principal package of school A."
     },
     {
       "file": "tampered.sst",
-      "sha256": "091ca0530d55fed59384573c4fee14783d0ac12c448ec500852ac6a80a149d7e",
+      "sha256": "3f3fcffd43b475ec357a3f35c52d5337484b27f40aa12e992b0f0238335253d3",
       "expected": "tampered",
       "trusted": true,
+      "pairs": false,
       "expectedJson": null,
       "note": "valid-teacher with one lesson moved after signing (the signature is the original one)."
     },
     {
       "file": "wrong-school.sst",
-      "sha256": "6b96084607ea6239b38b37a307ac320a38c73c2041559729226a3ce62b7d7bae",
+      "sha256": "dd6ee8a0b95210559645365b83c1706b9812c4fba051e062ad480a154251f3da",
       "expected": "wrongSchool",
       "trusted": true,
+      "pairs": false,
       "expectedJson": null,
       "note": "A valid package of school B, signed with key B."
     },
     {
       "file": "key-changed.sst",
-      "sha256": "57258a841020ac6955deed291bb8434c8d7f2599a5dfee67f71a6c79d5725ede",
+      "sha256": "89442926e4112e672341d7bff2fe28a2d071bcc7618e726c8a07ac8e9ab0558e",
       "expected": "keyChanged",
       "trusted": true,
+      "pairs": false,
       "expectedJson": null,
       "note": "School A, signed with a recreated key (A2): the phone must scan the new pairing code."
     },
     {
       "file": "expired.sst",
-      "sha256": "0afa9fbb30fff961ce9a2b67780a489b946c79eb9f647792543aeed5b769d1aa",
+      "sha256": "0037d29d4d2b089b9b4c02d10d1e5bbd02c05c22aca11d7c0b53d42a3e8ca988",
       "expected": "expired",
       "trusted": true,
+      "pairs": false,
       "expectedJson": null,
       "note": "School A, academic year 2025-2026 (expired on 2026-06-30)."
     },
     {
       "file": "future-format.sst",
-      "sha256": "ee2c6c12ddfddf389c397a12c05861d5984cc2de64c7b3d3bedc4d83353fbc3d",
+      "sha256": "3d431aad75ad40b35eed9853a8b880b10336955818e4e9685eee80eadd7514bf",
       "expected": "newerFormat",
       "trusted": true,
+      "pairs": false,
       "expectedJson": null,
       "note": "School A, payload format 2 with an unknown key: «حدّث التطبيق»."
     },
     {
+      "file": "first-scan.sst",
+      "sha256": "5ffcdd6247d59a55e628cfbd65e1442ebd0f6198c159ef055af96210ea780fea",
+      "expected": "valid",
+      "trusted": false,
+      "pairs": true,
+      "expectedJson": "valid-teacher.expected.json",
+      "note": "valid-teacher.sst read on an unpaired phone: valid, and it pairs the phone with school A (after the user confirms the school name)."
+    },
+    {
       "file": "not-paired.sst",
-      "sha256": "058f37eab648b665206dbedfa23b04a06be831c6899c76e3251c1ecfcfaa892d",
+      "sha256": "33e7fdd24cbf8a72aac63b1db339ef191e094deaf3098bc13b686f2c8b50f6dd",
       "expected": "notPaired",
       "trusted": false,
+      "pairs": false,
       "expectedJson": null,
-      "note": "valid-teacher.sst read before any pairing (same bytes, no trusted school)."
+      "note": "A teacher package WITHOUT the school's public key (key 6), read on an unpaired phone: it cannot pair, so «امسح رمز ربط المدرسة أولاً»."
+    },
+    {
+      "file": "carried-key-mismatch.sst",
+      "sha256": "be78f4dd0027253dc0cf7867c29adcf253931e5bbbd4e6811adb15de294c99b2",
+      "expected": "tampered",
+      "trusted": false,
+      "pairs": false,
+      "expectedJson": null,
+      "note": "Signed with key A but carrying key B: the carried key must be the signing key (key id), on paired and unpaired phones alike."
     }
   ]
 }

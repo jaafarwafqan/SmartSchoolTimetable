@@ -57,7 +57,9 @@ From Phase 2, school-setup create, update, archive and delete events are audited
 ## Phone packages and the school key (Phase 9, ADR 0056)
 - Phones never connect to the desktop; the listener stays on `127.0.0.1`. Data leaves only as signed `.sst` files or QR codes the owner exports.
 - The Ed25519 private seed is generated with the OS random generator and stored only as a DPAPI blob (current Windows user) in `SchoolKeys`. It is never logged, never returned by the API, and wiped from memory after recreating the key.
+- The only portable copy of the seed is «حفظ نسخة من مفتاح المدرسة»: a `.sstkey` file encrypted with a password the owner chooses (PBKDF2-HMAC-SHA256, 600 000 iterations, AES-256-GCM with the header as additional data). The password is never stored; a wrong password and a changed file give different Arabic errors (DECISIONS_LOG #106).
 - Every export is a POST with the per-launch token and an audit entry. The principal package contains every teacher's name; the page warns to share it privately.
+- «شاشة العرض» reads `GET /api/v1/kiosk/today` with its own random key (in memory, valid until the program closes or the owner stops it), sent in the `X-Kiosk-Key` header and carried in the address fragment only (removed from the address bar at once). It returns today's timetable and nothing else and never extends the owner's session; starting it needs the owner's session and the launch token.
 - Packages are verified on the phone (signature, school id, key id, format version, expiry); the reader limits input to 256 KiB and the inflated payload to 2 MiB.
 
 ## Optional final-phase encryption decision

@@ -52,3 +52,15 @@ internal sealed class SchoolKeyConfiguration : IEntityTypeConfiguration<Domain.S
         builder.Property(key => key.ProtectedPrivateKey).IsRequired();
     }
 }
+
+/// <summary>«مشاركة الجدول مع الهاتف» settings (one row): the «حمّل التطبيق» link on the teacher cards.</summary>
+internal sealed class SharingSettingsConfiguration : IEntityTypeConfiguration<Domain.Sharing.SharingSettings>
+{
+    public void Configure(EntityTypeBuilder<Domain.Sharing.SharingSettings> builder)
+    {
+        builder.ToTable("SharingSettings", table => table.HasCheckConstraint("CK_SharingSettings_Singleton", "\"Id\" = 1"));
+        builder.HasKey(settings => settings.Id);
+        builder.Property(settings => settings.Id).ValueGeneratedNever();
+        builder.Property(settings => settings.AppLink).HasMaxLength(Domain.Sharing.SharingSettings.AppLinkMaxLength);
+    }
+}

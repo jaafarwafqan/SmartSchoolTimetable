@@ -122,11 +122,15 @@ public sealed class PhonePackageWriter : IPhonePackageWriter
                 Ints(w, PhonePackageFormat.Days(item.Start), PhonePackageFormat.Days(item.End)));
             Rows(Key(writer, PhonePackageFormat.Keys.Holidays), content.Holidays, (w, item) =>
             {
-                w.WriteStartArray(4);
+                // A template holiday with its own title travels as its code, the title left empty (§4.1).
+                w.WriteStartArray(item.TitleCode > 0 ? 6 : 5);
                 w.WriteInt32(PhonePackageFormat.Days(item.Start));
                 w.WriteInt32(PhonePackageFormat.Days(item.End));
-                w.WriteTextString(item.Title);
+                w.WriteTextString(item.TitleCode > 0 ? string.Empty : item.Title);
                 w.WriteInt32((item.Approximate ? PhonePackageFormat.HolidayApproximate : 0) | (item.ByDecision ? PhonePackageFormat.HolidayByDecision : 0));
+                w.WriteInt32((int)item.Kind);
+                if (item.TitleCode > 0)
+                    w.WriteInt32(item.TitleCode);
                 w.WriteEndArray();
             });
             Ints(Key(writer, PhonePackageFormat.Keys.WorkingDays), [.. content.WorkingDays]);
@@ -196,7 +200,7 @@ public enum PackageReadStatus
     /// <summary>A newer envelope or payload format: «حدّث التطبيق».</summary>
     NewerFormat,
 
-    /// <summary>A timetable package arrived before any «رمز ربط المدرسة» was scanned.</summary>
+    /// <summary>The phone is not paired and the package carries no public key to pair with (a timetable package always carries it).</summary>
     NotPaired,
 
     /// <summary>Signed for another school.</summary>
@@ -215,7 +219,11 @@ public enum PackageReadStatus
 /// <summary>The school a phone trusts after pairing.</summary>
 public sealed record TrustedSchool(Guid SchoolId, byte[] PublicKey);
 
-public sealed record PackageReadResult(PackageReadStatus Status, PhonePackage? Package);
+/// <param name="NewTrust">
+/// One scan (DECISIONS_LOG #111): on a phone that is not paired yet, a valid package proposes its own school (id, name and public key).
+/// The phone shows the school name and the fingerprint, and stores this trust only when the user confirms. Null otherwise.
+/// </param>
+public sealed record PackageReadResult(PackageReadStatus Status, PhonePackage? Package, TrustedSchool? NewTrust = null);
 
 /// <summary>
 /// The reference reader (the phone app implements the same steps; docs/SST_PACKAGE_FORMAT.md §5). The desktop never
@@ -254,21 +262,34 @@ public static class PhonePackageReader
         }
 
         var header = decoded.Header;
-        if (header.Kind == PhonePackageKind.Pairing)
+        // A carried key must be the one that signed: its id is the header's key id.
+        var carried = decoded.PublicKey;
+        if (carried is not null && !SharingService.KeyIdOf(carried).AsSpan().SequenceEqual(header.KeyId))
+            return new(PackageReadStatus.Tampered, null);
+        if (header.Kind == PhonePackageKind.Pairing && carried is null)
+            return new(PackageReadStatus.Tampered, null);
+        if (header.Kind != PhonePackageKind.Pairing && decoded.Timetable is null)
+            return new(PackageReadStatus.Tampered, null);
+
+        if (trusted is null || header.Kind == PhonePackageKind.Pairing && header.SchoolId != trusted.SchoolId)
         {
-            return decoded.PublicKey is { } own && SharingService.KeyIdOf(own).AsSpan().SequenceEqual(header.KeyId) && Ed25519.Verify(own, message, signature)
-                ? new(PackageReadStatus.Valid, decoded)
-                : new(PackageReadStatus.Tampered, null);
+            // Not paired yet (or a pairing code of another school, which the phone treats as re-pairing with a confirmation):
+            // trust on first use, checked against the key the package carries.
+            if (carried is null)
+                return new(PackageReadStatus.NotPaired, null);
+            if (!Ed25519.Verify(carried, message, signature))
+                return new(PackageReadStatus.Tampered, null);
+            if (decoded.Timetable is { } fresh && today > fresh.ExpiresOn)
+                return new(PackageReadStatus.Expired, decoded);
+            return new(PackageReadStatus.Valid, decoded, new TrustedSchool(header.SchoolId, carried));
         }
-        if (trusted is null)
-            return new(PackageReadStatus.NotPaired, null);
         if (header.SchoolId != trusted.SchoolId)
             return new(PackageReadStatus.WrongSchool, null);
         if (!SharingService.KeyIdOf(trusted.PublicKey).AsSpan().SequenceEqual(header.KeyId))
             return new(PackageReadStatus.KeyChanged, null);
-        if (!Ed25519.Verify(trusted.PublicKey, message, signature) || decoded.Timetable is null)
+        if (!Ed25519.Verify(trusted.PublicKey, message, signature))
             return new(PackageReadStatus.Tampered, null);
-        if (today > decoded.Timetable.ExpiresOn)
+        if (decoded.Timetable is { } content && today > content.ExpiresOn)
             return new(PackageReadStatus.Expired, decoded);
         return new(PackageReadStatus.Valid, decoded);
     }
@@ -338,8 +359,11 @@ public static class PhonePackageReader
         var header = new PackageHeader((int)Get<long>(PhonePackageFormat.Keys.FormatVersion), kind,
             new Guid(Get<byte[]>(PhonePackageFormat.Keys.SchoolId), bigEndian: true), Get<string>(PhonePackageFormat.Keys.SchoolName),
             Get<byte[]>(PhonePackageFormat.Keys.KeyId), DateTimeOffset.FromUnixTimeSeconds(Get<long>(PhonePackageFormat.Keys.GeneratedAt)));
+        var publicKey = values.TryGetValue(PhonePackageFormat.Keys.PublicKey, out var carriedKey) ? carriedKey as byte[] ?? throw new InvalidDataException("Key 6.") : null;
+        if (publicKey is not null && publicKey.Length != Ed25519.PublicKeyLength)
+            throw new InvalidDataException("Public key length.");
         if (kind == PhonePackageKind.Pairing)
-            return new PhonePackage(header, Get<byte[]>(PhonePackageFormat.Keys.PublicKey), null);
+            return new PhonePackage(header, publicKey ?? throw new InvalidDataException("Key 6 missing."), null);
 
         static List<object> Items(object value) => value as List<object> ?? throw new InvalidDataException("Array expected.");
         static int Int(object value) => value is long number ? checked((int)number) : throw new InvalidDataException("Integer expected.");
@@ -354,8 +378,16 @@ public static class PhonePackageReader
             PhonePackageFormat.Date(Get<long>(PhonePackageFormat.Keys.YearStart)),
             PhonePackageFormat.Date(Get<long>(PhonePackageFormat.Keys.YearEnd)),
             rows(PhonePackageFormat.Keys.Semesters).Select(row => new PackageSemester(PhonePackageFormat.Date(Int(row[0])), PhonePackageFormat.Date(Int(row[1])))).ToArray(),
-            rows(PhonePackageFormat.Keys.Holidays).Select(row => new PackageHoliday(PhonePackageFormat.Date(Int(row[0])), PhonePackageFormat.Date(Int(row[1])), Text(row[2]),
-                (Int(row[3]) & PhonePackageFormat.HolidayApproximate) != 0, (Int(row[3]) & PhonePackageFormat.HolidayByDecision) != 0)).ToArray(),
+            // Rows may grow at the end in later builds; a reader takes the fields it knows. An unknown kind reads as a holiday.
+            rows(PhonePackageFormat.Keys.Holidays).Select(row =>
+            {
+                var code = row.Count > 5 ? Int(row[5]) : 0;
+                var title = Text(row[2]);
+                return new PackageHoliday(PhonePackageFormat.Date(Int(row[0])), PhonePackageFormat.Date(Int(row[1])),
+                    title.Length == 0 && code > 0 ? PackageHolidayCodes.TitleOf(code) ?? string.Empty : title,
+                    (Int(row[3]) & PhonePackageFormat.HolidayApproximate) != 0, (Int(row[3]) & PhonePackageFormat.HolidayByDecision) != 0,
+                    row.Count > 4 && Enum.IsDefined((PackageDayKind)Int(row[4])) ? (PackageDayKind)Int(row[4]) : PackageDayKind.OfficialHoliday, code);
+            }).ToArray(),
             Items(Get<List<object>>(PhonePackageFormat.Keys.WorkingDays)).Select(Int).ToArray(),
             (int)Get<long>(PhonePackageFormat.Keys.WeekStart),
             rows(PhonePackageFormat.Keys.Sessions).Select(row => new PackageSession(Int(row[0]),
@@ -368,7 +400,7 @@ public static class PhonePackageReader
         if (content.Lessons.Any(lesson => lesson.Subject >= content.Subjects.Count || lesson.Section >= content.Sections.Count || lesson.Teacher >= content.Teachers.Count
                 || lesson.Subject < 0 || lesson.Section < 0 || lesson.Teacher < 0))
             throw new InvalidDataException("Lesson index out of range.");
-        return new PhonePackage(header, null, content);
+        return new PhonePackage(header, publicKey, content);
     }
 
     private static bool Skip(CborReader reader)
