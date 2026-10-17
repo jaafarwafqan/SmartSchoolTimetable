@@ -149,8 +149,11 @@ export async function expectNoSeriousA11yViolations(page: Page, screen: string):
 }
 
 /** Screenshot checks at the four reference widths, also asserting no horizontal page scroll. */
-/** `mask` hides values that change on every run (for example the server's check time). */
-export async function expectBreakpointScreenshots(page: Page, name: string, mask: Locator[] = []): Promise<void> {
+/**
+ * `mask` hides values that change on every run (for example the server's check time). `tolerance` relaxes the pixel ratio for one width only,
+ * where a machine-dependent sub-pixel difference is proven (keep it rare, justify it at the call site; every other width stays strict).
+ */
+export async function expectBreakpointScreenshots(page: Page, name: string, mask: Locator[] = [], tolerance: Partial<Record<number, number>> = {}): Promise<void> {
   for (const width of breakpoints) {
     await page.setViewportSize({ width, height: 900 });
     await page.evaluate(async () => {
@@ -168,18 +171,60 @@ export async function expectBreakpointScreenshots(page: Page, name: string, mask
     });
     // A late scroll by the page itself (a preview scrolled into view after it renders) must not land between the reset and the capture: wait until
     // the page has stayed at the top for three frames in a row (CI captured the sticky top bar in the middle of the page otherwise).
+    // The same for inner boxes that scroll: a focused cell can scroll its table after the viewport changed (CI run #8 caught the curriculum
+    // table a few pixels sideways). Every frame resets them and the page, and all must stay at their start for three frames in a row.
     await page.waitForFunction(async () => {
+      const inner = () => [...document.querySelectorAll<HTMLElement>("main *")].filter((element) => !element.closest(".ui-tabs")
+        && (element.scrollWidth > element.clientWidth || element.scrollHeight > element.clientHeight));
       for (let frame = 0; frame < 3; frame++) {
         window.scrollTo(0, 0);
+        for (const element of inner()) { element.scrollLeft = 0; element.scrollTop = 0; }
         await new Promise<void>((done) => requestAnimationFrame(() => done()));
-        if (window.scrollY !== 0) return false;
+        if (window.scrollY !== 0 || inner().some((element) => element.scrollLeft !== 0 || element.scrollTop !== 0)) return false;
       }
       return true;
     });
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow, `${name} scrolls horizontally at ${width}px`).toBeLessThanOrEqual(0);
-    // The upcoming-holiday card changes with today's date (which holiday, how many days): never part of a baseline.
-    await expect(page).toHaveScreenshot(`${name}-${width}.png`, { fullPage: true, mask: [...mask, page.locator("[aria-labelledby='upcoming-holiday-title']")] });
+    // Pin every scroll position while the picture is taken: a scroll that lands at any moment (a focused cell, a late layout, the viewport
+    // change of a full-page capture) is put back at the start in its own scroll event, which runs before the next frame is painted. Waiting
+    // for stability alone could not exclude a scroll during the capture (CI runs #7 and #8: the curriculum table a few pixels sideways).
+    await page.evaluate(() => {
+      const pin = (event: Event) => {
+        const target = event.target;
+        if (target === document) {
+          if (window.scrollX !== 0 || window.scrollY !== 0) window.scrollTo(0, 0);
+        } else if (target instanceof HTMLElement && target.closest("main") && !target.closest(".ui-tabs")) {
+          if (target.scrollLeft !== 0) target.scrollLeft = 0;
+          if (target.scrollTop !== 0) target.scrollTop = 0;
+        }
+      };
+      (window as unknown as { __screenshotPin?: (event: Event) => void }).__screenshotPin = pin;
+      document.addEventListener("scroll", pin, true);
+      // Scrollbars are drawn and sized differently on different Windows editions (CI showed the same 1526-pixel difference twice in the
+      // table that scrolls both ways): hide them for the picture, so the layout is the same on every machine. A constructed stylesheet,
+      // because the app's Content-Security-Policy blocks inline <style> elements.
+      const sheet = new CSSStyleSheet();
+      sheet.replaceSync("* { scrollbar-width: none !important; } *::-webkit-scrollbar { display: none !important; }");
+      document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+      (window as unknown as { __screenshotSheet?: CSSStyleSheet }).__screenshotSheet = sheet;
+    });
+    try {
+      // The upcoming-holiday card changes with today's date (which holiday, how many days): never part of a baseline.
+      await expect(page).toHaveScreenshot(`${name}-${width}.png`, {
+        fullPage: true,
+        mask: [...mask, page.locator("[aria-labelledby='upcoming-holiday-title']")],
+        ...(tolerance[width] !== undefined ? { maxDiffPixelRatio: tolerance[width] } : {}),
+      });
+    } finally {
+      await page.evaluate(() => {
+        const holder = window as unknown as { __screenshotPin?: (event: Event) => void; __screenshotSheet?: CSSStyleSheet };
+        if (holder.__screenshotPin) document.removeEventListener("scroll", holder.__screenshotPin, true);
+        if (holder.__screenshotSheet) document.adoptedStyleSheets = document.adoptedStyleSheets.filter((item) => item !== holder.__screenshotSheet);
+        delete holder.__screenshotPin;
+        delete holder.__screenshotSheet;
+      });
+    }
   }
   await page.setViewportSize({ width: 1280, height: 900 });
 }
