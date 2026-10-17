@@ -7,6 +7,10 @@ describe("priority levels (MF9)", () => {
   it("maps the three levels to documented weights", () => {
     expect(priorityLevels).toEqual(["notImportant", "important", "veryImportant"]);
     expect(levelWeights).toEqual({ notImportant: 0, important: 20, veryImportant: 40 });
+    // «مهم جداً» weighs 80 for spreading a subject across the days only (owner, ADR 0055).
+    expect(withLevel({ key: "spreadSubjectsAcrossDays", enabled: true, weight: 20 }, "veryImportant")).toEqual({ key: "spreadSubjectsAcrossDays", enabled: true, weight: 80 });
+    expect(withLevel({ key: "balanceTeacherDays", enabled: true, weight: 20 }, "veryImportant").weight).toBe(40);
+    expect(levelOf({ enabled: true, weight: 80 })).toBe("veryImportant");
   });
 
   it("reads a saved rule as the nearest level, and the default weights come out as the owner set them", () => {

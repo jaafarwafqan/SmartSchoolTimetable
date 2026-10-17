@@ -19,7 +19,9 @@ back-to-back repeats; one of its labels («تجنب تكرار المادة مت
    one sitting) and `share = max(base, ⌈weekly ÷ days⌉)`, `days` being the section's working days on which the subject can be taught and one of its
    teachers is there (not off, not released, not blocked all day). Each same-day repeat costs one; a pile-up above the fair share costs one more.
    A single definition (`SubjectSpread`) is read by the CP-SAT model and the scorer, so the score still equals the objective (tested).
-3. Default weight 40 («مهم جداً»). The migration lifts a saved 20 (the old default) to 40 and keeps any other weight the owner chose.
+3. Default weight 80: «مهم جداً» weighs 80 for this rule only, 40 for the others (owner, 2026-10-17, DECISIONS_LOG #105). The migration
+   `Phase5SpreadAllSubjects` lifts a saved 20 (the old default) to 40 and `Phase5SpreadWeight` a saved 40 to 80; any other weight the owner chose
+   is kept. The default generation time limit is 120 s (was 60).
 4. The result notes count the same-day repeats in plain Arabic and split them: per (section, subject), up to `max(0, weekly − base × days)` are
    «لا مفرّ منها» and the rest «يمكن تحسينها». The unavoidable ones are listed per teacher and subject with the reason: the teacher is not there on
    some of the section's days, or the subject has more weekly lessons than days. When every section fills every period of its week, the last-period
@@ -31,9 +33,9 @@ back-to-back repeats; one of its labels («تجنب تكرار المادة مت
 
 - Measured (synthetic, owner-shaped, 11 sections, 2 workers, every priority at its default): with S1 effectively off the solver left 31–55
   improvable repeats; with the fix 5–8 at 30 s and 2–7 at 60 s (runs vary), the 30–37 unavoidable ones unchanged; with S1 alone, 0 in 30 s.
-  A weight of 120 gave 0–2 at 60 s but slightly more adjacent teacher lessons and up to 3 runs over the consecutive limit. The default stays 40,
-  the top of the owner's three-level scale; a heavier default is an open owner decision (DECISIONS_PENDING #105). The first-timetable gate is
-  unchanged (1–3 s, docs/PERFORMANCE.md).
+  A weight of 120 gave 0–2 at 60 s but slightly more adjacent teacher lessons and up to 3 runs over the consecutive limit. The owner chose 80
+  with a 120 s default: measured 0, 1 and 1 improvable repeats on three seeds, 0, 0 and 1 consecutive overruns, peak 162–175 MB, first timetable
+  in about 1 s (docs/PERFORMANCE.md).
 - `SchedulingInput` is unchanged (the switch was already part of it), so the hash of a school changes only through the migrated switches, which
   marks old timetables as made with different data, as it should.
 - The migration cannot know which subjects had the switch off on purpose; the owner turns it off again on those subjects' cards.

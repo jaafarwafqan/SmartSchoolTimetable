@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using SmartSchoolTimetable.Application.Generation;
 using SmartSchoolTimetable.Application.Scheduling;
+using SmartSchoolTimetable.Domain.Scheduling;
 using SmartSchoolTimetable.Infrastructure.Solver;
 using Xunit.Abstractions;
 
@@ -101,20 +102,33 @@ public sealed class PerformanceTests(ITestOutputHelper output)
                 output.WriteLine("  " + string.Join(" ", score.Rules.Select(rule => $"{rule.Key}={rule.Penalty}")) + (score.LastPeriods is { } last ? $" last: {last.MostCount}/{last.LeastCount}" : ""));
             }
         }
-        // The owner's 1.0.0 analysis (11 sections, every subject spread): in 60 s the improvable same-day repeats fall from 31-45 to a few (measured 2-7;
-        // 0 with the rule alone or a weight of 120, ADR 0055).
+    }
+
+    /// <summary>
+    /// The owner's 1.0.0 analysis (ADR 0055): a fictional 11-section school shaped like his, every subject spread at weight 80, the default time limit
+    /// (120 s) with 2 workers. Reports the same-day repeats (unavoidable / improvable), the consecutive-lessons overruns and the memory, per seed.
+    /// </summary>
+    [PerformanceFact]
+    public async Task SpreadingLeavesOnlyUnavoidableRepeats()
+    {
         foreach (var seed in new[] { 1, 2, 3 })
         {
             var input = SyntheticSchools.OwnerShaped(seed, sectionCount: 11, spreadAll: true);
-            var (result, violations) = await Measure($"owner-shaped 11 s{seed}", input, 60, 2, deterministic: false);
+            var (result, violations) = await Measure($"owner-shaped 11 s{seed}", input, GenerationSettings.DefaultTimeLimit, 2, deterministic: false);
             Assert.True(result.HasTimetable);
             Assert.Equal(0, violations);
             Assert.True(result.FirstSolutionSeconds < 60, $"first timetable after {result.FirstSolutionSeconds} s");
-            var repeats = TimetableScorer.Score(input, result.Lessons, false).Repeats!;
-            output.WriteLine($"  same-day repeats: {repeats.Total} ({repeats.Unavoidable} unavoidable, {repeats.Improvable} improvable)");
-            Assert.True(repeats.Improvable <= 8, $"{repeats.Improvable} improvable repeats");
+            var score = TimetableScorer.Score(input, result.Lessons, false);
+            var repeats = score.Repeats!;
+            var overruns = score.Rules.Single(rule => rule.Key == SchedulingRuleKeys.MaxConsecutiveLessons).Penalty;
+            output.WriteLine($"  same-day repeats: {repeats.Total} ({repeats.Unavoidable} unavoidable, {repeats.Improvable} improvable); consecutive overruns: {overruns} "
+                + $"({score.ConsecutiveRuns?.Count ?? 0} teacher-days); " + string.Join(" ", score.Rules.Select(rule => $"{rule.Key}={rule.Penalty}")));
+            Assert.True(repeats.Improvable <= LimitImprovable, $"{repeats.Improvable} improvable repeats");
         }
     }
+
+    /// <summary>Measured 0, 1 and 1 on 2026-10-17 (docs/PERFORMANCE.md); a margin for slower machines.</summary>
+    private const int LimitImprovable = 3;
 
     /// <summary>«نتيجة قابلة للإعادة» (one worker, deterministic time): measured and reported, no target.</summary>
     [PerformanceFact]

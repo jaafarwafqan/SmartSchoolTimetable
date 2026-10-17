@@ -145,7 +145,8 @@ public sealed class SpreadAllSubjectsTests(ITestOutputHelper output)
     }
 
     [Theory]
-    [InlineData(20, 40)] // the old default becomes «مهم جداً»
+    [InlineData(20, 80)] // the old default becomes «مهم جداً», which weighs 80 for this rule
+    [InlineData(40, 80)] // «مهم جداً» chosen before: 80 now
     [InlineData(30, 30)] // a weight the owner chose is kept
     public async Task TheMigrationSpreadsEveryExistingSubject(int weightBefore, int weightAfter)
     {
@@ -170,7 +171,7 @@ public sealed class SpreadAllSubjectsTests(ITestOutputHelper output)
             Assert.All(subjects, subject => Assert.True(subject.SpreadAcrossDays));
             Assert.Equal([2, 1], subjects.Select(subject => subject.Version)); // only the changed subject gets a new version
             var profile = await upgraded.Set<SchedulingProfile>().AsNoTracking().SingleAsync();
-            Assert.Equal(7, profile.ProfileVersion);
+            Assert.Equal(8, profile.ProfileVersion);
             Assert.Equal(weightAfter, profile.Rules.Single(rule => rule.Key == SchedulingRuleKeys.SpreadSubjectsAcrossDays).Weight);
         }
         finally

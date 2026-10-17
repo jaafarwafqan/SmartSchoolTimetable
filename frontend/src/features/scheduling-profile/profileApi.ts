@@ -60,7 +60,8 @@ export function applyLevel(rules: readonly RuleInput[], key: RuleKey, level: Pri
 
 /**
  * MF9: the owner chooses how much each rule matters in three words; the server keeps its 0–100 weights (ADR 0045).
- * «غير مهم» switches the rule off, «مهم» weighs 20 and «مهم جداً» 40. A saved weight is shown as the nearest level
+ * «غير مهم» switches the rule off, «مهم» weighs 20 and «مهم جداً» 40 (80 for «توزيع حصص المادة على أيام الأسبوع», owner 2026-10-17,
+ * ADR 0055). A saved weight is shown as the nearest level
  * (below 10 or off: «غير مهم»; 30 and above: «مهم جداً»; otherwise «مهم»), so the defaults (20, 30, 15, 25, 10) read
  * naturally, and a rule is rewritten only when the owner changes its level.
  */
@@ -68,6 +69,14 @@ export const priorityLevels = ["notImportant", "important", "veryImportant"] as 
 export type PriorityLevel = (typeof priorityLevels)[number];
 
 export const levelWeights: Record<PriorityLevel, number> = { notImportant: 0, important: 20, veryImportant: 40 };
+
+/** Rules whose «مهم جداً» weighs more than the others'. */
+const veryImportantWeight: Partial<Record<RuleKey, number>> = { spreadSubjectsAcrossDays: 80 };
+
+/** The weight saved for `level` on rule `key`. */
+export function weightOf(key: RuleKey, level: PriorityLevel): number {
+  return level === "veryImportant" ? veryImportantWeight[key] ?? levelWeights.veryImportant : levelWeights[level];
+}
 const importantFrom = 10;
 const veryImportantFrom = 30;
 
@@ -79,5 +88,5 @@ export function levelOf(rule: { enabled: boolean; weight: number }): PriorityLev
 /** The rule as saved after choosing `level`; the same level keeps the exact saved weight. */
 export function withLevel(rule: RuleInput, level: PriorityLevel): RuleInput {
   if (levelOf(rule) === level) return rule;
-  return { key: rule.key, enabled: level !== "notImportant", weight: levelWeights[level] };
+  return { key: rule.key, enabled: level !== "notImportant", weight: weightOf(rule.key, level) };
 }

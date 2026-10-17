@@ -50,7 +50,7 @@ The objective minimises Σ weight × penalty, for the enabled rules with weight 
 | `maxConsecutiveLessons` | S9 consecutive lessons (a priority unless hard) | per (teacher, shift, day): windows of k + 1 consecutive lesson numbers all his |
 | `fairLastPeriods` | S8 fair last periods | per teacher: weighted last-period lessons (evening day 2, morning 1) above ⌈total × load ÷ all loads⌉ |
 
-The default weights, in display order: S1 40, S9 40, S6 30, S2 off (30), S7 40, S8 20, S3 15, S4 25, S5 10. S2 and S6 cannot both be on (ADR 0053). Subject names are never special cases; only subject flags matter.
+The default weights, in display order: S1 80 (its «مهم جداً»; ADR 0055), S9 40, S6 30, S2 off (30), S7 40, S8 20, S3 15, S4 25, S5 10. S2 and S6 cannot both be on (ADR 0053). Subject names are never special cases; only subject flags matter.
 
 ### Fill checks before the solver (pre-solve validator)
 A section whose weekly lessons equal its slots is full every day, so a day off or the daily limit can make it impossible. The validator proves this before the solver runs (each is an upper bound; a section may keep `slots − lessons` slots empty, and a day or a slot is reported only when that slack cannot absorb it): `SUBJECT_DAYS_SHORT` (a subject needs ⌈weekly ÷ limit⌉ days and its teacher is free on fewer), `SECTION_DAY_UNDERFILLED` (what the subjects can place on a day is below the day's lessons less the slack), `SECTION_SLOT_UNCOVERED` (no teacher of the section is free at a slot), and the warning `TEACHERS_SAME_DAY_OFF`. The checks stay silent for a section with an unassigned line or an archived or released teacher, which have their own findings.

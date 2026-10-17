@@ -84,6 +84,9 @@ export function diagnosticMessage(finding: SolverFinding, format: Formatter): st
 /** Time-limit choices in seconds (10–600), labelled as durations. */
 export const timeLimitChoices = [10, 20, 30, 45, 60, 90, 120, 180, 300, 600] as const;
 
+/** The default time limit before the engine status arrives (the server's `GenerationSettings.DefaultTimeLimit`, owner 2026-10-17). */
+export const defaultTimeLimit = 120;
+
 const plain = text.plain;
 type NoTimetableStatus = keyof typeof plain.noTimetable;
 

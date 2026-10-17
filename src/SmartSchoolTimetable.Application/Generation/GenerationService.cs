@@ -9,7 +9,7 @@ using SmartSchoolTimetable.Domain.Scheduling;
 namespace SmartSchoolTimetable.Application.Generation;
 
 /// <param name="Mode">«عادي» (standard) or «دروس مزدوجة» (doublePeriods); default standard.</param>
-/// <param name="TimeLimitSeconds">10–600; default 60.</param>
+/// <param name="TimeLimitSeconds">10–600; default 120 (owner, 2026-10-17).</param>
 /// <param name="Deterministic">«نتيجة قابلة للإعادة»: one worker and the seed.</param>
 /// <param name="Seed">Optional; a random one is chosen and stored when absent.</param>
 /// <param name="Workers">Advanced; 1 to the number of logical cores.</param>
