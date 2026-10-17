@@ -115,7 +115,7 @@ public sealed class SetupTemplatesService(IDataStore store, StagesSectionsServic
         return await SetupTransaction.RunAsync(store, async () =>
         {
             foreach (var line in lines.Where(line => line.Action == "create"))
-                SetupTransaction.Require(await subjects.CreateAsync(new SaveSubjectCommand(line.Name, 0, 0, true, false, false, false, null, null, 0), token));
+                SetupTransaction.Require(await subjects.CreateAsync(new SaveSubjectCommand(line.Name, 0, 0, true, true, false, false, null, null, 0), token));
             return plan;
         }, token);
     }

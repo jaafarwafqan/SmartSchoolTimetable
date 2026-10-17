@@ -51,7 +51,7 @@ export function SubjectsPage() {
     addFeedback.reset();
     create.mutate({
       id: null,
-      input: { name: String(form.get("newSubjectName") ?? ""), colorIndex: 0, priority: 0, distributionEnabled: true, spreadAcrossDays: false, heavy: false, requiresDoublePeriod: false, blockedPeriods: [], notes: null, requiredResourceId: null, version: 0 },
+      input: { name: String(form.get("newSubjectName") ?? ""), colorIndex: 0, priority: 0, distributionEnabled: true, spreadAcrossDays: true, heavy: false, requiresDoublePeriod: false, blockedPeriods: [], notes: null, requiredResourceId: null, version: 0 },
     }, {
       onSuccess: (created) => { element.reset(); addFeedback.showSuccess(text.added(created.name)); },
       onError: addFeedback.showError,

@@ -37,8 +37,20 @@ export type SolverFinding = {
 
 export type RuleScore = { key: string; enabled: boolean; weight: number; penalty: number; weighted: number };
 
-/** The teacher with the most and the fewest last-period lessons (raw counts), when the timetable has last periods to share. */
-export type LastPeriodInsight = { mostTeacher: string; mostCount: number; leastTeacher: string; leastCount: number };
+/**
+ * The teacher with the most and the fewest last-period lessons (raw counts), when the timetable has last periods to share. `fullWeek`: every section
+ * uses every period of its week, so each section has a last lesson every day (`lastLessons` a week in all).
+ */
+export type LastPeriodInsight = { mostTeacher: string; mostCount: number; leastTeacher: string; leastCount: number; fullWeek?: boolean; lastLessons?: number };
+
+/** Why a same-day repeat cannot be avoided: the teacher is missing on some days, or the subject has more weekly lessons than days. */
+export type ForcedRepeatReason = "teacherAbsent" | "moreLessonsThanDays";
+
+/** Unavoidable same-day repeats of one subject with one teacher (`count` in `sections` sections; `weekly` lessons on `days` days). */
+export type ForcedRepeat = { teacher: string; subject: string; reason: ForcedRepeatReason | string; weekly: number; days: number; count: number; sections: number };
+
+/** Same-day repeats of a subject in a section, split into unavoidable and improvable. */
+export type RepeatInsight = { total: number; unavoidable: number; improvable: number; forced: ForcedRepeat[] };
 
 /** A teacher who got more lessons in a row than his limit on one day (the longest run that day). */
 export type ConsecutiveRun = { teacher: string; day: number; count: number; limit: number };
@@ -75,7 +87,7 @@ export type GenerationRun = {
   improvements: number;
   firstSolutionSeconds: number | null;
   lessonsPlaced: number;
-  score: { total: number; rules: RuleScore[]; lastPeriods?: LastPeriodInsight | null; consecutiveRuns?: ConsecutiveRun[] | null } | null;
+  score: { total: number; rules: RuleScore[]; lastPeriods?: LastPeriodInsight | null; consecutiveRuns?: ConsecutiveRun[] | null; repeats?: RepeatInsight | null } | null;
   diagnostics: { findings: SolverFinding[]; minimal: boolean } | null;
   errorCode: string | null;
   timetableVersionId: number | null;

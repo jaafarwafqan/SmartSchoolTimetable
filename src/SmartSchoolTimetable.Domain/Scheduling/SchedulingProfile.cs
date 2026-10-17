@@ -29,7 +29,7 @@ public static class SchedulingRuleKeys
     /// <summary>Defaults in display order. <see cref="AvoidTeacherGaps"/> («متتالية») is off by default: it is the opposite of <see cref="SpreadTeacherLessons"/>.</summary>
     public static readonly IReadOnlyList<SchedulingRule> Defaults =
     [
-        new(SpreadSubjectsAcrossDays, true, 20),
+        new(SpreadSubjectsAcrossDays, true, 40),
         new(MaxConsecutiveLessons, true, 40),
         new(SpreadTeacherLessons, true, 30),
         new(AvoidTeacherGaps, false, 30),

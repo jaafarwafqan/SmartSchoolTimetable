@@ -8,10 +8,28 @@ namespace SmartSchoolTimetable.Application.Generation;
 /// The last-period fairness of a timetable in the owner's terms: the teacher with the most lessons in the last period of the day and the one with the
 /// fewest (among teachers with a normal load), with their raw counts (a lesson on an evening day counts once here).
 /// </summary>
-public sealed record LastPeriodInsight(string MostTeacher, int MostCount, string LeastTeacher, int LeastCount);
+/// <remarks>
+/// <c>FullWeek</c> is true when every section uses every period of its week (for example 30 lessons in 30 periods): then each section has a last lesson
+/// every day, so <c>LastLessons</c> last lessons a week have to go to someone.
+/// </remarks>
+public sealed record LastPeriodInsight(string MostTeacher, int MostCount, string LeastTeacher, int LeastCount, bool FullWeek = false, int LastLessons = 0);
 
 /// <summary>Total penalty and its breakdown per soft rule (lower is better); <paramref name="LastPeriods"/> is set when there are last periods to share.</summary>
-public sealed record TimetableScore(long Total, IReadOnlyList<RuleScore> Rules, LastPeriodInsight? LastPeriods = null, IReadOnlyList<ConsecutiveRun>? ConsecutiveRuns = null);
+public sealed record TimetableScore(long Total, IReadOnlyList<RuleScore> Rules, LastPeriodInsight? LastPeriods = null, IReadOnlyList<ConsecutiveRun>? ConsecutiveRuns = null,
+    RepeatInsight? Repeats = null);
+
+/// <summary>
+/// Same-day repeats of a subject in a section (a lesson above the first of the day; above the first two for a double subject), split into those no
+/// timetable can avoid and those a better timetable could remove. <paramref name="Forced"/> names who and why for the unavoidable ones.
+/// </summary>
+public sealed record RepeatInsight(int Total, int Unavoidable, int Improvable, IReadOnlyList<ForcedRepeat> Forced);
+
+/// <param name="Reason">A <see cref="SpreadReasons"/> code: the teacher is missing on some days, or the subject has more weekly lessons than days.</param>
+/// <param name="Weekly">The subject's weekly lessons in one section.</param>
+/// <param name="Days">Days on which the teacher can teach it there.</param>
+/// <param name="Count">Unavoidable repeats in all these sections together.</param>
+/// <param name="Sections">How many sections they are in.</param>
+public sealed record ForcedRepeat(string Teacher, string Subject, string Reason, int Weekly, int Days, int Count, int Sections);
 
 /// <summary>A teacher who got more lessons in a row than his limit on one day: his name, the day, the longest run that day and the limit.</summary>
 public sealed record ConsecutiveRun(string Teacher, int Day, int Count, int Limit);
@@ -20,7 +38,7 @@ public sealed record ConsecutiveRun(string Teacher, int Day, int Count, int Limi
 /// Scores a timetable on the soft rules S1–S5 with the profile weights (docs/SOLVER.md §3). The solver minimises the
 /// same sum, so for a solver timetable <see cref="TimetableScore.Total"/> equals its objective (tested). The
 /// definitions, per rule:
-/// S1 spread: per (section, subject flagged spread, day), lessons above 1 (above 2 for a double subject).
+/// S1 spread: per (section, subject that spreads, day), lessons above 1 (above 2 for a double subject) plus lessons above its fair share (<see cref="SpreadShare"/>).
 /// S2 teacher gaps: per (teacher, day, shift), free lesson numbers between the first and the last lesson.
 /// S3 heavy early: per lesson of a heavy subject, its lesson number − 1.
 /// S4 repeats: per section and day, consecutive lesson numbers with the same subject (double subjects excluded).
@@ -46,9 +64,13 @@ public static class TimetableScorer
         bool LineDouble(LineInput line) => line.NeedsDoublePeriod || subjects.TryGetValue(line.SubjectId, out var subject) && subject.RequiresDoublePeriod;
         bool SubjectDouble(long stageId, long subjectId) => input.Lines.Any(line => line.StageId == stageId && line.SubjectId == subjectId && LineDouble(line));
 
-        var spread = items.Where(item => item.Subject.SpreadAcrossDays)
-            .GroupBy(item => (item.Section.Id, item.Subject.Id, item.Lesson.Day))
-            .Sum(group => (long)Math.Max(0, group.Count() - (SubjectDouble(group.First().Section.StageId, group.Key.Item2) ? 2 : 1)));
+        var shares = SubjectSpread.Of(input);
+        var spreadDays = items.GroupBy(item => (item.Section.Id, item.Subject.Id, item.Lesson.Day))
+            .Where(group => shares.ContainsKey((group.Key.Item1, group.Key.Item2)))
+            .Select(group => (Share: shares[(group.Key.Item1, group.Key.Item2)], Count: group.Count()))
+            .ToArray();
+        var spread = spreadDays.Sum(day => (long)day.Share.Penalty(day.Count));
+        var repeatsInsight = Repeats(input, spreadDays);
 
         var gaps = items.GroupBy(item => (item.Lesson.TeacherId, item.Lesson.Day, item.Section.ShiftId))
             .Sum(group =>
@@ -168,7 +190,7 @@ public static class TimetableScorer
             return new RuleScore(rule.Key, enabled, weight, penalty, enabled ? weight * penalty : 0);
         }).ToArray();
         return new TimetableScore(rules.Sum(rule => rule.Weighted), rules, Insight(input, teacherDays, lastWeighted.ToDictionary(pair => pair.Key, pair => pair.Value.Raw), allowances),
-            runList.Length == 0 ? null : runList);
+            runList.Length == 0 ? null : runList, repeatsInsight);
     }
 
     /// <summary>
@@ -186,7 +208,37 @@ public static class TimetableScorer
         string Name(TeacherDays item) => item.Teacher.Name;
         var most = normal.OrderByDescending(item => raw.GetValueOrDefault(item.Teacher.Id)).ThenBy(item => item.Teacher.Id).First();
         var least = normal.OrderBy(item => raw.GetValueOrDefault(item.Teacher.Id)).ThenByDescending(item => item.Load).ThenBy(item => item.Teacher.Id).First();
-        return new LastPeriodInsight(Name(most), raw.GetValueOrDefault(most.Teacher.Id), Name(least), raw.GetValueOrDefault(least.Teacher.Id));
+        var lines = input.Lines.ToDictionary(line => line.Id);
+        var weekly = input.Assignments.Where(row => lines.ContainsKey(row.LineId)).GroupBy(row => row.SectionId)
+            .ToDictionary(group => group.Key, group => group.Sum(row => lines[row.LineId].WeeklyLessons));
+        var fullWeek = input.Sections.Count > 0 && input.Sections.All(section =>
+            weekly.GetValueOrDefault(section.Id) == section.AllowedByDay.Where(day => input.WorkingDays.Contains(day.Day)).Sum(day => day.Lessons));
+        var lastLessons = input.Sections.Sum(section => section.AllowedByDay.Count(day => input.WorkingDays.Contains(day.Day) && day.Lessons > 0));
+        return new LastPeriodInsight(Name(most), raw.GetValueOrDefault(most.Teacher.Id), Name(least), raw.GetValueOrDefault(least.Teacher.Id), fullWeek, lastLessons);
+    }
+
+    /// <summary>
+    /// Counts the same-day repeats and splits them: per (section, subject), the repeats up to <see cref="SpreadShare.Unavoidable"/> cannot be avoided,
+    /// the rest could. The unavoidable ones are listed per (teacher, subject, reason). Null when the timetable has no repeat.
+    /// </summary>
+    private static RepeatInsight? Repeats(SchedulingInput input, IReadOnlyList<(SpreadShare Share, int Count)> days)
+    {
+        var perPair = days.GroupBy(day => day.Share).Select(group => (Share: group.Key, Repeats: group.Sum(day => Math.Max(0, day.Count - day.Share.Base))))
+            .Where(pair => pair.Repeats > 0).ToArray();
+        var total = perPair.Sum(pair => pair.Repeats);
+        if (total == 0)
+            return null;
+        var teachers = input.Teachers.ToDictionary(teacher => teacher.Id, teacher => teacher.Name);
+        var subjects = input.Subjects.ToDictionary(subject => subject.Id, subject => subject.Name);
+        var forced = perPair.Select(pair => (pair.Share, Count: Math.Min(pair.Repeats, pair.Share.Unavoidable))).Where(pair => pair.Count > 0).ToArray();
+        var list = forced
+            .GroupBy(pair => (Teacher: string.Join("، ", pair.Share.TeacherIds.Select(id => teachers.GetValueOrDefault(id, string.Empty))),
+                Subject: subjects.GetValueOrDefault(pair.Share.SubjectId, string.Empty), pair.Share.Reason, pair.Share.Weekly, pair.Share.Days))
+            .Select(group => new ForcedRepeat(group.Key.Teacher, group.Key.Subject, group.Key.Reason, group.Key.Weekly, group.Key.Days, group.Sum(pair => pair.Count), group.Count()))
+            .OrderByDescending(item => item.Count).ThenBy(item => item.Subject, StringComparer.Ordinal).ThenBy(item => item.Teacher, StringComparer.Ordinal)
+            .ToArray();
+        var unavoidable = forced.Sum(pair => pair.Count);
+        return new RepeatInsight(total, unavoidable, total - unavoidable, list);
     }
 
     /// <summary>Most disjoint pairs (n, n+1) on one day with no break row between them (in any daily session, R3).</summary>

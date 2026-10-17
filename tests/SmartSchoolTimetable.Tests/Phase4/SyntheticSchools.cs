@@ -236,14 +236,15 @@ internal static class SyntheticSchools
     /// A fictional school shaped like the owner's (never his data): 12 sections in 3 grades, 30 lessons a week in 30 slots (6 × 5, every section full every
     /// day), 22 teachers, some days off and blocked periods, evening sessions on Tuesday to Thursday, and the production defaults (at most 3 lessons in a row, as a priority).
     /// The seed moves the days off and the blocked periods. Assignment: each teacher takes consecutive sections of his subject.
+    /// <paramref name="sectionCount"/> (up to 12) drops sections of the last grade; <paramref name="spreadAll"/> makes every subject spread across days (the 1.0.0 default).
     /// </summary>
-    public static SchedulingInput OwnerShaped(int seed)
+    public static SchedulingInput OwnerShaped(int seed, int sectionCount = 12, bool spreadAll = false)
     {
         var random = new Random(seed);
         var school = new TestSchool().Consecutive(3, hard: false).Evening(2, 3, 4);
         var shift = school.Shift(6, breakAfter: 3);
         var stages = Enumerable.Range(0, 3).Select(_ => school.Stage()).ToArray();
-        var sections = Enumerable.Range(0, 12).Select(index => (Id: school.Section(shift, stages[index / 4]), Stage: stages[index / 4])).ToArray();
+        var sections = Enumerable.Range(0, sectionCount).Select(index => (Id: school.Section(shift, stages[index / 4]), Stage: stages[index / 4])).ToArray();
         // Weekly lessons, flags and teachers per subject: 30 lessons a section, 22 teachers in all.
         var plan = new (int Weekly, bool Heavy, bool Spread, int Teachers)[]
         {
@@ -253,7 +254,7 @@ internal static class SyntheticSchools
         for (var subjectIndex = 0; subjectIndex < plan.Length; subjectIndex++)
         {
             var (weekly, heavy, spread, count) = plan[subjectIndex];
-            var subject = school.Subject(heavy: heavy, spread: spread);
+            var subject = school.Subject(heavy: heavy, spread: spread || spreadAll);
             var lines = stages.ToDictionary(stage => stage, stage => school.Line(stage, subject, weekly));
             var staff = Enumerable.Range(0, count).Select(teacherIndex =>
             {

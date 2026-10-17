@@ -66,7 +66,12 @@ public sealed class PerformanceTests(ITestOutputHelper output)
     }
 
     /// <summary>The production defaults of the profile (Phase 5): at most three lessons in a row for every teacher, as a priority.</summary>
-    private static SchedulingInput Production(SchedulingInput input) => input with { Profile = input.Profile with { DefaultMaxConsecutive = 3 } };
+    /// <summary>The 1.0.0 defaults: at most 3 lessons in a row (a priority) and every subject spread across days.</summary>
+    private static SchedulingInput Production(SchedulingInput input) => input with
+    {
+        Profile = input.Profile with { DefaultMaxConsecutive = 3 },
+        Subjects = input.Subjects.Select(subject => subject with { SpreadAcrossDays = true }).ToArray(),
+    };
 
     /// <summary>
     /// Phase 5 gate with every new rule on (the default priorities, max 3 in a row): 24/40 with 2 workers (the 4 GB school-PC default), the owner-shaped
@@ -84,7 +89,7 @@ public sealed class PerformanceTests(ITestOutputHelper output)
         }
         foreach (var seed in new[] { 1, 2, 3 })
         {
-            var input = SyntheticSchools.OwnerShaped(seed);
+            var input = SyntheticSchools.OwnerShaped(seed, spreadAll: true);
             var readiness = PreSolveValidator.Validate(input);
             output.WriteLine($"owner-shaped s{seed}: ready={readiness.Ready} errors={readiness.Errors} warnings={readiness.Warnings} {string.Join(",", readiness.Findings.Where(item => item.Severity == PreSolveValidator.Error).Select(item => item.Code))}");
             var (result, violations) = await Measure($"owner-shaped s{seed}", input, 60, 2, deterministic: false);
@@ -95,6 +100,19 @@ public sealed class PerformanceTests(ITestOutputHelper output)
                 var score = TimetableScorer.Score(input, result.Lessons, false);
                 output.WriteLine("  " + string.Join(" ", score.Rules.Select(rule => $"{rule.Key}={rule.Penalty}")) + (score.LastPeriods is { } last ? $" last: {last.MostCount}/{last.LeastCount}" : ""));
             }
+        }
+        // The owner's 1.0.0 analysis (11 sections, every subject spread): in 60 s the improvable same-day repeats fall from 31-45 to a few (measured 2-7;
+        // 0 with the rule alone or a weight of 120, ADR 0055).
+        foreach (var seed in new[] { 1, 2, 3 })
+        {
+            var input = SyntheticSchools.OwnerShaped(seed, sectionCount: 11, spreadAll: true);
+            var (result, violations) = await Measure($"owner-shaped 11 s{seed}", input, 60, 2, deterministic: false);
+            Assert.True(result.HasTimetable);
+            Assert.Equal(0, violations);
+            Assert.True(result.FirstSolutionSeconds < 60, $"first timetable after {result.FirstSolutionSeconds} s");
+            var repeats = TimetableScorer.Score(input, result.Lessons, false).Repeats!;
+            output.WriteLine($"  same-day repeats: {repeats.Total} ({repeats.Unavoidable} unavoidable, {repeats.Improvable} improvable)");
+            Assert.True(repeats.Improvable <= 8, $"{repeats.Improvable} improvable repeats");
         }
     }
 

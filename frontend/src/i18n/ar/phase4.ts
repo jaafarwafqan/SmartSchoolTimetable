@@ -98,6 +98,14 @@ export const generation = {
       avoidTeacherGaps: (gaps: string) => `${gaps} في جداول المعلمين بين حصصهم.`,
       avoidSameSubjectRepeated: (times: string) => `مادة متكررة في حصتين متتاليتين: ${times}.`,
       spreadSubjectsAcrossDays: (times: string) => `مادة لها أكثر من حصة في اليوم نفسه: ${times}.`,
+      sameDayRepeats: (total: string, unavoidable: string, improvable: string) =>
+        `تكررت المادة في اليوم نفسه للشعبة ${total}: ${unavoidable} لا مفرّ منها، و${improvable} يمكن تحسينها.`,
+      sameDayRepeatsAllForced: (total: string) => `تكررت المادة في اليوم نفسه للشعبة ${total}، وكلها لا مفرّ منها.`,
+      forcedRepeats: (list: string) => `لا مفرّ منها: ${list}.`,
+      forcedTeacherAbsent: (subject: string, teacher: string, weekly: string, days: string, sections: string) =>
+        `${subject} مع ${teacher}: ${weekly} أسبوعياً والمعلم حاضر ${days} فقط (${sections})`,
+      forcedMoreLessonsThanDays: (subject: string, teacher: string, weekly: string, days: string, sections: string) =>
+        `${subject} مع ${teacher}: ${weekly} أسبوعياً وأيام الدوام ${days} (${sections})`,
       heavySubjectsEarly: (lessons: string) => `مواد ثقيلة جاءت بعد الحصص الأولى، بمجموع تأخير ${lessons}.`,
       keepDoubleLessonsTogether: (pairs: string) => `حصص مزدوجة لم تأتِ متتالية: ${pairs}.`,
       spreadTeacherLessons: (times: string) => `${times} يدرّس فيها معلم حصتين متتاليتين دون فاصل بينهما.`,
@@ -107,6 +115,8 @@ export const generation = {
       consecutiveDay: (day: string, count: string) => `${day}: ${count}`,
       fairLastPeriods: (most: string, mostCount: string, least: string, leastCount: string) =>
         `أكثر معلم في الحصص الأخيرة: ${most} (${mostCount})، وأقلهم: ${least} (${leastCount}).`,
+      fullWeekLastPeriods: (lessons: string, fair: string) =>
+        `كل شعبة تملأ كل حصص أسبوعها (عدد حصصها الأسبوعية يساوي عدد مواعيدها)، فلكل شعبة حصة أخيرة في كل يوم: ${lessons} في الأسبوع لا بد أن يدرّسها أحد، ويوزعها البرنامج على المعلمين بحسب أنصبتهم. ${fair}`,
     },
     seeInTimetable: "عرضها في الجدول",
     technical: "تفاصيل تقنية",
@@ -120,10 +130,10 @@ export const generation = {
   weighted: "العقوبة",
   ruleDisabled: "معطلة",
   rules: {
-    spreadSubjectsAcrossDays: "توزيع المادة على أيام الأسبوع",
+    spreadSubjectsAcrossDays: "توزيع حصص المادة على أيام الأسبوع",
     avoidTeacherGaps: "تجنب فراغات المعلمين",
     heavySubjectsEarly: "المواد الثقيلة في الحصص الأولى",
-    avoidSameSubjectRepeated: "تجنب تكرار المادة متتالية",
+    avoidSameSubjectRepeated: "تجنّب تكرار المادة في حصتين متتاليتين",
     keepDoubleLessonsTogether: "إبقاء الحصص المزدوجة متتالية",
     spreadTeacherLessons: "توزيع حصص المعلم بفواصل",
     balanceTeacherDays: "توزيع أيام المعلم بالتساوي",

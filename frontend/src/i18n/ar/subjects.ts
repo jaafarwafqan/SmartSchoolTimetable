@@ -39,7 +39,7 @@ export const subjects = {
   priorityValue: (number: string) => `الأولوية ${number}`,
   flags: "خصائص التوزيع",
   distributionEnabled: "التوزيع مفعّل",
-  spreadAcrossDays: "توزيع الحصص على أيام مختلفة",
+  spreadAcrossDays: "توزيع الحصص على أيام مختلفة (مفعّل افتراضياً)",
   heavy: "مادة ثقيلة",
   requiresDoublePeriod: "تتطلب حصة مزدوجة",
   notes: "ملاحظات (اختياري)",

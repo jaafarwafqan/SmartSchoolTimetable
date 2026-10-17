@@ -48,6 +48,7 @@ describe("arabicCount", () => {
       gap: ["فراغ واحد", "فراغان", "3 فراغات", "11 فراغاً", "100 فراغ"],
       holiday: ["عطلة واحدة", "عطلتان", "3 عطل", "11 عطلة", "100 عطلة"],
       time: ["مرة واحدة", "مرتان", "3 مرات", "11 مرة", "100 مرة"],
+      repeat: ["تكرار واحد", "تكراران", "3 تكرارات", "11 تكراراً", "100 تكرار"],
     };
     for (const noun of Object.keys(countNouns) as CountNoun[])
       expect([1, 2, 3, 11, 100].map((value) => arabicCount(value, noun, latn)), noun).toEqual(expected[noun]);
