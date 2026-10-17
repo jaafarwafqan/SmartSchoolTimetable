@@ -89,6 +89,7 @@ builder.Services.AddSingleton<SmartSchoolTimetable.Application.Generation.Genera
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Generation.GenerationService>();
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Generation.TimetableService>();
 builder.Services.AddScoped<SmartSchoolTimetable.Application.Generation.TimetableExportService>();
+builder.Services.AddScoped<SmartSchoolTimetable.Application.Sharing.SharingService>();
 // Backups go to Documents only when the database is in its normal place; an overridden database path (tests, a portable copy) keeps them beside it.
 var usingDefaultDatabase = string.Equals(Path.GetFullPath(databasePath), Path.GetFullPath(defaultDatabasePath), StringComparison.OrdinalIgnoreCase);
 builder.Services.AddSingleton(new SmartSchoolTimetable.Application.Backup.BackupDefaults(usingDefaultDatabase
@@ -165,6 +166,7 @@ app.MapReadinessEndpoints();
 app.MapGenerationEndpoints();
 app.MapTimetableEndpoints();
 app.MapBackupEndpoints();
+app.MapSharingEndpoints();
 app.MapAboutEndpoints();
 // Only when the launcher started this process with a control token (never from a browser; docs: ADR 0052).
 app.MapControlEndpoints(builder.Configuration["Control:Token"]);

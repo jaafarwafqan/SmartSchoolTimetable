@@ -54,6 +54,12 @@ See [ADR 0016](./adr/0016-school-asset-storage.md).
 ## Local audit history
 From Phase 2, school-setup create, update, archive and delete events are audited (event names are in `API.md`). Keep a lightweight local history for timetable version changes, publish, rollback, backup/restore, password changes, and imports. Multi-user attribution is not needed. Record event type, local timestamp, affected entity/version, and a concise before/after summary where appropriate. Never record passwords, recovery codes, session cookies, or per-launch tokens.
 
+## Phone packages and the school key (Phase 9, ADR 0056)
+- Phones never connect to the desktop; the listener stays on `127.0.0.1`. Data leaves only as signed `.sst` files or QR codes the owner exports.
+- The Ed25519 private seed is generated with the OS random generator and stored only as a DPAPI blob (current Windows user) in `SchoolKeys`. It is never logged, never returned by the API, and wiped from memory after recreating the key.
+- Every export is a POST with the per-launch token and an audit entry. The principal package contains every teacher's name; the page warns to share it privately.
+- Packages are verified on the phone (signature, school id, key id, format version, expiry); the reader limits input to 256 KiB and the inflated payload to 2 MiB.
+
 ## Optional final-phase encryption decision
 Baseline SQLite is unencrypted. `adr/0010-sqlcipher-go-no-go.md` records a **NO-GO for the initial release** and a final-phase go/no-go evaluation for SQLCipher, including key storage, packaging, recovery, backup, performance, and licensing. Do not claim database encryption unless that decision changes and is implemented/tested.
 

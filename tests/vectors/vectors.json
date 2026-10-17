@@ -1,0 +1,84 @@
+{
+  "description": "Shared .sst test vectors (docs/SST_PACKAGE_FORMAT.md). Fictional data; the keys are TEST KEYS ONLY.",
+  "today": "2026-11-01",
+  "supportedFormat": 1,
+  "trustedSchool": {
+    "schoolId": "5a1e0000-0000-4000-8000-00000000000a",
+    "publicKeyHex": "64442d11046630dd6d762162fe61056bf585564190de89075aeae3c49439a88b",
+    "keyIdHex": "8ba57641b535f370"
+  },
+  "vectors": [
+    {
+      "file": "pairing.sst",
+      "sha256": "567367568aff1338f97a48473bfd980170702fb17a288d8625cf4fbc9ee86a34",
+      "expected": "valid",
+      "trusted": false,
+      "expectedJson": "pairing.expected.json",
+      "note": "School A pairing code (self-signed). Scanning it makes school A trusted."
+    },
+    {
+      "file": "valid-teacher.sst",
+      "sha256": "058f37eab648b665206dbedfa23b04a06be831c6899c76e3251c1ecfcfaa892d",
+      "expected": "valid",
+      "trusted": true,
+      "expectedJson": "valid-teacher.expected.json",
+      "note": "Teacher package of school A; valid-teacher.qr.txt holds the same bytes as QR text."
+    },
+    {
+      "file": "valid-principal.sst",
+      "sha256": "8307721778cabed1e90d694d40c31e6978a89429d6e7a9252d87b2cf5f573370",
+      "expected": "valid",
+      "trusted": true,
+      "expectedJson": "valid-principal.expected.json",
+      "note": "Principal package of school A."
+    },
+    {
+      "file": "tampered.sst",
+      "sha256": "091ca0530d55fed59384573c4fee14783d0ac12c448ec500852ac6a80a149d7e",
+      "expected": "tampered",
+      "trusted": true,
+      "expectedJson": null,
+      "note": "valid-teacher with one lesson moved after signing (the signature is the original one)."
+    },
+    {
+      "file": "wrong-school.sst",
+      "sha256": "6b96084607ea6239b38b37a307ac320a38c73c2041559729226a3ce62b7d7bae",
+      "expected": "wrongSchool",
+      "trusted": true,
+      "expectedJson": null,
+      "note": "A valid package of school B, signed with key B."
+    },
+    {
+      "file": "key-changed.sst",
+      "sha256": "57258a841020ac6955deed291bb8434c8d7f2599a5dfee67f71a6c79d5725ede",
+      "expected": "keyChanged",
+      "trusted": true,
+      "expectedJson": null,
+      "note": "School A, signed with a recreated key (A2): the phone must scan the new pairing code."
+    },
+    {
+      "file": "expired.sst",
+      "sha256": "0afa9fbb30fff961ce9a2b67780a489b946c79eb9f647792543aeed5b769d1aa",
+      "expected": "expired",
+      "trusted": true,
+      "expectedJson": null,
+      "note": "School A, academic year 2025-2026 (expired on 2026-06-30)."
+    },
+    {
+      "file": "future-format.sst",
+      "sha256": "ee2c6c12ddfddf389c397a12c05861d5984cc2de64c7b3d3bedc4d83353fbc3d",
+      "expected": "newerFormat",
+      "trusted": true,
+      "expectedJson": null,
+      "note": "School A, payload format 2 with an unknown key: «حدّث التطبيق»."
+    },
+    {
+      "file": "not-paired.sst",
+      "sha256": "058f37eab648b665206dbedfa23b04a06be831c6899c76e3251c1ecfcfaa892d",
+      "expected": "notPaired",
+      "trusted": false,
+      "expectedJson": null,
+      "note": "valid-teacher.sst read before any pairing (same bytes, no trusted school)."
+    }
+  ]
+}

@@ -26,7 +26,7 @@ public sealed class CurrentDataTests
     private static async Task<JsonElement> GetTeacherAsync(TestHost host, long id) =>
         (await JsonAsync(await host.Client.GetAsync("/api/v1/teachers/?pageSize=100"))).GetProperty("items").EnumerateArray().First(item => item.GetProperty("id").GetInt64() == id);
 
-    private static async Task UpdateTeacherAsync(TestHost host, string token, long id, int[] offDays)
+    internal static async Task UpdateTeacherAsync(TestHost host, string token, long id, int[] offDays)
     {
         var teacher = await GetTeacherAsync(host, id);
         var subject = (await JsonAsync(await host.Client.GetAsync("/api/v1/subjects/"))).GetProperty("items").EnumerateArray().First().GetProperty("id").GetInt64();

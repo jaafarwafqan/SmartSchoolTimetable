@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.1.0] - unreleased (branch `work/phase-9a`)
+### Phase 9a-1: phone packages, school key, exports, test vectors (ADR 0056)
+- Signed offline `.sst` packages for the phone app: `"SST"` envelope, Ed25519 signature, raw DEFLATE of a CBOR payload with integer keys; QR form = unpadded base64url (docs/SST_PACKAGE_FORMAT.md). Kinds: pairing («رمز ربط المدرسة»), teacher, principal.
+- Content: academic year, approved version number and date, expiry (end of the year), time zone, semesters, holidays (approximate / by-decision flags), working days, each session's lessons and breaks, the day → session mapping per semester (double shift), subjects with colour, sections, teachers, lessons.
+- School key: Ed25519, made on first use, private seed protected with DPAPI (current user) in the new `SchoolKeys` table (migration `Phase9SchoolKey`), so backups carry it; unreadable elsewhere → `SHARE_KEY_UNREADABLE`; «إعادة إنشاء مفتاح المدرسة» with two confirmations keeps the school id (generation + 1).
+- API `/api/v1/sharing`: status, pairing file, one teacher, all teachers (zip), principal, key regeneration. Only the approved version of the current year, blocked when it conflicts with today's data (`SHARE_TIMETABLE_CONFLICTS`) or the year has ended (`SHARE_YEAR_ENDED`). Every export is audited (new category «المشاركة مع الهاتف»).
+- Shared test vectors in `tests/vectors/` (valid, tampered, wrong school, key changed, expired, future format, not paired; manifest and `SHA256SUMS`), fictional data and test keys only.
+- Dependencies (Infrastructure only, `ArchitectureTests`): BouncyCastle.Cryptography 2.6.2, System.Formats.Cbor 9.0.20, System.Security.Cryptography.ProtectedData 9.0.20.
+- Tests: `PhonePackageCodecTests`, `SstVectorTests`, `SharingApiTests` (single and double shift, conflicts, ended year, key recreation, unreadable key, DPAPI round trip).
+
 ## [1.0.0] - 2026-10-11 (branch `work/phase-5`, tags `v1.0.0`, `phase-5-final`)
 First release for the school. Windows 10 (1809+) 64-bit and Windows 11; installer `SmartSchoolTimetable-Setup-1.0.0-<stamp>.exe` with a SHA-256 file; Arabic user guide `docs/USER_GUIDE_AR.pdf`. Everything below was delivered on `work/phase-5` since `phase-4i`; the last four items (M3, M5, user guide, version) are the final stage.
 ### Owner's scoring analysis before the tag (ADR 0055)

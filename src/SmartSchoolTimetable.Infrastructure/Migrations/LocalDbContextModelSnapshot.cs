@@ -958,6 +958,40 @@ namespace SmartSchoolTimetable.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("SmartSchoolTimetable.Domain.Sharing.SchoolKey", b =>
+                {
+                    b.Property<long>("Id")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Generation")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<byte[]>("ProtectedPrivateKey")
+                        .IsRequired()
+                        .HasColumnType("BLOB");
+
+                    b.Property<byte[]>("PublicKey")
+                        .IsRequired()
+                        .HasColumnType("BLOB");
+
+                    b.Property<Guid>("SchoolId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SchoolKeys", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SchoolKeys_Singleton", "\"Id\" = 1");
+                        });
+                });
+
             modelBuilder.Entity("SmartSchoolTimetable.Domain.Subjects.Subject", b =>
                 {
                     b.Property<long>("Id")

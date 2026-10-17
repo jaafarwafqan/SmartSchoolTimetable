@@ -3,7 +3,7 @@ import { apiRequest } from "../../api";
 import type { Paged } from "../academic-years/yearsApi";
 
 /** Mirrors the backend AuditCategories (checked by AuditEventContractTests through the Arabic dictionary). */
-export const auditCategories = ["timetable", "generation", "backup", "account", "settings", "import", "school"] as const;
+export const auditCategories = ["timetable", "generation", "backup", "account", "settings", "import", "school", "sharing"] as const;
 export type AuditCategory = (typeof auditCategories)[number];
 
 export type AuditParameters = Record<string, string | number | boolean>;

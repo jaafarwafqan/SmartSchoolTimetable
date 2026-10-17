@@ -12,8 +12,9 @@ public static class AuditCategories
     public const string Settings = "settings";
     public const string Import = "import";
     public const string School = "school";
+    public const string Sharing = "sharing";
 
-    public static readonly IReadOnlyList<string> All = [Timetable, Generation, Backup, Account, Settings, Import, School];
+    public static readonly IReadOnlyList<string> All = [Timetable, Generation, Backup, Account, Settings, Import, School, Sharing];
 }
 
 /// <summary>
@@ -81,6 +82,12 @@ public static class AuditEvents
     public const string SessionPlanUpdated = "SessionPlanUpdated";
     public const string SetupFinished = "SetupFinished";
     public const string SetupProgressSaved = "SetupProgressSaved";
+    public const string SharingAllTeachersExported = "SharingAllTeachersExported";
+    public const string SharingKeyCreated = "SharingKeyCreated";
+    public const string SharingKeyRegenerated = "SharingKeyRegenerated";
+    public const string SharingPairingExported = "SharingPairingExported";
+    public const string SharingPrincipalExported = "SharingPrincipalExported";
+    public const string SharingTeacherExported = "SharingTeacherExported";
     public const string ShiftCreated = "ShiftCreated";
     public const string ShiftDayLessonsUpdated = "ShiftDayLessonsUpdated";
     public const string ShiftDeleted = "ShiftDeleted";
@@ -192,6 +199,12 @@ public static class AuditEvents
         [SessionPlanUpdated] = AuditCategories.School,
         [SetupFinished] = AuditCategories.School,
         [SetupProgressSaved] = AuditCategories.School,
+        [SharingAllTeachersExported] = AuditCategories.Sharing,
+        [SharingKeyCreated] = AuditCategories.Sharing,
+        [SharingKeyRegenerated] = AuditCategories.Sharing,
+        [SharingPairingExported] = AuditCategories.Sharing,
+        [SharingPrincipalExported] = AuditCategories.Sharing,
+        [SharingTeacherExported] = AuditCategories.Sharing,
         [ShiftCreated] = AuditCategories.School,
         [ShiftDayLessonsUpdated] = AuditCategories.School,
         [ShiftDeleted] = AuditCategories.School,

@@ -39,3 +39,16 @@ internal sealed class BackupSettingsConfiguration : IEntityTypeConfiguration<Bac
         builder.Property(settings => settings.LastAppVersion).HasMaxLength(40);
     }
 }
+
+/// <summary>The school's signing key for phone packages (one row, ADR 0056). The private key column holds a DPAPI blob only.</summary>
+internal sealed class SchoolKeyConfiguration : IEntityTypeConfiguration<Domain.Sharing.SchoolKey>
+{
+    public void Configure(EntityTypeBuilder<Domain.Sharing.SchoolKey> builder)
+    {
+        builder.ToTable("SchoolKeys", table => table.HasCheckConstraint("CK_SchoolKeys_Singleton", "\"Id\" = 1"));
+        builder.HasKey(key => key.Id);
+        builder.Property(key => key.Id).ValueGeneratedNever();
+        builder.Property(key => key.PublicKey).IsRequired();
+        builder.Property(key => key.ProtectedPrivateKey).IsRequired();
+    }
+}

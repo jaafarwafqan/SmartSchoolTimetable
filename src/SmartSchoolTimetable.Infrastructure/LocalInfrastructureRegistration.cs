@@ -47,6 +47,10 @@ public static class LocalInfrastructureRegistration
         services.AddSingleton<Application.Teachers.ITeacherSheet, Export.ExcelTeacherSheet>();
         services.AddSingleton(new LocalDatabaseLocation(fullDatabasePath, connectionString));
         services.AddScoped<Application.Backup.IDatabaseBackup, SqliteDatabaseBackup>();
+        // Phone packages (ADR 0056). The app runs on Windows only; DPAPI protects the school's private key.
+        if (OperatingSystem.IsWindows())
+            services.AddSingleton<Application.Sharing.ISchoolKeyCrypto, Sharing.DpapiSchoolKeyCrypto>();
+        services.AddSingleton<Application.Sharing.IPhonePackageWriter, Sharing.PhonePackageWriter>();
         return services;
     }
 

@@ -100,6 +100,13 @@ public static class ApiErrorCodes
             [ErrorCodes.RestoreIncompatible] = StatusCodes.Status422UnprocessableEntity,
             [ErrorCodes.RestoreConfirmationRequired] = StatusCodes.Status422UnprocessableEntity,
 
+            [ErrorCodes.ShareNoApprovedTimetable] = StatusCodes.Status409Conflict,
+            [ErrorCodes.ShareTimetableConflicts] = StatusCodes.Status409Conflict,
+            [ErrorCodes.ShareYearEnded] = StatusCodes.Status409Conflict,
+            [ErrorCodes.ShareTeacherHasNoLessons] = StatusCodes.Status422UnprocessableEntity,
+            [ErrorCodes.ShareKeyUnreadable] = StatusCodes.Status409Conflict,
+            [ErrorCodes.ShareKeyConfirmationRequired] = StatusCodes.Status422UnprocessableEntity,
+
             [ErrorCodes.RecordInUse] = StatusCodes.Status409Conflict,
             [ErrorCodes.CurrentYearRequired] = StatusCodes.Status409Conflict,
             [ErrorCodes.PayloadTooLarge] = StatusCodes.Status413PayloadTooLarge,

@@ -62,6 +62,19 @@ public sealed class ArchitectureTests
         }
     }
 
+    /// <summary>ADR 0056: the signing, CBOR and DPAPI libraries stay behind the Application interfaces, in Infrastructure.</summary>
+    [Fact]
+    public void PackageCryptoLibrariesAreNotUsedByDomainApplicationOrApi()
+    {
+        string[] prefixes = ["BouncyCastle", "Org.BouncyCastle", "System.Formats.Cbor", "System.Security.Cryptography.ProtectedData"];
+        foreach (var assembly in new[] { DomainAssembly, ApplicationAssembly, ApiAssembly })
+        {
+            Assert.DoesNotContain(ReferencedAssemblyNames(assembly), name => prefixes.Any(prefix => name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)));
+            Assert.DoesNotContain(assembly.GetTypes().SelectMany(ReferencedTypes),
+                type => type.Namespace?.StartsWith("Org.BouncyCastle", StringComparison.Ordinal) == true || type.Namespace == "System.Formats.Cbor");
+        }
+    }
+
     /// <summary>
     /// Feature folders depend inward only: a Domain feature may use the shared Common/Text/SchoolSetup structure;
     /// an Application feature may use Application.Common and the shared SchoolSetup context, never another
@@ -72,9 +85,10 @@ public sealed class ArchitectureTests
     public void FeatureFoldersRespectDependencyDirection()
     {
         var domainViolations = FeatureViolations(DomainAssembly, "SmartSchoolTimetable.Domain", ["Common", "Text", "SchoolSetup"], []);
-        // One documented edge: Generation (Phase 4) consumes the Scheduling input contract and validator; nothing else.
+        // Documented edges: Generation (Phase 4) consumes the Scheduling input contract and validator; Sharing (Phase 9, ADR 0056)
+        // reads the approved version (Generation) and today's scheduling input (Scheduling) to build phone packages. Nothing else.
         var applicationViolations = FeatureViolations(ApplicationAssembly, "SmartSchoolTimetable.Application", ["Common", "SchoolSetup"], ["Dashboard", "Setup"],
-            new Dictionary<string, string[]> { ["Generation"] = ["Scheduling"] });
+            new Dictionary<string, string[]> { ["Generation"] = ["Scheduling"], ["Sharing"] = ["Generation", "Scheduling"] });
         Assert.Empty(domainViolations);
         Assert.Empty(applicationViolations);
     }

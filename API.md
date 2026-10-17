@@ -300,4 +300,11 @@ There is no user/tenant attribution in request logs. Avoid logging credentials, 
 - Version summaries carry `status` (`draft | approved | archived`) and `archivedAt`.
 - `GET /api/v1/academic-years/{id}/generation/manual-edits`: `{edits: {versionId, number, lessons} | null}` for the latest version when it is a manual edit.
 - `POST .../generation/runs` accepts `lockFromVersionId`; runs report `lockedFromVersionId`, `lockedLessons`, `locksDropped`.
-- `GET /api/v1/audit/?category=&eventType=&page=&pageSize=`: newest first; items `{id, occurredAt, eventType, category, target, params}`. Categories: `timetable generation backup account settings import school`.
+- `GET /api/v1/audit/?category=&eventType=&page=&pageSize=`: newest first; items `{id, occurredAt, eventType, category, target, params}`. Categories: `timetable generation backup account settings import school sharing`.
+
+## Phase 9a: phone packages (ADR 0056, docs/SST_PACKAGE_FORMAT.md)
+- `GET /api/v1/sharing/`: `{ key: {schoolId, fingerprint, generation, createdAt, readable} | null, approved: {id, number, approvedAt, conflicts, expiresOn, yearEnded} | null, teachers: [{id, name, lessons}] }`. Never carries the private key.
+- `POST /api/v1/sharing/pairing.sst` → `school-pairing.sst` (makes the school key on first use). `409 SHARE_KEY_UNREADABLE`.
+- `POST /api/v1/sharing/teachers/{id}/package.sst` → `<name>-v<N>.sst`; `POST /api/v1/sharing/teachers.zip`; `POST /api/v1/sharing/principal.sst`. Errors: `409 SHARE_NO_APPROVED_TIMETABLE`, `409 SHARE_TIMETABLE_CONFLICTS`, `409 SHARE_YEAR_ENDED`, `409 SHARE_KEY_UNREADABLE`, `422 SHARE_TEACHER_HAS_NO_LESSONS`, `404`.
+- `POST /api/v1/sharing/key/regenerate` `{confirm, confirmRepair}` → the new key; `422 SHARE_KEY_CONFIRMATION_REQUIRED` unless both are true.
+- Audit events (category `sharing`): `SharingKeyCreated`, `SharingKeyRegenerated`, `SharingPairingExported`, `SharingTeacherExported`, `SharingAllTeachersExported`, `SharingPrincipalExported`.

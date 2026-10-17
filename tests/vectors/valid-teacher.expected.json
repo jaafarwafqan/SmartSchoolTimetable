@@ -1,0 +1,437 @@
+{
+  "header": {
+    "formatVersion": 1,
+    "kind": "teacher",
+    "schoolId": "5a1e0000-0000-4000-8000-00000000000a",
+    "schoolName": "مدرسة الاختبار النموذجية",
+    "keyId": "i6V2QbU183A=",
+    "generatedAt": "2026-10-20T09:30:00+00:00"
+  },
+  "publicKey": null,
+  "timetable": {
+    "academicYear": "2026-2027",
+    "timetableVersion": 3,
+    "approvedAt": "2026-10-15T08:00:00+00:00",
+    "expiresOn": "2027-06-30",
+    "timeZone": "Asia/Baghdad",
+    "yearStart": "2026-09-01",
+    "yearEnd": "2027-06-30",
+    "semesters": [
+      {
+        "start": "2026-09-01",
+        "end": "2027-01-15"
+      },
+      {
+        "start": "2027-02-01",
+        "end": "2027-06-30"
+      }
+    ],
+    "holidays": [
+      {
+        "start": "2026-11-05",
+        "end": "2026-11-05",
+        "title": "عطلة تجريبية",
+        "approximate": true,
+        "byDecision": false
+      },
+      {
+        "start": "2027-01-16",
+        "end": "2027-01-31",
+        "title": "عطلة نصف السنة",
+        "approximate": false,
+        "byDecision": false
+      },
+      {
+        "start": "2027-03-21",
+        "end": "2027-03-21",
+        "title": "عطلة بقرار",
+        "approximate": false,
+        "byDecision": true
+      }
+    ],
+    "workingDays": [
+      7,
+      1,
+      2,
+      3,
+      4
+    ],
+    "weekStart": 7,
+    "sessions": [
+      {
+        "session": 1,
+        "periods": [
+          {
+            "isBreak": false,
+            "startMinute": 480,
+            "endMinute": 525
+          },
+          {
+            "isBreak": false,
+            "startMinute": 530,
+            "endMinute": 575
+          },
+          {
+            "isBreak": false,
+            "startMinute": 580,
+            "endMinute": 625
+          },
+          {
+            "isBreak": true,
+            "startMinute": 625,
+            "endMinute": 640
+          },
+          {
+            "isBreak": false,
+            "startMinute": 640,
+            "endMinute": 685
+          },
+          {
+            "isBreak": false,
+            "startMinute": 690,
+            "endMinute": 735
+          },
+          {
+            "isBreak": false,
+            "startMinute": 740,
+            "endMinute": 785
+          }
+        ]
+      },
+      {
+        "session": 3,
+        "periods": [
+          {
+            "isBreak": false,
+            "startMinute": 780,
+            "endMinute": 820
+          },
+          {
+            "isBreak": false,
+            "startMinute": 825,
+            "endMinute": 865
+          },
+          {
+            "isBreak": false,
+            "startMinute": 870,
+            "endMinute": 910
+          },
+          {
+            "isBreak": true,
+            "startMinute": 910,
+            "endMinute": 920
+          },
+          {
+            "isBreak": false,
+            "startMinute": 920,
+            "endMinute": 960
+          },
+          {
+            "isBreak": false,
+            "startMinute": 965,
+            "endMinute": 1005
+          },
+          {
+            "isBreak": false,
+            "startMinute": 1010,
+            "endMinute": 1050
+          }
+        ]
+      }
+    ],
+    "sessionDays": [
+      {
+        "semester": 1,
+        "day": 7,
+        "session": 1
+      },
+      {
+        "semester": 1,
+        "day": 1,
+        "session": 1
+      },
+      {
+        "semester": 1,
+        "day": 2,
+        "session": 3
+      },
+      {
+        "semester": 1,
+        "day": 3,
+        "session": 3
+      },
+      {
+        "semester": 1,
+        "day": 4,
+        "session": 3
+      },
+      {
+        "semester": 2,
+        "day": 7,
+        "session": 3
+      },
+      {
+        "semester": 2,
+        "day": 1,
+        "session": 3
+      },
+      {
+        "semester": 2,
+        "day": 2,
+        "session": 1
+      },
+      {
+        "semester": 2,
+        "day": 3,
+        "session": 1
+      },
+      {
+        "semester": 2,
+        "day": 4,
+        "session": 1
+      }
+    ],
+    "subjects": [
+      {
+        "name": "رياضيات",
+        "colorIndex": 1
+      },
+      {
+        "name": "علوم",
+        "colorIndex": 3
+      },
+      {
+        "name": "لغة عربية",
+        "colorIndex": 5
+      }
+    ],
+    "sections": [
+      {
+        "stageName": "الأول المتوسط",
+        "label": "أ"
+      },
+      {
+        "stageName": "الأول المتوسط",
+        "label": "ب"
+      }
+    ],
+    "teachers": [
+      {
+        "name": "المعلم التجريبي الأول",
+        "shortName": "الأول"
+      }
+    ],
+    "lessons": [
+      {
+        "day": 1,
+        "lesson": 1,
+        "subject": 2,
+        "section": 0,
+        "teacher": 0
+      },
+      {
+        "day": 1,
+        "lesson": 2,
+        "subject": 1,
+        "section": 1,
+        "teacher": 0
+      },
+      {
+        "day": 1,
+        "lesson": 3,
+        "subject": 1,
+        "section": 0,
+        "teacher": 0
+      },
+      {
+        "day": 1,
+        "lesson": 4,
+        "subject": 0,
+        "section": 1,
+        "teacher": 0
+      },
+      {
+        "day": 1,
+        "lesson": 5,
+        "subject": 0,
+        "section": 0,
+        "teacher": 0
+      },
+      {
+        "day": 1,
+        "lesson": 6,
+        "subject": 2,
+        "section": 1,
+        "teacher": 0
+      },
+      {
+        "day": 2,
+        "lesson": 1,
+        "subject": 1,
+        "section": 1,
+        "teacher": 0
+      },
+      {
+        "day": 2,
+        "lesson": 2,
+        "subject": 1,
+        "section": 0,
+        "teacher": 0
+      },
+      {
+        "day": 2,
+        "lesson": 3,
+        "subject": 0,
+        "section": 1,
+        "teacher": 0
+      },
+      {
+        "day": 2,
+        "lesson": 4,
+        "subject": 0,
+        "section": 0,
+        "teacher": 0
+      },
+      {
+        "day": 2,
+        "lesson": 5,
+        "subject": 2,
+        "section": 1,
+        "teacher": 0
+      },
+      {
+        "day": 2,
+        "lesson": 6,
+        "subject": 2,
+        "section": 0,
+        "teacher": 0
+      },
+      {
+        "day": 3,
+        "lesson": 1,
+        "subject": 1,
+        "section": 0,
+        "teacher": 0
+      },
+      {
+        "day": 3,
+        "lesson": 2,
+        "subject": 0,
+        "section": 1,
+        "teacher": 0
+      },
+      {
+        "day": 3,
+        "lesson": 3,
+        "subject": 0,
+        "section": 0,
+        "teacher": 0
+      },
+      {
+        "day": 3,
+        "lesson": 4,
+        "subject": 2,
+        "section": 1,
+        "teacher": 0
+      },
+      {
+        "day": 3,
+        "lesson": 5,
+        "subject": 2,
+        "section": 0,
+        "teacher": 0
+      },
+      {
+        "day": 3,
+        "lesson": 6,
+        "subject": 1,
+        "section": 1,
+        "teacher": 0
+      },
+      {
+        "day": 4,
+        "lesson": 1,
+        "subject": 0,
+        "section": 1,
+        "teacher": 0
+      },
+      {
+        "day": 4,
+        "lesson": 2,
+        "subject": 0,
+        "section": 0,
+        "teacher": 0
+      },
+      {
+        "day": 4,
+        "lesson": 3,
+        "subject": 2,
+        "section": 1,
+        "teacher": 0
+      },
+      {
+        "day": 4,
+        "lesson": 4,
+        "subject": 2,
+        "section": 0,
+        "teacher": 0
+      },
+      {
+        "day": 4,
+        "lesson": 5,
+        "subject": 1,
+        "section": 1,
+        "teacher": 0
+      },
+      {
+        "day": 4,
+        "lesson": 6,
+        "subject": 1,
+        "section": 0,
+        "teacher": 0
+      },
+      {
+        "day": 7,
+        "lesson": 1,
+        "subject": 2,
+        "section": 0,
+        "teacher": 0
+      },
+      {
+        "day": 7,
+        "lesson": 2,
+        "subject": 1,
+        "section": 1,
+        "teacher": 0
+      },
+      {
+        "day": 7,
+        "lesson": 3,
+        "subject": 1,
+        "section": 0,
+        "teacher": 0
+      },
+      {
+        "day": 7,
+        "lesson": 4,
+        "subject": 0,
+        "section": 1,
+        "teacher": 0
+      },
+      {
+        "day": 7,
+        "lesson": 5,
+        "subject": 0,
+        "section": 0,
+        "teacher": 0
+      },
+      {
+        "day": 7,
+        "lesson": 6,
+        "subject": 2,
+        "section": 1,
+        "teacher": 0
+      }
+    ]
+  }
+}

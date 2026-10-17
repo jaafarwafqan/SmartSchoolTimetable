@@ -1,0 +1,2 @@
+# Test vectors are compared byte for byte (SHA256SUMS): never convert line endings.
+* -text

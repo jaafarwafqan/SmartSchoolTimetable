@@ -1,0 +1,12 @@
+{
+  "header": {
+    "formatVersion": 1,
+    "kind": "pairing",
+    "schoolId": "5a1e0000-0000-4000-8000-00000000000a",
+    "schoolName": "مدرسة الاختبار النموذجية",
+    "keyId": "i6V2QbU183A=",
+    "generatedAt": "2026-10-20T09:30:00+00:00"
+  },
+  "publicKey": "ZEQtEQRmMN1tdiFi/mEFa/WFVkGQ3okHWurjxJQ5qIs=",
+  "timetable": null
+}

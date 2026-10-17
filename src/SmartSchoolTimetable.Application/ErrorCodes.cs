@@ -112,4 +112,12 @@ public static class ErrorCodes
 
     // MF7: one shift per year.
     public const string ShiftSystemLegacy = "SHIFT_SYSTEM_LEGACY";
+
+    // Phase 9: phone packages (ADR 0056).
+    public const string ShareNoApprovedTimetable = "SHARE_NO_APPROVED_TIMETABLE";
+    public const string ShareTimetableConflicts = "SHARE_TIMETABLE_CONFLICTS";
+    public const string ShareYearEnded = "SHARE_YEAR_ENDED";
+    public const string ShareTeacherHasNoLessons = "SHARE_TEACHER_HAS_NO_LESSONS";
+    public const string ShareKeyUnreadable = "SHARE_KEY_UNREADABLE";
+    public const string ShareKeyConfirmationRequired = "SHARE_KEY_CONFIRMATION_REQUIRED";
 }
