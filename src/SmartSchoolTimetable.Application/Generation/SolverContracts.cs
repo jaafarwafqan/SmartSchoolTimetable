@@ -18,7 +18,7 @@ public static class GenerationModes
 /// <param name="Deterministic">«نتيجة قابلة للإعادة»: one worker and the fixed seed (ADR 0007).</param>
 public sealed record GenerationSettings(string Mode, int TimeLimitSeconds, int Seed, int Workers, bool Deterministic)
 {
-    public const int DefaultTimeLimit = 60;
+    public const int DefaultTimeLimit = 120;
     public const int MinTimeLimit = 10;
     public const int MaxTimeLimit = 600;
 

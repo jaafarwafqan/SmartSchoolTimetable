@@ -26,7 +26,7 @@ namespace SmartSchoolTimetable.Tests.Phase3;
 /// </summary>
 public sealed class ResourcesAndProfileTests
 {
-    private static readonly int[] Weights = [20, 40, 30, 30, 40, 20, 15, 25, 10];
+    private static readonly int[] Weights = [80, 40, 30, 30, 40, 20, 15, 25, 10];
     private const string ResourcesPath = "/api/v1/resources/";
     private const string ProfilePath = "/api/v1/scheduling-profile/";
 

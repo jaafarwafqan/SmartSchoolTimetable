@@ -40,17 +40,17 @@ The objective minimises Σ weight × penalty, for the enabled rules with weight 
 
 | Key | Rule | Penalty |
 |---|---|---|
-| `spreadSubjectsAcrossDays` | S1 spread (subjects flagged «توزيع على الأيام») | per (section, subject, day): lessons above 1 (above 2 for a double subject) |
+| `spreadSubjectsAcrossDays` | S1 spread (every subject; its own switch «توزيع الحصص على أيام مختلفة» turns it off, ADR 0055) | per (section, subject, day): lessons above 1 (above 2 for a double subject), plus lessons above the fair share ⌈weekly ÷ days the subject's teacher is there⌉ (`SubjectSpread`, `SpreadShare.Penalty`) |
 | `avoidTeacherGaps` | S2 teacher gaps | per (teacher, day, shift): free lesson numbers between the first and the last lesson |
 | `heavySubjectsEarly` | S3 heavy subjects early | per lesson of a heavy subject: lesson number − 1 |
-| `avoidSameSubjectRepeated` | S4 no back-to-back repeat | per section and day: consecutive lesson numbers with the same subject (double subjects excluded) |
+| `avoidSameSubjectRepeated` | S4 no back-to-back repeat («تجنّب تكرار المادة في حصتين متتاليتين»; a same-day repeat in general is S1) | per section and day: consecutive lesson numbers with the same subject (double subjects excluded) |
 | `keepDoubleLessonsTogether` | S5 doubles together (standard mode) | per double line: ⌊n ÷ 2⌋ − adjacent pairs it got |
 | `spreadTeacherLessons` | S6 «توزيع حصص المعلم بفواصل» (exclusive with S2) | per (teacher, day, shift): lesson numbers n and n + 1 both his (a pair of two double-lesson lessons excepted) |
 | `balanceTeacherDays` | S7 balanced teacher days (not weighed when H12 is on) | per teacher: max − min − 1 over his full days (not below 0), plus the lessons of a partly available day above its share |
 | `maxConsecutiveLessons` | S9 consecutive lessons (a priority unless hard) | per (teacher, shift, day): windows of k + 1 consecutive lesson numbers all his |
 | `fairLastPeriods` | S8 fair last periods | per teacher: weighted last-period lessons (evening day 2, morning 1) above ⌈total × load ÷ all loads⌉ |
 
-The default weights, in display order: S1 20, S9 40, S6 30, S2 off (30), S7 40, S8 20, S3 15, S4 25, S5 10. S2 and S6 cannot both be on (ADR 0053). Subject names are never special cases; only subject flags matter.
+The default weights, in display order: S1 80 (its «مهم جداً»; ADR 0055), S9 40, S6 30, S2 off (30), S7 40, S8 20, S3 15, S4 25, S5 10. S2 and S6 cannot both be on (ADR 0053). Subject names are never special cases; only subject flags matter.
 
 ### Fill checks before the solver (pre-solve validator)
 A section whose weekly lessons equal its slots is full every day, so a day off or the daily limit can make it impossible. The validator proves this before the solver runs (each is an upper bound; a section may keep `slots − lessons` slots empty, and a day or a slot is reported only when that slack cannot absorb it): `SUBJECT_DAYS_SHORT` (a subject needs ⌈weekly ÷ limit⌉ days and its teacher is free on fewer), `SECTION_DAY_UNDERFILLED` (what the subjects can place on a day is below the day's lessons less the slack), `SECTION_SLOT_UNCOVERED` (no teacher of the section is free at a slot), and the warning `TEACHERS_SAME_DAY_OFF`. The checks stay silent for a section with an unassigned line or an archived or released teacher, which have their own findings.

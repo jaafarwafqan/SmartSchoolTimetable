@@ -98,6 +98,41 @@ describe("plain result (MF3)", () => {
     expect(improvementNotes(run({ score: { ...score, rules: [{ ...score.rules[2], penalty: 0, weighted: 0 }] } }), format)).toEqual([]);
   });
 
+  it("counts same-day repeats in plain Arabic, splits unavoidable from improvable and names the teacher, the subject and the reason", () => {
+    const score = {
+      total: 1600,
+      rules: [{ key: "spreadSubjectsAcrossDays", enabled: true, weight: 40, penalty: 40, weighted: 1600 }],
+      repeats: {
+        total: 37, unavoidable: 30, improvable: 7,
+        forced: [
+          { teacher: "رغد", subject: "الرياضيات", reason: "moreLessonsThanDays", weekly: 6, days: 5, count: 3, sections: 3 },
+          { teacher: "سلمى", subject: "العلوم", reason: "teacherAbsent", weekly: 6, days: 4, count: 2, sections: 1 },
+        ],
+      },
+    };
+    const notes = improvementNotes(run({ score }), format).map((note) => note.sentence);
+    expect(notes).toEqual([
+      "تكررت المادة في اليوم نفسه للشعبة ٣٧ مرة: ٣٠ تكراراً لا مفرّ منها، و٧ تكرارات يمكن تحسينها.",
+      `لا مفرّ منها: ${isolate("الرياضيات")} مع ${isolate("رغد")}: ٦ حصص أسبوعياً وأيام الدوام ٥ أيام (٣ شعب)؛ `
+        + `${isolate("العلوم")} مع ${isolate("سلمى")}: ٦ حصص أسبوعياً والمعلم حاضر ٤ أيام فقط (شعبة واحدة).`,
+    ]);
+    const forcedOnly = { ...score, repeats: { ...score.repeats, total: 30, improvable: 0 } };
+    expect(improvementNotes(run({ score: forcedOnly }), format)[0].sentence).toBe("تكررت المادة في اليوم نفسه للشعبة ٣٠ مرة، وكلها لا مفرّ منها.");
+    // An older run without the details keeps the old sentence.
+    expect(improvementNotes(run({ score: { ...score, repeats: null } }), format)[0].sentence).toBe(text.plain.notes.spreadSubjectsAcrossDays("٤٠ مرة"));
+  });
+
+  it("explains that a full week gives every section a last lesson every day", () => {
+    const score = {
+      total: 40,
+      rules: [{ key: "fairLastPeriods", enabled: true, weight: 20, penalty: 2, weighted: 40 }],
+      lastPeriods: { mostTeacher: "رغد", mostCount: 6, leastTeacher: "سلمى", leastCount: 1, fullWeek: true, lastLessons: 55 },
+    };
+    const sentence = improvementNotes(run({ score }), format)[0].sentence;
+    expect(sentence).toContain("فلكل شعبة حصة أخيرة في كل يوم: ٥٥ حصة في الأسبوع");
+    expect(sentence).toContain(`أكثر معلم في الحصص الأخيرة: ${isolate("رغد")} (٦)`);
+  });
+
   it("lists every teacher over the consecutive-lessons limit with the day and the count, and names the likely cause after a timeout", () => {
     const score = {
       total: 80,

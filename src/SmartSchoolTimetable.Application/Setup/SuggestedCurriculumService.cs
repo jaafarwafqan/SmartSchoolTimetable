@@ -214,8 +214,8 @@ public sealed class SuggestedCurriculumService(IDataStore store, SubjectsService
         var missing = plan.Subjects.Where(line => line.Included && line.Action == "create").ToArray();
         foreach (var line in missing)
         {
-            // Automatic palette colour, priority 3, no advanced flags (same defaults as quick add).
-            SetupTransaction.Require(await subjects.CreateAsync(new SaveSubjectCommand(line.Name, 0, 0, true, false, false, false, null, null, 0), token));
+            // Automatic palette colour, priority 3, spread across days, no other advanced flags (same defaults as quick add).
+            SetupTransaction.Require(await subjects.CreateAsync(new SaveSubjectCommand(line.Name, 0, 0, true, true, false, false, null, null, 0), token));
         }
         return missing.Length;
     }

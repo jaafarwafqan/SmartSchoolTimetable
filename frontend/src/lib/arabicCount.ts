@@ -41,6 +41,7 @@ export const countNouns = {
   gap: { one: "فراغ واحد", dualNominative: "فراغان", dualOblique: "فراغين", plural: "فراغات", singular: "فراغ", accusative: "فراغاً" },
   holiday: { one: "عطلة واحدة", dualNominative: "عطلتان", dualOblique: "عطلتين", plural: "عطل", singular: "عطلة", accusative: "عطلة" },
   time: { one: "مرة واحدة", dualNominative: "مرتان", dualOblique: "مرتين", plural: "مرات", singular: "مرة", accusative: "مرة" },
+  repeat: { one: "تكرار واحد", dualNominative: "تكراران", dualOblique: "تكرارين", plural: "تكرارات", singular: "تكرار", accusative: "تكراراً" },
 } as const satisfies Record<string, CountForms>;
 
 export type CountNoun = keyof typeof countNouns;

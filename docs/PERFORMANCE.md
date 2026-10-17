@@ -140,3 +140,34 @@ The Phase 4 gate tests, re-run with the Phase 5 rules (their default profile; no
 | 24/40 s3 | 24 | 40 | 3 | Feasible | 2.00 | 60.32 | 16420 | 6530 | 0 | 112 → 270 MB |
 
 The 4 GB profile was measured on the solver (2 workers, the default below 6 GB). The published-program measurement under a 512 MB heap limit (`m3-performance.spec.ts`) was not repeated for Phase 5.
+
+## Every subject spread across days (2026-10-17, ADR 0055)
+
+`Phase5RulesKeepTheGate` re-run after S1 began to apply to every subject (all subjects spread, weight 40, max 3 in a row as a priority, 2 workers, 60 s):
+
+| School | Sections | Teachers | Workers | Status | First (s) | Total (s) | Objective | Bound | Violations | Memory |
+|---|---:|---:|---:|---|---:|---:|---:|---:|---:|---|
+| 24/40 s1 P5 | 24 | 40 | 2 | Feasible | 2.60 | 60.51 | 18150 | 7530 | 0 | 68 → 237 MB |
+| 24/40 s2 P5 | 24 | 40 | 2 | Feasible | 2.35 | 60.35 | 17255 | 7870 | 0 | 108 → 247 MB |
+| 24/40 s3 P5 | 24 | 40 | 2 | Feasible | 3.02 | 60.43 | 17370 | 7270 | 0 | 116 → 248 MB |
+| owner-shaped s1 | 12 | 22 | 2 | Feasible | 2.49 | 60.17 | 11755 | 6565 | 0 | 118 → 248 MB |
+| owner-shaped s2 | 12 | 22 | 2 | Feasible | 1.77 | 60.10 | 11955 | 6875 | 0 | 111 → 248 MB |
+| owner-shaped s3 | 12 | 22 | 2 | Feasible | 0.97 | 60.14 | 11765 | 6525 | 0 | 116 → 248 MB |
+| owner-shaped 11 s1 | 11 | 22 | 2 | Feasible | 1.37 | 60.07 | 9780 | 5645 | 0 | 118 → 248 MB |
+
+Same-day repeats on the 11-section owner-shaped school (60 s, 2 workers): 30–37 unavoidable on every run; improvable 31–45 with S1 effectively
+off (the bug), 2–7 with the fix, 0–2 with a weight of 120, 0 (in 30 s) with S1 as the only priority. The first timetable still comes in 1–3 s.
+
+### Weight 80 and the 120-second default (owner, 2026-10-17)
+
+`SpreadingLeavesOnlyUnavoidableRepeats` (the owner-shaped school, 11 sections, every subject spread at 80, 120 s, 2 workers; memory is the test
+process's working set before → peak):
+
+| School | Sections | Teachers | Workers | Status | First (s) | Total (s) | Objective | Bound | Violations | Memory | Repeats (unavoidable / improvable) | Consecutive overruns |
+|---|---:|---:|---:|---|---:|---:|---:|---:|---:|---|---|---:|
+| owner-shaped 11 s1 | 11 | 22 | 2 | Feasible | 1.28 | 120.31 | 10505 | 6870 | 0 | 69 → 162 MB | 30 / 0 | 0 |
+| owner-shaped 11 s2 | 11 | 22 | 2 | Feasible | 0.93 | 120.17 | 11715 | 7535 | 0 | 106 → 172 MB | 37 / 1 | 0 |
+| owner-shaped 11 s3 | 11 | 22 | 2 | Feasible | 0.93 | 120.13 | 10650 | 6795 | 0 | 107 → 175 MB | 28 / 1 | 1 (one teacher-day) |
+
+At weight 40 and 60 s the same school kept 2–7 improvable repeats. The other priorities stayed in the same range (adjacent teacher lessons 68–77,
+balance 1–4, last periods 5–10). The gate asserts at most 3 improvable repeats.

@@ -29,7 +29,7 @@ import {
   isActive, useCancelGeneration, useCurrentRun, useEngine, useManualEdits, useRunHistory, useStartGeneration,
   type GenerationMode, type GenerationRun, type RunStatus,
 } from "./generationApi";
-import { diagnosticMessage, elapsedSeconds, improvementNotes, phaseIndex, phaseOrder, resultHeadline, seconds, statusNote, statusTone, timeLimitChoices } from "./generationPresentation";
+import { diagnosticMessage, elapsedSeconds, improvementNotes, phaseIndex, phaseOrder, resultHeadline, seconds, statusNote, statusTone, timeLimitChoices, defaultTimeLimit } from "./generationPresentation";
 
 const text = messages.school.generation;
 const readinessText = messages.school.readiness;
@@ -207,10 +207,11 @@ export function GenerationPage() {
   const yearId = school.data?.currentYear?.id;
   const engine = useEngine();
   const [mode, setMode] = useState<GenerationMode>("standard");
-  const [timeLimit, setTimeLimit] = useState(60);
   const [deterministic, setDeterministic] = useState(false);
   const [advanced, setAdvanced] = useState(false);
   const [workers, setWorkers] = useState<number | null>(null);
+  // null until the owner chooses one: the server's default applies.
+  const [chosenTimeLimit, setTimeLimit] = useState<number | null>(null);
   const [seed, setSeed] = useState("");
   const readiness = useReadiness(yearId, mode === "doublePeriods");
   const current = useCurrentRun(yearId);
@@ -227,6 +228,7 @@ export function GenerationPage() {
   const seedValue = seed.trim() === "" ? null : Number(seed.trim());
   const seedInvalid = seedValue !== null && (!Number.isInteger(seedValue) || seedValue < 0 || seedValue > 2147483647);
   const engineReady = engine.data?.available === true;
+  const timeLimit = chosenTimeLimit ?? engine.data?.defaultTimeLimit ?? defaultTimeLimit;
   // Start waits for the manual-edits check, so the keep-or-discard question is never skipped by a fast click.
   const canStart = Boolean(yearId) && engineReady && readiness.data?.ready === true && !active && !seedInvalid && manualEdits.isSuccess;
 

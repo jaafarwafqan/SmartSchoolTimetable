@@ -373,17 +373,26 @@ internal sealed class CpSatModelBuilder
         var objective = LinearExpr.NewBuilder();
         long constant = 0;
 
-        // S1 spread: lessons of a (section, subject) on one day above 1 (2 for a double subject).
+        // S1 spread (every subject unless its switch is off): per (section, subject, day), lessons above 1 (2 for a double subject) plus lessons above
+        // the fair share ⌈weekly ÷ days the teacher is there⌉ (SpreadShare.Penalty).
         if (RuleWeight(SchedulingRuleKeys.SpreadSubjectsAcrossDays) is var spreadWeight and > 0)
         {
-            foreach (var group in Lines.Where(line => line.Subject.SpreadAcrossDays).GroupBy(line => (line.Section.Id, line.Subject.Id)))
+            var shares = SubjectSpread.Of(_input);
+            foreach (var group in Lines.GroupBy(line => (line.Section.Id, line.Subject.Id)))
             {
-                var allowance = SubjectDouble(group.First().Section.StageId, group.Key.Item2) ? 2 : 1;
-                foreach (var day in group.SelectMany(line => line.Vars).GroupBy(item => item.Key.Day).Where(day => day.Count() > allowance))
+                if (!shares.TryGetValue(group.Key, out var share))
+                    continue;
+                foreach (var day in group.SelectMany(line => line.Vars).GroupBy(item => item.Key.Day).Where(day => day.Count() > share.Base))
                 {
-                    var excess = Model.NewIntVar(0, day.Count() - allowance, $"spread_{group.Key.Item1}_{group.Key.Item2}_{day.Key}");
-                    Model.Add(excess >= LinearExpr.Sum(day.Select(item => item.Value)) - allowance);
-                    objective.AddTerm(excess, spreadWeight);
+                    var sum = LinearExpr.Sum(day.Select(item => item.Value));
+                    var repeat = Model.NewIntVar(0, day.Count() - share.Base, $"spread_{group.Key.Item1}_{group.Key.Item2}_{day.Key}");
+                    Model.Add(repeat >= sum - share.Base);
+                    objective.AddTerm(repeat, spreadWeight);
+                    if (day.Count() <= share.Share)
+                        continue;
+                    var pile = Model.NewIntVar(0, day.Count() - share.Share, $"pile_{group.Key.Item1}_{group.Key.Item2}_{day.Key}");
+                    Model.Add(pile >= sum - share.Share);
+                    objective.AddTerm(pile, spreadWeight);
                 }
             }
         }

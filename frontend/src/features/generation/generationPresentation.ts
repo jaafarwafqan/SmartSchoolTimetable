@@ -84,6 +84,9 @@ export function diagnosticMessage(finding: SolverFinding, format: Formatter): st
 /** Time-limit choices in seconds (10–600), labelled as durations. */
 export const timeLimitChoices = [10, 20, 30, 45, 60, 90, 120, 180, 300, 600] as const;
 
+/** The default time limit before the engine status arrives (the server's `GenerationSettings.DefaultTimeLimit`, owner 2026-10-17). */
+export const defaultTimeLimit = 120;
+
 const plain = text.plain;
 type NoTimetableStatus = keyof typeof plain.noTimetable;
 
@@ -109,7 +112,20 @@ export function improvementNotes(run: GenerationRun, format: Formatter): { key: 
     switch (rule.key) {
       case "avoidTeacherGaps": return [{ key: rule.key, sentence: plain.notes.avoidTeacherGaps(format.count(rule.penalty, "gap")) }];
       case "avoidSameSubjectRepeated": return [{ key: rule.key, sentence: plain.notes.avoidSameSubjectRepeated(format.count(rule.penalty, "time", "oblique")) }];
-      case "spreadSubjectsAcrossDays": return [{ key: rule.key, sentence: plain.notes.spreadSubjectsAcrossDays(format.count(rule.penalty, "time", "oblique")) }];
+      case "spreadSubjectsAcrossDays": {
+        const repeats = run.score?.repeats;
+        if (!repeats) return [{ key: rule.key, sentence: plain.notes.spreadSubjectsAcrossDays(format.count(rule.penalty, "time", "oblique")) }];
+        const total = format.count(repeats.total, "time");
+        const sentence = repeats.improvable === 0
+          ? plain.notes.sameDayRepeatsAllForced(total)
+          : plain.notes.sameDayRepeats(total, format.count(repeats.unavoidable, "repeat"), format.count(repeats.improvable, "repeat"));
+        if (repeats.forced.length === 0) return [{ key: rule.key, sentence }];
+        const list = repeats.forced.map((item) => {
+          const words = item.reason === "teacherAbsent" ? plain.notes.forcedTeacherAbsent : plain.notes.forcedMoreLessonsThanDays;
+          return words(isolate(item.subject), isolate(item.teacher), format.count(item.weekly, "lesson"), format.count(item.days, "day"), format.count(item.sections, "section"));
+        }).join("؛ ");
+        return [{ key: rule.key, sentence }, { key: `${rule.key}-forced`, sentence: plain.notes.forcedRepeats(list) }];
+      }
       case "heavySubjectsEarly": return [{ key: rule.key, sentence: plain.notes.heavySubjectsEarly(format.count(rule.penalty, "lesson", "oblique")) }];
       case "keepDoubleLessonsTogether": return [{ key: rule.key, sentence: plain.notes.keepDoubleLessonsTogether(format.count(rule.penalty, "pair")) }];
       case "spreadTeacherLessons": return [{ key: rule.key, sentence: plain.notes.spreadTeacherLessons(format.count(rule.penalty, "time")) }];
@@ -125,7 +141,9 @@ export function improvementNotes(run: GenerationRun, format: Formatter): { key: 
       case "fairLastPeriods": {
         const last = run.score?.lastPeriods;
         if (!last) return [];
-        return [{ key: rule.key, sentence: plain.notes.fairLastPeriods(isolate(last.mostTeacher), format.number(last.mostCount), isolate(last.leastTeacher), format.number(last.leastCount)) }];
+        const fair = plain.notes.fairLastPeriods(isolate(last.mostTeacher), format.number(last.mostCount), isolate(last.leastTeacher), format.number(last.leastCount));
+        const sentence = last.fullWeek && last.lastLessons ? plain.notes.fullWeekLastPeriods(format.count(last.lastLessons, "lesson"), fair) : fair;
+        return [{ key: rule.key, sentence }];
       }
       default: return [];
     }
